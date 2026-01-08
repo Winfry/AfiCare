@@ -1,0 +1,56 @@
+# AfiCare Agent Default Configuration
+
+# Application Settings
+app:
+  name: "AfiCare Medical Agent"
+  version: "0.1.0"
+  debug: false
+  log_level: "INFO"
+
+# Database Configuration
+database:
+  url: "sqlite:///./aficare.db"
+  echo: false
+  pool_size: 5
+  max_overflow: 10
+
+# LLM Configuration
+llm:
+  model_path: "./data/models/llama-3.2-3b-instruct.Q4_K_M.gguf"
+  context_length: 4096
+  temperature: 0.3
+  max_tokens: 512
+  n_gpu_layers: 0  # Set to -1 for GPU acceleration
+  verbose: false
+
+# Medical Rules Configuration
+medical:
+  triage_threshold: 0.7
+  emergency_keywords: ["chest pain", "difficulty breathing", "severe bleeding", "unconscious"]
+  high_priority_conditions: ["malaria", "pneumonia", "severe dehydration"]
+  
+# Security Settings
+security:
+  secret_key: "your-secret-key-change-in-production"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+
+# UI Configuration
+ui:
+  host: "localhost"
+  port: 8501
+  theme: "clinic"
+  language: "en"
+
+# Backup Configuration
+backup:
+  enabled: true
+  interval_hours: 24
+  max_backups: 7
+  backup_path: "./backups"

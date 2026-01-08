@@ -1,0 +1,178 @@
+{
+  "condition": "malaria",
+  "name": "Malaria",
+  "category": "infectious_disease",
+  "icd10": "B54",
+  "prevalence": {
+    "global": 0.03,
+    "africa": 0.15,
+    "endemic_areas": 0.25
+  },
+  "symptoms": {
+    "primary": [
+      {
+        "name": "fever",
+        "weight": 0.9,
+        "description": "High fever, often cyclical",
+        "translations": {
+          "sw": "homa",
+          "lg": "omusujja"
+        }
+      },
+      {
+        "name": "chills",
+        "weight": 0.8,
+        "description": "Severe chills and shivering",
+        "translations": {
+          "sw": "kutetemeka",
+          "lg": "okukankana"
+        }
+      },
+      {
+        "name": "headache",
+        "weight": 0.7,
+        "description": "Severe headache",
+        "translations": {
+          "sw": "maumivu ya kichwa",
+          "lg": "omutwe okubba"
+        }
+      }
+    ],
+    "secondary": [
+      {
+        "name": "muscle_aches",
+        "weight": 0.6,
+        "description": "Body aches and muscle pain"
+      },
+      {
+        "name": "nausea",
+        "weight": 0.5,
+        "description": "Nausea and vomiting"
+      },
+      {
+        "name": "fatigue",
+        "weight": 0.6,
+        "description": "Extreme tiredness and weakness"
+      }
+    ]
+  },
+  "risk_factors": [
+    {
+      "factor": "endemic_area",
+      "weight": 0.8,
+      "description": "Living in or traveling to malaria-endemic area"
+    },
+    {
+      "factor": "no_bed_net",
+      "weight": 0.6,
+      "description": "Not using insecticide-treated bed nets"
+    },
+    {
+      "factor": "rainy_season",
+      "weight": 0.5,
+      "description": "During or after rainy season"
+    },
+    {
+      "factor": "pregnancy",
+      "weight": 0.7,
+      "description": "Pregnancy increases risk"
+    }
+  ],
+  "diagnostic_criteria": {
+    "clinical": [
+      "Fever or history of fever in past 48 hours",
+      "Presence in malaria-endemic area",
+      "No other obvious cause of fever"
+    ],
+    "laboratory": [
+      "Positive malaria rapid diagnostic test (RDT)",
+      "Positive blood smear microscopy",
+      "Positive PCR test"
+    ]
+  },
+  "treatment": {
+    "first_line": {
+      "uncomplicated": [
+        {
+          "medication": "Artemether-Lumefantrine",
+          "dosage": "Based on weight",
+          "duration": "3 days",
+          "notes": "WHO first-line treatment"
+        }
+      ],
+      "severe": [
+        {
+          "medication": "Artesunate IV",
+          "dosage": "2.4 mg/kg",
+          "route": "intravenous",
+          "notes": "Immediate hospital treatment required"
+        }
+      ]
+    },
+    "supportive_care": [
+      "Paracetamol for fever and pain",
+      "Oral rehydration therapy",
+      "Rest and adequate nutrition"
+    ]
+  },
+  "complications": [
+    {
+      "name": "cerebral_malaria",
+      "severity": "severe",
+      "description": "Brain involvement with altered consciousness"
+    },
+    {
+      "name": "severe_anemia",
+      "severity": "severe",
+      "description": "Hemoglobin < 5 g/dL"
+    },
+    {
+      "name": "respiratory_distress",
+      "severity": "severe",
+      "description": "Difficulty breathing, pulmonary edema"
+    }
+  ],
+  "prevention": [
+    "Use insecticide-treated bed nets",
+    "Indoor residual spraying",
+    "Antimalarial prophylaxis for travelers",
+    "Eliminate standing water around homes",
+    "Wear long-sleeved clothing in evening"
+  ],
+  "patient_education": {
+    "en": {
+      "what_is": "Malaria is a serious disease caused by parasites transmitted through mosquito bites.",
+      "symptoms": "Watch for fever, chills, headache, and body aches.",
+      "treatment": "Take all prescribed antimalarial medication even if you feel better.",
+      "prevention": "Sleep under treated bed nets and eliminate standing water.",
+      "when_to_return": "Return immediately if fever persists, severe headache, or difficulty breathing."
+    },
+    "sw": {
+      "what_is": "Malaria ni ugonjwa mkubwa unaosababishwa na vimelea vinavyoambukizwa kupitia kuumwa na mbu.",
+      "symptoms": "Angalia homa, kutetemeka, maumivu ya kichwa, na maumivu ya mwili.",
+      "treatment": "Tumia dawa zote za malaria hata ukijisikia vizuri.",
+      "prevention": "Lala chini ya chandarua cha dawa na ondoa maji yaliyosimama.",
+      "when_to_return": "Rudi haraka ikiwa homa inaendelea, maumivu makubwa ya kichwa, au ugumu wa kupumua."
+    }
+  },
+  "differential_diagnoses": [
+    "typhoid_fever",
+    "dengue_fever",
+    "viral_fever",
+    "pneumonia",
+    "meningitis"
+  ],
+  "red_flags": [
+    "Altered consciousness or confusion",
+    "Severe headache with neck stiffness",
+    "Difficulty breathing",
+    "Persistent vomiting",
+    "Signs of severe anemia (pale conjunctiva)",
+    "Convulsions or seizures"
+  ],
+  "follow_up": {
+    "routine": "3 days after treatment start",
+    "severe_cases": "Daily until stable",
+    "treatment_failure": "If fever persists after 3 days of treatment"
+  }
+}

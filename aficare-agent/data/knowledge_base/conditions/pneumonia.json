@@ -1,0 +1,268 @@
+{
+  "condition": "pneumonia",
+  "name": "Pneumonia",
+  "category": "respiratory_infection",
+  "icd10": "J18.9",
+  "prevalence": {
+    "global": 0.08,
+    "children_under_5": 0.15,
+    "elderly": 0.12
+  },
+  "symptoms": {
+    "primary": [
+      {
+        "name": "cough",
+        "weight": 0.9,
+        "description": "Productive cough with sputum",
+        "translations": {
+          "sw": "kikohozi",
+          "lg": "okukwaata"
+        }
+      },
+      {
+        "name": "fever",
+        "weight": 0.8,
+        "description": "High fever with chills",
+        "translations": {
+          "sw": "homa",
+          "lg": "omusujja"
+        }
+      },
+      {
+        "name": "difficulty_breathing",
+        "weight": 0.9,
+        "description": "Shortness of breath, rapid breathing",
+        "translations": {
+          "sw": "ugumu wa kupumua",
+          "lg": "okukaluubirira okussaamu omukka"
+        }
+      },
+      {
+        "name": "chest_pain",
+        "weight": 0.7,
+        "description": "Sharp chest pain, worse with breathing",
+        "translations": {
+          "sw": "maumivu ya kifua",
+          "lg": "ekifuba okubba"
+        }
+      }
+    ],
+    "secondary": [
+      {
+        "name": "fatigue",
+        "weight": 0.6,
+        "description": "Extreme tiredness and weakness"
+      },
+      {
+        "name": "loss_of_appetite",
+        "weight": 0.4,
+        "description": "Reduced desire to eat"
+      },
+      {
+        "name": "confusion",
+        "weight": 0.5,
+        "description": "Mental confusion, especially in elderly"
+      }
+    ]
+  },
+  "risk_factors": [
+    {
+      "factor": "age_under_2_or_over_65",
+      "weight": 0.8,
+      "description": "Very young children or elderly adults"
+    },
+    {
+      "factor": "chronic_lung_disease",
+      "weight": 0.7,
+      "description": "COPD, asthma, or other lung conditions"
+    },
+    {
+      "factor": "immunocompromised",
+      "weight": 0.8,
+      "description": "HIV, diabetes, or immunosuppressive medications"
+    },
+    {
+      "factor": "smoking",
+      "weight": 0.6,
+      "description": "Current or former smoking"
+    },
+    {
+      "factor": "malnutrition",
+      "weight": 0.7,
+      "description": "Poor nutritional status"
+    }
+  ],
+  "diagnostic_criteria": {
+    "clinical": [
+      "Cough with or without sputum production",
+      "Fever or hypothermia",
+      "Dyspnea or tachypnea",
+      "Chest pain"
+    ],
+    "physical_signs": [
+      "Crackles or rales on chest examination",
+      "Bronchial breath sounds",
+      "Dullness to percussion",
+      "Increased respiratory rate"
+    ],
+    "laboratory": [
+      "Chest X-ray showing infiltrates",
+      "Elevated white blood cell count",
+      "Positive sputum culture (if available)"
+    ]
+  },
+  "severity_assessment": {
+    "mild": {
+      "criteria": [
+        "No signs of severe pneumonia",
+        "Able to feed/drink normally",
+        "No danger signs"
+      ],
+      "treatment_setting": "outpatient"
+    },
+    "severe": {
+      "criteria": [
+        "Fast breathing (age-specific rates)",
+        "Chest indrawing",
+        "Unable to feed/drink"
+      ],
+      "treatment_setting": "hospital"
+    },
+    "very_severe": {
+      "criteria": [
+        "General danger signs",
+        "Convulsions",
+        "Lethargy or unconsciousness",
+        "Severe respiratory distress"
+      ],
+      "treatment_setting": "intensive_care"
+    }
+  },
+  "treatment": {
+    "outpatient": {
+      "first_line": [
+        {
+          "medication": "Amoxicillin",
+          "dosage": "15 mg/kg twice daily",
+          "duration": "5 days",
+          "age_group": "children"
+        },
+        {
+          "medication": "Amoxicillin",
+          "dosage": "500mg three times daily",
+          "duration": "5 days",
+          "age_group": "adults"
+        }
+      ],
+      "alternative": [
+        {
+          "medication": "Cotrimoxazole",
+          "dosage": "4mg/kg twice daily",
+          "duration": "5 days",
+          "notes": "If amoxicillin not available"
+        }
+      ]
+    },
+    "hospital": {
+      "first_line": [
+        {
+          "medication": "Ampicillin",
+          "dosage": "50mg/kg every 6 hours",
+          "route": "IV/IM",
+          "duration": "5 days"
+        },
+        {
+          "medication": "Gentamicin",
+          "dosage": "7.5mg/kg once daily",
+          "route": "IV/IM",
+          "duration": "5 days",
+          "notes": "For severe cases"
+        }
+      ]
+    },
+    "supportive_care": [
+      "Oxygen therapy if SpO2 < 90%",
+      "Adequate fluid intake",
+      "Paracetamol for fever and pain",
+      "Nutritional support"
+    ]
+  },
+  "complications": [
+    {
+      "name": "respiratory_failure",
+      "severity": "severe",
+      "description": "Inability to maintain adequate oxygenation"
+    },
+    {
+      "name": "sepsis",
+      "severity": "severe",
+      "description": "Systemic inflammatory response"
+    },
+    {
+      "name": "pleural_effusion",
+      "severity": "moderate",
+      "description": "Fluid accumulation in pleural space"
+    },
+    {
+      "name": "lung_abscess",
+      "severity": "severe",
+      "description": "Localized collection of pus in lung"
+    }
+  ],
+  "prevention": [
+    "Pneumococcal vaccination",
+    "Haemophilus influenzae type b (Hib) vaccination",
+    "Exclusive breastfeeding for first 6 months",
+    "Adequate nutrition and vitamin A supplementation",
+    "Reduce indoor air pollution",
+    "Hand hygiene"
+  ],
+  "patient_education": {
+    "en": {
+      "what_is": "Pneumonia is an infection of the lungs that makes breathing difficult.",
+      "symptoms": "Watch for cough, fever, fast breathing, and chest pain.",
+      "treatment": "Take all antibiotics as prescribed, even if feeling better.",
+      "care_at_home": "Give plenty of fluids, keep warm, and ensure rest.",
+      "when_to_return": "Return if breathing becomes more difficult, fever persists, or child cannot feed."
+    },
+    "sw": {
+      "what_is": "Nimonia ni maambukizi ya mapafu yanayofanya kupumua kuwa vigumu.",
+      "symptoms": "Angalia kikohozi, homa, kupumua kwa haraka, na maumivu ya kifua.",
+      "treatment": "Tumia dawa zote za antibiotiki kama ilivyoagizwa, hata ukijisikia vizuri.",
+      "care_at_home": "Mpe maji mengi, mweke mahali pa joto, na hakikisha anapumzika.",
+      "when_to_return": "Rudi ikiwa kupumua kunaongezeka vigumu, homa inaendelea, au mtoto hawezi kula."
+    }
+  },
+  "differential_diagnoses": [
+    "bronchitis",
+    "tuberculosis",
+    "lung_cancer",
+    "pulmonary_embolism",
+    "heart_failure"
+  ],
+  "red_flags": [
+    "Severe respiratory distress",
+    "Cyanosis (blue lips or fingernails)",
+    "Altered consciousness",
+    "Inability to feed or drink",
+    "Persistent high fever",
+    "Signs of sepsis"
+  ],
+  "follow_up": {
+    "outpatient": "48-72 hours after starting treatment",
+    "hospital_discharge": "Within 1 week of discharge",
+    "treatment_failure": "If no improvement after 48 hours of appropriate treatment"
+  },
+  "who_imci_guidelines": {
+    "fast_breathing_thresholds": {
+      "2_11_months": "50 breaths per minute or more",
+      "12_59_months": "40 breaths per minute or more"
+    },
+    "danger_signs": [
+      "Unable to drink or breastfeed",
+      "Vomits everything",
+      "Convulsions",
+      "Lethargic or unconscious"
+    ]
+  }
+}
