@@ -1,0 +1,75 @@
+# Language Configuration for AfiCare Agent
+
+languages:
+  en:
+    name: "English"
+    code: "en"
+    rtl: false
+    
+  sw:
+    name: "Kiswahili"
+    code: "sw"
+    rtl: false
+    
+  lg:
+    name: "Luganda"
+    code: "lg"
+    rtl: false
+
+# Common Medical Terms Translations
+translations:
+  symptoms:
+    en:
+      fever: "Fever"
+      cough: "Cough"
+      headache: "Headache"
+      nausea: "Nausea"
+      vomiting: "Vomiting"
+      diarrhea: "Diarrhea"
+      abdominal_pain: "Abdominal pain"
+      chest_pain: "Chest pain"
+      difficulty_breathing: "Difficulty breathing"
+      
+    sw:
+      fever: "Homa"
+      cough: "Kikohozi"
+      headache: "Maumivu ya kichwa"
+      nausea: "Kichefuchefu"
+      vomiting: "Kutapika"
+      diarrhea: "Kuhara"
+      abdominal_pain: "Maumivu ya tumbo"
+      chest_pain: "Maumivu ya kifua"
+      difficulty_breathing: "Ugumu wa kupumua"
+      
+    lg:
+      fever: "Omusujja"
+      cough: "Okukwaata"
+      headache: "Omutwe okubba"
+      nausea: "Okusesema"
+      vomiting: "Okusesema"
+      diarrhea: "Ebyenda"
+      abdominal_pain: "Olubuto okubba"
+      chest_pain: "Ekifuba okubba"
+      difficulty_breathing: "Okukaluubirira okussaamu omukka"
+
+  conditions:
+    en:
+      malaria: "Malaria"
+      pneumonia: "Pneumonia"
+      tuberculosis: "Tuberculosis"
+      hypertension: "High Blood Pressure"
+      diabetes: "Diabetes"
+      
+    sw:
+      malaria: "Malaria"
+      pneumonia: "Nimonia"
+      tuberculosis: "Kifua kikuu"
+      hypertension: "Shinikizo la damu"
+      diabetes: "Kisukari"
+      
+    lg:
+      malaria: "Omusujja gw'ensiri"
+      pneumonia: "Obulwadde bw'amafuba"
+      tuberculosis: "Akafuba"
+      hypertension: "Omusayi okukuba ennyo"
+      diabetes: "Endwadde y'asukali"

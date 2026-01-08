@@ -1,0 +1,73 @@
+# Clinic-Specific Configuration
+
+clinic:
+  name: "AfiCare Health Center"
+  location: "Nairobi, Kenya"
+  timezone: "Africa/Nairobi"
+  contact:
+    phone: "+254-XXX-XXXXXX"
+    email: "info@aficare-clinic.org"
+    address: "123 Health Street, Nairobi"
+
+# Staff Configuration
+staff:
+  roles:
+    - "Doctor"
+    - "Nurse"
+    - "Clinical Officer"
+    - "Community Health Worker"
+    - "Pharmacist"
+    
+  shifts:
+    morning: "06:00-14:00"
+    afternoon: "14:00-22:00"
+    night: "22:00-06:00"
+
+# Patient Management
+patients:
+  id_format: "AFC-{year}-{sequence:05d}"
+  age_groups:
+    infant: "0-1"
+    child: "1-12"
+    adolescent: "13-17"
+    adult: "18-64"
+    elderly: "65+"
+    
+# Consultation Settings
+consultation:
+  default_duration_minutes: 30
+  emergency_duration_minutes: 60
+  follow_up_duration_minutes: 15
+  
+  priority_levels:
+    emergency: 1
+    urgent: 2
+    routine: 3
+    follow_up: 4
+
+# Medical Protocols
+protocols:
+  vital_signs:
+    required: ["temperature", "blood_pressure", "pulse", "respiratory_rate"]
+    optional: ["oxygen_saturation", "weight", "height"]
+    
+  triage_categories:
+    red: "Immediate - Life threatening"
+    orange: "Urgent - Potentially life threatening"
+    yellow: "Less urgent - Significant but stable"
+    green: "Non-urgent - Minor conditions"
+    blue: "Deceased"
+
+# Equipment and Resources
+equipment:
+  available:
+    - "Stethoscope"
+    - "Blood pressure monitor"
+    - "Thermometer"
+    - "Pulse oximeter"
+    - "Weighing scale"
+    - "Glucometer"
+    
+  medications:
+    stock_alert_threshold: 10
+    expiry_alert_days: 30
