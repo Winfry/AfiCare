@@ -1,6 +1,6 @@
 """
-AfiCare Agent - Streamlit Web Interface
-Medical consultation and diagnostic support UI
+AfiCare Agent - Standalone Streamlit Application
+Run this file directly with: streamlit run streamlit_app.py
 """
 
 import streamlit as st
@@ -11,9 +11,12 @@ from pathlib import Path
 from datetime import datetime
 import json
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add src to Python path
+current_dir = Path(__file__).parent
+src_dir = current_dir / "src"
+sys.path.insert(0, str(src_dir))
 
+# Now import our modules
 from core.agent import AfiCareAgent, PatientData
 from utils.config import Config
 from utils.logger import setup_logging, log_medical_event
@@ -76,7 +79,7 @@ st.markdown("""
 def initialize_agent():
     """Initialize the AfiCare agent"""
     try:
-        config_path = os.getenv('AFICARE_CONFIG', 'config/default.yaml')
+        config_path = 'config/default.yaml'
         config = Config(config_path)
         setup_logging(config.get('app.log_level', 'INFO'))
         
@@ -102,13 +105,14 @@ def main():
     
     if not agent:
         st.error("❌ Unable to start AfiCare Agent. Please check configuration.")
+        st.info("💡 Make sure you're running this from the aficare-agent directory")
         return
     
     # Sidebar navigation
     st.sidebar.title("🔧 Navigation")
     page = st.sidebar.selectbox(
         "Select Page",
-        ["🏥 New Consultation", "📊 System Status", "📚 Medical Knowledge", "⚙️ Settings"]
+        ["🏥 New Consultation", "📊 System Status", "📚 Medical Knowledge"]
     )
     
     if page == "🏥 New Consultation":
@@ -117,8 +121,6 @@ def main():
         system_status_page(agent)
     elif page == "📚 Medical Knowledge":
         knowledge_page(agent)
-    elif page == "⚙️ Settings":
-        settings_page(config)
 
 def consultation_page(agent, config):
     """Patient consultation interface"""
@@ -218,12 +220,6 @@ def consultation_page(agent, config):
             placeholder="List current medications and dosages...",
             height=80
         )
-        
-        allergies = st.text_area(
-            "Known allergies",
-            placeholder="List any known allergies...",
-            height=60
-        )
     
     # Risk Factors
     with st.expander("⚠️ Risk Factors"):
@@ -308,6 +304,7 @@ def consultation_page(agent, config):
                 
             except Exception as e:
                 st.error(f"❌ Consultation failed: {str(e)}")
+                st.info("💡 This might be due to missing LLM model. The system can still work with rule-based analysis.")
 
 def display_consultation_results(result, language):
     """Display consultation results"""
@@ -416,12 +413,14 @@ def system_status_page(agent):
         "Database Connected": "✅ Yes" if status.get("database_connected") else "❌ No",
         "LLM Model Loaded": "✅ Yes" if status.get("llm_loaded") else "❌ No", 
         "Medical Rules Loaded": f"{status.get('rules_loaded', 0)} conditions",
-        "Active Plugins": ", ".join(status.get("plugins_loaded", [])),
         "Last Updated": status.get("timestamp", "Unknown")
     }
     
     for key, value in status_data.items():
         st.write(f"**{key}:** {value}")
+    
+    if not status.get("llm_loaded"):
+        st.info("💡 LLM not loaded. Download the Llama model to enable full AI features.")
 
 def knowledge_page(agent):
     """Medical knowledge base browser"""
@@ -484,30 +483,6 @@ def knowledge_page(agent):
             st.info("No medical conditions loaded. Check system configuration.")
     else:
         st.error("Unable to access medical knowledge base.")
-
-def settings_page(config):
-    """Application settings"""
-    
-    st.header("⚙️ Settings")
-    
-    st.subheader("🔧 System Configuration")
-    
-    # Display current configuration
-    st.write("**Current Configuration:**")
-    
-    config_display = {
-        "Application Name": config.get('app.name', 'AfiCare Agent'),
-        "Version": config.get('app.version', '0.1.0'),
-        "Debug Mode": config.get('app.debug', False),
-        "Log Level": config.get('app.log_level', 'INFO'),
-        "Database URL": config.get('database.url', 'Not configured'),
-        "LLM Model Path": config.get('llm.model_path', 'Not configured')
-    }
-    
-    for key, value in config_display.items():
-        st.write(f"**{key}:** {value}")
-    
-    st.info("💡 To modify settings, edit the configuration files in the `config/` directory.")
 
 if __name__ == "__main__":
     main()

@@ -14,8 +14,12 @@ except ImportError:
     Llama = None
     logging.warning("llama-cpp-python not installed. LLM features will be disabled.")
 
-from .prompt_templates import PromptTemplates
-from .response_parser import ResponseParser
+try:
+    from .prompt_templates import PromptTemplates
+    from .response_parser import ResponseParser
+except ImportError:
+    from prompt_templates import PromptTemplates
+    from response_parser import ResponseParser
 
 logger = logging.getLogger(__name__)
 
