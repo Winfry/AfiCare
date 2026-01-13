@@ -7,11 +7,47 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 
-from ..llm.local_llm import LocalLLM
-from ..rules.rule_engine import RuleEngine
-from ..rules.triage_engine import TriageEngine
-from ..memory.patient_store import PatientStore
-from ..utils.config import Config
+# Handle imports for different execution contexts
+import sys
+from pathlib import Path
+
+# Add parent directory to path if needed
+current_file = Path(__file__)
+src_dir = current_file.parent.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
+try:
+    # Try relative imports first
+    from ..llm.local_llm import LocalLLM
+    from ..rules.rule_engine import RuleEngine
+    from ..rules.triage_engine import TriageEngine
+    from ..memory.patient_store import PatientStore
+    from ..utils.config import Config
+except (ImportError, ValueError):
+    # Fallback to absolute imports
+    try:
+        from llm.local_llm import LocalLLM
+        from rules.rule_engine import RuleEngine
+        from rules.triage_engine import TriageEngine
+        from memory.patient_store import PatientStore
+        from utils.config import Config
+    except ImportError:
+        # Last resort - direct path imports
+        import importlib.util
+        
+        def load_module_from_path(module_name, file_path):
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        
+        base_path = current_file.parent.parent
+        LocalLLM = load_module_from_path("local_llm", base_path / "llm" / "local_llm.py").LocalLLM
+        RuleEngine = load_module_from_path("rule_engine", base_path / "rules" / "rule_engine.py").RuleEngine
+        TriageEngine = load_module_from_path("triage_engine", base_path / "rules" / "triage_engine.py").TriageEngine
+        PatientStore = load_module_from_path("patient_store", base_path / "memory" / "patient_store.py").PatientStore
+        Config = load_module_from_path("config", base_path / "utils" / "config.py").Config
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +88,22 @@ class AfiCareAgent:
         self.triage_engine = TriageEngine(config)
         self.patient_store = PatientStore(config)
         
-        logger.info("AfiCare Agent initialized successfully")
+        # Initialize Plugin System
+        from .plugin_manager import PluginManager
+        # MANUALLY IMPORT MALARIA PLUGIN FOR PILOT (In future, discover_plugins() will do this)
+        # We need to make sure the import path is correct relative to run context
+        try:
+            from plugins.malaria.malaria_plugin import MalariaPlugin
+        except ImportError:
+            # Fallback for different execution contexts
+            import sys
+            sys.path.append(str(Path(__file__).parent.parent.parent))
+            from plugins.malaria.malaria_plugin import MalariaPlugin
+
+        self.plugin_manager = PluginManager()
+        self.plugin_manager.register_plugin(MalariaPlugin())
+        
+        logger.info(f"AfiCare Agent initialized with {len(self.plugin_manager.plugins)} plugins")
     
     async def conduct_consultation(self, patient_data: PatientData) -> ConsultationResult:
         """
@@ -71,12 +122,33 @@ class AfiCareAgent:
             triage_result = await self.triage_engine.assess_urgency(patient_data)
             
             # Step 2: Symptom analysis and condition matching
-            condition_matches = await self.rule_engine.analyze_symptoms(
+            # 2a. Get rules from legacy system
+            legacy_matches = await self.rule_engine.analyze_symptoms(
                 patient_data.symptoms,
                 patient_data.vital_signs,
                 patient_data.age,
                 patient_data.gender
             )
+            
+            # 2b. Get matches from Plugins (The New Way)
+            plugin_matches = []
+            for plugin_id, plugin in self.plugin_manager.plugins.items():
+                # In a real system, we would run the plugin's engine. 
+                # For this pilot, we simulate the plugin adding content.
+                # The Malaria Plugin has specific logic we want to obey.
+                # Detailed logic would be: plugin.evaluate(patient_data)
+                
+                # Check for "Fever" -> Malaria Plugin Activation
+                if "fever" in patient_data.symptoms:
+                     plugin_matches.append({
+                        "name": "Malaria", 
+                        "confidence": 0.85, 
+                        "source": plugin.name,
+                        "category": "Infectious",
+                        "severity": "High"
+                     })
+
+            condition_matches = legacy_matches + plugin_matches
             
             # Step 3: LLM-based reasoning for complex cases
             llm_analysis = await self.llm.analyze_case(
@@ -180,6 +252,7 @@ class AfiCareAgent:
             "status": "operational",
             "llm_loaded": self.llm.is_loaded(),
             "rules_loaded": len(self.rule_engine.get_loaded_rules()),
+            "plugins_loaded": [p.name for p in self.plugin_manager.plugins.values()],
             "database_connected": self.patient_store.is_connected(),
             "timestamp": datetime.now().isoformat()
         }
