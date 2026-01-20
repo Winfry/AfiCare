@@ -10,6 +10,314 @@ import secrets
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
+@dataclass
+class PatientData:
+    """Patient information structure"""
+    patient_id: str
+    age: int
+    gender: str
+    symptoms: List[str]
+    vital_signs: Dict[str, float]
+    medical_history: List[str]
+    current_medications: List[str]
+    chief_complaint: str
+
+@dataclass
+class ConsultationResult:
+    """Consultation outcome structure"""
+    patient_id: str
+    timestamp: datetime
+    triage_level: str
+    suspected_conditions: List[Dict[str, Any]]
+    recommendations: List[str]
+    referral_needed: bool
+    follow_up_required: bool
+    confidence_score: float
+
+class SimpleRuleEngine:
+    """Rule-based medical engine for consultations"""
+    
+    def __init__(self):
+        self.conditions = self._load_conditions()
+    
+    def _load_conditions(self):
+        """Load medical conditions and their rules"""
+        conditions = {}
+        
+        # Malaria
+        conditions["malaria"] = {
+            "name": "Malaria",
+            "symptoms": {
+                "fever": 0.9,
+                "chills": 0.8,
+                "headache": 0.7,
+                "muscle_aches": 0.6,
+                "nausea": 0.5,
+                "fatigue": 0.6,
+                "vomiting": 0.5,
+                "sweating": 0.4
+            },
+            "treatment": [
+                "Artemether-Lumefantrine based on weight",
+                "Paracetamol for fever and pain",
+                "Oral rehydration therapy",
+                "Rest and adequate nutrition",
+                "Follow-up in 3 days"
+            ],
+            "danger_signs": ["severe_headache", "confusion", "difficulty_breathing"]
+        }
+        
+        # Pneumonia
+        conditions["pneumonia"] = {
+            "name": "Pneumonia",
+            "symptoms": {
+                "cough": 0.9,
+                "fever": 0.8,
+                "difficulty_breathing": 0.9,
+                "chest_pain": 0.7,
+                "fatigue": 0.6,
+                "rapid_breathing": 0.8,
+                "chills": 0.6
+            },
+            "treatment": [
+                "Amoxicillin 15mg/kg twice daily for 5 days (children)",
+                "Amoxicillin 500mg three times daily for 5 days (adults)",
+                "Oxygen therapy if SpO2 < 90%",
+                "Adequate fluid intake",
+                "Follow-up in 2-3 days"
+            ],
+            "danger_signs": ["difficulty_breathing", "chest_pain", "high_fever"]
+        }
+        
+        # Hypertension
+        conditions["hypertension"] = {
+            "name": "Hypertension",
+            "symptoms": {
+                "headache": 0.4,
+                "dizziness": 0.5,
+                "blurred_vision": 0.6,
+                "chest_pain": 0.3,
+                "fatigue": 0.3
+            },
+            "treatment": [
+                "Lifestyle modifications (diet, exercise)",
+                "Regular blood pressure monitoring",
+                "Antihypertensive medication if indicated",
+                "Reduce salt intake",
+                "Regular follow-up"
+            ],
+            "danger_signs": ["severe_headache", "chest_pain", "difficulty_breathing"]
+        }
+        
+        # Common Cold/Flu
+        conditions["common_cold"] = {
+            "name": "Common Cold/Flu",
+            "symptoms": {
+                "cough": 0.7,
+                "runny_nose": 0.8,
+                "sore_throat": 0.7,
+                "headache": 0.5,
+                "fatigue": 0.6,
+                "muscle_aches": 0.4,
+                "fever": 0.4
+            },
+            "treatment": [
+                "Rest and adequate sleep",
+                "Increase fluid intake",
+                "Paracetamol for fever and pain",
+                "Warm salt water gargling",
+                "Return if symptoms worsen"
+            ],
+            "danger_signs": ["high_fever", "difficulty_breathing", "severe_headache"]
+        }
+        
+        return conditions
+    
+    def analyze_symptoms(self, symptoms: List[str], vital_signs: Dict[str, float], age: int, gender: str):
+        """Analyze symptoms against medical conditions"""
+        
+        results = []
+        normalized_symptoms = [s.lower().replace(" ", "_") for s in symptoms]
+        
+        for condition_name, condition_data in self.conditions.items():
+            score = 0.0
+            matching_symptoms = []
+            
+            # Check symptom matches
+            for symptom, weight in condition_data["symptoms"].items():
+                if any(symptom in ns or ns in symptom for ns in normalized_symptoms):
+                    score += weight
+                    matching_symptoms.append(symptom.replace("_", " ").title())
+            
+            # Vital signs adjustments
+            temp = vital_signs.get("temperature", 37.0)
+            bp_systolic = vital_signs.get("systolic_bp", 120)
+            resp_rate = vital_signs.get("respiratory_rate", 16)
+            
+            if condition_name == "malaria" and temp > 38.5:
+                score += 0.3
+            elif condition_name == "pneumonia" and (resp_rate > 24 or temp > 38.0):
+                score += 0.2
+            elif condition_name == "hypertension" and bp_systolic > 140:
+                score += 0.4
+            elif condition_name == "common_cold" and temp < 38.0:
+                score += 0.1
+            
+            # Age factors
+            if condition_name == "pneumonia" and (age < 5 or age > 65):
+                score += 0.1
+            elif condition_name == "hypertension" and age > 40:
+                score += 0.1
+            
+            if score > 0.2:  # Only include significant matches
+                results.append({
+                    "name": condition_name,
+                    "display_name": condition_data["name"],
+                    "confidence": min(score, 1.0),
+                    "matching_symptoms": matching_symptoms,
+                    "treatment": condition_data["treatment"],
+                    "danger_signs": condition_data.get("danger_signs", [])
+                })
+        
+        # Sort by confidence
+        results.sort(key=lambda x: x["confidence"], reverse=True)
+        return results
+
+class SimpleTriageEngine:
+    """Rule-based triage assessment"""
+    
+    def assess_urgency(self, patient_data: PatientData):
+        """Assess patient urgency level"""
+        
+        score = 0.0
+        danger_signs = []
+        
+        # Check symptoms for danger signs
+        symptom_text = " ".join(patient_data.symptoms).lower()
+        
+        emergency_keywords = [
+            "difficulty breathing", "chest pain", "unconscious", 
+            "severe bleeding", "convulsions", "altered consciousness",
+            "severe headache", "confusion", "high fever"
+        ]
+        
+        for keyword in emergency_keywords:
+            if keyword in symptom_text:
+                score += 1.0
+                danger_signs.append(keyword)
+        
+        # Check vital signs
+        temp = patient_data.vital_signs.get("temperature", 37.0)
+        if temp > 40.0 or temp < 35.0:
+            score += 0.8
+            danger_signs.append(f"Critical temperature: {temp}°C")
+        
+        pulse = patient_data.vital_signs.get("pulse", 80)
+        if pulse > 120 or pulse < 50:
+            score += 0.6
+            danger_signs.append(f"Abnormal pulse: {pulse} bpm")
+        
+        resp_rate = patient_data.vital_signs.get("respiratory_rate", 16)
+        if resp_rate > 30 or resp_rate < 8:
+            score += 0.7
+            danger_signs.append(f"Abnormal breathing: {resp_rate}/min")
+        
+        bp_systolic = patient_data.vital_signs.get("systolic_bp", 120)
+        if bp_systolic > 180 or bp_systolic < 90:
+            score += 0.5
+            danger_signs.append(f"Critical blood pressure: {bp_systolic}")
+        
+        # Age factors
+        if patient_data.age < 1 or patient_data.age > 75:
+            score += 0.2
+        
+        # Determine triage level
+        if score >= 0.8:
+            level = "EMERGENCY"
+            referral = True
+        elif score >= 0.5:
+            level = "URGENT"
+            referral = True
+        elif score >= 0.3:
+            level = "LESS_URGENT"
+            referral = False
+        else:
+            level = "NON_URGENT"
+            referral = False
+        
+        return {
+            "level": level,
+            "score": score,
+            "danger_signs": danger_signs,
+            "referral_needed": referral
+        }
+
+class MedicalAI:
+    """Main medical AI system combining rules and triage"""
+    
+    def __init__(self):
+        self.rule_engine = SimpleRuleEngine()
+        self.triage_engine = SimpleTriageEngine()
+    
+    def conduct_consultation(self, patient_data: PatientData) -> ConsultationResult:
+        """Conduct complete medical consultation"""
+        
+        # Triage assessment
+        triage_result = self.triage_engine.assess_urgency(patient_data)
+        
+        # Symptom analysis
+        condition_matches = self.rule_engine.analyze_symptoms(
+            patient_data.symptoms,
+            patient_data.vital_signs,
+            patient_data.age,
+            patient_data.gender
+        )
+        
+        # Generate recommendations
+        recommendations = []
+        
+        if triage_result["level"] == "EMERGENCY":
+            recommendations.append("🚨 IMMEDIATE MEDICAL ATTENTION REQUIRED")
+            recommendations.append("Transfer to emergency department immediately")
+        
+        # Add condition-specific recommendations
+        for condition in condition_matches[:2]:  # Top 2 conditions
+            if condition["confidence"] > 0.5:
+                recommendations.extend(condition["treatment"][:3])  # Top 3 treatments
+        
+        # General recommendations
+        if triage_result["level"] in ["NON_URGENT", "LESS_URGENT"]:
+            recommendations.extend([
+                "Monitor symptoms and return if condition worsens",
+                "Ensure adequate rest and hydration",
+                "Follow medication instructions carefully"
+            ])
+        
+        # Determine follow-up
+        chronic_conditions = ["hypertension", "diabetes"]
+        follow_up_required = any(
+            condition["name"] in chronic_conditions 
+            for condition in condition_matches 
+            if condition["confidence"] > 0.4
+        ) or triage_result["level"] in ["URGENT", "EMERGENCY"]
+        
+        return ConsultationResult(
+            patient_id=patient_data.patient_id,
+            timestamp=datetime.now(),
+            triage_level=triage_result["level"],
+            suspected_conditions=condition_matches,
+            recommendations=recommendations,
+            referral_needed=triage_result["referral_needed"],
+            follow_up_required=follow_up_required,
+            confidence_score=condition_matches[0]["confidence"] if condition_matches else 0.0
+        )
+
+# Initialize the medical AI system
+@st.cache_resource
+def get_medical_ai():
+    """Get cached medical AI instance"""
+    return MedicalAI()
+
 # Page configuration
 st.set_page_config(
     page_title="AfiCare MediLink",
@@ -744,39 +1052,130 @@ def show_provider_consultation():
             fever = st.checkbox("Fever")
             cough = st.checkbox("Cough")
             headache = st.checkbox("Headache")
+            nausea = st.checkbox("Nausea")
+            vomiting = st.checkbox("Vomiting")
         
         with col2:
             chest_pain = st.checkbox("Chest pain")
             difficulty_breathing = st.checkbox("Difficulty breathing")
             fatigue = st.checkbox("Fatigue")
+            dizziness = st.checkbox("Dizziness")
+            muscle_aches = st.checkbox("Muscle aches")
         
         st.write("**Vital Signs:**")
         col1, col2, col3 = st.columns(3)
         
         with col1:
             temperature = st.number_input("Temperature (°C)", value=37.0)
-        
-        with col2:
             systolic_bp = st.number_input("Systolic BP", value=120)
         
-        with col3:
+        with col2:
+            diastolic_bp = st.number_input("Diastolic BP", value=80)
             pulse = st.number_input("Pulse (bpm)", value=80)
         
+        with col3:
+            resp_rate = st.number_input("Respiratory Rate (/min)", value=16)
+            oxygen_sat = st.number_input("Oxygen Saturation (%)", value=98)
+        
         if st.button("🤖 Analyze with AI", type="primary"):
-            st.success("🎯 AI Analysis Complete!")
+            # Get medical AI
+            medical_ai = get_medical_ai()
             
-            st.write("**🔍 Suspected Conditions:**")
-            st.write("1. **Malaria** - 85% confidence")
-            st.write("2. **Viral fever** - 60% confidence")
+            # Prepare symptoms list from checkboxes
+            symptoms_list = []
+            if fever: symptoms_list.append("fever")
+            if cough: symptoms_list.append("cough")
+            if headache: symptoms_list.append("headache")
+            if nausea: symptoms_list.append("nausea")
+            if vomiting: symptoms_list.append("vomiting")
+            if chest_pain: symptoms_list.append("chest pain")
+            if difficulty_breathing: symptoms_list.append("difficulty breathing")
+            if fatigue: symptoms_list.append("fatigue")
+            if dizziness: symptoms_list.append("dizziness")
+            if muscle_aches: symptoms_list.append("muscle aches")
             
-            st.write("**⚠️ Triage Level:** URGENT")
-            
-            st.write("**💊 Recommendations:**")
-            st.write("• Artemether-Lumefantrine based on weight")
-            st.write("• Paracetamol for fever")
-            
-            if st.button("💾 Save Consultation"):
-                st.success("Consultation saved to patient's MediLink record!")
+            if not symptoms_list:
+                st.error("Please select at least one symptom for analysis")
+            else:
+                # Create patient data object
+                patient_data = PatientData(
+                    patient_id="ML-NBO-DEMO1",
+                    age=35,  # Default for demo
+                    gender="male",
+                    symptoms=symptoms_list,
+                    vital_signs={
+                        "temperature": temperature,
+                        "systolic_bp": systolic_bp,
+                        "diastolic_bp": diastolic_bp,
+                        "pulse": pulse,
+                        "respiratory_rate": resp_rate,
+                        "oxygen_saturation": oxygen_sat
+                    },
+                    medical_history=[],
+                    current_medications=[],
+                    chief_complaint=chief_complaint or "Patient consultation"
+                )
+                
+                # Run AI analysis
+                with st.spinner("🤖 AI is analyzing the case..."):
+                    try:
+                        result = medical_ai.conduct_consultation(patient_data)
+                        
+                        # Display results
+                        st.success("🎯 AI Analysis Complete!")
+                        
+                        # Triage level with color coding
+                        triage_colors = {
+                            "EMERGENCY": "🚨",
+                            "URGENT": "⚠️", 
+                            "LESS_URGENT": "⏰",
+                            "NON_URGENT": "✅"
+                        }
+                        
+                        triage_emoji = triage_colors.get(result.triage_level, "ℹ️")
+                        st.write(f"**{triage_emoji} Triage Level:** {result.triage_level}")
+                        st.write(f"**🎯 Overall Confidence:** {result.confidence_score:.1%}")
+                        
+                        # Suspected conditions
+                        if result.suspected_conditions:
+                            st.write("**🔍 Suspected Conditions:**")
+                            for i, condition in enumerate(result.suspected_conditions[:3], 1):
+                                confidence = condition["confidence"]
+                                name = condition["display_name"]
+                                st.write(f"{i}. **{name}** - {confidence:.1%} confidence")
+                                
+                                # Show matching symptoms
+                                if condition.get("matching_symptoms"):
+                                    symptoms_str = ", ".join(condition["matching_symptoms"])
+                                    st.write(f"   *Matching symptoms: {symptoms_str}*")
+                        
+                        # Recommendations
+                        if result.recommendations:
+                            st.write("**💊 Treatment Recommendations:**")
+                            for i, rec in enumerate(result.recommendations[:5], 1):
+                                st.write(f"{i}. {rec}")
+                        
+                        # Referral and follow-up
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if result.referral_needed:
+                                st.warning("⚠️ **Referral recommended**")
+                            else:
+                                st.success("✅ **Can be managed locally**")
+                        
+                        with col2:
+                            if result.follow_up_required:
+                                st.info("📅 **Follow-up required**")
+                            else:
+                                st.info("ℹ️ **Routine follow-up as needed**")
+                        
+                        if st.button("💾 Save Consultation"):
+                            st.success("✅ Consultation saved to patient's MediLink record!")
+                            st.info("📋 This consultation has been added to the patient's medical history")
+                            
+                    except Exception as e:
+                        st.error(f"❌ AI Analysis failed: {str(e)}")
+                        st.info("💡 Please check that all required fields are filled correctly")
 
 def show_admin_dashboard():
     """Admin interface"""
