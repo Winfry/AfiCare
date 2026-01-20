@@ -520,13 +520,16 @@ def show_login_page():
     """, unsafe_allow_html=True)
     
     # Login/Register tabs
-    tab1, tab2 = st.tabs(["🔐 Login", "📝 Register"])
+    tab1, tab2, tab3 = st.tabs(["🔐 Login", "📝 Register Patient", "👨‍⚕️ Register Healthcare Provider"])
     
     with tab1:
         show_login_form()
     
     with tab2:
-        show_registration_form()
+        show_patient_registration_form()
+    
+    with tab3:
+        show_healthcare_provider_registration_form()
 
 def show_login_form():
     """Login form for all user types"""
@@ -586,17 +589,34 @@ def show_login_form():
                 st.success(f"✅ Welcome back, {st.session_state.user_data['full_name']}!")
                 st.rerun()
             else:
-                st.error("❌ **Invalid credentials.** Please check:")
-                st.write("• Username/MediLink ID is correct")
-                st.write("• Password is correct") 
-                st.write("• Role matches your account type")
-                st.write("• Try the demo accounts shown on the right →")
+                st.error("❌ **Login Failed**")
+                
+                # Check if user exists but with wrong role
+                user_found = False
+                correct_role = None
+                
+                if username in st.session_state.registered_users:
+                    user_found = True
+                    correct_role = st.session_state.registered_users[username]["role"]
+                
+                if user_found and correct_role != role:
+                    st.warning(f"⚠️ **Role Mismatch**: Account '{username}' is registered as **{correct_role.title()}**, but you're trying to login as **{role.title()}**")
+                    st.info(f"💡 **Solution**: Change the 'Login as' dropdown to **{correct_role.title()}** and try again")
+                else:
+                    st.write("**Please check:**")
+                    st.write("• Username/MediLink ID is correct")
+                    st.write("• Password is correct") 
+                    st.write("• Role matches your account type")
+                    st.write("• Try the demo accounts shown on the right →")
+                    
+                    if not user_found:
+                        st.info("💡 **Account not found**: If you haven't registered yet, use the registration tabs above")
 
-def show_registration_form():
+def show_patient_registration_form():
     """Registration form for new patients"""
     
     st.subheader("Register as New Patient - FREE")
-    st.info("Healthcare providers are registered by hospital administrators")
+    st.info("👤 This creates a PATIENT account with a MediLink ID")
     
     col1, col2 = st.columns(2)
     
@@ -725,6 +745,146 @@ def show_registration_form():
             """)
             
             # Optional: Auto-switch to login tab (user experience improvement)
+            st.write("**👆 Click the 'Login' tab above to sign in with your new account!**")
+
+def show_healthcare_provider_registration_form():
+    """Registration form for healthcare providers"""
+    
+    st.subheader("Register as Healthcare Provider")
+    st.info("👨‍⚕️ This creates a DOCTOR, NURSE, or ADMIN account")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        full_name = st.text_input("Full Name *", help="Enter your complete professional name")
+        username = st.text_input("Username *", help="Choose a unique username for login")
+        role = st.selectbox("Role *", ["doctor", "nurse", "admin"], 
+                           format_func=lambda x: x.title(),
+                           help="Select your professional role")
+        
+    with col2:
+        phone = st.text_input("Phone Number *", placeholder="+254712345678")
+        email = st.text_input("Email Address *", placeholder="your.email@hospital.com")
+        department = st.text_input("Department", placeholder="e.g., Internal Medicine, Emergency")
+    
+    # Professional information
+    st.subheader("Professional Information")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        license_number = st.text_input("License Number", help="Professional license/registration number")
+        hospital_id = st.text_input("Hospital ID", value="HOSP001", help="Your hospital identifier")
+    
+    with col2:
+        specialization = st.text_input("Specialization", help="Medical specialization or area of expertise")
+        years_experience = st.number_input("Years of Experience", min_value=0, max_value=50, value=5)
+    
+    # Create password
+    st.subheader("Create Account")
+    password = st.text_input("Create Password *", type="password", help="Minimum 6 characters")
+    confirm_password = st.text_input("Confirm Password *", type="password", help="Re-enter the same password")
+    
+    # Terms and conditions
+    agree_terms = st.checkbox("I agree to the Terms of Service and Professional Code of Conduct *")
+    
+    if st.button("👨‍⚕️ Register Healthcare Provider Account", type="primary"):
+        # Detailed validation
+        errors = []
+        
+        if not full_name or not full_name.strip():
+            errors.append("❌ **Full Name** is required")
+        
+        if not username or not username.strip():
+            errors.append("❌ **Username** is required")
+        elif len(username.strip()) < 3:
+            errors.append("❌ **Username** must be at least 3 characters")
+        
+        if not phone or not phone.strip():
+            errors.append("❌ **Phone Number** is required")
+        
+        if not email or not email.strip():
+            errors.append("❌ **Email Address** is required")
+        elif "@" not in email:
+            errors.append("❌ **Email Address** must be valid")
+        
+        if not role:
+            errors.append("❌ **Role** must be selected")
+        
+        if not password or not password.strip():
+            errors.append("❌ **Password** is required")
+        elif len(password) < 6:
+            errors.append("❌ **Password** must be at least 6 characters long")
+        
+        if not confirm_password or not confirm_password.strip():
+            errors.append("❌ **Confirm Password** is required")
+        elif password != confirm_password:
+            errors.append("❌ **Passwords do not match** - please check both password fields")
+        
+        if not agree_terms:
+            errors.append("❌ **Terms of Service** - you must agree to continue")
+        
+        # Check if username already exists
+        if username in st.session_state.registered_users:
+            errors.append("❌ **Username already exists** - please choose a different username")
+        
+        # Show specific errors or proceed with registration
+        if errors:
+            st.error("**Please fix the following issues:**")
+            for error in errors:
+                st.write(error)
+        else:
+            # All validation passed - register the healthcare provider
+            provider_id = f"{role.upper()}-{secrets.token_hex(3).upper()}"
+            
+            # Create user account data
+            user_data = {
+                "password": password,
+                "role": role,
+                "full_name": full_name,
+                "username": username,
+                "phone": phone,
+                "email": email,
+                "department": department or "General",
+                "hospital_id": hospital_id or "HOSP001",
+                "license_number": license_number or "",
+                "specialization": specialization or "",
+                "years_experience": years_experience,
+                "provider_id": provider_id,
+                "registration_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Save user with username as login
+            st.session_state.registered_users[username] = user_data
+            
+            st.balloons()
+            st.markdown(f"""
+            <div class="medilink-id">
+                <h3>🎉 Healthcare Provider Registration Successful!</h3>
+                <p><strong>Provider ID:</strong> {provider_id}</p>
+                <p><strong>Full Name:</strong> {full_name}</p>
+                <p><strong>Role:</strong> {role.title()}</p>
+                <p><strong>Department:</strong> {department or "General"}</p>
+                <p><strong>Hospital:</strong> {hospital_id or "HOSP001"}</p>
+                <br>
+                <h4>🔐 Login Information:</h4>
+                <p><strong>Username:</strong> <code>{username}</code></p>
+                <p><strong>Password:</strong> [The password you just created]</p>
+                <p><strong>Role:</strong> {role.title()}</p>
+                <br>
+                <p><em>💾 Your healthcare provider account has been created! You can now login to access the medical system.</em></p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.success("✅ Healthcare provider account created successfully! Please go to the Login tab to sign in.")
+            
+            # Show a helpful reminder
+            st.info(f"""
+            **🔑 Remember your login details:**
+            - **Username:** `{username}`
+            - **Password:** [Your chosen password]
+            - **Role:** {role.title()}
+            """)
+            
             st.write("**👆 Click the 'Login' tab above to sign in with your new account!**")
 
 def show_dashboard():
