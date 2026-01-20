@@ -9,17 +9,41 @@ import subprocess
 import sys
 import webbrowser
 import time
+import os
 from pathlib import Path
 
-def find_free_port(preferred_ports=None):
+def kill_streamlit_processes():
+    """Kill any existing Streamlit processes"""
+    killed = 0
+    try:
+        if os.name == 'nt':  # Windows
+            result = os.system('taskkill /f /im python.exe /fi "WINDOWTITLE eq streamlit*" >nul 2>&1')
+            if result == 0:
+                killed = 1
+                print("   🔄 Killed existing Streamlit processes")
+        else:  # Unix-like
+            result = os.system('pkill -f streamlit')
+            if result == 0:
+                killed = 1
+                print("   🔄 Killed existing Streamlit processes")
+    except:
+        pass
+    
+    if killed > 0:
+        time.sleep(2)  # Wait for processes to fully terminate
+    
+    return killed
+
+def find_free_port():
     """Find a free port from a list of preferred ports"""
     
-    if preferred_ports is None:
-        preferred_ports = [8080, 8090, 9000, 3000, 5000, 7000, 8888, 9999, 4000, 6000]
+    # Start with less common ports to avoid conflicts
+    preferred_ports = [8090, 9000, 7000, 8888, 9999, 4000, 6000, 5000, 3000, 8080]
     
     for port in preferred_ports:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind(('localhost', port))
                 print(f"   ✓ Port {port} is available")
                 return port
@@ -34,13 +58,17 @@ def main():
     print("=" * 50)
     print()
     
+    # Kill existing Streamlit processes first
+    print("🔄 Cleaning up existing processes...")
+    kill_streamlit_processes()
+    
     # Find available port
     print("🔍 Checking available ports...")
     port = find_free_port()
     
     if not port:
         print("\n❌ Could not find an available port!")
-        print("💡 All common ports (8080, 8090, 9000, 3000, 5000, 7000, 8888, 9999, 4000, 6000) are in use")
+        print("💡 All common ports are in use")
         print("💡 Try closing other applications or running as administrator")
         input("Press Enter to exit...")
         return
@@ -68,14 +96,16 @@ def main():
     print("=" * 50)
     
     try:
-        # Start Streamlit
+        # Start Streamlit with explicit configuration
         cmd = [
             sys.executable, "-m", "streamlit", "run", 
             str(app_file),
             "--server.port", str(port),
             "--server.address", "localhost",
             "--server.headless", "true",
-            "--browser.gatherUsageStats", "false"
+            "--browser.gatherUsageStats", "false",
+            "--server.enableCORS", "false",
+            "--server.enableXsrfProtection", "false"
         ]
         
         # Open browser after a short delay

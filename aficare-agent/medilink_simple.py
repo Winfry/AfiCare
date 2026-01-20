@@ -224,11 +224,24 @@ def show_login_form():
         """)
     
     if st.button("🔐 Login", type="primary"):
-        if authenticate_user(username, password, role):
-            st.success(f"Welcome back, {st.session_state.user_data['full_name']}!")
-            st.rerun()
+        # Validate input fields
+        if not username or not username.strip():
+            st.error("❌ **Username or MediLink ID** is required")
+        elif not password or not password.strip():
+            st.error("❌ **Password** is required")
+        elif not role:
+            st.error("❌ **Role** must be selected")
         else:
-            st.error("Invalid credentials. Please try the demo accounts above.")
+            # Attempt authentication
+            if authenticate_user(username, password, role):
+                st.success(f"✅ Welcome back, {st.session_state.user_data['full_name']}!")
+                st.rerun()
+            else:
+                st.error("❌ **Invalid credentials.** Please check:")
+                st.write("• Username/MediLink ID is correct")
+                st.write("• Password is correct") 
+                st.write("• Role matches your account type")
+                st.write("• Try the demo accounts shown on the right →")
 
 def show_registration_form():
     """Registration form for new patients"""
@@ -239,46 +252,88 @@ def show_registration_form():
     col1, col2 = st.columns(2)
     
     with col1:
-        full_name = st.text_input("Full Name *")
-        phone = st.text_input("Phone Number *")
-        email = st.text_input("Email Address")
+        full_name = st.text_input("Full Name *", help="Enter your complete legal name")
+        phone = st.text_input("Phone Number *", placeholder="+254712345678", help="Include country code if international")
+        email = st.text_input("Email Address", placeholder="your.email@example.com", help="Optional but recommended for account recovery")
         
     with col2:
-        age = st.number_input("Age *", min_value=0, max_value=120, value=25)
-        gender = st.selectbox("Gender *", ["Male", "Female", "Other"])
+        age = st.number_input("Age *", min_value=0, max_value=120, value=25, help="Your age in years")
+        gender = st.selectbox("Gender *", ["Male", "Female", "Other"], help="Select your gender")
         location = st.selectbox("Location/City", [
             "Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret", "Other"
-        ])
+        ], help="Your primary location - affects your MediLink ID")
     
     # Medical information
     st.subheader("Medical Information (Optional)")
-    medical_history = st.text_area("Known medical conditions")
-    allergies = st.text_area("Known allergies")
+    medical_history = st.text_area("Known medical conditions", placeholder="e.g., Diabetes, Hypertension, Asthma", help="List any ongoing medical conditions")
+    allergies = st.text_area("Known allergies", placeholder="e.g., Penicillin, Sulfa drugs, Peanuts", help="List any known allergies - this is important for emergency care")
+    
+    # Emergency contact
+    st.subheader("Emergency Contact (Optional but Recommended)")
+    emergency_name = st.text_input("Emergency contact name", placeholder="e.g., Jane Doe (Wife)", help="Person to contact in case of emergency")
+    emergency_phone = st.text_input("Emergency contact phone", placeholder="+254712345679", help="Phone number of emergency contact")
     
     # Create password
     st.subheader("Create Account")
-    password = st.text_input("Create Password *", type="password")
-    confirm_password = st.text_input("Confirm Password *", type="password")
+    password = st.text_input("Create Password *", type="password", help="Minimum 6 characters")
+    confirm_password = st.text_input("Confirm Password *", type="password", help="Re-enter the same password")
     
     # Terms and conditions
-    agree_terms = st.checkbox("I agree to the Terms of Service and Privacy Policy")
+    agree_terms = st.checkbox("I agree to the Terms of Service and Privacy Policy *", help="Required to create account")
     
     if st.button("📝 Register FREE Account", type="primary"):
-        if all([full_name, phone, age, gender, password, confirm_password, agree_terms]):
-            if password == confirm_password:
-                medilink_id = generate_medilink_id(location)
-                st.balloons()
-                st.markdown(f"""
-                <div class="medilink-id">
-                    <h3>🎉 Registration Successful!</h3>
-                    <p><strong>Your MediLink ID:</strong> {medilink_id}</p>
-                    <p>Save this ID - it's your key to accessing your health records anywhere!</p>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.error("Passwords do not match")
+        # Detailed validation with specific error messages
+        errors = []
+        
+        if not full_name or not full_name.strip():
+            errors.append("❌ **Full Name** is required")
+        
+        if not phone or not phone.strip():
+            errors.append("❌ **Phone Number** is required")
+        elif len(phone.strip()) < 10:
+            errors.append("❌ **Phone Number** must be at least 10 digits")
+        
+        if not age or age <= 0:
+            errors.append("❌ **Age** must be greater than 0")
+        
+        if not gender:
+            errors.append("❌ **Gender** must be selected")
+        
+        if not password or not password.strip():
+            errors.append("❌ **Password** is required")
+        elif len(password) < 6:
+            errors.append("❌ **Password** must be at least 6 characters long")
+        
+        if not confirm_password or not confirm_password.strip():
+            errors.append("❌ **Confirm Password** is required")
+        elif password != confirm_password:
+            errors.append("❌ **Passwords do not match** - please check both password fields")
+        
+        if not agree_terms:
+            errors.append("❌ **Terms of Service** - you must agree to continue")
+        
+        # Show specific errors or proceed with registration
+        if errors:
+            st.error("**Please fix the following issues:**")
+            for error in errors:
+                st.write(error)
         else:
-            st.error("Please fill in all required fields and agree to terms")
+            # All validation passed - register the user
+            medilink_id = generate_medilink_id(location)
+            st.balloons()
+            st.markdown(f"""
+            <div class="medilink-id">
+                <h3>🎉 Registration Successful!</h3>
+                <p><strong>Your MediLink ID:</strong> {medilink_id}</p>
+                <p><strong>Full Name:</strong> {full_name}</p>
+                <p><strong>Phone:</strong> {phone}</p>
+                <p><strong>Location:</strong> {location}</p>
+                <p>Save this ID - it's your key to accessing your health records anywhere!</p>
+                <p><em>You can now login using either your MediLink ID or username "patient_demo"</em></p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.success("✅ Account created successfully! Please go to the Login tab to sign in.")
 
 def show_dashboard():
     """Show role-based dashboard"""
