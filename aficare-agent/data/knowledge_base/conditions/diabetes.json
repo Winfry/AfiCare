@@ -1,0 +1,316 @@
+{
+  "condition": "diabetes",
+  "name": "Diabetes Mellitus",
+  "category": "metabolic_disorder",
+  "prevalence": "increasing",
+  "description": "Chronic metabolic disorder characterized by elevated blood glucose levels",
+  
+  "types": {
+    "type1": {
+      "name": "Type 1 Diabetes",
+      "description": "Autoimmune destruction of pancreatic beta cells",
+      "onset": "Usually childhood/young adult",
+      "treatment": "Insulin dependent"
+    },
+    "type2": {
+      "name": "Type 2 Diabetes", 
+      "description": "Insulin resistance and relative insulin deficiency",
+      "onset": "Usually adult onset",
+      "treatment": "Lifestyle + medications"
+    },
+    "gestational": {
+      "name": "Gestational Diabetes",
+      "description": "Glucose intolerance during pregnancy",
+      "onset": "During pregnancy",
+      "treatment": "Diet, exercise, insulin if needed"
+    }
+  },
+
+  "symptoms": {
+    "primary": [
+      {
+        "name": "excessive_thirst",
+        "weight": 0.8,
+        "description": "Polydipsia - increased thirst and fluid intake",
+        "medical_term": "polydipsia"
+      },
+      {
+        "name": "frequent_urination",
+        "weight": 0.8,
+        "description": "Polyuria - increased frequency and volume of urination",
+        "medical_term": "polyuria"
+      },
+      {
+        "name": "excessive_hunger",
+        "weight": 0.7,
+        "description": "Polyphagia - increased appetite despite eating",
+        "medical_term": "polyphagia"
+      },
+      {
+        "name": "unexplained_weight_loss",
+        "weight": 0.7,
+        "description": "Weight loss despite normal or increased appetite",
+        "more_common": "Type 1"
+      }
+    ],
+    "secondary": [
+      {
+        "name": "fatigue",
+        "weight": 0.6,
+        "description": "Persistent tiredness and lack of energy"
+      },
+      {
+        "name": "blurred_vision",
+        "weight": 0.5,
+        "description": "Visual disturbances due to glucose fluctuations"
+      },
+      {
+        "name": "slow_healing_wounds",
+        "weight": 0.5,
+        "description": "Cuts and bruises heal slowly"
+      },
+      {
+        "name": "frequent_infections",
+        "weight": 0.4,
+        "description": "Recurrent skin, urinary, or other infections"
+      },
+      {
+        "name": "tingling_hands_feet",
+        "weight": 0.4,
+        "description": "Numbness or tingling in extremities"
+      }
+    ]
+  },
+
+  "risk_factors": [
+    {
+      "factor": "family_history",
+      "weight": 0.7,
+      "description": "First-degree relative with diabetes"
+    },
+    {
+      "factor": "obesity",
+      "weight": 0.8,
+      "description": "BMI ≥ 30 kg/m²",
+      "type": "Type 2"
+    },
+    {
+      "factor": "age_over_45",
+      "weight": 0.6,
+      "description": "Age 45 years or older",
+      "type": "Type 2"
+    },
+    {
+      "factor": "sedentary_lifestyle",
+      "weight": 0.5,
+      "description": "Physical inactivity"
+    },
+    {
+      "factor": "hypertension",
+      "weight": 0.4,
+      "description": "Blood pressure ≥ 140/90 mmHg"
+    },
+    {
+      "factor": "gestational_diabetes_history",
+      "weight": 0.6,
+      "description": "Previous gestational diabetes"
+    }
+  ],
+
+  "diagnostic_criteria": {
+    "fasting_glucose": {
+      "normal": "< 100 mg/dL (5.6 mmol/L)",
+      "prediabetes": "100-125 mg/dL (5.6-6.9 mmol/L)",
+      "diabetes": "≥ 126 mg/dL (7.0 mmol/L)"
+    },
+    "random_glucose": {
+      "diabetes": "≥ 200 mg/dL (11.1 mmol/L) with symptoms"
+    },
+    "hba1c": {
+      "normal": "< 5.7%",
+      "prediabetes": "5.7-6.4%",
+      "diabetes": "≥ 6.5%"
+    },
+    "ogtt_2hr": {
+      "normal": "< 140 mg/dL (7.8 mmol/L)",
+      "prediabetes": "140-199 mg/dL (7.8-11.0 mmol/L)",
+      "diabetes": "≥ 200 mg/dL (11.1 mmol/L)"
+    }
+  },
+
+  "treatment": {
+    "lifestyle_modifications": [
+      {
+        "intervention": "dietary_changes",
+        "description": "Carbohydrate counting, portion control, regular meal timing",
+        "importance": "fundamental"
+      },
+      {
+        "intervention": "physical_activity",
+        "description": "150 minutes moderate exercise per week",
+        "importance": "fundamental"
+      },
+      {
+        "intervention": "weight_management",
+        "description": "Achieve and maintain healthy weight",
+        "importance": "high"
+      }
+    ],
+    "medications": {
+      "type1": [
+        {
+          "medication": "Insulin",
+          "types": ["rapid-acting", "long-acting", "intermediate-acting"],
+          "administration": "subcutaneous injection",
+          "monitoring": "blood glucose, HbA1c"
+        }
+      ],
+      "type2": [
+        {
+          "medication": "Metformin",
+          "dosage": "500-1000mg twice daily",
+          "mechanism": "Reduces hepatic glucose production",
+          "first_line": true
+        },
+        {
+          "medication": "Sulfonylureas",
+          "examples": ["Glibenclamide", "Gliclazide"],
+          "mechanism": "Stimulates insulin secretion",
+          "caution": "Hypoglycemia risk"
+        },
+        {
+          "medication": "Insulin",
+          "indication": "When oral medications insufficient",
+          "types": "Various formulations available"
+        }
+      ]
+    },
+    "monitoring": [
+      "Blood glucose self-monitoring",
+      "HbA1c every 3-6 months",
+      "Blood pressure monitoring",
+      "Lipid profile annually",
+      "Kidney function tests",
+      "Eye examinations annually",
+      "Foot examinations"
+    ]
+  },
+
+  "complications": {
+    "acute": [
+      {
+        "name": "diabetic_ketoacidosis",
+        "description": "DKA - life-threatening complication",
+        "more_common": "Type 1",
+        "signs": ["Nausea", "Vomiting", "Abdominal pain", "Fruity breath"]
+      },
+      {
+        "name": "hyperosmolar_syndrome",
+        "description": "HHS - severe dehydration and high glucose",
+        "more_common": "Type 2",
+        "signs": ["Severe dehydration", "Altered consciousness"]
+      },
+      {
+        "name": "hypoglycemia",
+        "description": "Low blood sugar from medications",
+        "treatment": "Glucose administration"
+      }
+    ],
+    "chronic": [
+      {
+        "name": "diabetic_nephropathy",
+        "description": "Kidney damage",
+        "prevention": "Good glucose and BP control"
+      },
+      {
+        "name": "diabetic_retinopathy",
+        "description": "Eye damage leading to blindness",
+        "prevention": "Regular eye exams"
+      },
+      {
+        "name": "diabetic_neuropathy",
+        "description": "Nerve damage",
+        "symptoms": ["Numbness", "Tingling", "Pain"]
+      },
+      {
+        "name": "cardiovascular_disease",
+        "description": "Increased risk of heart disease and stroke",
+        "prevention": "Comprehensive risk factor management"
+      },
+      {
+        "name": "diabetic_foot",
+        "description": "Foot ulcers and infections",
+        "prevention": "Daily foot care and inspection"
+      }
+    ]
+  },
+
+  "management_targets": {
+    "glucose_control": {
+      "hba1c": "< 7% for most adults",
+      "fasting_glucose": "80-130 mg/dL (4.4-7.2 mmol/L)",
+      "postprandial_glucose": "< 180 mg/dL (10.0 mmol/L)"
+    },
+    "blood_pressure": "< 140/90 mmHg (< 130/80 if tolerated)",
+    "lipids": {
+      "ldl_cholesterol": "< 100 mg/dL (< 70 if high CV risk)",
+      "triglycerides": "< 150 mg/dL"
+    }
+  },
+
+  "danger_signs": [
+    "severe_hyperglycemia",
+    "ketoacidosis_symptoms",
+    "severe_hypoglycemia",
+    "diabetic_foot_ulcer",
+    "vision_changes",
+    "chest_pain",
+    "difficulty_breathing"
+  ],
+
+  "follow_up": {
+    "frequency": "every 3-6 months",
+    "assessments": [
+      "HbA1c monitoring",
+      "Blood pressure check",
+      "Weight monitoring",
+      "Medication adherence",
+      "Complication screening",
+      "Lifestyle counseling"
+    ]
+  },
+
+  "patient_education": [
+    "Blood glucose self-monitoring",
+    "Recognition of hypoglycemia symptoms",
+    "Proper medication administration",
+    "Foot care practices",
+    "Dietary guidelines",
+    "Exercise recommendations",
+    "When to seek medical care"
+  ],
+
+  "special_populations": {
+    "pregnancy": {
+      "target_glucose": "Stricter glucose targets",
+      "medications": "Insulin preferred over oral agents",
+      "monitoring": "More frequent monitoring required"
+    },
+    "elderly": {
+      "considerations": [
+        "Higher HbA1c targets may be appropriate",
+        "Avoid hypoglycemia",
+        "Consider comorbidities",
+        "Simplified regimens"
+      ]
+    },
+    "children": {
+      "considerations": [
+        "Growth and development monitoring",
+        "Family involvement essential",
+        "School coordination needed",
+        "Age-appropriate education"
+      ]
+    }
+  }
+}

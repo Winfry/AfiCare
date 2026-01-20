@@ -1,0 +1,227 @@
+{
+  "condition": "tuberculosis",
+  "name": "Tuberculosis (TB)",
+  "category": "infectious_disease",
+  "prevalence": "high",
+  "description": "Bacterial infection primarily affecting the lungs, caused by Mycobacterium tuberculosis",
+  
+  "symptoms": {
+    "primary": [
+      {
+        "name": "persistent_cough",
+        "weight": 0.9,
+        "description": "Cough lasting more than 2-3 weeks",
+        "duration": "> 3 weeks"
+      },
+      {
+        "name": "coughing_blood",
+        "weight": 0.95,
+        "description": "Hemoptysis - coughing up blood or blood-stained sputum",
+        "severity": "high"
+      },
+      {
+        "name": "weight_loss",
+        "weight": 0.8,
+        "description": "Unexplained weight loss over weeks/months",
+        "pattern": "gradual"
+      },
+      {
+        "name": "night_sweats",
+        "weight": 0.7,
+        "description": "Profuse sweating during sleep",
+        "frequency": "regular"
+      },
+      {
+        "name": "fever",
+        "weight": 0.6,
+        "description": "Low-grade fever, often in evenings",
+        "pattern": "intermittent"
+      }
+    ],
+    "secondary": [
+      {
+        "name": "fatigue",
+        "weight": 0.5,
+        "description": "Persistent tiredness and weakness"
+      },
+      {
+        "name": "loss_of_appetite",
+        "weight": 0.4,
+        "description": "Reduced desire to eat"
+      },
+      {
+        "name": "chest_pain",
+        "weight": 0.4,
+        "description": "Pain in chest, especially when breathing or coughing"
+      }
+    ]
+  },
+
+  "risk_factors": [
+    {
+      "factor": "hiv_infection",
+      "weight": 0.8,
+      "description": "HIV co-infection significantly increases TB risk"
+    },
+    {
+      "factor": "malnutrition",
+      "weight": 0.6,
+      "description": "Poor nutritional status"
+    },
+    {
+      "factor": "overcrowding",
+      "weight": 0.4,
+      "description": "Living in crowded conditions"
+    },
+    {
+      "factor": "smoking",
+      "weight": 0.3,
+      "description": "Tobacco use"
+    },
+    {
+      "factor": "diabetes",
+      "weight": 0.3,
+      "description": "Diabetes mellitus"
+    }
+  ],
+
+  "diagnostic_criteria": {
+    "clinical": [
+      "Persistent cough > 2 weeks",
+      "Weight loss",
+      "Night sweats",
+      "Fever"
+    ],
+    "investigations": [
+      "Sputum microscopy for AFB",
+      "Chest X-ray",
+      "GeneXpert MTB/RIF",
+      "Tuberculin skin test (TST)"
+    ]
+  },
+
+  "treatment": {
+    "first_line": {
+      "intensive_phase": {
+        "duration": "2 months",
+        "drugs": [
+          {
+            "medication": "Isoniazid (H)",
+            "dosage": "5mg/kg daily (max 300mg)",
+            "administration": "oral"
+          },
+          {
+            "medication": "Rifampin (R)",
+            "dosage": "10mg/kg daily (max 600mg)",
+            "administration": "oral"
+          },
+          {
+            "medication": "Ethambutol (E)",
+            "dosage": "15mg/kg daily (max 1200mg)",
+            "administration": "oral"
+          },
+          {
+            "medication": "Pyrazinamide (Z)",
+            "dosage": "25mg/kg daily (max 2000mg)",
+            "administration": "oral"
+          }
+        ]
+      },
+      "continuation_phase": {
+        "duration": "4 months",
+        "drugs": [
+          {
+            "medication": "Isoniazid (H)",
+            "dosage": "5mg/kg daily (max 300mg)",
+            "administration": "oral"
+          },
+          {
+            "medication": "Rifampin (R)",
+            "dosage": "10mg/kg daily (max 600mg)",
+            "administration": "oral"
+          }
+        ]
+      }
+    },
+    "supportive_care": [
+      "Nutritional support and counseling",
+      "HIV testing and treatment if positive",
+      "Contact tracing and screening",
+      "Directly Observed Treatment (DOT)",
+      "Regular monitoring for side effects"
+    ],
+    "monitoring": [
+      "Monthly clinical assessment",
+      "Sputum examination at 2, 5, and 6 months",
+      "Liver function tests if indicated",
+      "Visual acuity monitoring (ethambutol)"
+    ]
+  },
+
+  "complications": [
+    {
+      "name": "drug_resistance",
+      "description": "MDR-TB or XDR-TB",
+      "management": "Specialized treatment regimen"
+    },
+    {
+      "name": "pleural_effusion",
+      "description": "Fluid accumulation in pleural space",
+      "management": "Drainage if large"
+    },
+    {
+      "name": "miliary_tb",
+      "description": "Disseminated tuberculosis",
+      "management": "Intensive treatment"
+    }
+  ],
+
+  "prevention": [
+    "BCG vaccination in endemic areas",
+    "Infection control measures",
+    "Contact screening",
+    "Isoniazid preventive therapy for high-risk contacts",
+    "HIV prevention and treatment"
+  ],
+
+  "danger_signs": [
+    "coughing_blood",
+    "severe_weight_loss",
+    "difficulty_breathing",
+    "altered_consciousness",
+    "severe_chest_pain"
+  ],
+
+  "follow_up": {
+    "frequency": "monthly",
+    "duration": "6 months minimum",
+    "assessments": [
+      "Clinical improvement",
+      "Weight gain",
+      "Sputum conversion",
+      "Treatment adherence",
+      "Side effects monitoring"
+    ]
+  },
+
+  "special_populations": {
+    "hiv_coinfection": {
+      "considerations": [
+        "Higher risk of treatment failure",
+        "Drug interactions with ARVs",
+        "Immune reconstitution syndrome",
+        "Extended treatment duration may be needed"
+      ]
+    },
+    "pregnancy": {
+      "safe_drugs": ["Isoniazid", "Rifampin", "Ethambutol"],
+      "avoid": ["Streptomycin"],
+      "monitoring": "Enhanced fetal monitoring"
+    },
+    "children": {
+      "dosing": "Weight-based dosing",
+      "formulations": "Child-friendly formulations preferred",
+      "monitoring": "Growth and development"
+    }
+  }
+}
