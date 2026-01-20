@@ -542,15 +542,17 @@ def show_login_form():
         username = st.text_input(
             "Username or MediLink ID", 
             placeholder="ML-NBO-XXXX or +254712345678",
-            help="Enter your MediLink ID, phone number, or demo username"
+            help="Enter your MediLink ID, phone number, or demo username",
+            key="login_username"
         )
-        password = st.text_input("Password", type="password")
+        password = st.text_input("Password", type="password", key="login_password")
         
         # Role selection
         role = st.selectbox(
             "Login as:",
             ["patient", "doctor", "nurse", "admin"],
-            format_func=lambda x: x.title()
+            format_func=lambda x: x.title(),
+            key="login_role"
         )
     
     with col2:
@@ -621,34 +623,34 @@ def show_patient_registration_form():
     col1, col2 = st.columns(2)
     
     with col1:
-        full_name = st.text_input("Full Name *", help="Enter your complete legal name")
-        phone = st.text_input("Phone Number *", placeholder="+254712345678", help="Include country code if international")
-        email = st.text_input("Email Address", placeholder="your.email@example.com", help="Optional but recommended for account recovery")
+        full_name = st.text_input("Full Name *", help="Enter your complete legal name", key="patient_full_name")
+        phone = st.text_input("Phone Number *", placeholder="+254712345678", help="Include country code if international", key="patient_phone")
+        email = st.text_input("Email Address", placeholder="your.email@example.com", help="Optional but recommended for account recovery", key="patient_email")
         
     with col2:
-        age = st.number_input("Age *", min_value=0, max_value=120, value=25, help="Your age in years")
-        gender = st.selectbox("Gender *", ["Male", "Female", "Other"], help="Select your gender")
+        age = st.number_input("Age *", min_value=0, max_value=120, value=25, help="Your age in years", key="patient_age")
+        gender = st.selectbox("Gender *", ["Male", "Female", "Other"], help="Select your gender", key="patient_gender")
         location = st.selectbox("Location/City", [
             "Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret", "Other"
-        ], help="Your primary location - affects your MediLink ID")
+        ], help="Your primary location - affects your MediLink ID", key="patient_location")
     
     # Medical information
     st.subheader("Medical Information (Optional)")
-    medical_history = st.text_area("Known medical conditions", placeholder="e.g., Diabetes, Hypertension, Asthma", help="List any ongoing medical conditions")
-    allergies = st.text_area("Known allergies", placeholder="e.g., Penicillin, Sulfa drugs, Peanuts", help="List any known allergies - this is important for emergency care")
+    medical_history = st.text_area("Known medical conditions", placeholder="e.g., Diabetes, Hypertension, Asthma", help="List any ongoing medical conditions", key="patient_medical_history")
+    allergies = st.text_area("Known allergies", placeholder="e.g., Penicillin, Sulfa drugs, Peanuts", help="List any known allergies - this is important for emergency care", key="patient_allergies")
     
     # Emergency contact
     st.subheader("Emergency Contact (Optional but Recommended)")
-    emergency_name = st.text_input("Emergency contact name", placeholder="e.g., Jane Doe (Wife)", help="Person to contact in case of emergency")
-    emergency_phone = st.text_input("Emergency contact phone", placeholder="+254712345679", help="Phone number of emergency contact")
+    emergency_name = st.text_input("Emergency contact name", placeholder="e.g., Jane Doe (Wife)", help="Person to contact in case of emergency", key="patient_emergency_name")
+    emergency_phone = st.text_input("Emergency contact phone", placeholder="+254712345679", help="Phone number of emergency contact", key="patient_emergency_phone")
     
     # Create password
     st.subheader("Create Account")
-    password = st.text_input("Create Password *", type="password", help="Minimum 6 characters")
-    confirm_password = st.text_input("Confirm Password *", type="password", help="Re-enter the same password")
+    password = st.text_input("Create Password *", type="password", help="Minimum 6 characters", key="patient_password")
+    confirm_password = st.text_input("Confirm Password *", type="password", help="Re-enter the same password", key="patient_confirm_password")
     
     # Terms and conditions
-    agree_terms = st.checkbox("I agree to the Terms of Service and Privacy Policy *", help="Required to create account")
+    agree_terms = st.checkbox("I agree to the Terms of Service and Privacy Policy *", help="Required to create account", key="patient_agree_terms")
     
     if st.button("📝 Register FREE Account", type="primary"):
         # Detailed validation with specific error messages
@@ -756,36 +758,36 @@ def show_healthcare_provider_registration_form():
     col1, col2 = st.columns(2)
     
     with col1:
-        full_name = st.text_input("Full Name *", help="Enter your complete professional name")
-        username = st.text_input("Username *", help="Choose a unique username for login")
+        full_name = st.text_input("Full Name *", help="Enter your complete professional name", key="provider_full_name")
+        username = st.text_input("Username *", help="Choose a unique username for login", key="provider_username")
         role = st.selectbox("Role *", ["doctor", "nurse", "admin"], 
                            format_func=lambda x: x.title(),
-                           help="Select your professional role")
+                           help="Select your professional role", key="provider_role")
         
     with col2:
-        phone = st.text_input("Phone Number *", placeholder="+254712345678")
-        email = st.text_input("Email Address *", placeholder="your.email@hospital.com")
-        department = st.text_input("Department", placeholder="e.g., Internal Medicine, Emergency")
+        phone = st.text_input("Phone Number *", placeholder="+254712345678", key="provider_phone")
+        email = st.text_input("Email Address *", placeholder="your.email@hospital.com", key="provider_email")
+        department = st.text_input("Department", placeholder="e.g., Internal Medicine, Emergency", key="provider_department")
     
     # Professional information
     st.subheader("Professional Information")
     col1, col2 = st.columns(2)
     
     with col1:
-        license_number = st.text_input("License Number", help="Professional license/registration number")
-        hospital_id = st.text_input("Hospital ID", value="HOSP001", help="Your hospital identifier")
+        license_number = st.text_input("License Number", help="Professional license/registration number", key="provider_license")
+        hospital_id = st.text_input("Hospital ID", value="HOSP001", help="Your hospital identifier", key="provider_hospital_id")
     
     with col2:
-        specialization = st.text_input("Specialization", help="Medical specialization or area of expertise")
-        years_experience = st.number_input("Years of Experience", min_value=0, max_value=50, value=5)
+        specialization = st.text_input("Specialization", help="Medical specialization or area of expertise", key="provider_specialization")
+        years_experience = st.number_input("Years of Experience", min_value=0, max_value=50, value=5, key="provider_experience")
     
     # Create password
     st.subheader("Create Account")
-    password = st.text_input("Create Password *", type="password", help="Minimum 6 characters")
-    confirm_password = st.text_input("Confirm Password *", type="password", help="Re-enter the same password")
+    password = st.text_input("Create Password *", type="password", help="Minimum 6 characters", key="provider_password")
+    confirm_password = st.text_input("Confirm Password *", type="password", help="Re-enter the same password", key="provider_confirm_password")
     
     # Terms and conditions
-    agree_terms = st.checkbox("I agree to the Terms of Service and Professional Code of Conduct *")
+    agree_terms = st.checkbox("I agree to the Terms of Service and Professional Code of Conduct *", key="provider_agree_terms")
     
     if st.button("👨‍⚕️ Register Healthcare Provider Account", type="primary"):
         # Detailed validation

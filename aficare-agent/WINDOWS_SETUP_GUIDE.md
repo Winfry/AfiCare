@@ -8,31 +8,33 @@ If you're getting `PermissionError: [WinError 10013]` when trying to run Streaml
 
 ## 🎯 **QUICK START (Choose One)**
 
-### **Option 1: Python Launcher (Recommended)**
+### **Option 1: Simple Starter (Recommended)**
+```bash
+cd aficare-agent
+python start_simple.py
+```
+*Lets Streamlit automatically find an available port*
+
+### **Option 2: Robust Launcher**
+```bash
+cd aficare-agent
+python run_medilink.py
+```
+*Advanced launcher with better error handling*
+
+### **Option 3: Original Launcher**
 ```bash
 cd aficare-agent
 python launch_medilink.py
 ```
+*Port-checking launcher (may have conflicts)*
 
-### **Option 2: Quick Start (Simple)**
+### **Option 4: Direct Command**
 ```bash
 cd aficare-agent
-python quick_start.py
+streamlit run medilink_simple.py
 ```
-
-### **Option 3: Batch File (Windows)**
-```cmd
-cd aficare-agent
-run_medilink_windows.bat
-```
-
-### **Option 4: Manual Port (If others fail)**
-```bash
-# Try these one by one:
-streamlit run medilink_simple.py --server.port 8090
-streamlit run medilink_simple.py --server.port 9000
-streamlit run medilink_simple.py --server.port 7000
-```
+*Let Streamlit handle everything automatically*
 
 ---
 
