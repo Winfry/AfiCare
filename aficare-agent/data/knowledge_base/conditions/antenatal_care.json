@@ -1,0 +1,359 @@
+{
+  "condition": "antenatal_care",
+  "name": "Antenatal Care",
+  "category": "maternal_health",
+  "prevalence": "universal_need",
+  "description": "Comprehensive healthcare for pregnant women to ensure healthy pregnancy and delivery",
+  
+  "pregnancy_stages": {
+    "first_trimester": {
+      "weeks": "1-12",
+      "key_developments": "Organ formation, highest risk of miscarriage",
+      "visit_frequency": "Monthly"
+    },
+    "second_trimester": {
+      "weeks": "13-27", 
+      "key_developments": "Rapid growth, anatomy scan period",
+      "visit_frequency": "Monthly"
+    },
+    "third_trimester": {
+      "weeks": "28-40",
+      "key_developments": "Final growth, preparation for delivery",
+      "visit_frequency": "Bi-weekly, then weekly after 36 weeks"
+    }
+  },
+
+  "routine_assessments": {
+    "every_visit": [
+      {
+        "assessment": "weight_monitoring",
+        "description": "Track appropriate weight gain",
+        "normal_gain": "11.5-16 kg for normal BMI"
+      },
+      {
+        "assessment": "blood_pressure",
+        "description": "Screen for hypertensive disorders",
+        "normal": "< 140/90 mmHg"
+      },
+      {
+        "assessment": "urine_testing",
+        "description": "Check for protein, glucose, infection",
+        "frequency": "every visit"
+      },
+      {
+        "assessment": "fetal_heart_rate",
+        "description": "Assess fetal wellbeing",
+        "normal_range": "110-160 bpm"
+      },
+      {
+        "assessment": "fundal_height",
+        "description": "Measure uterine growth",
+        "correlation": "Should match gestational age in cm"
+      }
+    ]
+  },
+
+  "screening_tests": {
+    "first_trimester": [
+      {
+        "test": "complete_blood_count",
+        "purpose": "Screen for anemia",
+        "timing": "First visit"
+      },
+      {
+        "test": "blood_group_rh",
+        "purpose": "Identify Rh incompatibility risk",
+        "timing": "First visit"
+      },
+      {
+        "test": "hiv_testing",
+        "purpose": "Prevent mother-to-child transmission",
+        "timing": "First visit"
+      },
+      {
+        "test": "syphilis_screening",
+        "purpose": "Prevent congenital syphilis",
+        "timing": "First visit"
+      },
+      {
+        "test": "hepatitis_b",
+        "purpose": "Prevent vertical transmission",
+        "timing": "First visit"
+      }
+    ],
+    "second_trimester": [
+      {
+        "test": "ultrasound_anatomy",
+        "purpose": "Detect fetal abnormalities",
+        "timing": "18-22 weeks"
+      },
+      {
+        "test": "glucose_screening",
+        "purpose": "Screen for gestational diabetes",
+        "timing": "24-28 weeks"
+      }
+    ],
+    "third_trimester": [
+      {
+        "test": "group_b_strep",
+        "purpose": "Prevent neonatal infection",
+        "timing": "35-37 weeks"
+      },
+      {
+        "test": "repeat_hemoglobin",
+        "purpose": "Reassess anemia status",
+        "timing": "28-32 weeks"
+      }
+    ]
+  },
+
+  "common_symptoms": {
+    "normal": [
+      {
+        "symptom": "morning_sickness",
+        "description": "Nausea and vomiting, especially first trimester",
+        "management": "Small frequent meals, ginger, rest"
+      },
+      {
+        "symptom": "fatigue",
+        "description": "Tiredness, especially first and third trimesters",
+        "management": "Adequate rest, balanced nutrition"
+      },
+      {
+        "symptom": "heartburn",
+        "description": "Acid reflux, more common in later pregnancy",
+        "management": "Small meals, avoid spicy foods, elevate head"
+      },
+      {
+        "symptom": "back_pain",
+        "description": "Lower back pain due to postural changes",
+        "management": "Good posture, supportive shoes, gentle exercise"
+      },
+      {
+        "symptom": "swelling",
+        "description": "Mild swelling of feet and ankles",
+        "management": "Elevate legs, reduce salt intake"
+      }
+    ]
+  },
+
+  "warning_signs": {
+    "immediate_attention": [
+      {
+        "sign": "severe_headache",
+        "description": "Persistent, severe headache",
+        "concern": "Preeclampsia"
+      },
+      {
+        "sign": "visual_disturbances",
+        "description": "Blurred vision, seeing spots",
+        "concern": "Preeclampsia"
+      },
+      {
+        "sign": "severe_abdominal_pain",
+        "description": "Intense upper abdominal pain",
+        "concern": "Preeclampsia, abruption"
+      },
+      {
+        "sign": "vaginal_bleeding",
+        "description": "Any bleeding after first trimester",
+        "concern": "Placental problems, preterm labor"
+      },
+      {
+        "sign": "fluid_leakage",
+        "description": "Continuous fluid leakage",
+        "concern": "Premature rupture of membranes"
+      },
+      {
+        "sign": "decreased_fetal_movement",
+        "description": "Significant reduction in baby's movements",
+        "concern": "Fetal distress"
+      },
+      {
+        "sign": "regular_contractions",
+        "description": "Regular, painful contractions before 37 weeks",
+        "concern": "Preterm labor"
+      }
+    ]
+  },
+
+  "complications": {
+    "maternal": [
+      {
+        "condition": "preeclampsia",
+        "description": "High blood pressure with protein in urine",
+        "signs": ["Headache", "Visual changes", "Upper abdominal pain"],
+        "management": "Blood pressure control, delivery if severe"
+      },
+      {
+        "condition": "gestational_diabetes",
+        "description": "Glucose intolerance during pregnancy",
+        "screening": "24-28 weeks glucose tolerance test",
+        "management": "Diet, exercise, insulin if needed"
+      },
+      {
+        "condition": "anemia",
+        "description": "Low hemoglobin levels",
+        "definition": "Hb < 11 g/dL in pregnancy",
+        "treatment": "Iron and folic acid supplementation"
+      },
+      {
+        "condition": "placenta_previa",
+        "description": "Placenta covers cervical opening",
+        "symptoms": "Painless vaginal bleeding",
+        "management": "Bed rest, cesarean delivery"
+      }
+    ],
+    "fetal": [
+      {
+        "condition": "intrauterine_growth_restriction",
+        "description": "Poor fetal growth",
+        "detection": "Fundal height measurement, ultrasound",
+        "management": "Increased monitoring, early delivery if severe"
+      },
+      {
+        "condition": "fetal_distress",
+        "description": "Signs of fetal compromise",
+        "signs": ["Decreased movements", "Abnormal heart rate"],
+        "management": "Immediate evaluation, possible delivery"
+      }
+    ]
+  },
+
+  "nutritional_requirements": {
+    "key_nutrients": [
+      {
+        "nutrient": "folic_acid",
+        "requirement": "400-800 mcg daily",
+        "purpose": "Prevent neural tube defects",
+        "timing": "Before conception through first trimester"
+      },
+      {
+        "nutrient": "iron",
+        "requirement": "27 mg daily",
+        "purpose": "Prevent anemia, support increased blood volume",
+        "sources": "Red meat, leafy greens, fortified cereals"
+      },
+      {
+        "nutrient": "calcium",
+        "requirement": "1000 mg daily",
+        "purpose": "Fetal bone development",
+        "sources": "Dairy products, leafy greens"
+      },
+      {
+        "nutrient": "protein",
+        "requirement": "Additional 25g daily",
+        "purpose": "Fetal growth and development",
+        "sources": "Lean meat, fish, eggs, legumes"
+      }
+    ],
+    "weight_gain_guidelines": {
+      "underweight_bmi": "12.5-18 kg",
+      "normal_bmi": "11.5-16 kg", 
+      "overweight_bmi": "7-11.5 kg",
+      "obese_bmi": "5-9 kg"
+    }
+  },
+
+  "immunizations": [
+    {
+      "vaccine": "tetanus_toxoid",
+      "schedule": "2 doses if not previously immunized",
+      "purpose": "Prevent neonatal tetanus"
+    },
+    {
+      "vaccine": "influenza",
+      "timing": "During flu season",
+      "purpose": "Protect mother and baby"
+    },
+    {
+      "vaccine": "tdap",
+      "timing": "27-36 weeks",
+      "purpose": "Protect newborn from pertussis"
+    }
+  ],
+
+  "birth_preparedness": {
+    "emergency_plan": [
+      "Identify nearest health facility",
+      "Arrange transportation",
+      "Save money for delivery costs",
+      "Identify blood donor",
+      "Prepare delivery kit"
+    ],
+    "danger_signs_education": [
+      "Severe bleeding",
+      "Severe headache",
+      "Blurred vision", 
+      "High fever",
+      "Severe abdominal pain",
+      "Difficulty breathing"
+    ]
+  },
+
+  "postpartum_planning": {
+    "immediate_postpartum": [
+      "Skin-to-skin contact",
+      "Early breastfeeding initiation",
+      "Monitoring for hemorrhage",
+      "Newborn care essentials"
+    ],
+    "family_planning": [
+      "Discuss contraceptive options",
+      "Spacing recommendations (2-3 years)",
+      "Breastfeeding and fertility"
+    ]
+  },
+
+  "high_risk_pregnancies": {
+    "maternal_factors": [
+      "Age < 18 or > 35 years",
+      "Previous pregnancy complications",
+      "Chronic medical conditions",
+      "Multiple pregnancies",
+      "Previous cesarean section"
+    ],
+    "additional_care": [
+      "More frequent visits",
+      "Specialist consultations",
+      "Additional testing",
+      "Delivery planning"
+    ]
+  },
+
+  "counseling_topics": [
+    {
+      "topic": "nutrition_counseling",
+      "content": "Balanced diet, food safety, supplements"
+    },
+    {
+      "topic": "lifestyle_modifications",
+      "content": "Exercise, smoking cessation, alcohol avoidance"
+    },
+    {
+      "topic": "breastfeeding_preparation",
+      "content": "Benefits, techniques, common challenges"
+    },
+    {
+      "topic": "newborn_care",
+      "content": "Basic care, immunizations, danger signs"
+    },
+    {
+      "topic": "family_planning",
+      "content": "Contraceptive options, birth spacing"
+    }
+  ],
+
+  "visit_schedule": {
+    "standard_schedule": [
+      "Monthly visits until 28 weeks",
+      "Bi-weekly visits from 28-36 weeks", 
+      "Weekly visits from 36 weeks until delivery"
+    ],
+    "high_risk_schedule": [
+      "More frequent visits as indicated",
+      "Specialist consultations",
+      "Additional monitoring"
+    ]
+  }
+}
