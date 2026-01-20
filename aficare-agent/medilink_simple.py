@@ -1,11 +1,14 @@
 """
 MediLink Simple - Simplified version to avoid port issues
 Single app for patients, doctors, and admins with role-based interface
+Includes rule-based medical AI for consultations
 """
 
 import streamlit as st
 from datetime import datetime
 import secrets
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
 
 # Page configuration
 st.set_page_config(
@@ -24,6 +27,8 @@ if 'user_data' not in st.session_state:
     st.session_state.user_data = None
 if 'medilink_id' not in st.session_state:
     st.session_state.medilink_id = None
+if 'registered_users' not in st.session_state:
+    st.session_state.registered_users = {}
 
 # Custom CSS
 st.markdown("""
@@ -80,6 +85,28 @@ st.markdown("""
     padding: 1rem;
     margin: 1rem 0;
 }
+
+.required-field {
+    border-left: 3px solid #ff6b6b !important;
+}
+
+.validation-error {
+    background: #ffebee;
+    border: 1px solid #f44336;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    color: #c62828;
+}
+
+.success-message {
+    background: #e8f5e8;
+    border: 1px solid #4caf50;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    color: #2e7d32;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -126,6 +153,16 @@ def authenticate_user(username: str, password: str, role: str) -> bool:
             "department": "Administration"
         }
     }
+    
+    # Check registered users first (newly registered accounts)
+    if username in st.session_state.registered_users:
+        user = st.session_state.registered_users[username]
+        if user["password"] == password and user["role"] == role:
+            st.session_state.logged_in = True
+            st.session_state.user_role = role
+            st.session_state.user_data = user
+            st.session_state.medilink_id = user.get("medilink_id")
+            return True
     
     # Check demo accounts
     if username in demo_accounts:
@@ -191,7 +228,11 @@ def show_login_form():
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        username = st.text_input("Username or MediLink ID")
+        username = st.text_input(
+            "Username or MediLink ID", 
+            placeholder="ML-NBO-XXXX or +254712345678",
+            help="Enter your MediLink ID, phone number, or demo username"
+        )
         password = st.text_input("Password", type="password")
         
         # Role selection
@@ -320,6 +361,29 @@ def show_registration_form():
         else:
             # All validation passed - register the user
             medilink_id = generate_medilink_id(location)
+            
+            # Create user account data
+            user_data = {
+                "password": password,
+                "role": "patient",
+                "full_name": full_name,
+                "medilink_id": medilink_id,
+                "phone": phone,
+                "email": email or "",
+                "age": age,
+                "gender": gender,
+                "location": location,
+                "medical_history": medical_history or "",
+                "allergies": allergies or "",
+                "emergency_name": emergency_name or "",
+                "emergency_phone": emergency_phone or "",
+                "registration_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Save user with both MediLink ID and phone as login options
+            st.session_state.registered_users[medilink_id] = user_data
+            st.session_state.registered_users[phone] = user_data  # Allow login with phone too
+            
             st.balloons()
             st.markdown(f"""
             <div class="medilink-id">
@@ -328,12 +392,32 @@ def show_registration_form():
                 <p><strong>Full Name:</strong> {full_name}</p>
                 <p><strong>Phone:</strong> {phone}</p>
                 <p><strong>Location:</strong> {location}</p>
-                <p>Save this ID - it's your key to accessing your health records anywhere!</p>
-                <p><em>You can now login using either your MediLink ID or username "patient_demo"</em></p>
+                <br>
+                <h4>🔐 Login Information:</h4>
+                <p><strong>Username Options:</strong></p>
+                <ul>
+                    <li>MediLink ID: <code>{medilink_id}</code></li>
+                    <li>Phone Number: <code>{phone}</code></li>
+                </ul>
+                <p><strong>Password:</strong> [The password you just created]</p>
+                <p><strong>Role:</strong> Patient</p>
+                <br>
+                <p><em>💾 Your account has been saved! You can now login using either your MediLink ID or phone number.</em></p>
             </div>
             """, unsafe_allow_html=True)
             
             st.success("✅ Account created successfully! Please go to the Login tab to sign in.")
+            
+            # Show a helpful reminder
+            st.info(f"""
+            **🔑 Remember your login details:**
+            - **Username:** `{medilink_id}` or `{phone}`
+            - **Password:** [Your chosen password]
+            - **Role:** Patient
+            """)
+            
+            # Optional: Auto-switch to login tab (user experience improvement)
+            st.write("**👆 Click the 'Login' tab above to sign in with your new account!**")
 
 def show_dashboard():
     """Show role-based dashboard"""
