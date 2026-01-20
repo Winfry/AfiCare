@@ -37,17 +37,25 @@ def kill_streamlit_processes():
 def find_free_port():
     """Find a free port from a list of preferred ports"""
     
-    # Start with less common ports to avoid conflicts
-    preferred_ports = [8090, 9000, 7000, 8888, 9999, 4000, 6000, 5000, 3000, 8080]
+    # Expanded list with more uncommon ports to avoid conflicts
+    preferred_ports = [7000, 8888, 9999, 4000, 6000, 5555, 3333, 8765, 9876, 8090, 9000, 5000, 3000, 8080]
     
     for port in preferred_ports:
         try:
+            # More thorough port checking
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind(('localhost', port))
-                print(f"   ✓ Port {port} is available")
-                return port
-        except OSError:
+                s.listen(1)
+                
+                # Additional check - try to bind again immediately
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
+                    s2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    s2.bind(('localhost', port))
+                    print(f"   ✓ Port {port} is available")
+                    return port
+                        
+        except OSError as e:
             print(f"   ✗ Port {port} is in use")
             continue
     
