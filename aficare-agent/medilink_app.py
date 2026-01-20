@@ -1,4 +1,4 @@
-"""
+clinical_officer"""
 MediLink Unified App - Single app for patients, doctors, and admins
 Role-based interface with intelligent routing
 """
