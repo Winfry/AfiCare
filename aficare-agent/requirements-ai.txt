@@ -1,0 +1,22 @@
+# AfiCare AI Dependencies
+# Install with: pip install -r requirements-ai.txt
+
+# LangChain Core
+langchain>=0.1.0
+langchain-core>=0.1.0
+
+# FREE AI Backends (choose one or more)
+
+# Option 1: Groq (FREE 30 req/min cloud)
+langchain-groq>=0.1.0
+
+# Option 2: Ollama (FREE unlimited local)
+langchain-ollama>=0.1.0
+
+# Option 3: Google AI (FREE 60 req/min)
+langchain-google-genai>=1.0.0
+
+# Optional: For more advanced agent patterns
+# langgraph>=0.0.20
+
+# Note: Rule-based engine needs no extra dependencies!
