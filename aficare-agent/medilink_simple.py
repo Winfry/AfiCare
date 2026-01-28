@@ -2,13 +2,20 @@
 MediLink Simple - Simplified version to avoid port issues
 Single app for patients, doctors, and admins with role-based interface
 Includes rule-based medical AI for consultations
+Now with PWA support for mobile installation!
 """
 
 import streamlit as st
 from datetime import datetime
 import secrets
+import os
+import base64
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+
+# Get the directory of this script for asset paths
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ASSETS_DIR = os.path.join(SCRIPT_DIR, "assets")
 
 @dataclass
 class PatientData:
@@ -325,6 +332,184 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================
+# PWA AND LOGO SUPPORT
+# ============================================
+
+def get_logo_base64():
+    """Get logo as base64 for embedding"""
+    logo_path = os.path.join(ASSETS_DIR, "icon-192x192.png")
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+def inject_pwa_support():
+    """Inject PWA meta tags and styles for mobile app experience"""
+    pwa_html = """
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="AfiCare MediLink">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="AfiCare">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#2E7D32">
+
+    <style>
+        /* Mobile-first responsive design */
+        @media (max-width: 768px) {
+            .stApp { padding: 10px !important; }
+            .stButton > button {
+                width: 100% !important;
+                padding: 15px !important;
+                font-size: 16px !important;
+                border-radius: 12px !important;
+                min-height: 48px;
+            }
+            .stTextInput > div > div > input {
+                font-size: 16px !important;
+                padding: 15px !important;
+            }
+            h1 { font-size: 24px !important; }
+            h2 { font-size: 20px !important; }
+            h3 { font-size: 18px !important; }
+        }
+
+        /* Touch-friendly and smooth scrolling */
+        html { scroll-behavior: smooth; }
+        * { -webkit-tap-highlight-color: rgba(46, 125, 50, 0.2); }
+
+        /* Safe area padding for notched phones */
+        .stApp {
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* Logo header styling */
+        .aficare-logo-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(46, 125, 50, 0.1);
+        }
+
+        .aficare-logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #2E7D32, #66BB6A);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+        }
+
+        .aficare-logo-icon img {
+            width: 45px;
+            height: 45px;
+            border-radius: 8px;
+        }
+
+        .aficare-logo-text h1 {
+            margin: 0;
+            color: #2E7D32;
+            font-size: 28px;
+        }
+
+        .aficare-logo-text h1 span {
+            color: #1B5E20;
+        }
+
+        .aficare-logo-text p {
+            margin: 0;
+            color: #666;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        /* Install prompt */
+        #pwa-install-btn {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2E7D32;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(46, 125, 50, 0.4);
+            z-index: 9999;
+        }
+    </style>
+
+    <script>
+        // PWA Install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('pwa-install-btn');
+            if (btn) btn.style.display = 'block';
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((result) => {
+                    deferredPrompt = null;
+                });
+            }
+        }
+    </script>
+
+    <button id="pwa-install-btn" onclick="installPWA()">
+        Install App
+    </button>
+    """
+    st.markdown(pwa_html, unsafe_allow_html=True)
+
+def display_logo_header():
+    """Display the AfiCare logo header"""
+    logo_b64 = get_logo_base64()
+
+    if logo_b64:
+        logo_html = f"""
+        <div class="aficare-logo-header">
+            <div class="aficare-logo-icon">
+                <img src="data:image/png;base64,{logo_b64}" alt="AfiCare Logo">
+            </div>
+            <div class="aficare-logo-text">
+                <h1>Afi<span>Care</span> MediLink</h1>
+                <p>PATIENT-OWNED HEALTHCARE RECORDS</p>
+            </div>
+        </div>
+        """
+    else:
+        logo_html = """
+        <div class="aficare-logo-header">
+            <div class="aficare-logo-icon">
+                <span style="color: white; font-size: 30px;">+</span>
+            </div>
+            <div class="aficare-logo-text">
+                <h1>Afi<span>Care</span> MediLink</h1>
+                <p>PATIENT-OWNED HEALTHCARE RECORDS</p>
+            </div>
+        </div>
+        """
+
+    st.markdown(logo_html, unsafe_allow_html=True)
+
+# Initialize PWA support
+inject_pwa_support()
 
 # Initialize session state
 if 'logged_in' not in st.session_state:
