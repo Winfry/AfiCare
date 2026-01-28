@@ -1,0 +1,353 @@
+{
+  "maternal_health_conditions": {
+    "pregnancy_stages": {
+      "preconception": {
+        "name": "Preconception Care",
+        "description": "Health optimization before pregnancy",
+        "key_assessments": [
+          "Folic acid supplementation",
+          "Vaccination status",
+          "Chronic disease management",
+          "Nutritional assessment",
+          "Family planning counseling"
+        ],
+        "risk_factors": [
+          "Advanced maternal age (>35)",
+          "Previous pregnancy complications",
+          "Chronic medical conditions",
+          "Substance use",
+          "Poor nutritional status"
+        ],
+        "recommendations": [
+          "Start folic acid 400mcg daily",
+          "Achieve optimal weight",
+          "Control chronic conditions",
+          "Update vaccinations",
+          "Genetic counseling if indicated"
+        ]
+      },
+      "antenatal_care": {
+        "name": "Antenatal Care",
+        "description": "Pregnancy monitoring and care",
+        "visit_schedule": {
+          "first_trimester": "Monthly visits (4-12 weeks)",
+          "second_trimester": "Monthly visits (13-28 weeks)",
+          "third_trimester": "Bi-weekly visits (29-36 weeks), Weekly visits (37+ weeks)"
+        },
+        "key_assessments": [
+          "Fetal growth monitoring",
+          "Blood pressure monitoring",
+          "Urine protein screening",
+          "Glucose tolerance testing",
+          "Anemia screening",
+          "Infection screening"
+        ],
+        "danger_signs": [
+          "Severe headache",
+          "Visual disturbances",
+          "Severe abdominal pain",
+          "Vaginal bleeding",
+          "Decreased fetal movement",
+          "Persistent vomiting",
+          "High fever",
+          "Swelling of face/hands"
+        ],
+        "routine_tests": {
+          "first_visit": [
+            "Complete blood count",
+            "Blood group and Rh",
+            "HIV testing",
+            "Syphilis screening",
+            "Hepatitis B screening",
+            "Urinalysis"
+          ],
+          "ongoing": [
+            "Blood pressure",
+            "Weight monitoring",
+            "Fundal height",
+            "Fetal heart rate",
+            "Urine protein",
+            "Glucose screening (24-28 weeks)"
+          ]
+        }
+      },
+      "postpartum_care": {
+        "name": "Postpartum Care",
+        "description": "Care after delivery",
+        "visit_schedule": {
+          "immediate": "Within 24 hours",
+          "early": "3-7 days postpartum",
+          "late": "6 weeks postpartum"
+        },
+        "key_assessments": [
+          "Uterine involution",
+          "Lochia assessment",
+          "Breastfeeding support",
+          "Mental health screening",
+          "Contraception counseling",
+          "Wound healing (if C-section)"
+        ],
+        "danger_signs": [
+          "Heavy bleeding (>500ml)",
+          "Severe headache",
+          "High fever (>38.5°C)",
+          "Foul-smelling discharge",
+          "Severe abdominal pain",
+          "Difficulty breathing",
+          "Signs of depression"
+        ],
+        "breastfeeding_support": [
+          "Proper latch techniques",
+          "Feeding frequency guidance",
+          "Nutrition for breastfeeding mothers",
+          "Common problems management",
+          "Pumping and storage guidance"
+        ]
+      }
+    },
+    "pregnancy_complications": {
+      "gestational_diabetes": {
+        "name": "Gestational Diabetes",
+        "symptoms": ["Excessive thirst", "Frequent urination", "Fatigue", "Blurred vision"],
+        "risk_factors": [
+          "Previous gestational diabetes",
+          "Family history of diabetes",
+          "Obesity (BMI >30)",
+          "Age >25 years",
+          "Previous large baby (>4kg)"
+        ],
+        "management": [
+          "Dietary modifications",
+          "Blood glucose monitoring",
+          "Regular exercise",
+          "Insulin therapy if needed",
+          "Fetal monitoring"
+        ],
+        "monitoring": [
+          "Daily blood glucose checks",
+          "Weekly weight monitoring",
+          "Fetal growth scans",
+          "Non-stress tests"
+        ]
+      },
+      "preeclampsia": {
+        "name": "Preeclampsia",
+        "symptoms": ["High blood pressure", "Protein in urine", "Severe headache", "Visual changes", "Upper abdominal pain"],
+        "risk_factors": [
+          "First pregnancy",
+          "Previous preeclampsia",
+          "Chronic hypertension",
+          "Diabetes",
+          "Multiple pregnancy",
+          "Age >40 or <18"
+        ],
+        "management": [
+          "Blood pressure monitoring",
+          "Protein monitoring",
+          "Fetal surveillance",
+          "Antihypertensive medication",
+          "Delivery planning"
+        ],
+        "danger_signs": [
+          "Severe headache",
+          "Visual disturbances",
+          "Epigastric pain",
+          "Decreased urine output",
+          "Seizures"
+        ]
+      },
+      "anemia_in_pregnancy": {
+        "name": "Anemia in Pregnancy",
+        "symptoms": ["Fatigue", "Weakness", "Pale skin", "Shortness of breath", "Dizziness"],
+        "causes": [
+          "Iron deficiency",
+          "Folate deficiency",
+          "Vitamin B12 deficiency",
+          "Chronic disease",
+          "Blood loss"
+        ],
+        "management": [
+          "Iron supplementation (60-120mg daily)",
+          "Folate supplementation",
+          "Dietary counseling",
+          "Treatment of underlying causes",
+          "Regular monitoring"
+        ],
+        "prevention": [
+          "Iron-rich diet",
+          "Vitamin C to enhance absorption",
+          "Avoid tea/coffee with meals",
+          "Regular prenatal vitamins"
+        ]
+      }
+    }
+  },
+  "womens_health_conditions": {
+    "reproductive_disorders": {
+      "pcos": {
+        "name": "Polycystic Ovary Syndrome (PCOS)",
+        "symptoms": [
+          "Irregular or absent periods",
+          "Excessive hair growth (hirsutism)",
+          "Acne",
+          "Weight gain",
+          "Hair loss",
+          "Difficulty getting pregnant"
+        ],
+        "diagnostic_criteria": [
+          "Irregular ovulation",
+          "Clinical/biochemical hyperandrogenism",
+          "Polycystic ovaries on ultrasound"
+        ],
+        "management": [
+          "Lifestyle modifications (diet, exercise)",
+          "Metformin for insulin resistance",
+          "Hormonal contraceptives for cycle regulation",
+          "Anti-androgen therapy",
+          "Fertility treatments if needed"
+        ],
+        "complications": [
+          "Type 2 diabetes",
+          "Cardiovascular disease",
+          "Endometrial cancer",
+          "Sleep apnea",
+          "Depression"
+        ],
+        "monitoring": [
+          "Regular glucose screening",
+          "Lipid profile monitoring",
+          "Blood pressure checks",
+          "Endometrial assessment"
+        ]
+      },
+      "endometriosis": {
+        "name": "Endometriosis",
+        "symptoms": [
+          "Severe menstrual cramps",
+          "Chronic pelvic pain",
+          "Pain during intercourse",
+          "Heavy menstrual bleeding",
+          "Infertility",
+          "Gastrointestinal symptoms"
+        ],
+        "stages": [
+          "Stage I: Minimal",
+          "Stage II: Mild",
+          "Stage III: Moderate",
+          "Stage IV: Severe"
+        ],
+        "management": [
+          "Pain management (NSAIDs)",
+          "Hormonal therapy",
+          "GnRH agonists",
+          "Surgical treatment",
+          "Fertility preservation"
+        ],
+        "surgical_options": [
+          "Laparoscopic excision",
+          "Hysterectomy (severe cases)",
+          "Ovarian cystectomy"
+        ]
+      },
+      "uterine_fibroids": {
+        "name": "Uterine Fibroids",
+        "symptoms": [
+          "Heavy menstrual bleeding",
+          "Prolonged periods",
+          "Pelvic pressure",
+          "Frequent urination",
+          "Constipation",
+          "Back pain"
+        ],
+        "types": [
+          "Intramural fibroids",
+          "Subserosal fibroids",
+          "Submucosal fibroids",
+          "Pedunculated fibroids"
+        ],
+        "management": [
+          "Watchful waiting",
+          "Medications (hormonal)",
+          "Uterine artery embolization",
+          "Myomectomy",
+          "Hysterectomy"
+        ],
+        "complications": [
+          "Anemia from heavy bleeding",
+          "Infertility",
+          "Pregnancy complications",
+          "Urinary problems"
+        ]
+      },
+      "ovarian_cysts": {
+        "name": "Ovarian Cysts",
+        "types": [
+          "Functional cysts",
+          "Dermoid cysts",
+          "Endometriomas",
+          "Cystadenomas"
+        ],
+        "symptoms": [
+          "Pelvic pain",
+          "Bloating",
+          "Irregular periods",
+          "Pain during intercourse",
+          "Nausea and vomiting"
+        ],
+        "management": [
+          "Observation for functional cysts",
+          "Hormonal contraceptives",
+          "Surgical removal if needed",
+          "Pain management"
+        ],
+        "emergency_signs": [
+          "Sudden severe pain",
+          "Fever",
+          "Vomiting",
+          "Signs of shock"
+        ]
+      }
+    },
+    "menstrual_disorders": {
+      "heavy_menstrual_bleeding": {
+        "name": "Heavy Menstrual Bleeding (Menorrhagia)",
+        "definition": "Bleeding >80ml per cycle or >7 days duration",
+        "causes": [
+          "Uterine fibroids",
+          "Endometrial polyps",
+          "Adenomyosis",
+          "Hormonal imbalances",
+          "Bleeding disorders"
+        ],
+        "management": [
+          "Hormonal therapy",
+          "Tranexamic acid",
+          "NSAIDs",
+          "Endometrial ablation",
+          "Hysterectomy (severe cases)"
+        ]
+      },
+      "amenorrhea": {
+        "name": "Amenorrhea",
+        "types": [
+          "Primary amenorrhea (no periods by age 16)",
+          "Secondary amenorrhea (absence >3 months)"
+        ],
+        "causes": [
+          "Pregnancy",
+          "PCOS",
+          "Thyroid disorders",
+          "Pituitary disorders",
+          "Eating disorders"
+        ],
+        "evaluation": [
+          "Pregnancy test",
+          "Hormone levels",
+          "Thyroid function",
+          "Pelvic examination",
+          "Imaging studies"
+        ]
+      }
+    }
+  }
+}
