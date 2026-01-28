@@ -81,14 +81,14 @@ def create_logo_style_1():
     ax.text(6.5, 2.8, 'Your Health Records, Your Control', fontsize=12,
             color='#666666', fontfamily='sans-serif', style='italic')
     
-    # Small medical symbols
-    ax.text(6.3, 1.8, '🏥', fontsize=16)
-    ax.text(7.0, 1.8, '💊', fontsize=16)
-    ax.text(7.7, 1.8, '🩺', fontsize=16)
-    ax.text(8.4, 1.8, '📱', fontsize=16)
+    # Small medical symbols as text
+    ax.text(6.3, 1.8, 'HOSP', fontsize=12, color='#4CAF50', fontweight='bold')
+    ax.text(7.0, 1.8, 'MED', fontsize=12, color='#4CAF50', fontweight='bold')
+    ax.text(7.7, 1.8, 'CARE', fontsize=12, color='#4CAF50', fontweight='bold')
+    ax.text(8.4, 1.8, 'TECH', fontsize=12, color='#4CAF50', fontweight='bold')
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/logo_style_1.png', dpi=300, bbox_inches='tight', 
+    plt.savefig('logo_style_1.png', dpi=300, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
     plt.close()
     
@@ -138,7 +138,7 @@ def create_logo_style_2():
             ha='center', va='center', color='#2E8B57')
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/logo_style_2.png', dpi=300, bbox_inches='tight',
+    plt.savefig('logo_style_2.png', dpi=300, bbox_inches='tight',
                 facecolor='transparent')
     plt.close()
     
@@ -200,7 +200,7 @@ def create_logo_style_3():
         ax.add_patch(square)
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/logo_style_3.png', dpi=300, bbox_inches='tight',
+    plt.savefig('logo_style_3.png', dpi=300, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
     plt.close()
     
@@ -269,7 +269,7 @@ def create_logo_style_4():
             ha='center', color='#666666', fontfamily='sans-serif', style='italic')
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/logo_style_4.png', dpi=300, bbox_inches='tight',
+    plt.savefig('logo_style_4.png', dpi=300, bbox_inches='tight',
                 facecolor='#FFF8DC', edgecolor='none')
     plt.close()
     
@@ -300,7 +300,7 @@ def create_favicon():
     ax.add_patch(heart)
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/favicon.png', dpi=150, bbox_inches='tight',
+    plt.savefig('favicon.png', dpi=150, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
     plt.close()
     
@@ -354,7 +354,7 @@ def create_app_icon():
             ha='center', va='center', color='white')
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/app_icon.png', dpi=300, bbox_inches='tight',
+    plt.savefig('app_icon.png', dpi=300, bbox_inches='tight',
                 facecolor='transparent')
     plt.close()
     
@@ -403,15 +403,16 @@ def create_letterhead_logo():
     ax.text(3, 0.7, 'www.aficare-medilink.org  •  info@aficare.org  •  +254-XXX-XXXXXX',
             fontsize=10, color='#999999', fontfamily='sans-serif', va='center')
     
-    # Right side - small icons
+    # Right side - small text icons
     icons_x = [13.5, 14.0, 14.5, 15.0]
-    icons = ['🏥', '💊', '🩺', '📱']
+    icons = ['HOSP', 'MED', 'CARE', 'TECH']
     
     for x, icon in zip(icons_x, icons):
-        ax.text(x, 1.5, icon, fontsize=20, ha='center', va='center')
+        ax.text(x, 1.5, icon, fontsize=10, ha='center', va='center', 
+                color='#4CAF50', fontweight='bold')
     
     plt.tight_layout()
-    plt.savefig('aficare-agent/letterhead_logo.png', dpi=300, bbox_inches='tight',
+    plt.savefig('letterhead_logo.png', dpi=300, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
     plt.close()
     

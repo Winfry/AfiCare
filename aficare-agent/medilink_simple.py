@@ -687,13 +687,15 @@ def generate_medilink_id(location: str = "") -> str:
 
 def show_login_page():
     """Display login/registration page"""
-    
-    # Header
+
+    # Display logo header
+    display_logo_header()
+
+    # Tagline
     st.markdown("""
-    <div class="main-header patient-theme">
-        <h1>🏥 AfiCare MediLink</h1>
-        <p>Your Health Records, Your Control - Completely FREE</p>
-    </div>
+    <p style="text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;">
+        Your Health Records, Your Control - <strong style="color: #2E7D32;">Completely FREE</strong>
+    </p>
     """, unsafe_allow_html=True)
     
     # Demo alert
@@ -1076,23 +1078,72 @@ def show_healthcare_provider_registration_form():
 
 def show_dashboard():
     """Show role-based dashboard"""
-    
+
     role = st.session_state.user_role
     user_data = st.session_state.user_data
-    
-    # Role-based header
-    theme_class = f"{role}-theme"
-    role_badge = f"{role}-badge"
-    
-    st.markdown(f"""
-    <div class="main-header {theme_class}">
-        <h1>🏥 AfiCare MediLink</h1>
-        <p>{user_data['full_name']} <span class="role-badge {role_badge}">{role.title()}</span></p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Logout button in sidebar
+
+    # Display logo header with user info
+    logo_b64 = get_logo_base64()
+    role_colors = {
+        "patient": "#4CAF50",
+        "doctor": "#2196F3",
+        "nurse": "#9C27B0",
+        "admin": "#FF9800"
+    }
+    role_color = role_colors.get(role, "#4CAF50")
+
+    if logo_b64:
+        header_html = f"""
+        <div style="display: flex; align-items: center; justify-content: space-between;
+                    padding: 15px 20px; background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+                    border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(46, 125, 50, 0.1);">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #2E7D32, #66BB6A);
+                            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);">
+                    <img src="data:image/png;base64,{logo_b64}" style="width: 35px; height: 35px; border-radius: 6px;" alt="Logo">
+                </div>
+                <div>
+                    <h1 style="margin: 0; color: #2E7D32; font-size: 24px;">Afi<span style="color: #1B5E20;">Care</span></h1>
+                    <p style="margin: 0; color: #666; font-size: 11px; letter-spacing: 1px;">MEDILINK</p>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <p style="margin: 0; font-weight: bold; color: #333;">{user_data['full_name']}</p>
+                <span style="background: {role_color}; color: white; padding: 4px 12px;
+                             border-radius: 12px; font-size: 12px; font-weight: bold;">{role.title()}</span>
+            </div>
+        </div>
+        """
+    else:
+        header_html = f"""
+        <div style="display: flex; align-items: center; justify-content: space-between;
+                    padding: 15px 20px; background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+                    border-radius: 15px; margin-bottom: 20px;">
+            <div>
+                <h1 style="margin: 0; color: #2E7D32; font-size: 24px;">AfiCare MediLink</h1>
+            </div>
+            <div style="text-align: right;">
+                <p style="margin: 0; font-weight: bold;">{user_data['full_name']}</p>
+                <span style="background: {role_color}; color: white; padding: 4px 12px;
+                             border-radius: 12px; font-size: 12px;">{role.title()}</span>
+            </div>
+        </div>
+        """
+
+    st.markdown(header_html, unsafe_allow_html=True)
+
+    # Sidebar with logo and logout
     with st.sidebar:
+        # Mini logo in sidebar
+        if logo_b64:
+            st.markdown(f"""
+            <div style="text-align: center; padding: 10px; margin-bottom: 15px;">
+                <img src="data:image/png;base64,{logo_b64}" style="width: 60px; height: 60px; border-radius: 12px;" alt="Logo">
+                <p style="margin: 5px 0 0 0; color: #2E7D32; font-weight: bold; font-size: 14px;">AfiCare</p>
+            </div>
+            """, unsafe_allow_html=True)
+
         st.write(f"**Logged in as:** {role.title()}")
         if role == "patient" and st.session_state.medilink_id:
             st.write(f"**MediLink ID:** {st.session_state.medilink_id}")
@@ -1245,30 +1296,62 @@ def show_patient_sharing_options():
 
 def show_patient_settings():
     """Patient settings"""
-    
+
     st.subheader("⚙️ Privacy & Security Settings")
-    
+
     # Privacy preferences
     st.write("**🔒 Privacy Preferences**")
-    
+
     emergency_access = st.checkbox("Allow emergency access when unconscious", value=True)
     research_data = st.checkbox("Allow anonymized data for medical research", value=False)
-    
+
     # Emergency info
     st.write("**🚨 Emergency Information**")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         blood_type = st.selectbox("Blood Type", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         allergies = st.text_area("Critical Allergies", value="Penicillin\nSulfa drugs")
-    
+
     with col2:
         emergency_contact = st.text_input("Emergency Contact", value="Jane Doe")
         emergency_phone = st.text_input("Emergency Phone", value="+254712345679")
-    
-    if st.button("💾 Save Settings", type="primary"):
+
+    if st.button("Save Settings", type="primary"):
         st.success("Settings saved successfully!")
+
+    # PWA Install Instructions
+    st.markdown("---")
+    show_install_instructions()
+
+def show_install_instructions():
+    """Show PWA installation instructions"""
+    with st.expander("Install AfiCare App on Your Device"):
+        st.markdown("""
+        ### Install on Android
+        1. Open this page in **Chrome**
+        2. Tap the menu (**...**) in the top right
+        3. Tap **"Add to Home screen"**
+        4. Tap **"Add"**
+
+        ### Install on iPhone/iPad
+        1. Open this page in **Safari**
+        2. Tap the **Share button** (square with arrow)
+        3. Scroll down and tap **"Add to Home Screen"**
+        4. Tap **"Add"**
+
+        ### Install on Desktop (Chrome/Edge)
+        1. Look for the **install icon** in the address bar
+        2. Click **"Install"**
+
+        ---
+        **Benefits of installing:**
+        - Quick launch from home screen
+        - Full-screen experience
+        - Offline access to cached data
+        - Native app feel
+        """)
 
 def show_healthcare_provider_dashboard():
     """Healthcare provider interface"""
