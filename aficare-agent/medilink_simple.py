@@ -12,10 +12,29 @@ import os
 import base64
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+import sys
+from pathlib import Path
+import json
 
 # Get the directory of this script for asset paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(SCRIPT_DIR, "assets")
+
+# Add src to path for imports
+current_dir = Path(__file__).parent
+src_dir = current_dir / "src"
+sys.path.insert(0, str(src_dir))
+
+# Import the real AfiCare Agent
+try:
+    from core.agent import AfiCareAgent, PatientData, ConsultationResult
+    from utils.config import Config
+    REAL_AI_AVAILABLE = True
+    print("✅ Real AfiCare AI Agent loaded successfully!")
+except ImportError as e:
+    print(f"⚠️ Could not load real AI Agent: {e}")
+    print("🔄 Using simplified AI instead...")
+    REAL_AI_AVAILABLE = False
 
 @dataclass
 class PatientData:
@@ -319,11 +338,65 @@ class MedicalAI:
             confidence_score=condition_matches[0]["confidence"] if condition_matches else 0.0
         )
 
-# Initialize the medical AI system
+# Initialize the medical AI system - REAL AfiCare Agent
 @st.cache_resource
 def get_medical_ai():
-    """Get cached medical AI instance"""
-    return MedicalAI()
+    """Get cached medical AI instance - Real AfiCare Agent"""
+    try:
+        # Try to load the real AfiCare Agent
+        from core.agent import AfiCareAgent, PatientData as RealPatientData, ConsultationResult as RealConsultationResult
+        from utils.config import Config
+        
+        config = Config()
+        agent = AfiCareAgent(config)
+        
+        # Create a wrapper to make it compatible with the simple interface
+        class AfiCareAgentWrapper:
+            def __init__(self, agent):
+                self.agent = agent
+                self.name = "AfiCare AI Agent (Full Version)"
+            
+            def conduct_consultation(self, patient_data):
+                """Convert simple patient data to real agent format and run consultation"""
+                import asyncio
+                
+                # Convert to real agent format
+                real_patient_data = RealPatientData(
+                    patient_id=patient_data.patient_id,
+                    age=patient_data.age,
+                    gender=patient_data.gender,
+                    symptoms=patient_data.symptoms,
+                    vital_signs=patient_data.vital_signs,
+                    medical_history=patient_data.medical_history,
+                    current_medications=patient_data.current_medications,
+                    chief_complaint=patient_data.chief_complaint
+                )
+                
+                # Run the real AI consultation
+                real_result = asyncio.run(self.agent.conduct_consultation(real_patient_data))
+                
+                # Convert back to simple format
+                simple_result = ConsultationResult(
+                    patient_id=real_result.patient_id,
+                    timestamp=real_result.timestamp,
+                    triage_level=real_result.triage_level,
+                    suspected_conditions=real_result.suspected_conditions,
+                    recommendations=real_result.recommendations,
+                    referral_needed=real_result.referral_needed,
+                    follow_up_required=real_result.follow_up_required,
+                    confidence_score=real_result.confidence_score
+                )
+                
+                return simple_result
+        
+        wrapper = AfiCareAgentWrapper(agent)
+        print(f"✅ Real AfiCare AI Agent loaded with {len(agent.plugin_manager.plugins)} plugins!")
+        return wrapper
+        
+    except Exception as e:
+        print(f"⚠️ Could not load real AfiCare Agent: {e}")
+        print("🔄 Using simplified AI instead...")
+        return MedicalAI()
 
 # Page configuration
 st.set_page_config(
@@ -1359,8 +1432,8 @@ def show_healthcare_provider_dashboard():
     role = st.session_state.user_role
     
     # Navigation tabs
-    tab1, tab2, tab3 = st.tabs([
-        "🔍 Access Patient", "👥 My Patients", "📋 New Consultation"
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🔍 Access Patient", "👥 My Patients", "📋 New Consultation", "🤖 AI Agent Demo"
     ])
     
     with tab1:
@@ -1371,6 +1444,9 @@ def show_healthcare_provider_dashboard():
     
     with tab3:
         show_provider_consultation()
+    
+    with tab4:
+        show_ai_agent_demo()
 
 def show_provider_patient_access():
     """Healthcare provider patient access"""
@@ -1549,21 +1625,41 @@ def show_provider_consultation():
                 # Run AI analysis
                 with st.spinner("🤖 AI is analyzing the case..."):
                     try:
-                        result = medical_ai.conduct_consultation(patient_data)
+                        # Check if we're using the real AI Agent
+                        if hasattr(medical_ai, 'agent'):
+                            st.info("🤖 **Powered by Real AfiCare AI Agent** with advanced medical reasoning, rule engine, and triage assessment!")
+                            result = medical_ai.conduct_consultation(patient_data)
+                        else:
+                            st.info("🔧 **Using Simplified AI** - The full AfiCare Agent couldn't be loaded")
+                            result = medical_ai.conduct_consultation(patient_data)
                         
                         # Display results
                         st.success("🎯 AI Analysis Complete!")
                         
+                        # Show AI agent info
+                        if hasattr(medical_ai, 'agent'):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("🔌 Plugins Loaded", len(medical_ai.agent.plugin_manager.plugins))
+                            with col2:
+                                st.metric("🧠 Rule Engine", "Active" if hasattr(medical_ai.agent, 'rule_engine') else "Inactive")
+                            with col3:
+                                st.metric("🚨 Triage Engine", "Active" if hasattr(medical_ai.agent, 'triage_engine') else "Inactive")
+                        
                         # Triage level with color coding
                         triage_colors = {
                             "EMERGENCY": "🚨",
+                            "emergency": "🚨",
                             "URGENT": "⚠️", 
+                            "urgent": "⚠️",
                             "LESS_URGENT": "⏰",
-                            "NON_URGENT": "✅"
+                            "less_urgent": "⏰",
+                            "NON_URGENT": "✅",
+                            "non_urgent": "✅"
                         }
                         
                         triage_emoji = triage_colors.get(result.triage_level, "ℹ️")
-                        st.write(f"**{triage_emoji} Triage Level:** {result.triage_level}")
+                        st.write(f"**{triage_emoji} Triage Level:** {result.triage_level.upper()}")
                         st.write(f"**🎯 Overall Confidence:** {result.confidence_score:.1%}")
                         
                         # Suspected conditions
@@ -1695,6 +1791,176 @@ def show_admin_settings():
     
     if st.button("💾 Save Settings"):
         st.success("Settings saved successfully!")
+
+def show_ai_agent_demo():
+    """Demonstrate the AfiCare AI Agent capabilities"""
+    
+    st.subheader("🤖 AfiCare AI Agent - Live Demo")
+    
+    # Get the medical AI
+    medical_ai = get_medical_ai()
+    
+    # Show AI status
+    if hasattr(medical_ai, 'agent'):
+        st.success("✅ **Real AfiCare AI Agent Active**")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("🔌 Plugins", len(medical_ai.agent.plugin_manager.plugins))
+        with col2:
+            st.metric("🧠 Rule Engine", "Active")
+        with col3:
+            st.metric("🚨 Triage Engine", "Active")
+    else:
+        st.info("🔧 **Simplified AI Active** - Full agent couldn't be loaded")
+    
+    st.markdown("---")
+    
+    # Pre-built test cases
+    st.subheader("🧪 Test Cases")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🦠 Test Malaria Case", type="primary"):
+            st.session_state.demo_case = "malaria"
+    
+    with col2:
+        if st.button("🫁 Test Pneumonia Case", type="primary"):
+            st.session_state.demo_case = "pneumonia"
+    
+    with col3:
+        if st.button("🩺 Test Hypertension Case", type="primary"):
+            st.session_state.demo_case = "hypertension"
+    
+    # Show selected test case
+    if 'demo_case' in st.session_state:
+        case = st.session_state.demo_case
+        
+        if case == "malaria":
+            st.markdown("### 🦠 Malaria Test Case")
+            st.info("**Patient:** John Doe (35M) - High fever and body aches for 3 days")
+            
+            patient_data = PatientData(
+                patient_id="DEMO-MALARIA",
+                age=35,
+                gender="Male",
+                symptoms=["fever", "headache", "muscle aches", "chills", "sweating"],
+                vital_signs={
+                    "temperature": 39.2,
+                    "pulse": 98,
+                    "systolic_bp": 130,
+                    "diastolic_bp": 85,
+                    "respiratory_rate": 20
+                },
+                medical_history=["None"],
+                current_medications=["None"],
+                chief_complaint="High fever and body aches for 3 days"
+            )
+            
+        elif case == "pneumonia":
+            st.markdown("### 🫁 Pneumonia Test Case")
+            st.info("**Patient:** Sarah Ali (45F) - Persistent cough with fever and breathing difficulty")
+            
+            patient_data = PatientData(
+                patient_id="DEMO-PNEUMONIA",
+                age=45,
+                gender="Female",
+                symptoms=["cough", "fever", "difficulty breathing", "chest pain"],
+                vital_signs={
+                    "temperature": 38.8,
+                    "pulse": 105,
+                    "systolic_bp": 125,
+                    "diastolic_bp": 80,
+                    "respiratory_rate": 26
+                },
+                medical_history=["Asthma"],
+                current_medications=["Salbutamol inhaler"],
+                chief_complaint="Persistent cough with fever and breathing difficulty"
+            )
+            
+        elif case == "hypertension":
+            st.markdown("### 🩺 Hypertension Test Case")
+            st.info("**Patient:** James Ruto (55M) - Persistent headaches and dizziness")
+            
+            patient_data = PatientData(
+                patient_id="DEMO-HTN",
+                age=55,
+                gender="Male",
+                symptoms=["headache", "dizziness", "blurred vision"],
+                vital_signs={
+                    "temperature": 37.1,
+                    "pulse": 82,
+                    "systolic_bp": 165,
+                    "diastolic_bp": 95,
+                    "respiratory_rate": 16
+                },
+                medical_history=["Family history of hypertension"],
+                current_medications=["None"],
+                chief_complaint="Persistent headaches and dizziness"
+            )
+        
+        # Run AI analysis
+        if st.button("🤖 Run AI Analysis", type="primary", key=f"analyze_{case}"):
+            with st.spinner("🧠 AfiCare AI Agent is analyzing the case..."):
+                try:
+                    result = medical_ai.conduct_consultation(patient_data)
+                    
+                    # Display results
+                    st.success("🎯 AI Analysis Complete!")
+                    
+                    # Metrics
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        triage_colors = {
+                            "emergency": "🚨", "urgent": "⚠️", 
+                            "less_urgent": "⏰", "non_urgent": "✅"
+                        }
+                        triage_emoji = triage_colors.get(result.triage_level.lower(), "ℹ️")
+                        st.metric("Triage Level", f"{triage_emoji} {result.triage_level.upper()}")
+                    
+                    with col2:
+                        st.metric("Confidence", f"{result.confidence_score:.1%}")
+                    
+                    with col3:
+                        st.metric("Referral", "Yes" if result.referral_needed else "No")
+                    
+                    with col4:
+                        st.metric("Follow-up", "Yes" if result.follow_up_required else "No")
+                    
+                    # Suspected conditions
+                    st.subheader("🔍 AI Diagnosis")
+                    for i, condition in enumerate(result.suspected_conditions[:3]):
+                        name = condition.get('display_name', condition.get('name', 'Unknown'))
+                        confidence = condition.get('confidence', 0)
+                        category = condition.get('category', 'Medical Condition')
+                        
+                        st.write(f"**{i+1}. {name}** ({confidence:.1%} confidence)")
+                        st.caption(f"Category: {category}")
+                    
+                    # AI Recommendations
+                    st.subheader("💊 AI Treatment Recommendations")
+                    for i, rec in enumerate(result.recommendations[:6]):
+                        st.write(f"{i+1}. {rec}")
+                    
+                    # Technical details
+                    with st.expander("🔧 Technical Details"):
+                        st.json({
+                            "patient_id": result.patient_id,
+                            "timestamp": result.timestamp.isoformat(),
+                            "ai_engine": "AfiCare AI Agent" if hasattr(medical_ai, 'agent') else "Simplified AI",
+                            "plugins_used": len(medical_ai.agent.plugin_manager.plugins) if hasattr(medical_ai, 'agent') else 0,
+                            "rule_engine_active": hasattr(medical_ai, 'agent'),
+                            "triage_engine_active": hasattr(medical_ai, 'agent')
+                        })
+                    
+                except Exception as e:
+                    st.error(f"❌ AI Analysis Failed: {str(e)}")
+                    st.write("**Debug Info:**")
+                    st.write(f"AI Type: {'Real Agent' if hasattr(medical_ai, 'agent') else 'Simplified'}")
+
+        show_dashboard()
 
 # Main app logic
 def main():

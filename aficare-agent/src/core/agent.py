@@ -83,25 +83,50 @@ class AfiCareAgent:
     
     def __init__(self, config: Config):
         self.config = config
-        self.llm = LocalLLM(config)
+        
+        # Initialize LLM (optional - graceful fallback)
+        try:
+            self.llm = LocalLLM(config)
+            logger.info("✅ LLM component loaded")
+        except Exception as e:
+            logger.warning(f"⚠️ LLM component not available: {e}")
+            self.llm = None
+        
+        # Initialize core components
         self.rule_engine = RuleEngine(config)
         self.triage_engine = TriageEngine(config)
         self.patient_store = PatientStore(config)
         
         # Initialize Plugin System
-        from .plugin_manager import PluginManager
-        # MANUALLY IMPORT MALARIA PLUGIN FOR PILOT (In future, discover_plugins() will do this)
-        # We need to make sure the import path is correct relative to run context
         try:
-            from plugins.malaria.malaria_plugin import MalariaPlugin
+            from .plugin_manager import PluginManager
         except ImportError:
-            # Fallback for different execution contexts
-            import sys
-            sys.path.append(str(Path(__file__).parent.parent.parent))
-            from plugins.malaria.malaria_plugin import MalariaPlugin
-
+            # Create a simple plugin manager if not available
+            class PluginManager:
+                def __init__(self):
+                    self.plugins = {}
+                def register_plugin(self, plugin):
+                    self.plugins[plugin.name] = plugin
+        
         self.plugin_manager = PluginManager()
-        self.plugin_manager.register_plugin(MalariaPlugin())
+        
+        # Try to load Malaria Plugin
+        try:
+            # Try different import paths
+            try:
+                from plugins.malaria.malaria_plugin import MalariaPlugin
+            except ImportError:
+                # Alternative path
+                import sys
+                plugin_path = Path(__file__).parent.parent.parent / "plugins"
+                sys.path.append(str(plugin_path))
+                from malaria.malaria_plugin import MalariaPlugin
+            
+            self.plugin_manager.register_plugin(MalariaPlugin())
+            logger.info("✅ Malaria plugin loaded successfully")
+        except ImportError as e:
+            logger.warning(f"⚠️ Could not load Malaria plugin: {e}")
+            logger.info("🔄 Continuing without plugin - using rule engine only")
         
         logger.info(f"AfiCare Agent initialized with {len(self.plugin_manager.plugins)} plugins")
     

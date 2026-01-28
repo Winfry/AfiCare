@@ -1,0 +1,54 @@
+{
+  "name": "Childhood Diarrhea",
+  "category": "Gastrointestinal",
+  "age_groups": ["infant", "child"],
+  "symptoms": {
+    "diarrhea": 0.9,
+    "vomiting": 0.6,
+    "fever": 0.5,
+    "dehydration": 0.7,
+    "abdominal_pain": 0.4,
+    "loss_of_appetite": 0.5
+  },
+  "vital_signs_indicators": {
+    "temperature": {
+      "mild": [37.0, 38.0],
+      "moderate": [38.1, 39.0],
+      "severe": [39.1, 42.0]
+    },
+    "dehydration_signs": ["sunken_eyes", "dry_mouth", "reduced_urine"]
+  },
+  "treatment": {
+    "mild": [
+      "Oral rehydration solution (ORS)",
+      "Continue breastfeeding",
+      "Zinc supplementation 10-20mg daily",
+      "Monitor for dehydration signs"
+    ],
+    "moderate": [
+      "ORS with increased frequency",
+      "Zinc supplementation",
+      "Probiotics if available",
+      "Follow-up in 24 hours"
+    ],
+    "severe": [
+      "Immediate medical referral",
+      "IV fluids if severe dehydration",
+      "Hospital admission may be required",
+      "Antibiotic therapy if indicated"
+    ]
+  },
+  "danger_signs": [
+    "severe_dehydration",
+    "blood_in_stool",
+    "high_fever",
+    "persistent_vomiting",
+    "lethargy"
+  ],
+  "prevention": [
+    "Hand hygiene",
+    "Safe water and food",
+    "Proper sanitation",
+    "Rotavirus vaccination"
+  ]
+}

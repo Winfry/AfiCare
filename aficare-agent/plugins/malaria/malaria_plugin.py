@@ -1,7 +1,38 @@
 from typing import List, Dict, Any
 import json
 import os
-from ...src.core.interfaces.plugin import AfiCarePlugin
+import sys
+from pathlib import Path
+
+# Fix import path issues
+current_file = Path(__file__)
+src_dir = current_file.parent.parent.parent / "src"
+sys.path.insert(0, str(src_dir))
+
+try:
+    from core.interfaces.plugin import AfiCarePlugin
+except ImportError:
+    # Create a simple base class if the interface doesn't exist
+    from abc import ABC, abstractmethod
+    
+    class AfiCarePlugin(ABC):
+        @property
+        @abstractmethod
+        def id(self) -> str:
+            pass
+        
+        @property
+        @abstractmethod
+        def name(self) -> str:
+            pass
+        
+        @abstractmethod
+        def register_rules(self) -> List[Dict[str, Any]]:
+            pass
+        
+        @abstractmethod
+        def health_check(self) -> bool:
+            pass
 
 class MalariaPlugin(AfiCarePlugin):
     """

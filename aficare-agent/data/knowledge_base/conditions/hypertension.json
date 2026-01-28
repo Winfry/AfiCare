@@ -1,0 +1,76 @@
+{
+  "name": "Hypertension",
+  "category": "Cardiovascular",
+  "age_groups": ["adult", "elderly"],
+  "symptoms": {
+    "headache": 0.4,
+    "dizziness": 0.5,
+    "blurred_vision": 0.3,
+    "chest_pain": 0.2,
+    "shortness_of_breath": 0.3,
+    "fatigue": 0.3,
+    "nosebleeds": 0.2
+  },
+  "vital_signs_indicators": {
+    "blood_pressure": {
+      "normal": [90, 120, 60, 80],
+      "elevated": [120, 129, 60, 80],
+      "stage_1": [130, 139, 80, 89],
+      "stage_2": [140, 999, 90, 999],
+      "crisis": [180, 999, 120, 999]
+    }
+  },
+  "risk_factors": [
+    "age_over_40",
+    "family_history",
+    "obesity",
+    "high_salt_diet",
+    "sedentary_lifestyle",
+    "smoking",
+    "diabetes",
+    "kidney_disease"
+  ],
+  "treatment": {
+    "lifestyle": [
+      "Reduce sodium intake (<2.3g/day)",
+      "Regular physical activity (30min/day)",
+      "Maintain healthy weight",
+      "Limit alcohol consumption",
+      "Quit smoking",
+      "Manage stress"
+    ],
+    "medication": {
+      "first_line": [
+        "ACE inhibitors (Lisinopril 10mg daily)",
+        "ARBs (Losartan 50mg daily)",
+        "Calcium channel blockers (Amlodipine 5mg daily)",
+        "Thiazide diuretics (Hydrochlorothiazide 25mg daily)"
+      ],
+      "combination": [
+        "ACE inhibitor + Diuretic",
+        "ARB + Calcium channel blocker",
+        "Beta-blocker + Diuretic"
+      ]
+    }
+  },
+  "monitoring": [
+    "Blood pressure checks every 3-6 months",
+    "Annual kidney function tests",
+    "Lipid profile annually",
+    "Eye examination annually",
+    "ECG if indicated"
+  ],
+  "complications": [
+    "heart_attack",
+    "stroke",
+    "kidney_disease",
+    "heart_failure",
+    "vision_problems"
+  ],
+  "target_bp": {
+    "general": [130, 80],
+    "diabetes": [130, 80],
+    "kidney_disease": [130, 80],
+    "elderly": [140, 90]
+  }
+}
