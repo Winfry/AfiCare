@@ -92,7 +92,7 @@ def create_logo_style_1():
                 facecolor='white', edgecolor='none')
     plt.close()
     
-    print("✅ Logo Style 1 created: logo_style_1.png")
+    print("[OK] Logo Style 1 created: logo_style_1.png")
 
 def create_logo_style_2():
     """
@@ -139,10 +139,10 @@ def create_logo_style_2():
     
     plt.tight_layout()
     plt.savefig('logo_style_2.png', dpi=300, bbox_inches='tight',
-                facecolor='transparent')
+                facecolor='white')
     plt.close()
     
-    print("✅ Logo Style 2 created: logo_style_2.png")
+    print("[OK] Logo Style 2 created: logo_style_2.png")
 
 def create_logo_style_3():
     """
@@ -355,7 +355,7 @@ def create_app_icon():
     
     plt.tight_layout()
     plt.savefig('app_icon.png', dpi=300, bbox_inches='tight',
-                facecolor='transparent')
+                facecolor='white')
     plt.close()
     
     print("✅ App Icon created: app_icon.png")
@@ -420,9 +420,9 @@ def create_letterhead_logo():
 
 def main():
     """Generate all logo variations"""
-    print("🎨 Creating AfiCare MediLink Logos...")
+    print("[*] Creating AfiCare MediLink Logos...")
     print("=" * 50)
-    
+
     try:
         # Create all logo styles
         create_logo_style_1()      # Modern medical cross
@@ -432,30 +432,30 @@ def main():
         create_favicon()           # Small icon
         create_app_icon()          # Mobile app icon
         create_letterhead_logo()   # Document header
-        
+
         print("=" * 50)
-        print("🎉 All logos created successfully!")
-        print("\n📁 Logo Files Created:")
-        print("├── logo_style_1.png      (Modern Medical Cross)")
-        print("├── logo_style_2.png      (Circular Badge)")
-        print("├── logo_style_3.png      (Minimalist Tech)")
-        print("├── logo_style_4.png      (African-Inspired)")
-        print("├── favicon.png           (Website Icon)")
-        print("├── app_icon.png          (Mobile App Icon)")
-        print("└── letterhead_logo.png   (Document Header)")
-        
-        print("\n💡 Usage Recommendations:")
-        print("• Style 1: Main website header, presentations")
-        print("• Style 2: Social media profile, badges")
-        print("• Style 3: Tech platforms, GitHub, documentation")
-        print("• Style 4: Marketing materials, African contexts")
-        print("• Favicon: Browser tab icon")
-        print("• App Icon: Mobile app stores")
-        print("• Letterhead: Official documents, emails")
-        
+        print("[+] All logos created successfully!")
+        print("\nLogo Files Created:")
+        print("+-- logo_style_1.png      (Modern Medical Cross)")
+        print("+-- logo_style_2.png      (Circular Badge)")
+        print("+-- logo_style_3.png      (Minimalist Tech)")
+        print("+-- logo_style_4.png      (African-Inspired)")
+        print("+-- favicon.png           (Website Icon)")
+        print("+-- app_icon.png          (Mobile App Icon)")
+        print("+-- letterhead_logo.png   (Document Header)")
+
+        print("\nUsage Recommendations:")
+        print("* Style 1: Main website header, presentations")
+        print("* Style 2: Social media profile, badges")
+        print("* Style 3: Tech platforms, GitHub, documentation")
+        print("* Style 4: Marketing materials, African contexts")
+        print("* Favicon: Browser tab icon")
+        print("* App Icon: Mobile app stores")
+        print("* Letterhead: Official documents, emails")
+
     except Exception as e:
-        print(f"❌ Error creating logos: {str(e)}")
-        print("💡 Make sure matplotlib is installed: pip install matplotlib")
+        print(f"[X] Error creating logos: {str(e)}")
+        print("[!] Make sure matplotlib is installed: pip install matplotlib")
 
 if __name__ == "__main__":
     main()
