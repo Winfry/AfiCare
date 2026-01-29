@@ -2705,26 +2705,6 @@ def show_provider_consultation():
 
     st.subheader("New Patient Consultation")
 
-    # Show AI status
-    status = get_ai_backend_status()
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if status["groq"]:
-            st.success("AI: Groq Cloud (FREE)")
-        elif status["ollama"]:
-            st.success("AI: Ollama Local (FREE)")
-        else:
-            st.info("AI: Rule-Based Engine")
-    with col2:
-        st.metric("AI Status", "Online" if status["hybrid_available"] else "Basic")
-    with col3:
-        if status["groq"] or status["ollama"]:
-            st.metric("Enhancement", "LLM Active")
-        else:
-            st.metric("Enhancement", "Rule-Based")
-
-    st.markdown("---")
-
     # Patient ID
     medilink_id = st.text_input("Patient MediLink ID", placeholder="ML-XXX-XXXX")
     
@@ -2810,36 +2790,19 @@ def show_provider_consultation():
                 )
                 
                 # Run AI analysis
-                with st.spinner("AI is analyzing the case..."):
+                with st.spinner("Analyzing..."):
                     try:
                         # Use Hybrid AI if selected and available
                         if use_llm and HYBRID_AI_AVAILABLE:
-                            backend_name = "Groq Cloud" if GROQ_AVAILABLE else ("Ollama Local" if OLLAMA_AVAILABLE else "Rule-Based")
-                            st.info(f"**Hybrid AI Active** - Using {backend_name} + Rule Engine")
                             result = run_hybrid_analysis(patient_data, use_llm=True)
                         else:
                             # Fallback to standard medical AI
                             medical_ai = get_medical_ai()
-                            if hasattr(medical_ai, 'agent'):
-                                st.info("**AfiCare AI Agent** - Advanced medical reasoning")
-                                result = medical_ai.conduct_consultation(patient_data)
-                            else:
-                                st.info("**Rule-Based Engine** - Reliable offline analysis")
-                                result = medical_ai.conduct_consultation(patient_data)
-                        
+                            result = medical_ai.conduct_consultation(patient_data)
+
                         # Display results
-                        st.success("🎯 AI Analysis Complete!")
-                        
-                        # Show AI agent info
-                        if hasattr(medical_ai, 'agent'):
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("🔌 Plugins Loaded", len(medical_ai.agent.plugin_manager.plugins))
-                            with col2:
-                                st.metric("🧠 Rule Engine", "Active" if hasattr(medical_ai.agent, 'rule_engine') else "Inactive")
-                            with col3:
-                                st.metric("🚨 Triage Engine", "Active" if hasattr(medical_ai.agent, 'triage_engine') else "Inactive")
-                        
+                        st.success("Analysis Complete!")
+
                         # Triage level with color coding
                         triage_colors = {
                             "EMERGENCY": "🚨",
@@ -3153,8 +3116,6 @@ def show_ai_agent_demo():
                     st.error(f"❌ AI Analysis Failed: {str(e)}")
                     st.write("**Debug Info:**")
                     st.write(f"AI Type: {'Real Agent' if hasattr(medical_ai, 'agent') else 'Simplified'}")
-
-        show_dashboard()
 
 def show_maternal_health_dashboard():
     """Comprehensive maternal health dashboard for women"""
