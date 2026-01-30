@@ -2244,28 +2244,114 @@ def show_patient_sharing_options():
         )
         
         if st.button("📱 Generate QR Code", type="primary"):
-            st.success("🎯 QR Code Generated!")
-            
-            # Simulate QR code display
-            st.markdown(f"""
-            <div style="background: white; padding: 20px; border-radius: 15px; 
-                        text-align: center; border: 2px solid #2196F3; margin: 15px 0;">
-                <h3 style="color: #1976D2; margin: 0 0 15px 0;">📱 {qr_type} QR Code</h3>
-                <div style="width: 200px; height: 200px; background: #f0f0f0; 
-                           margin: 0 auto; border-radius: 10px; display: flex; 
-                           align-items: center; justify-content: center; 
-                           font-size: 14px; color: #666;">
-                    QR Code<br/>
-                    (Scan with phone)
+            # Generate actual QR code
+            try:
+                import qrcode
+                from io import BytesIO
+                import base64
+                import json
+                from datetime import datetime, timedelta
+                
+                # Set permissions based on QR type
+                permissions = {
+                    "Emergency Access": {"emergency_info": True, "allergies": True, "medications": True},
+                    "Full Records": {"full_access": True},
+                    "Appointment Check-in": {"basic_info": True, "appointment_history": True},
+                    "Prescription Pickup": {"medications": True, "prescriptions": True}
+                }.get(qr_type, {"basic_info": True})
+                
+                # Create QR data
+                qr_data = {
+                    "medilink_id": "ML-NBO-DEMO1",
+                    "access_code": access_code,
+                    "type": qr_type,
+                    "permissions": permissions,
+                    "expires": expiry_time,
+                    "generated_at": datetime.now().isoformat(),
+                    "system": "AfiCare MediLink"
+                }
+                
+                # Generate QR code
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4,
+                )
+                qr.add_data(json.dumps(qr_data))
+                qr.make(fit=True)
+                
+                # Create image
+                img = qr.make_image(fill_color="black", back_color="white")
+                img_buffer = BytesIO()
+                img.save(img_buffer, format='PNG')
+                img_b64 = base64.b64encode(img_buffer.getvalue()).decode()
+                
+                st.success("🎯 QR Code Generated!")
+                
+                # Display actual QR code
+                st.markdown(f"""
+                <div style="background: white; padding: 20px; border-radius: 15px; 
+                            text-align: center; border: 2px solid #2196F3; margin: 15px 0;">
+                    <h3 style="color: #1976D2; margin: 0 0 15px 0;">📱 {qr_type} QR Code</h3>
+                    <img src="data:image/png;base64,{img_b64}" style="width: 200px; height: 200px; border-radius: 10px;"/>
+                    <p style="margin: 15px 0 5px 0; color: #1976D2; font-weight: bold;">
+                        Access Code: {access_code}
+                    </p>
+                    <p style="color: #666; margin: 5px 0; font-size: 12px;">
+                        Valid until: {expiry_time} | Patient: ML-NBO-DEMO1
+                    </p>
+                    <p style="color: #d32f2f; margin: 5px 0; font-size: 11px;">
+                        ⚠️ Show only to authorized healthcare staff
+                    </p>
                 </div>
-                <p style="color: #666; margin: 15px 0 5px 0; font-size: 12px;">
-                    Valid for 24 hours | Patient: ML-NBO-DEMO1
-                </p>
-                <p style="color: #d32f2f; margin: 5px 0; font-size: 11px;">
-                    ⚠️ Show only to authorized healthcare staff
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+            except ImportError:
+                st.error("QR code library not installed. Run: pip install qrcode[pil]")
+                # Show fallback placeholder
+                st.markdown(f"""
+                <div style="background: white; padding: 20px; border-radius: 15px; 
+                            text-align: center; border: 2px solid #2196F3; margin: 15px 0;">
+                    <h3 style="color: #1976D2; margin: 0 0 15px 0;">📱 {qr_type} QR Code</h3>
+                    <div style="width: 200px; height: 200px; background: #f0f0f0; 
+                               margin: 0 auto; border-radius: 10px; display: flex; 
+                               align-items: center; justify-content: center; 
+                               font-size: 14px; color: #666;">
+                        QR Code<br/>
+                        (Install qrcode library)
+                    </div>
+                    <p style="color: #666; margin: 15px 0 5px 0; font-size: 12px;">
+                        Valid for 24 hours | Patient: ML-NBO-DEMO1
+                    </p>
+                    <p style="color: #d32f2f; margin: 5px 0; font-size: 11px;">
+                        ⚠️ Show only to authorized healthcare staff
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Failed to generate QR code: {str(e)}")
+                st.info("Using fallback display")
+                # Show fallback placeholder
+                st.markdown(f"""
+                <div style="background: white; padding: 20px; border-radius: 15px; 
+                            text-align: center; border: 2px solid #2196F3; margin: 15px 0;">
+                    <h3 style="color: #1976D2; margin: 0 0 15px 0;">📱 {qr_type} QR Code</h3>
+                    <div style="width: 200px; height: 200px; background: #f0f0f0; 
+                               margin: 0 auto; border-radius: 10px; display: flex; 
+                               align-items: center; justify-content: center; 
+                               font-size: 14px; color: #666;">
+                        QR Code<br/>
+                        (Scan with phone)
+                    </div>
+                    <p style="color: #666; margin: 15px 0 5px 0; font-size: 12px;">
+                        Valid for 24 hours | Patient: ML-NBO-DEMO1
+                    </p>
+                    <p style="color: #d32f2f; margin: 5px 0; font-size: 11px;">
+                        ⚠️ Show only to authorized healthcare staff
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
             
             st.info("📱 **How to use:** Show this QR code to hospital staff. They can scan it with their medical app to instantly access your records.")
     
