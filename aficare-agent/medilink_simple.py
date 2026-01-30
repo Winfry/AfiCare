@@ -3,6 +3,7 @@ MediLink Simple - Simplified version to avoid port issues
 Single app for patients, doctors, and admins with role-based interface
 Includes rule-based medical AI for consultations
 Now with PWA support for mobile installation!
+Enhanced with proper QR code generation and mobile optimization
 """
 
 import streamlit as st
@@ -15,6 +16,172 @@ from dataclasses import dataclass
 import sys
 from pathlib import Path
 import json
+
+# PWA Configuration
+def configure_pwa():
+    """Configure Progressive Web App features"""
+    st.set_page_config(
+        page_title="AfiCare MediLink",
+        page_icon="🏥",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+        menu_items={
+            'Get Help': 'https://github.com/aficare/medilink',
+            'Report a bug': 'https://github.com/aficare/medilink/issues',
+            'About': "AfiCare MediLink - Patient-Owned Healthcare Records for Africa"
+        }
+    )
+    
+    # PWA Meta tags and service worker
+    st.markdown("""
+    <head>
+        <!-- PWA Configuration -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="AfiCare">
+        <meta name="application-name" content="AfiCare MediLink">
+        <meta name="msapplication-TileColor" content="#2E7D32">
+        <meta name="theme-color" content="#2E7D32">
+        
+        <!-- Manifest -->
+        <link rel="manifest" href="/static/manifest.json">
+        
+        <!-- Icons -->
+        <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/assets/icon-16x16.png">
+        <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+        
+        <!-- Service Worker -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/static/sw.js')
+                        .then(function(registration) {
+                            console.log('SW registered: ', registration);
+                        })
+                        .catch(function(registrationError) {
+                            console.log('SW registration failed: ', registrationError);
+                        });
+                });
+            }
+        </script>
+        
+        <!-- Mobile Optimization -->
+        <style>
+            /* Mobile-first responsive design */
+            @media (max-width: 768px) {
+                .main .block-container {
+                    padding-left: 1rem;
+                    padding-right: 1rem;
+                    max-width: 100%;
+                }
+                
+                .stButton > button {
+                    width: 100%;
+                    margin-bottom: 0.5rem;
+                }
+                
+                .stSelectbox > div > div {
+                    font-size: 16px; /* Prevent zoom on iOS */
+                }
+                
+                .stTextInput > div > div > input {
+                    font-size: 16px; /* Prevent zoom on iOS */
+                }
+            }
+            
+            /* PWA-specific styles */
+            @media (display-mode: standalone) {
+                body {
+                    user-select: none; /* Prevent text selection in app mode */
+                }
+                
+                .main {
+                    padding-top: env(safe-area-inset-top);
+                    padding-bottom: env(safe-area-inset-bottom);
+                }
+            }
+            
+            /* Touch-friendly buttons */
+            .stButton > button {
+                min-height: 44px; /* iOS touch target minimum */
+                border-radius: 8px;
+                font-weight: 500;
+            }
+            
+            /* QR Code responsive styling */
+            .qr-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+            }
+            
+            .qr-container img {
+                max-width: 100%;
+                height: auto;
+            }
+        </style>
+        
+        <!-- Install prompt for PWA -->
+        <script>
+            let deferredPrompt;
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Show install button
+                const installButton = document.createElement('button');
+                installButton.textContent = '📱 Install App';
+                installButton.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: #2E7D32;
+                    color: white;
+                    border: none;
+                    padding: 12px 16px;
+                    border-radius: 25px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+                    z-index: 1000;
+                `;
+                
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log('User choice:', outcome);
+                        deferredPrompt = null;
+                        installButton.remove();
+                    }
+                });
+                
+                document.body.appendChild(installButton);
+                
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    if (installButton.parentNode) {
+                        installButton.remove();
+                    }
+                }, 10000);
+            });
+            
+            // Handle successful installation
+            window.addEventListener('appinstalled', (evt) => {
+                console.log('AfiCare app was installed.');
+            });
+        </script>
+    </head>
+    """, unsafe_allow_html=True)
+
+# Configure PWA on app start
+configure_pwa()
 
 # Get the directory of this script for asset paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
