@@ -1,0 +1,80 @@
+name: aficare_flutter
+description: "AfiCare MediLink - Patient-Owned Healthcare Records for Africa"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Backend & Database
+  supabase_flutter: ^2.3.4
+  hive_flutter: ^1.1.0
+  hive: ^2.2.3
+  
+  # Navigation
+  go_router: ^13.2.0
+  
+  # UI Components
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+  flutter_svg: ^2.0.9
+  
+  # QR Code
+  qr_flutter: ^4.1.0
+  qr_code_scanner: ^1.0.1
+  mobile_scanner: ^3.5.6
+  
+  # Utilities
+  shared_preferences: ^2.2.2
+  connectivity_plus: ^5.0.2
+  permission_handler: ^11.2.0
+  share_plus: ^7.2.2
+  url_launcher: ^6.2.4
+  uuid: ^4.3.3
+  
+  # Date & Time
+  intl: ^0.19.0
+  
+  # HTTP & API
+  http: ^1.1.2
+  dio: ^5.4.0
+  
+  # Local Storage & Offline
+  sqflite: ^2.3.0
+  path_provider: ^2.1.2
+  
+  # Charts & Graphs
+  fl_chart: ^0.66.0
+  
+  # Image & Media
+  image_picker: ^1.0.7
+  cached_network_image: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/logos/
+  
+  fonts:
+    - family: AfiCare
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

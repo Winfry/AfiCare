@@ -1,30 +1,36 @@
 @echo off
 echo ========================================
-echo   AfiCare MediLink - Quick Start
+echo   AfiCare Phone App - STARTING NOW!
 echo ========================================
 echo.
-echo Starting AfiCare MediLink...
-echo This will open your browser automatically
+echo Killing existing processes...
+taskkill /F /IM python.exe /FI "WINDOWTITLE eq *streamlit*" >nul 2>&1
+taskkill /F /IM streamlit.exe >nul 2>&1
+timeout /t 2 /nobreak >nul
+
+echo Starting AfiCare Phone App on port 8503...
 echo.
-echo Demo Accounts:
+echo 📱 PHONE APP FEATURES:
+echo   ✅ PWA - Install as native app
+echo   ✅ QR Code generation  
+echo   ✅ Offline mode
+echo   ✅ Touch-optimized interface
+echo.
+echo 📱 TO INSTALL ON PHONE:
+echo   • Android: Tap "📱 Install App" button
+echo   • iPhone: Safari → Share → Add to Home Screen
+echo.
+echo 🔑 Demo Accounts:
 echo   Patient: patient@demo.com / demo123
 echo   Doctor: doctor@demo.com / demo123
 echo   Admin: admin@demo.com / demo123
 echo.
+echo Opening browser...
+start http://localhost:8503
+echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-REM Try to start Streamlit
-streamlit run medilink_simple.py --server.port 8502
-
-REM If that fails, try installing requirements
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo Installing requirements...
-    pip install -r requirements.txt
-    echo.
-    echo Trying again...
-    streamlit run medilink_simple.py --server.port 8502
-)
+streamlit run medilink_simple.py --server.port 8503 --server.enableCORS false --server.enableXsrfProtection false
 
 pause
