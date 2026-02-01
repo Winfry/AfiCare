@@ -32,153 +32,60 @@ def configure_pwa():
         }
     )
     
-    # PWA Meta tags and service worker
-    st.markdown("""
-    <head>
-        <!-- PWA Configuration -->
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <meta name="apple-mobile-web-app-title" content="AfiCare">
-        <meta name="application-name" content="AfiCare MediLink">
-        <meta name="msapplication-TileColor" content="#2E7D32">
-        <meta name="theme-color" content="#2E7D32">
+    # Configure PWA with proper HTML injection using components
+    import streamlit.components.v1 as components
+    
+    components.html("""
+    <script>
+        // PWA Install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Create install button
+            const installBtn = document.createElement('button');
+            installBtn.innerHTML = '📱 Install App';
+            installBtn.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+                background: #2E7D32; color: white; border: none;
+                padding: 12px 16px; border-radius: 25px; font-size: 14px;
+                font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(46,125,50,0.3);
+            `;
+            
+            installBtn.onclick = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                    installBtn.remove();
+                }
+            };
+            
+            document.body.appendChild(installBtn);
+            setTimeout(() => installBtn.remove(), 10000);
+        });
         
-        <!-- Manifest -->
-        <link rel="manifest" href="/static/manifest.json">
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js').catch(console.error);
+        }
+    </script>
+    
+    <style>
+        /* Mobile optimization */
+        @media (max-width: 768px) {
+            .main .block-container { padding: 1rem; max-width: 100%; }
+            .stButton > button { width: 100%; min-height: 44px; margin-bottom: 0.5rem; }
+            .stSelectbox > div > div, .stTextInput > div > div > input { font-size: 16px; }
+        }
         
-        <!-- Icons -->
-        <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="/assets/icon-16x16.png">
-        <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-        
-        <!-- Service Worker -->
-        <script>
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/static/sw.js')
-                        .then(function(registration) {
-                            console.log('SW registered: ', registration);
-                        })
-                        .catch(function(registrationError) {
-                            console.log('SW registration failed: ', registrationError);
-                        });
-                });
-            }
-        </script>
-        
-        <!-- Mobile Optimization -->
-        <style>
-            /* Mobile-first responsive design */
-            @media (max-width: 768px) {
-                .main .block-container {
-                    padding-left: 1rem;
-                    padding-right: 1rem;
-                    max-width: 100%;
-                }
-                
-                .stButton > button {
-                    width: 100%;
-                    margin-bottom: 0.5rem;
-                }
-                
-                .stSelectbox > div > div {
-                    font-size: 16px; /* Prevent zoom on iOS */
-                }
-                
-                .stTextInput > div > div > input {
-                    font-size: 16px; /* Prevent zoom on iOS */
-                }
-            }
-            
-            /* PWA-specific styles */
-            @media (display-mode: standalone) {
-                body {
-                    user-select: none; /* Prevent text selection in app mode */
-                }
-                
-                .main {
-                    padding-top: env(safe-area-inset-top);
-                    padding-bottom: env(safe-area-inset-bottom);
-                }
-            }
-            
-            /* Touch-friendly buttons */
-            .stButton > button {
-                min-height: 44px; /* iOS touch target minimum */
-                border-radius: 8px;
-                font-weight: 500;
-            }
-            
-            /* QR Code responsive styling */
-            .qr-container {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                flex-direction: column;
-            }
-            
-            .qr-container img {
-                max-width: 100%;
-                height: auto;
-            }
-        </style>
-        
-        <!-- Install prompt for PWA -->
-        <script>
-            let deferredPrompt;
-            
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Show install button
-                const installButton = document.createElement('button');
-                installButton.textContent = '📱 Install App';
-                installButton.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    background: #2E7D32;
-                    color: white;
-                    border: none;
-                    padding: 12px 16px;
-                    border-radius: 25px;
-                    font-size: 14px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
-                    z-index: 1000;
-                `;
-                
-                installButton.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        console.log('User choice:', outcome);
-                        deferredPrompt = null;
-                        installButton.remove();
-                    }
-                });
-                
-                document.body.appendChild(installButton);
-                
-                // Auto-hide after 10 seconds
-                setTimeout(() => {
-                    if (installButton.parentNode) {
-                        installButton.remove();
-                    }
-                }, 10000);
-            });
-            
-            // Handle successful installation
-            window.addEventListener('appinstalled', (evt) => {
-                console.log('AfiCare app was installed.');
-            });
-        </script>
-    </head>
-    """, unsafe_allow_html=True)
+        /* PWA mode */
+        @media (display-mode: standalone) {
+            .main { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+        }
+    </style>
+    """, height=0)
 
 # Configure PWA on app start
 configure_pwa()
@@ -1229,14 +1136,6 @@ def show_login_page():
     <p style="text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;">
         Your Health Records, Your Control - <strong style="color: #2E7D32;">Completely FREE</strong>
     </p>
-    """, unsafe_allow_html=True)
-    
-    # Demo alert
-    st.markdown("""
-    <div class="demo-alert">
-        <h4>🎯 DEMO VERSION - Try It Now!</h4>
-        <p>This is a working prototype of the MediLink system. Use the demo accounts below to explore different user roles.</p>
-    </div>
     """, unsafe_allow_html=True)
     
     # Login/Register tabs
