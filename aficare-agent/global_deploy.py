@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 AfiCare - Global Deployment Setup
 Setup free global deployment for PWA and Flutter apps
@@ -9,6 +10,10 @@ import subprocess
 import sys
 import json
 from pathlib import Path
+
+# Fix Windows encoding issues
+if sys.platform.startswith('win'):
+    os.system('chcp 65001 > nul')
 
 def print_header(title):
     print(f"\n{'='*60}")
