@@ -38,7 +38,6 @@ if "splash_done" not in st.session_state:
     st.session_state.splash_done = False    
 
 
-
 # PWA Configuration
 def configure_pwa():
     """Configure Progressive Web App features"""
@@ -114,7 +113,7 @@ if not st.session_state.splash_done:
     show_splash()
     st.session_state.splash_done = True
     st.rerun()
-    
+
 configure_pwa()
 
 # Get the directory of this script for asset paths
@@ -3695,10 +3694,19 @@ def show_general_reproductive_health():
 
 # Main app logic
 def main():
-    if not st.session_state.logged_in:
+   # Show splash first (only once)
+    if not st.session_state.splash_done:
+        show_splash()
+        st.session_state.splash_done = True
+        st.rerun()
+
+    # Then show login
+    elif not st.session_state.logged_in:
         show_login_page()
+
+    # Then dashboard
     else:
-        show_dashboard()
+        show_dashboard() 
 
 if __name__ == "__main__":
     main()
