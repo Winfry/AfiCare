@@ -21,41 +21,114 @@ import json
 # ============================================
 # PWA AND LOGO SUPPORT
 # ============================================
-def show_splash():
-    splash_html = f"""
-    <link rel="stylesheet" href="assets/splash.css">
 
-    <div class="splash-container">
-        <img src="assets/aficare_logo.svg" class="splash-logo"/>
-        <p class="splash-text">Patient-Owned Healthcare</p>
+# Page config MUST be the first Streamlit command
+st.set_page_config(
+    page_title="AfiCare MediLink",
+    page_icon="🏥",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': 'https://github.com/aficare/medilink',
+        'Report a bug': 'https://github.com/aficare/medilink/issues',
+        'About': "AfiCare MediLink - Patient-Owned Healthcare Records for Africa"
+    }
+)
+
+# Initialize splash state
+if "splash_done" not in st.session_state:
+    st.session_state.splash_done = False
+
+def show_splash():
+    """Show animated splash screen with embedded SVG"""
+    # Read the SVG file and embed it directly
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    svg_path = os.path.join(script_dir, "assets", "aficare_logo.svg")
+
+    try:
+        with open(svg_path, 'r', encoding='utf-8') as f:
+            svg_content = f.read()
+    except FileNotFoundError:
+        svg_content = """<svg width="200" height="200" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="80" fill="#2E7D32"/>
+            <text x="100" y="110" text-anchor="middle" fill="white" font-size="24">AfiCare</text>
+        </svg>"""
+
+    splash_html = f"""
+    <style>
+        .splash-overlay {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        }}
+        .splash-logo {{
+            animation: zoomFade 1.5s ease-in-out;
+        }}
+        .splash-logo svg {{
+            width: 200px;
+            height: auto;
+        }}
+        .splash-text {{
+            margin-top: 20px;
+            font-size: 18px;
+            color: #2E7D32;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 500;
+            animation: fadeInUp 1s ease-out 0.5s both;
+        }}
+        .splash-tagline {{
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+            animation: fadeInUp 1s ease-out 0.8s both;
+        }}
+        @keyframes zoomFade {{
+            0% {{ opacity: 0; transform: scale(0.5); }}
+            50% {{ opacity: 1; transform: scale(1.05); }}
+            100% {{ opacity: 1; transform: scale(1); }}
+        }}
+        @keyframes fadeInUp {{
+            from {{ opacity: 0; transform: translateY(20px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        /* Hide Streamlit elements during splash */
+        header, .stSidebar, footer, .main > div:not(:first-child) {{
+            display: none !important;
+        }}
+    </style>
+
+    <div class="splash-overlay">
+        <div class="splash-logo">
+            {svg_content}
+        </div>
+        <p class="splash-text">AfiCare</p>
+        <p class="splash-tagline">Patient-Owned Healthcare for Africa</p>
     </div>
     """
 
     st.markdown(splash_html, unsafe_allow_html=True)
-    time.sleep(3)
-# Splash screen state
-if "splash_done" not in st.session_state:
-    st.session_state.splash_done = False    
+    time.sleep(2.5)
 
+# Show splash on first load
+if not st.session_state.splash_done:
+    show_splash()
+    st.session_state.splash_done = True
+    st.rerun()
 
 # PWA Configuration
 def configure_pwa():
     """Configure Progressive Web App features"""
-    st.set_page_config(
-        page_title="AfiCare MediLink",
-        page_icon="🏥",
-        layout="wide",
-        initial_sidebar_state="collapsed",
-        menu_items={
-            'Get Help': 'https://github.com/aficare/medilink',
-            'Report a bug': 'https://github.com/aficare/medilink/issues',
-            'About': "AfiCare MediLink - Patient-Owned Healthcare Records for Africa"
-        }
-    )
-    
-    # Configure PWA with proper HTML injection using components
     import streamlit.components.v1 as components
-    
+
     components.html("""
     <script>
         // PWA Install prompt
@@ -63,7 +136,7 @@ def configure_pwa():
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            
+
             // Create install button
             const installBtn = document.createElement('button');
             installBtn.innerHTML = '📱 Install App';
@@ -73,7 +146,7 @@ def configure_pwa():
                 padding: 12px 16px; border-radius: 25px; font-size: 14px;
                 font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(46,125,50,0.3);
             `;
-            
+
             installBtn.onclick = async () => {
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
@@ -82,17 +155,17 @@ def configure_pwa():
                     installBtn.remove();
                 }
             };
-            
+
             document.body.appendChild(installBtn);
             setTimeout(() => installBtn.remove(), 10000);
         });
-        
+
         // Register service worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/sw.js').catch(console.error);
         }
     </script>
-    
+
     <style>
         /* Mobile optimization */
         @media (max-width: 768px) {
@@ -100,19 +173,13 @@ def configure_pwa():
             .stButton > button { width: 100%; min-height: 44px; margin-bottom: 0.5rem; }
             .stSelectbox > div > div, .stTextInput > div > div > input { font-size: 16px; }
         }
-        
+
         /* PWA mode */
         @media (display-mode: standalone) {
             .main { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
         }
     </style>
     """, height=0)
-
-# Configure PWA on app start
-if not st.session_state.splash_done:
-    show_splash()
-    st.session_state.splash_done = True
-    st.rerun()
 
 configure_pwa()
 
@@ -787,16 +854,8 @@ def run_hybrid_analysis(patient_data, use_llm=True):
     finally:
         loop.close()
 
-# Page configuration
-st.set_page_config(
-    page_title="AfiCare MediLink",
-    page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # ============================================
-# PWA AND LOGO SUPPORT
+# LOGO DISPLAY SUPPORT
 # ============================================
 
 def get_logo_base64():
@@ -976,8 +1035,6 @@ inject_pwa_support()
 # Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'splash_done' not in st.session_state:
-    st.session_state.splash_done = False
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
 if 'user_data' not in st.session_state:
@@ -3694,17 +3751,11 @@ def show_general_reproductive_health():
 
 # Main app logic
 def main():
-   # Show splash first (only once)
-    if not st.session_state.splash_done:
-        show_splash()
-        st.session_state.splash_done = True
-        st.rerun()
-
-    # Then show login
-    elif not st.session_state.logged_in:
+    # Splash is handled at app startup (top of file)
+    # Show login if not logged in
+    if not st.session_state.logged_in:
         show_login_page()
-
-    # Then dashboard
+    # Otherwise show dashboard
     else:
         show_dashboard() 
 
