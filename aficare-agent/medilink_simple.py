@@ -110,6 +110,11 @@ def configure_pwa():
     """, height=0)
 
 # Configure PWA on app start
+if not st.session_state.splash_done:
+    show_splash()
+    st.session_state.splash_done = True
+    st.rerun()
+    
 configure_pwa()
 
 # Get the directory of this script for asset paths
