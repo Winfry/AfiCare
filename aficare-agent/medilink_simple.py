@@ -33,6 +33,9 @@ def show_splash():
 
     st.markdown(splash_html, unsafe_allow_html=True)
     time.sleep(3)
+# Splash screen state
+if "splash_done" not in st.session_state:
+    st.session_state.splash_done = False    
 
 
 
