@@ -6,6 +6,7 @@ Now with PWA support for mobile installation!
 Enhanced with proper QR code generation and mobile optimization
 """
 
+import time
 import streamlit as st
 from datetime import datetime
 import secrets
@@ -16,6 +17,24 @@ from dataclasses import dataclass
 import sys
 from pathlib import Path
 import json
+
+# ============================================
+# PWA AND LOGO SUPPORT
+# ============================================
+def show_splash():
+    splash_html = f"""
+    <link rel="stylesheet" href="assets/splash.css">
+
+    <div class="splash-container">
+        <img src="assets/aficare_logo.svg" class="splash-logo"/>
+        <p class="splash-text">Patient-Owned Healthcare</p>
+    </div>
+    """
+
+    st.markdown(splash_html, unsafe_allow_html=True)
+    time.sleep(3)
+
+
 
 # PWA Configuration
 def configure_pwa():
@@ -950,6 +969,8 @@ inject_pwa_support()
 # Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+if 'splash_done' not in st.session_state:
+    st.session_state.splash_done = False
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
 if 'user_data' not in st.session_state:

@@ -3,6 +3,7 @@ MediLink Unified App - Single app for patients, doctors, and admins
 Role-based interface with intelligent routing
 """
 
+import time
 import streamlit as st
 from datetime import datetime
 from typing import Optional, Dict, Any

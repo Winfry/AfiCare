@@ -1,0 +1,70 @@
+<svg width="420" height="520" viewBox="0 0 420 520"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="shieldGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0F3D2E"/>
+      <stop offset="100%" stop-color="#1F6F5C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shield -->
+  <g id="shield" class="shield">
+    <path
+      d="M210 40
+         C130 60, 90 80, 90 140
+         V270
+         C90 330, 150 380, 210 420
+         C270 380, 330 330, 330 270
+         V140
+         C330 80, 290 60, 210 40 Z"
+      fill="url(#shieldGradient)"
+    />
+  </g>
+
+  <!-- Heartbeat -->
+  <g id="heartbeat" class="heartbeat"
+     stroke="#FFFFFF" stroke-width="6"
+     fill="none" stroke-linecap="round">
+
+    <path d="M120 230 L155 230 L175 200 L195 260 L215 220 L240 230"/>
+  </g>
+
+  <!-- Neural -->
+  <g id="neural" class="neural"
+     stroke="#FFFFFF" stroke-width="4"
+     fill="#FFFFFF">
+
+    <line x1="215" y1="220" x2="260" y2="190"/>
+    <line x1="215" y1="220" x2="260" y2="230"/>
+    <line x1="215" y1="220" x2="260" y2="270"/>
+
+    <circle cx="260" cy="190" r="6"/>
+    <circle cx="260" cy="230" r="6"/>
+    <circle cx="260" cy="270" r="6"/>
+    <circle cx="215" cy="220" r="6"/>
+  </g>
+
+  <!-- Text -->
+  <g id="text" class="logo-text">
+
+    <text x="210" y="470"
+          text-anchor="middle"
+          font-family="Inter, Arial, sans-serif"
+          font-size="42"
+          font-weight="600"
+          fill="#0F3D2E">
+      AfiCare
+    </text>
+
+    <text x="210" y="505"
+          text-anchor="middle"
+          font-family="Inter, Arial, sans-serif"
+          font-size="16"
+          fill="#E67E22">
+      — Patient-owned healthcare
+    </text>
+
+  </g>
+
+</svg>
