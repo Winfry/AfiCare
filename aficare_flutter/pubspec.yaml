@@ -71,10 +71,11 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/logos/
-  
-  fonts:
-    - family: AfiCare
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
+
+  # Using google_fonts package instead of custom fonts
+  # fonts:
+  #   - family: AfiCare
+  #     fonts:
+  #       - asset: assets/fonts/Roboto-Regular.ttf
+  #       - asset: assets/fonts/Roboto-Bold.ttf
+  #         weight: 700
