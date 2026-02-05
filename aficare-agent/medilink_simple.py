@@ -40,89 +40,133 @@ if "splash_done" not in st.session_state:
     st.session_state.splash_done = False
 
 def show_splash():
-    """Show animated splash screen with embedded SVG"""
-    # Read the SVG file and embed it directly
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    svg_path = os.path.join(script_dir, "assets", "aficare_logo.svg")
+    """Show animated splash screen using components.html for proper rendering"""
+    import streamlit.components.v1 as components
 
-    try:
-        with open(svg_path, 'r', encoding='utf-8') as f:
-            svg_content = f.read()
-    except FileNotFoundError:
-        svg_content = """<svg width="200" height="200" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="80" fill="#2E7D32"/>
-            <text x="100" y="110" text-anchor="middle" fill="white" font-size="24">AfiCare</text>
-        </svg>"""
+    # Use a simple, clean splash screen that renders reliably
+    splash_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+            .logo-container {
+                animation: zoomIn 1s ease-out;
+            }
+            .shield {
+                width: 180px;
+                height: 220px;
+            }
+            .logo-text {
+                margin-top: 20px;
+                font-size: 36px;
+                font-weight: 700;
+                color: #1B5E20;
+                letter-spacing: 2px;
+                animation: fadeIn 1s ease-out 0.5s both;
+            }
+            .tagline {
+                margin-top: 10px;
+                font-size: 14px;
+                color: #666;
+                letter-spacing: 3px;
+                text-transform: uppercase;
+                animation: fadeIn 1s ease-out 0.8s both;
+            }
+            .loading {
+                margin-top: 40px;
+                animation: fadeIn 1s ease-out 1s both;
+            }
+            .loading-bar {
+                width: 200px;
+                height: 4px;
+                background: rgba(46, 125, 50, 0.2);
+                border-radius: 2px;
+                overflow: hidden;
+            }
+            .loading-progress {
+                width: 0%;
+                height: 100%;
+                background: linear-gradient(90deg, #2E7D32, #4CAF50);
+                border-radius: 2px;
+                animation: loading 2s ease-in-out forwards;
+            }
+            @keyframes zoomIn {
+                0% { opacity: 0; transform: scale(0.5); }
+                100% { opacity: 1; transform: scale(1); }
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes loading {
+                0% { width: 0%; }
+                100% { width: 100%; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="logo-container">
+            <svg class="shield" viewBox="0 0 180 220" xmlns="http://www.w3.org/2000/svg">
+                <!-- Shield background -->
+                <defs>
+                    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#1B5E20"/>
+                        <stop offset="100%" style="stop-color:#2E7D32"/>
+                    </linearGradient>
+                </defs>
+                <path d="M90 10 C50 25, 20 40, 20 80 V140 C20 180, 60 210, 90 220 C120 210, 160 180, 160 140 V80 C160 40, 130 25, 90 10 Z"
+                      fill="url(#shieldGrad)"/>
 
-    splash_html = f"""
-    <style>
-        .splash-overlay {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 99999;
-        }}
-        .splash-logo {{
-            animation: zoomFade 1.5s ease-in-out;
-        }}
-        .splash-logo svg {{
-            width: 200px;
-            height: auto;
-        }}
-        .splash-text {{
-            margin-top: 20px;
-            font-size: 18px;
-            color: #2E7D32;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            font-weight: 500;
-            animation: fadeInUp 1s ease-out 0.5s both;
-        }}
-        .splash-tagline {{
-            margin-top: 8px;
-            font-size: 14px;
-            color: #666;
-            animation: fadeInUp 1s ease-out 0.8s both;
-        }}
-        @keyframes zoomFade {{
-            0% {{ opacity: 0; transform: scale(0.5); }}
-            50% {{ opacity: 1; transform: scale(1.05); }}
-            100% {{ opacity: 1; transform: scale(1); }}
-        }}
-        @keyframes fadeInUp {{
-            from {{ opacity: 0; transform: translateY(20px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        /* Hide Streamlit elements during splash */
-        header, .stSidebar, footer, .main > div:not(:first-child) {{
-            display: none !important;
-        }}
-    </style>
+                <!-- Heartbeat line -->
+                <path d="M40 120 L60 120 L75 90 L90 150 L105 110 L120 120 L140 120"
+                      stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
-    <div class="splash-overlay">
-        <div class="splash-logo">
-            {svg_content}
+                <!-- AI dots -->
+                <circle cx="105" cy="110" r="4" fill="white"/>
+                <circle cx="130" cy="95" r="3" fill="rgba(255,255,255,0.8)"/>
+                <circle cx="130" cy="110" r="3" fill="rgba(255,255,255,0.8)"/>
+                <circle cx="130" cy="125" r="3" fill="rgba(255,255,255,0.8)"/>
+                <line x1="108" y1="108" x2="127" y2="95" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+                <line x1="108" y1="110" x2="127" y2="110" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+                <line x1="108" y1="112" x2="127" y2="125" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+
+                <!-- Plus sign -->
+                <rect x="55" y="55" width="20" height="6" rx="2" fill="rgba(255,255,255,0.9)"/>
+                <rect x="62" y="48" width="6" height="20" rx="2" fill="rgba(255,255,255,0.9)"/>
+            </svg>
         </div>
-        <p class="splash-text">AfiCare</p>
-        <p class="splash-tagline">Patient-Owned Healthcare for Africa</p>
-    </div>
+        <div class="logo-text">AfiCare</div>
+        <div class="tagline">Patient-Owned Healthcare</div>
+        <div class="loading">
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </body>
+    </html>
     """
 
-    st.markdown(splash_html, unsafe_allow_html=True)
-    time.sleep(2.5)
+    # Use components.html for reliable HTML rendering
+    components.html(splash_html, height=600, scrolling=False)
+    time.sleep(1.5)  # Reduced from 2.5s for faster transition
 
-# Show splash on first load
+# Show splash on first load - use st.empty() for smoother transition
 if not st.session_state.splash_done:
-    show_splash()
+    splash_placeholder = st.empty()
+    with splash_placeholder.container():
+        show_splash()
     st.session_state.splash_done = True
-    st.rerun()
+    splash_placeholder.empty()  # Clear splash instead of rerun
 
 # PWA Configuration
 def configure_pwa():
