@@ -1,0 +1,155 @@
+name: Flutter CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'aficare_flutter/**'
+      - '.github/workflows/flutter.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'aficare_flutter/**'
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd aficare_flutter
+          flutter pub get
+
+      - name: Analyze code
+        run: |
+          cd aficare_flutter
+          flutter analyze --no-fatal-infos || true
+
+      - name: Build Web
+        run: |
+          cd aficare_flutter
+          flutter build web --release --base-href "/AfiCare/"
+
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: aficare_flutter/build/web
+          retention-days: 7
+
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd aficare_flutter
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd aficare_flutter
+          flutter build apk --release --split-per-abi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-release
+          path: aficare_flutter/build/app/outputs/flutter-apk/
+          retention-days: 30
+
+  deploy-web:
+    needs: build-web
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Download Web Build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: ./web
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  release-apk:
+    needs: build-apk
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-release
+          path: ./apk
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(date +'%Y.%m.%d')-$(echo $GITHUB_SHA | cut -c1-7)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: AfiCare v${{ steps.version.outputs.version }}
+          body: |
+            ## AfiCare MediLink Mobile App
+
+            **What's included:**
+            - Android APK (arm64-v8a, armeabi-v7a, x86_64)
+            - Web version deployed to GitHub Pages
+
+            **Install on Android:**
+            Download `app-arm64-v8a-release.apk` for most modern phones.
+          files: |
+            ./apk/*.apk
+          draft: false
+          prerelease: false

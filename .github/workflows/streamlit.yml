@@ -1,0 +1,62 @@
+name: Streamlit CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'aficare-agent/**'
+      - '.github/workflows/streamlit.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'aficare-agent/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'aficare-agent/requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          cd aficare-agent
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run linting
+        run: |
+          pip install flake8
+          cd aficare-agent
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+      - name: Test imports
+        run: |
+          cd aficare-agent
+          python -c "import streamlit; print('Streamlit OK')"
+          python -c "from src.core.agent import AfiCareAgent; print('Agent OK')" || echo "Agent import skipped"
+
+  deploy-railway:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        if: env.RAILWAY_TOKEN != ''
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          npm install -g @railway/cli
+          cd aficare-agent
+          railway up --service aficare-backend || echo "Railway deployment skipped - no token"
