@@ -11,8 +11,9 @@ class MedicalAIService {
   // static const String backendUrl = 'https://aficare-backend.up.railway.app';
   static const String backendUrl = 'https://aficare-backend.up.railway.app'; // Production URL
 
-  // Set to true to always use local AI (works offline, no internet needed)
-  static const bool preferLocalAI = true;
+  // Set to false to use cloud backend first (recommended for production)
+  // Falls back to local AI only when backend is unavailable
+  static const bool preferLocalAI = false;
   
   /// Conduct consultation using backend AI or local rules
   /// Works completely offline with local AI - no internet required
