@@ -4,11 +4,18 @@ import '../models/consultation_model.dart';
 
 /// Medical AI Service that integrates with AfiCare backend
 /// Supports both local rule-based AI and backend integration
+/// The local AI works completely offline - no internet required
 class MedicalAIService {
-  // Backend URL - update this to match your deployed backend
-  static const String backendUrl = 'http://localhost:8502'; // Change to your deployed URL
+  // Backend URL - uses Railway deployment or falls back to local AI
+  // Set to your Railway/Render/Heroku URL when deployed, e.g.:
+  // static const String backendUrl = 'https://aficare-backend.up.railway.app';
+  static const String backendUrl = 'https://aficare-backend.up.railway.app'; // Production URL
+
+  // Set to true to always use local AI (works offline, no internet needed)
+  static const bool preferLocalAI = true;
   
   /// Conduct consultation using backend AI or local rules
+  /// Works completely offline with local AI - no internet required
   Future<ConsultationResult> conductConsultation({
     required String patientId,
     required List<String> symptoms,
@@ -17,8 +24,20 @@ class MedicalAIService {
     required String gender,
     required String chiefComplaint,
   }) async {
+    // Use local AI if preferred (works offline, faster response)
+    if (preferLocalAI) {
+      return await _consultWithLocalAI(
+        patientId: patientId,
+        symptoms: symptoms,
+        vitalSigns: vitalSigns,
+        age: age,
+        gender: gender,
+        chiefComplaint: chiefComplaint,
+      );
+    }
+
     try {
-      // Try backend first
+      // Try backend if local AI not preferred
       final result = await _consultWithBackend(
         patientId: patientId,
         symptoms: symptoms,
