@@ -4,8 +4,10 @@ import '../models/consultation_model.dart';
 
 /// Hybrid AI Service that connects to AfiCare backend
 /// Supports both Streamlit backend and local fallback
+/// Note: Primary service is MedicalAIService which has full offline support
 class HybridAIService {
-  static const String streamlitUrl = 'http://localhost:8502'; // Update for deployment
+  // Production URL - update to your deployed Railway/Render URL
+  static const String streamlitUrl = 'https://aficare-backend.up.railway.app';
   
   /// Conduct consultation with hybrid AI backend
   Future<ConsultationResult> conductConsultation({
