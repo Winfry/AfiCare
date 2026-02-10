@@ -93,6 +93,10 @@ jobs:
       pages: write
       id-token: write
 
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Download Web Build
         uses: actions/download-artifact@v4
@@ -129,6 +133,11 @@ jobs:
           name: apk-release
           path: ./apk
 
+      - name: List APK files
+        run: |
+          echo "Available APK files:"
+          ls -la ./apk/
+
       - name: Get version
         id: version
         run: |
@@ -136,20 +145,30 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: AfiCare v${{ steps.version.outputs.version }}
           body: |
             ## AfiCare MediLink Mobile App
 
-            **What's included:**
-            - Android APK (arm64-v8a, armeabi-v7a, x86_64)
-            - Web version deployed to GitHub Pages
+            **Download the APK for your phone:**
+            - `app-arm64-v8a-release.apk` - For most modern Android phones (recommended)
+            - `app-armeabi-v7a-release.apk` - For older Android phones
+            - `app-x86_64-release.apk` - For emulators
 
-            **Install on Android:**
-            Download `app-arm64-v8a-release.apk` for most modern phones.
+            **Web App:** https://winfry.github.io/AfiCare/
+
+            **How to install:**
+            1. Download the APK file to your phone
+            2. Open the file and tap "Install"
+            3. If prompted, allow installation from unknown sources
           files: |
-            ./apk/*.apk
+            ./apk/app-arm64-v8a-release.apk
+            ./apk/app-armeabi-v7a-release.apk
+            ./apk/app-x86_64-release.apk
           draft: false
           prerelease: false
+          generate_release_notes: true
