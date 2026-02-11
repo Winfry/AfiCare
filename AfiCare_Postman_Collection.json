@@ -86,9 +86,19 @@
             "method": "POST",
             "header": [
               {"key": "apikey", "value": "{{ANON_KEY}}"},
-              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"}
             ],
-            "url": "{{BASE_URL}}/auth/v1/logout"
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{BASE_URL}}/auth/v1/logout?scope=global"
           }
         }
       ]
