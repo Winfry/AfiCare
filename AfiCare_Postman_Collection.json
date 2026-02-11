@@ -23,7 +23,11 @@
     },
     {
       "key": "CONSULTATION_ID",
-      "value": "replace-with-real-consultation-id"
+      "value": "auto-populated-after-create"
+    },
+    {
+      "key": "ACCESS_CODE",
+      "value": "auto-populated-after-create"
     }
   ],
   "auth": {
@@ -49,6 +53,27 @@
       "item": [
         {
           "name": "Sign Up - New User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.access_token) {",
+                  "        pm.collectionVariables.set('ACCESS_TOKEN', jsonData.access_token);",
+                  "        console.log('ACCESS_TOKEN set after signup');",
+                  "    }",
+                  "    if (jsonData.user && jsonData.user.id) {",
+                  "        pm.collectionVariables.set('USER_ID', jsonData.user.id);",
+                  "        console.log('USER_ID set to: ' + jsonData.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -57,13 +82,34 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"data\": {\n    \"full_name\": \"Test User\",\n    \"role\": \"patient\"\n  }\n}"
+              "raw": "{\n  \"email\": \"newuser{{$timestamp}}@example.com\",\n  \"password\": \"password123\",\n  \"data\": {\n    \"full_name\": \"Test User {{$timestamp}}\",\n    \"role\": \"patient\"\n  }\n}"
             },
             "url": "{{BASE_URL}}/auth/v1/signup"
           }
         },
         {
           "name": "Sign In - Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.access_token) {",
+                  "        pm.collectionVariables.set('ACCESS_TOKEN', jsonData.access_token);",
+                  "        console.log('ACCESS_TOKEN updated');",
+                  "    }",
+                  "    if (jsonData.user && jsonData.user.id) {",
+                  "        pm.collectionVariables.set('USER_ID', jsonData.user.id);",
+                  "        console.log('USER_ID set to: ' + jsonData.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -72,7 +118,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"email\": \"testtt@example.com\",\n  \"password\": \"password123\"\n}"
             },
             "url": "{{BASE_URL}}/auth/v1/token?grant_type=password"
           }
@@ -159,7 +205,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"full_name\": \"New User\",\n  \"role\": \"patient\",\n  \"phone\": \"+254700000000\",\n  \"medilink_id\": \"ML-NBO-123456\"\n}"
+              "raw": "{\n  \"email\": \"newuser{{$timestamp}}@example.com\",\n  \"full_name\": \"New User {{$timestamp}}\",\n  \"role\": \"patient\",\n  \"phone\": \"+254700000000\",\n  \"medilink_id\": \"ML-NBO-{{$timestamp}}\"\n}"
             },
             "url": "{{BASE_URL}}/rest/v1/users"
           }
@@ -220,18 +266,18 @@
           }
         },
         {
-          "name": "Create Patient Profile",
+          "name": "Create Patient Profile (Upsert)",
           "request": {
             "method": "POST",
             "header": [
               {"key": "apikey", "value": "{{ANON_KEY}}"},
               {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
               {"key": "Content-Type", "value": "application/json"},
-              {"key": "Prefer", "value": "return=representation"}
+              {"key": "Prefer", "value": "return=representation,resolution=merge-duplicates"}
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{USER_ID}}\",\n  \"date_of_birth\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"blood_type\": \"O+\",\n  \"allergies\": [\"Penicillin\", \"Peanuts\"],\n  \"chronic_conditions\": [\"Diabetes\", \"Hypertension\"],\n  \"emergency_contact_name\": \"Jane Doe\",\n  \"emergency_contact_phone\": \"+254700000001\",\n  \"address\": \"Nairobi, Kenya\",\n  \"insurance_id\": \"INS-12345\"\n}"
+              "raw": "{\n  \"id\": \"{{USER_ID}}\",\n  \"date_of_birth\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"blood_type\": \"O+\",\n  \"allergies\": [\"Penicillin\", \"Peanuts\"],\n  \"chronic_conditions\": [\"Diabetes\", \"Hypertension\"],\n  \"emergency_contact_name\": \"Jane Doe\",\n  \"emergency_contact_phone\": \"+254700000001\",\n  \"address\": \"Nairobi, Kenya\",\n  \"insurance_id\": \"INS-{{$timestamp}}\"\n}"
             },
             "url": "{{BASE_URL}}/rest/v1/patients"
           }
@@ -293,6 +339,23 @@
         },
         {
           "name": "Create Consultation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData && jsonData.length > 0) {",
+                  "        pm.collectionVariables.set('CONSULTATION_ID', jsonData[0].id);",
+                  "        console.log('CONSULTATION_ID set to: ' + jsonData[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -303,7 +366,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"f05b9c88-94da-47ce-9e04-4b2f503ae303\",\n  \"provider_id\": \"f05b9c88-94da-47ce-9e04-4b2f503ae303\",\n  \"chief_complaint\": \"Fever and headache for 3 days\",\n  \"symptoms\": [\"fever\", \"headache\", \"fatigue\", \"muscle_aches\"],\n  \"vital_signs\": {\n    \"temperature\": 38.5,\n    \"systolic_bp\": 120,\n    \"diastolic_bp\": 80,\n    \"pulse_rate\": 88,\n    \"respiratory_rate\": 18,\n    \"oxygen_saturation\": 97\n  },\n  \"triage_level\": \"urgent\",\n  \"diagnoses\": [\n    {\n      \"condition\": \"Malaria\",\n      \"confidence\": 0.85,\n      \"matching_symptoms\": [\"fever\", \"headache\", \"fatigue\"],\n      \"treatment\": [\"Artemether-Lumefantrine\", \"Paracetamol\"]\n    }\n  ],\n  \"recommendations\": [\"Blood test for malaria\", \"Rest and hydration\", \"Follow-up in 3 days\"],\n  \"notes\": \"Patient appears fatigued. Recommend immediate treatment.\",\n  \"follow_up_required\": true,\n  \"follow_up_date\": \"2024-02-15\"\n}"
+              "raw": "{\n  \"patient_id\": \"{{USER_ID}}\",\n  \"provider_id\": \"{{USER_ID}}\",\n  \"chief_complaint\": \"Fever and headache for 3 days\",\n  \"symptoms\": [\"fever\", \"headache\", \"fatigue\", \"muscle_aches\"],\n  \"vital_signs\": {\n    \"temperature\": 38.5,\n    \"systolic_bp\": 120,\n    \"diastolic_bp\": 80,\n    \"pulse_rate\": 88,\n    \"respiratory_rate\": 18,\n    \"oxygen_saturation\": 97\n  },\n  \"triage_level\": \"urgent\",\n  \"diagnoses\": [\n    {\n      \"condition\": \"Malaria\",\n      \"confidence\": 0.85,\n      \"matching_symptoms\": [\"fever\", \"headache\", \"fatigue\"],\n      \"treatment\": [\"Artemether-Lumefantrine\", \"Paracetamol\"]\n    }\n  ],\n  \"recommendations\": [\"Blood test for malaria\", \"Rest and hydration\", \"Follow-up in 3 days\"],\n  \"notes\": \"Patient appears fatigued. Recommend immediate treatment.\",\n  \"follow_up_required\": true,\n  \"follow_up_date\": \"2024-02-15\"\n}"
             },
             "url": "{{BASE_URL}}/rest/v1/consultations"
           }
@@ -349,11 +412,28 @@
               {"key": "apikey", "value": "{{ANON_KEY}}"},
               {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
             ],
-            "url": "{{BASE_URL}}/rest/v1/access_codes?code=eq.ABC12345&is_used=eq.false&expires_at=gt.now()&select=*,patients(*)"
+            "url": "{{BASE_URL}}/rest/v1/access_codes?code=eq.{{ACCESS_CODE}}&is_used=eq.false&select=*"
           }
         },
         {
           "name": "Create Access Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData && jsonData.length > 0) {",
+                  "        pm.collectionVariables.set('ACCESS_CODE', jsonData[0].code);",
+                  "        console.log('ACCESS_CODE set to: ' + jsonData[0].code);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -364,7 +444,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"f05b9c88-94da-47ce-9e04-4b2f503ae303\",\n  \"code\": \"ABC12345\",\n  \"expires_at\": \"2024-02-15T23:59:59Z\",\n  \"permissions\": [\"view_records\", \"view_vitals\"]\n}"
+              "raw": "{\n  \"patient_id\": \"{{USER_ID}}\",\n  \"code\": \"CODE{{$timestamp}}\",\n  \"expires_at\": \"2027-12-31T23:59:59Z\",\n  \"permissions\": [\"view_records\", \"view_vitals\"]\n}"
             },
             "url": "{{BASE_URL}}/rest/v1/access_codes"
           }
@@ -381,9 +461,9 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"is_used\": true,\n  \"used_by\": \"f05b9c88-94da-47ce-9e04-4b2f503ae303\",\n  \"used_at\": \"2024-02-11T10:30:00Z\"\n}"
+              "raw": "{\n  \"is_used\": true,\n  \"used_by\": \"{{USER_ID}}\",\n  \"used_at\": \"2026-02-11T10:30:00Z\"\n}"
             },
-            "url": "{{BASE_URL}}/rest/v1/access_codes?code=eq.ABC12345"
+            "url": "{{BASE_URL}}/rest/v1/access_codes?code=eq.{{ACCESS_CODE}}"
           }
         }
       ]
@@ -425,7 +505,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"action\": \"patient_record_viewed\",\n  \"user_id\": \"f05b9c88-94da-47ce-9e04-4b2f503ae303\",\n  \"patient_id\": \"f05b9c88-94da-47ce-9e04-4b2f503ae303\",\n  \"details\": {\n    \"access_code_used\": \"ABC12345\",\n    \"records_viewed\": [\"vitals\", \"consultations\"]\n  },\n  \"ip_address\": \"192.168.1.1\",\n  \"user_agent\": \"Mozilla/5.0\"\n}"
+              "raw": "{\n  \"action\": \"patient_record_viewed\",\n  \"user_id\": \"{{USER_ID}}\",\n  \"patient_id\": \"{{USER_ID}}\",\n  \"details\": {\n    \"access_code_used\": \"{{ACCESS_CODE}}\",\n    \"records_viewed\": [\"vitals\", \"consultations\"]\n  },\n  \"ip_address\": \"192.168.1.1\",\n  \"user_agent\": \"Mozilla/5.0\"\n}"
             },
             "url": "{{BASE_URL}}/rest/v1/audit_log"
           }
