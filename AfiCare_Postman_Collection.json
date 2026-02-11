@@ -1,0 +1,433 @@
+{
+  "info": {
+    "name": "AfiCare MediLink API",
+    "description": "API endpoints for AfiCare healthcare application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "https://uxphfdezypgshgfklcky.supabase.co"
+    },
+    {
+      "key": "ANON_KEY",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cGhmZGV6eXBnc2hnZmtsY2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTAxMzcsImV4cCI6MjA4NTg2NjEzN30.tv4-MxEIWK9cBKxuvYPKbSSlE32zFpDVOnXnn_TN7Co"
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": "YOUR_USER_ACCESS_TOKEN_AFTER_LOGIN"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "apikey"
+      },
+      {
+        "key": "value",
+        "value": "{{ANON_KEY}}"
+      },
+      {
+        "key": "in",
+        "value": "header"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Sign Up - New User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"data\": {\n    \"full_name\": \"Test User\",\n    \"role\": \"patient\"\n  }\n}"
+            },
+            "url": "{{BASE_URL}}/auth/v1/signup"
+          }
+        },
+        {
+          "name": "Sign In - Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{BASE_URL}}/auth/v1/token?grant_type=password"
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/auth/v1/user"
+          }
+        },
+        {
+          "name": "Sign Out - Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/auth/v1/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/users?select=*"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/users?id=eq.USER_ID_HERE&select=*"
+          }
+        },
+        {
+          "name": "Get Users by Role",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/users?role=eq.patient&select=*"
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"full_name\": \"New User\",\n  \"role\": \"patient\",\n  \"phone\": \"+254700000000\",\n  \"medilink_id\": \"ML-NBO-123456\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/users"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Updated Name\",\n  \"phone\": \"+254711111111\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/users?id=eq.USER_ID_HERE"
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/users?id=eq.USER_ID_HERE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Get All Patients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/patients?select=*,users(*)"
+          }
+        },
+        {
+          "name": "Get Patient by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/patients?id=eq.PATIENT_ID_HERE&select=*,users(*)"
+          }
+        },
+        {
+          "name": "Create Patient Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"USER_ID_HERE\",\n  \"date_of_birth\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"blood_type\": \"O+\",\n  \"allergies\": [\"Penicillin\", \"Peanuts\"],\n  \"chronic_conditions\": [\"Diabetes\", \"Hypertension\"],\n  \"emergency_contact_name\": \"Jane Doe\",\n  \"emergency_contact_phone\": \"+254700000001\",\n  \"address\": \"Nairobi, Kenya\",\n  \"insurance_id\": \"INS-12345\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/patients"
+          }
+        },
+        {
+          "name": "Update Patient Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blood_type\": \"A+\",\n  \"allergies\": [\"Penicillin\"]\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/patients?id=eq.PATIENT_ID_HERE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consultations",
+      "item": [
+        {
+          "name": "Get All Consultations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/consultations?select=*&order=timestamp.desc"
+          }
+        },
+        {
+          "name": "Get Consultations by Patient",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/consultations?patient_id=eq.PATIENT_ID_HERE&select=*&order=timestamp.desc"
+          }
+        },
+        {
+          "name": "Get Consultations by Provider",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/consultations?provider_id=eq.PROVIDER_ID_HERE&select=*&order=timestamp.desc"
+          }
+        },
+        {
+          "name": "Create Consultation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"PATIENT_UUID\",\n  \"provider_id\": \"PROVIDER_UUID\",\n  \"chief_complaint\": \"Fever and headache for 3 days\",\n  \"symptoms\": [\"fever\", \"headache\", \"fatigue\", \"muscle_aches\"],\n  \"vital_signs\": {\n    \"temperature\": 38.5,\n    \"systolic_bp\": 120,\n    \"diastolic_bp\": 80,\n    \"pulse_rate\": 88,\n    \"respiratory_rate\": 18,\n    \"oxygen_saturation\": 97\n  },\n  \"triage_level\": \"urgent\",\n  \"diagnoses\": [\n    {\n      \"condition\": \"Malaria\",\n      \"confidence\": 0.85,\n      \"matching_symptoms\": [\"fever\", \"headache\", \"fatigue\"],\n      \"treatment\": [\"Artemether-Lumefantrine\", \"Paracetamol\"]\n    }\n  ],\n  \"recommendations\": [\"Blood test for malaria\", \"Rest and hydration\", \"Follow-up in 3 days\"],\n  \"notes\": \"Patient appears fatigued. Recommend immediate treatment.\",\n  \"follow_up_required\": true,\n  \"follow_up_date\": \"2024-02-15\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/consultations"
+          }
+        },
+        {
+          "name": "Update Consultation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Updated notes after follow-up\",\n  \"follow_up_required\": false\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/consultations?id=eq.CONSULTATION_ID_HERE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Access Codes",
+      "item": [
+        {
+          "name": "Get All Access Codes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/access_codes?select=*"
+          }
+        },
+        {
+          "name": "Verify Access Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/access_codes?code=eq.ABC12345&is_used=eq.false&expires_at=gt.now()&select=*,patients(*)"
+          }
+        },
+        {
+          "name": "Create Access Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"PATIENT_UUID\",\n  \"code\": \"ABC12345\",\n  \"expires_at\": \"2024-02-15T23:59:59Z\",\n  \"permissions\": [\"view_records\", \"view_vitals\"]\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/access_codes"
+          }
+        },
+        {
+          "name": "Use Access Code",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_used\": true,\n  \"used_by\": \"PROVIDER_UUID\",\n  \"used_at\": \"2024-02-11T10:30:00Z\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/access_codes?code=eq.ABC12345"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Log",
+      "item": [
+        {
+          "name": "Get All Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/audit_log?select=*&order=timestamp.desc&limit=100"
+          }
+        },
+        {
+          "name": "Get Audit Logs by User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/audit_log?user_id=eq.USER_ID_HERE&select=*&order=timestamp.desc"
+          }
+        },
+        {
+          "name": "Create Audit Log Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"patient_record_viewed\",\n  \"user_id\": \"PROVIDER_UUID\",\n  \"patient_id\": \"PATIENT_UUID\",\n  \"details\": {\n    \"access_code_used\": \"ABC12345\",\n    \"records_viewed\": [\"vitals\", \"consultations\"]\n  },\n  \"ip_address\": \"192.168.1.1\",\n  \"user_agent\": \"Mozilla/5.0\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/audit_log"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Check API Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"}
+            ],
+            "url": "{{BASE_URL}}/rest/v1/"
+          }
+        }
+      ]
+    }
+  ]
+}
