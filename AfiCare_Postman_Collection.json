@@ -28,6 +28,14 @@
     {
       "key": "ACCESS_CODE",
       "value": "auto-populated-after-create"
+    },
+    {
+      "key": "USER_EMAIL",
+      "value": "newuser1770884971@example.com"
+    },
+    {
+      "key": "USER_PASSWORD",
+      "value": "password123"
     }
   ],
   "auth": {
@@ -68,6 +76,10 @@
                   "        pm.collectionVariables.set('USER_ID', jsonData.user.id);",
                   "        console.log('USER_ID set to: ' + jsonData.user.id);",
                   "    }",
+                  "    if (jsonData.user && jsonData.user.email) {",
+                  "        pm.collectionVariables.set('USER_EMAIL', jsonData.user.email);",
+                  "        console.log('USER_EMAIL set to: ' + jsonData.user.email);",
+                  "    }",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -82,7 +94,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"newuser{{$timestamp}}@example.com\",\n  \"password\": \"password123\",\n  \"data\": {\n    \"full_name\": \"Test User {{$timestamp}}\",\n    \"role\": \"patient\"\n  }\n}"
+              "raw": "{\n  \"email\": \"newuser{{$timestamp}}@example.com\",\n  \"password\": \"{{USER_PASSWORD}}\",\n  \"data\": {\n    \"full_name\": \"Test User {{$timestamp}}\",\n    \"role\": \"patient\"\n  }\n}"
             },
             "url": "{{BASE_URL}}/auth/v1/signup"
           }
@@ -118,7 +130,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"testtt@example.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"email\": \"{{USER_EMAIL}}\",\n  \"password\": \"{{USER_PASSWORD}}\"\n}"
             },
             "url": "{{BASE_URL}}/auth/v1/token?grant_type=password"
           }
