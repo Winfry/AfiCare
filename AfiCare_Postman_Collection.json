@@ -116,6 +116,10 @@
                   "        pm.collectionVariables.set('USER_ID', jsonData.user.id);",
                   "        console.log('USER_ID set to: ' + jsonData.user.id);",
                   "    }",
+                  "    if (jsonData.user && jsonData.user.email) {",
+                  "        pm.collectionVariables.set('USER_EMAIL', jsonData.user.email);",
+                  "        console.log('USER_EMAIL set to: ' + jsonData.user.email);",
+                  "    }",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -172,6 +176,36 @@
     {
       "name": "Users",
       "item": [
+        {
+          "name": "Create My User Profile (Run First)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    console.log('User profile created successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "apikey", "value": "{{ANON_KEY}}"},
+              {"key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Prefer", "value": "return=representation,resolution=merge-duplicates"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{USER_ID}}\",\n  \"email\": \"{{USER_EMAIL}}\",\n  \"full_name\": \"Test User\",\n  \"role\": \"patient\",\n  \"phone\": \"+254700000000\",\n  \"medilink_id\": \"ML-{{USER_ID}}\"\n}"
+            },
+            "url": "{{BASE_URL}}/rest/v1/users"
+          }
+        },
         {
           "name": "Get All Users",
           "request": {
