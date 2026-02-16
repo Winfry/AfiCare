@@ -5,6 +5,87 @@
   "prevalence": "universal_need",
   "description": "Comprehensive healthcare for pregnant women to ensure healthy pregnancy and delivery",
   
+  "symptoms": {
+    "primary": [
+      {
+        "name": "missed_period",
+        "weight": 0.9,
+        "description": "Absence of menstrual period",
+        "translations": {
+          "sw": "kukosa hedhi",
+          "lg": "okubula ennaku z'omwezi"
+        }
+      },
+      {
+        "name": "morning_sickness",
+        "weight": 0.7,
+        "description": "Nausea and vomiting, especially in first trimester",
+        "translations": {
+          "sw": "kichefuchefu",
+          "lg": "okusesemuka"
+        }
+      },
+      {
+        "name": "fatigue",
+        "weight": 0.6,
+        "description": "Persistent tiredness especially in first and third trimesters"
+      },
+      {
+        "name": "breast_tenderness",
+        "weight": 0.5,
+        "description": "Breast swelling and sensitivity"
+      }
+    ],
+    "secondary": [
+      {
+        "name": "frequent_urination",
+        "weight": 0.4,
+        "description": "Increased frequency of urination"
+      },
+      {
+        "name": "back_pain",
+        "weight": 0.4,
+        "description": "Lower back pain due to postural changes"
+      },
+      {
+        "name": "swelling",
+        "weight": 0.3,
+        "description": "Mild swelling of feet and ankles"
+      },
+      {
+        "name": "heartburn",
+        "weight": 0.3,
+        "description": "Acid reflux, more common in later pregnancy"
+      }
+    ]
+  },
+  "risk_factors": [
+    {
+      "factor": "age_under_18_or_over_35",
+      "weight": 0.6,
+      "description": "Maternal age below 18 or above 35 years"
+    },
+    {
+      "factor": "previous_complications",
+      "weight": 0.7,
+      "description": "History of pregnancy complications"
+    },
+    {
+      "factor": "chronic_conditions",
+      "weight": 0.6,
+      "description": "Pre-existing conditions like diabetes, hypertension, HIV"
+    },
+    {
+      "factor": "multiple_pregnancy",
+      "weight": 0.5,
+      "description": "Carrying twins or multiples"
+    },
+    {
+      "factor": "malnutrition",
+      "weight": 0.5,
+      "description": "Poor nutritional status"
+    }
+  ],
   "pregnancy_stages": {
     "first_trimester": {
       "weeks": "1-12",
@@ -354,6 +435,15 @@
       "More frequent visits as indicated",
       "Specialist consultations",
       "Additional monitoring"
+    ]
+  },
+  "treatment": {
+    "supportive_care": [
+      "Regular antenatal visits as per schedule",
+      "Iron and folic acid supplementation daily",
+      "Tetanus toxoid vaccination",
+      "Blood pressure and weight monitoring each visit",
+      "Birth preparedness and complication readiness plan"
     ]
   }
 }
