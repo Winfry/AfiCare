@@ -1,4 +1,102 @@
 {
+  "condition": "maternal_health",
+  "name": "Maternal Health",
+  "category": "maternal_health",
+  "icd10": "O80-O84",
+  "prevalence": {
+    "global": 0.05,
+    "africa": 0.10
+  },
+  "symptoms": {
+    "primary": [
+      {
+        "name": "vaginal_bleeding",
+        "weight": 0.9,
+        "description": "Abnormal vaginal bleeding during or after pregnancy",
+        "translations": {
+          "sw": "kutoka damu ukeni",
+          "lg": "okuyiika omusaayi"
+        }
+      },
+      {
+        "name": "severe_headache",
+        "weight": 0.7,
+        "description": "Persistent severe headache, may indicate preeclampsia",
+        "translations": {
+          "sw": "maumivu makubwa ya kichwa",
+          "lg": "omutwe okubba ennyo"
+        }
+      },
+      {
+        "name": "high_blood_pressure",
+        "weight": 0.8,
+        "description": "Elevated blood pressure during pregnancy (preeclampsia risk)",
+        "translations": {
+          "sw": "shinikizo la damu",
+          "lg": "omusaayi ogulinnya"
+        }
+      },
+      {
+        "name": "severe_abdominal_pain",
+        "weight": 0.8,
+        "description": "Intense abdominal pain, may indicate abruption or ectopic pregnancy"
+      }
+    ],
+    "secondary": [
+      {
+        "name": "swelling_face_hands",
+        "weight": 0.5,
+        "description": "Swelling of face and hands (preeclampsia sign)"
+      },
+      {
+        "name": "visual_disturbances",
+        "weight": 0.6,
+        "description": "Blurred vision or seeing spots (preeclampsia sign)"
+      },
+      {
+        "name": "decreased_fetal_movement",
+        "weight": 0.7,
+        "description": "Significant reduction in baby's movements"
+      },
+      {
+        "name": "fever",
+        "weight": 0.5,
+        "description": "High fever during or after pregnancy, may indicate infection"
+      },
+      {
+        "name": "foul_smelling_discharge",
+        "weight": 0.6,
+        "description": "Abnormal vaginal discharge indicating infection"
+      }
+    ]
+  },
+  "risk_factors": [
+    {
+      "factor": "previous_complications",
+      "weight": 0.7,
+      "description": "History of pregnancy or delivery complications"
+    },
+    {
+      "factor": "age_under_18_or_over_35",
+      "weight": 0.6,
+      "description": "Maternal age below 18 or above 35 years"
+    },
+    {
+      "factor": "chronic_hypertension",
+      "weight": 0.6,
+      "description": "Pre-existing high blood pressure"
+    },
+    {
+      "factor": "diabetes",
+      "weight": 0.5,
+      "description": "Pre-existing or gestational diabetes"
+    },
+    {
+      "factor": "hiv_positive",
+      "weight": 0.5,
+      "description": "HIV infection requiring PMTCT"
+    }
+  ],
   "maternal_health_conditions": {
     "pregnancy_stages": {
       "preconception": {
@@ -349,5 +447,42 @@
         ]
       }
     }
+  },
+  "treatment": {
+    "supportive_care": [
+      "Regular antenatal and postnatal check-ups",
+      "Iron and folic acid supplementation",
+      "Blood pressure monitoring",
+      "Fetal growth and movement monitoring",
+      "Birth preparedness and emergency planning"
+    ]
+  },
+  "danger_signs": [
+    "severe_bleeding",
+    "severe_headache",
+    "high_fever",
+    "severe_abdominal_pain",
+    "visual_disturbances",
+    "difficulty_breathing",
+    "convulsions",
+    "decreased_fetal_movement"
+  ],
+  "patient_education": {
+    "en": {
+      "what_is": "Maternal health covers care during pregnancy, delivery, and after birth to keep mother and baby safe.",
+      "symptoms": "Watch for vaginal bleeding, severe headache, high fever, vision changes, and reduced baby movement.",
+      "treatment": "Attend all antenatal visits, take prescribed supplements, and have a birth plan ready.",
+      "when_to_return": "Return immediately for heavy bleeding, severe headache, high fever, or if baby stops moving."
+    },
+    "sw": {
+      "what_is": "Afya ya mama inajumuisha huduma wakati wa ujauzito, kujifungua, na baada ya kuzaa.",
+      "symptoms": "Angalia kutoka damu, maumivu makubwa ya kichwa, homa kali, na mtoto kusimama kutembea.",
+      "treatment": "Hudhuria kliniki zote, tumia virutubisho, na uwe na mpango wa kujifungua.",
+      "when_to_return": "Rudi mara moja kwa kutoka damu nyingi, maumivu makubwa ya kichwa, au homa kali."
+    }
+  },
+  "follow_up": {
+    "antenatal": "Monthly until 28 weeks, bi-weekly to 36 weeks, then weekly",
+    "postpartum": "Within 24 hours, 3-7 days, and 6 weeks after delivery"
   }
 }
