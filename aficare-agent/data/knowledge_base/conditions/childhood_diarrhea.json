@@ -1,14 +1,106 @@
 {
+  "condition": "childhood_diarrhea",
   "name": "Childhood Diarrhea",
-  "category": "Gastrointestinal",
-  "age_groups": ["infant", "child"],
+  "category": "gastrointestinal",
+  "icd10": "A09",
+  "prevalence": {
+    "global": 0.10,
+    "children_under_5": 0.25,
+    "africa": 0.20
+  },
   "symptoms": {
-    "diarrhea": 0.9,
-    "vomiting": 0.6,
-    "fever": 0.5,
-    "dehydration": 0.7,
-    "abdominal_pain": 0.4,
-    "loss_of_appetite": 0.5
+    "primary": [
+      {
+        "name": "diarrhea",
+        "weight": 0.9,
+        "description": "Frequent loose or watery stools (3 or more in 24 hours)",
+        "translations": {
+          "sw": "kuharisha",
+          "lg": "okudduuka"
+        }
+      },
+      {
+        "name": "dehydration",
+        "weight": 0.7,
+        "description": "Signs of fluid loss: sunken eyes, dry mouth, reduced urine",
+        "translations": {
+          "sw": "upungufu wa maji",
+          "lg": "okukaluubirwa amazzi"
+        }
+      },
+      {
+        "name": "vomiting",
+        "weight": 0.6,
+        "description": "Nausea and vomiting accompanying diarrhea",
+        "translations": {
+          "sw": "kutapika",
+          "lg": "okusesema"
+        }
+      }
+    ],
+    "secondary": [
+      {
+        "name": "fever",
+        "weight": 0.5,
+        "description": "Elevated temperature, may indicate infection"
+      },
+      {
+        "name": "abdominal_pain",
+        "weight": 0.4,
+        "description": "Cramping or stomach pain"
+      },
+      {
+        "name": "loss_of_appetite",
+        "weight": 0.5,
+        "description": "Refusal to eat or reduced feeding"
+      },
+      {
+        "name": "lethargy",
+        "weight": 0.6,
+        "description": "Unusual tiredness, decreased activity"
+      }
+    ]
+  },
+  "age_groups": ["infant", "child"],
+  "risk_factors": [
+    {
+      "factor": "age_under_5",
+      "weight": 0.8,
+      "description": "Children under 5 are most vulnerable"
+    },
+    {
+      "factor": "malnutrition",
+      "weight": 0.7,
+      "description": "Poor nutritional status increases severity"
+    },
+    {
+      "factor": "unsafe_water",
+      "weight": 0.6,
+      "description": "Lack of access to clean drinking water"
+    },
+    {
+      "factor": "poor_sanitation",
+      "weight": 0.5,
+      "description": "Inadequate sanitation and hygiene"
+    },
+    {
+      "factor": "not_breastfeeding",
+      "weight": 0.5,
+      "description": "Lack of exclusive breastfeeding in first 6 months"
+    }
+  ],
+  "diagnostic_criteria": {
+    "clinical": [
+      "Three or more loose or watery stools in 24 hours",
+      "Duration and frequency of episodes",
+      "Presence of blood in stool (dysentery)",
+      "Signs of dehydration"
+    ],
+    "dehydration_assessment": {
+      "no_dehydration": "Alert, drinks normally, skin pinch goes back quickly",
+      "some_dehydration": "Restless, irritable, drinks eagerly, skin pinch goes back slowly",
+      "severe_dehydration": "Lethargic, unable to drink, skin pinch goes back very slowly"
+    }
   },
   "vital_signs_indicators": {
     "temperature": {
@@ -16,39 +108,136 @@
       "moderate": [38.1, 39.0],
       "severe": [39.1, 42.0]
     },
-    "dehydration_signs": ["sunken_eyes", "dry_mouth", "reduced_urine"]
+    "dehydration_signs": ["sunken_eyes", "dry_mouth", "reduced_urine", "skin_pinch_slow"]
   },
   "treatment": {
-    "mild": [
-      "Oral rehydration solution (ORS)",
-      "Continue breastfeeding",
-      "Zinc supplementation 10-20mg daily",
-      "Monitor for dehydration signs"
+    "first_line": {
+      "uncomplicated": [
+        {
+          "medication": "Oral Rehydration Salts (ORS)",
+          "dosage": "After each loose stool: <2yr 50-100ml, 2-10yr 100-200ml",
+          "duration": "Until diarrhea stops",
+          "notes": "WHO-recommended low-osmolarity ORS"
+        },
+        {
+          "medication": "Zinc supplementation",
+          "dosage": "<6 months: 10mg daily, >6 months: 20mg daily",
+          "duration": "10-14 days",
+          "notes": "Reduces duration and severity"
+        }
+      ],
+      "severe": [
+        {
+          "medication": "IV Ringer's Lactate or Normal Saline",
+          "dosage": "100ml/kg over 3-6 hours (age-dependent)",
+          "route": "intravenous",
+          "notes": "For severe dehydration, immediate hospital treatment"
+        }
+      ]
+    },
+    "supportive_care": [
+      "Continue breastfeeding or regular feeding",
+      "Give extra fluids including ORS after each loose stool",
+      "Zinc supplementation for 10-14 days",
+      "Monitor for signs of dehydration",
+      "Return if condition worsens or danger signs appear"
     ],
-    "moderate": [
-      "ORS with increased frequency",
-      "Zinc supplementation",
-      "Probiotics if available",
-      "Follow-up in 24 hours"
-    ],
-    "severe": [
-      "Immediate medical referral",
-      "IV fluids if severe dehydration",
-      "Hospital admission may be required",
-      "Antibiotic therapy if indicated"
-    ]
+    "by_severity": {
+      "mild": [
+        "Oral rehydration solution (ORS)",
+        "Continue breastfeeding",
+        "Zinc supplementation 10-20mg daily",
+        "Monitor for dehydration signs"
+      ],
+      "moderate": [
+        "ORS with increased frequency",
+        "Zinc supplementation",
+        "Probiotics if available",
+        "Follow-up in 24 hours"
+      ],
+      "severe": [
+        "Immediate medical referral",
+        "IV fluids if severe dehydration",
+        "Hospital admission may be required",
+        "Antibiotic therapy if indicated"
+      ]
+    }
   },
+  "complications": [
+    {
+      "name": "severe_dehydration",
+      "severity": "severe",
+      "description": "Life-threatening fluid and electrolyte loss"
+    },
+    {
+      "name": "malnutrition",
+      "severity": "moderate",
+      "description": "Worsening nutritional status from repeated episodes"
+    },
+    {
+      "name": "electrolyte_imbalance",
+      "severity": "severe",
+      "description": "Dangerous shifts in sodium, potassium levels"
+    }
+  ],
+  "prevention": [
+    "Hand hygiene with soap and water",
+    "Safe water and food preparation",
+    "Proper sanitation and waste disposal",
+    "Rotavirus vaccination",
+    "Exclusive breastfeeding for first 6 months",
+    "Vitamin A supplementation"
+  ],
   "danger_signs": [
     "severe_dehydration",
     "blood_in_stool",
     "high_fever",
     "persistent_vomiting",
-    "lethargy"
+    "lethargy",
+    "unable_to_drink",
+    "sunken_eyes"
   ],
-  "prevention": [
-    "Hand hygiene",
-    "Safe water and food",
-    "Proper sanitation",
-    "Rotavirus vaccination"
-  ]
+  "patient_education": {
+    "en": {
+      "what_is": "Diarrhea is frequent loose or watery stools, often caused by infection.",
+      "symptoms": "Watch for watery stools, vomiting, sunken eyes, dry mouth, and decreased urination.",
+      "treatment": "Give ORS after every loose stool and zinc for 10-14 days. Continue breastfeeding.",
+      "prevention": "Wash hands with soap, use clean water, and ensure proper sanitation.",
+      "when_to_return": "Return immediately if child cannot drink, has blood in stool, high fever, or becomes very sleepy."
+    },
+    "sw": {
+      "what_is": "Kuharisha ni kinyesi kioevu mara kwa mara, mara nyingi kunasababishwa na maambukizi.",
+      "symptoms": "Angalia kinyesi cha maji, kutapika, macho yaliyozama, kinywa kavu, na mkojo kupungua.",
+      "treatment": "Mpe ORS baada ya kila kinyesi koevu na zinki kwa siku 10-14. Endelea kunyonyesha.",
+      "prevention": "Osha mikono kwa sabuni, tumia maji safi, na hakikisha usafi wa mazingira.",
+      "when_to_return": "Rudi mara moja ikiwa mtoto hawezi kunywa, ana damu kwenye kinyesi, homa kali, au analala sana."
+    }
+  },
+  "differential_diagnoses": [
+    "dysentery",
+    "cholera",
+    "food_poisoning",
+    "malaria",
+    "urinary_tract_infection"
+  ],
+  "red_flags": [
+    "Unable to drink or breastfeed",
+    "Vomits everything",
+    "Blood in stool",
+    "Lethargic or unconscious",
+    "Sunken eyes with slow skin pinch",
+    "Convulsions"
+  ],
+  "follow_up": {
+    "routine": "2-3 days after treatment start",
+    "severe_cases": "Daily until stable",
+    "persistent": "If diarrhea continues beyond 14 days (persistent diarrhea)"
+  },
+  "who_imci_guidelines": {
+    "classification": {
+      "no_dehydration": "Plan A: Treat diarrhea at home",
+      "some_dehydration": "Plan B: Treat some dehydration with ORS",
+      "severe_dehydration": "Plan C: Treat severe dehydration quickly"
+    }
+  }
 }
