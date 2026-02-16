@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for better Docker layer caching)
-COPY requirements.txt .
+COPY requirements-deploy.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-deploy.txt
 
 # Copy application code
 COPY . .
@@ -25,17 +25,17 @@ RUN mkdir -p logs data scripts
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_PORT=${PORT:-8501}
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 # Expose port
-EXPOSE 8501
+EXPOSE ${PORT:-8501}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8501}/_stcore/health || exit 1
 
 # Initialize database and start app
 CMD ["python", "-c", "\
