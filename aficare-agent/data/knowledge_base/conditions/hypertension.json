@@ -1,15 +1,139 @@
 {
+  "condition": "hypertension",
   "name": "Hypertension",
-  "category": "Cardiovascular",
-  "age_groups": ["adult", "elderly"],
+  "category": "cardiovascular",
+  "icd10": "I10",
+  "prevalence": {
+    "global": 0.12,
+    "africa": 0.27,
+    "elderly": 0.30
+  },
   "symptoms": {
-    "headache": 0.4,
-    "dizziness": 0.5,
-    "blurred_vision": 0.3,
-    "chest_pain": 0.2,
-    "shortness_of_breath": 0.3,
-    "fatigue": 0.3,
-    "nosebleeds": 0.2
+    "primary": [
+      {
+        "name": "headache",
+        "weight": 0.4,
+        "description": "Persistent headache, often occipital (back of head)",
+        "translations": {
+          "sw": "maumivu ya kichwa",
+          "lg": "omutwe okubba"
+        }
+      },
+      {
+        "name": "dizziness",
+        "weight": 0.5,
+        "description": "Light-headedness or vertigo",
+        "translations": {
+          "sw": "kizunguzungu",
+          "lg": "entamu"
+        }
+      },
+      {
+        "name": "blurred_vision",
+        "weight": 0.3,
+        "description": "Visual disturbances or blurred vision",
+        "translations": {
+          "sw": "macho kuona vibaya",
+          "lg": "okulaba obubi"
+        }
+      },
+      {
+        "name": "chest_pain",
+        "weight": 0.2,
+        "description": "Chest discomfort or tightness",
+        "translations": {
+          "sw": "maumivu ya kifua",
+          "lg": "ekifuba okubba"
+        }
+      }
+    ],
+    "secondary": [
+      {
+        "name": "shortness_of_breath",
+        "weight": 0.3,
+        "description": "Difficulty breathing, especially with exertion"
+      },
+      {
+        "name": "fatigue",
+        "weight": 0.3,
+        "description": "Persistent tiredness and lack of energy"
+      },
+      {
+        "name": "nosebleeds",
+        "weight": 0.2,
+        "description": "Recurrent nosebleeds (epistaxis)"
+      },
+      {
+        "name": "palpitations",
+        "weight": 0.3,
+        "description": "Awareness of heartbeat, racing or pounding"
+      }
+    ]
+  },
+  "age_groups": ["adult", "elderly"],
+  "risk_factors": [
+    {
+      "factor": "age_over_40",
+      "weight": 0.6,
+      "description": "Age 40 years or older"
+    },
+    {
+      "factor": "family_history",
+      "weight": 0.5,
+      "description": "Family history of hypertension"
+    },
+    {
+      "factor": "obesity",
+      "weight": 0.7,
+      "description": "Body mass index (BMI) over 30"
+    },
+    {
+      "factor": "high_salt_diet",
+      "weight": 0.6,
+      "description": "Excessive sodium intake"
+    },
+    {
+      "factor": "sedentary_lifestyle",
+      "weight": 0.5,
+      "description": "Lack of regular physical activity"
+    },
+    {
+      "factor": "smoking",
+      "weight": 0.5,
+      "description": "Tobacco use"
+    },
+    {
+      "factor": "diabetes",
+      "weight": 0.4,
+      "description": "Co-existing diabetes mellitus"
+    },
+    {
+      "factor": "kidney_disease",
+      "weight": 0.5,
+      "description": "Chronic kidney disease"
+    }
+  ],
+  "diagnostic_criteria": {
+    "clinical": [
+      "Blood pressure measurement on at least 2 occasions",
+      "Ambulatory or home blood pressure monitoring",
+      "Assessment for target organ damage"
+    ],
+    "blood_pressure_classification": {
+      "normal": "Systolic < 120 AND Diastolic < 80 mmHg",
+      "elevated": "Systolic 120-129 AND Diastolic < 80 mmHg",
+      "stage_1": "Systolic 130-139 OR Diastolic 80-89 mmHg",
+      "stage_2": "Systolic >= 140 OR Diastolic >= 90 mmHg",
+      "crisis": "Systolic > 180 AND/OR Diastolic > 120 mmHg"
+    },
+    "laboratory": [
+      "Complete blood count",
+      "Serum electrolytes and creatinine",
+      "Fasting blood glucose",
+      "Lipid profile",
+      "Urinalysis",
+      "ECG"
+    ]
   },
   "vital_signs_indicators": {
     "blood_pressure": {
@@ -20,26 +144,40 @@
       "crisis": [180, 999, 120, 999]
     }
   },
-  "risk_factors": [
-    "age_over_40",
-    "family_history",
-    "obesity",
-    "high_salt_diet",
-    "sedentary_lifestyle",
-    "smoking",
-    "diabetes",
-    "kidney_disease"
-  ],
   "treatment": {
-    "lifestyle": [
-      "Reduce sodium intake (<2.3g/day)",
-      "Regular physical activity (30min/day)",
-      "Maintain healthy weight",
+    "first_line": {
+      "uncomplicated": [
+        {
+          "medication": "Amlodipine (Calcium Channel Blocker)",
+          "dosage": "5mg once daily, may increase to 10mg",
+          "duration": "Long-term",
+          "notes": "Preferred first-line in African populations"
+        },
+        {
+          "medication": "Hydrochlorothiazide (Thiazide Diuretic)",
+          "dosage": "12.5-25mg once daily",
+          "duration": "Long-term",
+          "notes": "Effective and affordable"
+        }
+      ],
+      "severe": [
+        {
+          "medication": "Nifedipine sublingual",
+          "dosage": "10mg sublingual",
+          "route": "sublingual",
+          "notes": "For hypertensive urgency; refer for crisis"
+        }
+      ]
+    },
+    "lifestyle_modifications": [
+      "Reduce sodium intake to less than 2.3g per day",
+      "Regular physical activity (30 minutes most days)",
+      "Maintain healthy weight (BMI 18.5-24.9)",
       "Limit alcohol consumption",
       "Quit smoking",
-      "Manage stress"
+      "Manage stress through relaxation techniques"
     ],
-    "medication": {
+    "medication_options": {
       "first_line": [
         "ACE inhibitors (Lisinopril 10mg daily)",
         "ARBs (Losartan 50mg daily)",
@@ -51,7 +189,14 @@
         "ARB + Calcium channel blocker",
         "Beta-blocker + Diuretic"
       ]
-    }
+    },
+    "supportive_care": [
+      "Regular blood pressure monitoring at home",
+      "Dietary counseling (DASH diet recommended)",
+      "Stress management and relaxation techniques",
+      "Medication adherence support",
+      "Regular follow-up appointments"
+    ]
   },
   "monitoring": [
     "Blood pressure checks every 3-6 months",
@@ -61,16 +206,90 @@
     "ECG if indicated"
   ],
   "complications": [
-    "heart_attack",
-    "stroke",
-    "kidney_disease",
-    "heart_failure",
-    "vision_problems"
+    {
+      "name": "stroke",
+      "severity": "severe",
+      "description": "Cerebrovascular accident from uncontrolled hypertension"
+    },
+    {
+      "name": "heart_attack",
+      "severity": "severe",
+      "description": "Myocardial infarction from coronary artery disease"
+    },
+    {
+      "name": "kidney_disease",
+      "severity": "severe",
+      "description": "Chronic kidney disease from hypertensive nephropathy"
+    },
+    {
+      "name": "heart_failure",
+      "severity": "severe",
+      "description": "Left ventricular hypertrophy progressing to heart failure"
+    },
+    {
+      "name": "vision_loss",
+      "severity": "moderate",
+      "description": "Hypertensive retinopathy causing vision problems"
+    }
   ],
   "target_bp": {
     "general": [130, 80],
     "diabetes": [130, 80],
     "kidney_disease": [130, 80],
     "elderly": [140, 90]
+  },
+  "prevention": [
+    "Maintain healthy weight",
+    "Regular physical activity",
+    "Reduce sodium intake",
+    "Eat fruits and vegetables",
+    "Limit alcohol consumption",
+    "Avoid tobacco use",
+    "Regular blood pressure screening"
+  ],
+  "danger_signs": [
+    "severe_headache",
+    "chest_pain",
+    "difficulty_breathing",
+    "vision_changes",
+    "confusion",
+    "nosebleed_severe",
+    "blood_pressure_over_180_120"
+  ],
+  "patient_education": {
+    "en": {
+      "what_is": "Hypertension is persistently high blood pressure that damages blood vessels and organs over time.",
+      "symptoms": "Often has no symptoms (silent killer). Watch for severe headaches, dizziness, blurred vision, and chest pain.",
+      "treatment": "Take blood pressure medications every day as prescribed, even if you feel fine.",
+      "prevention": "Reduce salt, exercise regularly, maintain healthy weight, and avoid smoking.",
+      "when_to_return": "Return immediately for severe headache, chest pain, vision changes, or difficulty breathing."
+    },
+    "sw": {
+      "what_is": "Shinikizo la damu ni hali ya shinikizo la damu kuwa juu kwa muda mrefu ambayo huharibu mishipa ya damu.",
+      "symptoms": "Mara nyingi haina dalili. Angalia maumivu makubwa ya kichwa, kizunguzungu, na maumivu ya kifua.",
+      "treatment": "Tumia dawa za shinikizo la damu kila siku kama ilivyoagizwa, hata ukijisikia vizuri.",
+      "prevention": "Punguza chumvi, fanya mazoezi mara kwa mara, dhibiti uzito, na acha kuvuta sigara.",
+      "when_to_return": "Rudi mara moja kwa maumivu makubwa ya kichwa, maumivu ya kifua, au ugumu wa kupumua."
+    }
+  },
+  "differential_diagnoses": [
+    "white_coat_hypertension",
+    "secondary_hypertension",
+    "pheochromocytoma",
+    "renal_artery_stenosis",
+    "cushing_syndrome"
+  ],
+  "red_flags": [
+    "Blood pressure > 180/120 mmHg",
+    "Severe headache with altered consciousness",
+    "Chest pain or shortness of breath",
+    "Visual disturbances",
+    "Signs of stroke (facial droop, arm weakness, speech difficulty)",
+    "Seizures"
+  ],
+  "follow_up": {
+    "newly_diagnosed": "Monthly until blood pressure controlled",
+    "stable": "Every 3-6 months",
+    "medication_change": "2-4 weeks after adjustment"
   }
 }
