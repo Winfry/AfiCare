@@ -37,20 +37,5 @@ EXPOSE ${PORT:-8501}
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8501}/_stcore/health || exit 1
 
-# Initialize database and start app
-CMD ["python", "-c", "\
-import os; \
-import subprocess; \
-import sys; \
-print('🏥 AfiCare MediLink - Starting Production Server'); \
-print('='*50); \
-if not os.getenv('DATABASE_URL'): \
-    print('📊 Creating sample data for local/demo deployment...'); \
-    subprocess.run([sys.executable, 'scripts/populate_sample_data.py']); \
-print('🚀 Starting Streamlit application...'); \
-subprocess.run([ \
-    'streamlit', 'run', 'medilink_simple.py', \
-    '--server.port', os.getenv('PORT', '8501'), \
-    '--server.address', '0.0.0.0', \
-    '--server.headless', 'true' \
-])"]
+# Start Streamlit app directly
+CMD streamlit run medilink_simple.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.headless true
