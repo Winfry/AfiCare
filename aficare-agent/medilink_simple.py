@@ -17,6 +17,10 @@ from dataclasses import dataclass
 import sys
 from pathlib import Path
 import json
+import hashlib
+
+# Supabase persistence (graceful fallback if unavailable)
+import supabase_client as db
 
 # ============================================
 # PWA AND LOGO SUPPORT
@@ -52,7 +56,7 @@ def show_splash():
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+                background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
                 min-height: 100vh;
                 display: flex;
                 flex-direction: column;
@@ -70,7 +74,7 @@ def show_splash():
                 margin-top: 20px;
                 font-size: 36px;
                 font-weight: 700;
-                color: #1B5E20;
+                color: #D62828;
                 letter-spacing: 2px;
                 animation: fadeIn 1s ease-out 0.5s both;
             }
@@ -89,14 +93,14 @@ def show_splash():
             .loading-bar {
                 width: 200px;
                 height: 4px;
-                background: rgba(46, 125, 50, 0.2);
+                background: rgba(232, 93, 4, 0.2);
                 border-radius: 2px;
                 overflow: hidden;
             }
             .loading-progress {
                 width: 0%;
                 height: 100%;
-                background: linear-gradient(90deg, #2E7D32, #4CAF50);
+                background: linear-gradient(90deg, #E85D04, #F77F00);
                 border-radius: 2px;
                 animation: loading 2s ease-in-out forwards;
             }
@@ -120,8 +124,8 @@ def show_splash():
                 <!-- Shield background -->
                 <defs>
                     <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#1B5E20"/>
-                        <stop offset="100%" style="stop-color:#2E7D32"/>
+                        <stop offset="0%" style="stop-color:#D62828"/>
+                        <stop offset="100%" style="stop-color:#E85D04"/>
                     </linearGradient>
                 </defs>
                 <path d="M90 10 C50 25, 20 40, 20 80 V140 C20 180, 60 210, 90 220 C120 210, 160 180, 160 140 V80 C160 40, 130 25, 90 10 Z"
@@ -186,7 +190,7 @@ def configure_pwa():
             installBtn.innerHTML = '📱 Install App';
             installBtn.style.cssText = `
                 position: fixed; bottom: 20px; right: 20px; z-index: 9999;
-                background: #2E7D32; color: white; border: none;
+                background: #E85D04; color: white; border: none;
                 padding: 12px 16px; border-radius: 25px; font-size: 14px;
                 font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(46,125,50,0.3);
             `;
@@ -919,7 +923,7 @@ def inject_pwa_support():
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="AfiCare">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#2E7D32">
+    <meta name="theme-color" content="#E85D04">
 
     <style>
         /* Mobile-first responsive design */
@@ -943,7 +947,7 @@ def inject_pwa_support():
 
         /* Touch-friendly and smooth scrolling */
         html { scroll-behavior: smooth; }
-        * { -webkit-tap-highlight-color: rgba(46, 125, 50, 0.2); }
+        * { -webkit-tap-highlight-color: rgba(232, 93, 4, 0.2); }
 
         /* Safe area padding for notched phones */
         .stApp {
@@ -958,21 +962,21 @@ def inject_pwa_support():
             align-items: center;
             gap: 15px;
             padding: 15px 20px;
-            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
             border-radius: 15px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(46, 125, 50, 0.1);
+            box-shadow: 0 2px 10px rgba(232, 93, 4, 0.1);
         }
 
         .aficare-logo-icon {
             width: 60px;
             height: 60px;
-            background: linear-gradient(135deg, #2E7D32, #66BB6A);
+            background: linear-gradient(135deg, #E85D04, #FF8C42);
             border-radius: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+            box-shadow: 0 4px 12px rgba(232, 93, 4, 0.3);
         }
 
         .aficare-logo-icon img {
@@ -983,12 +987,12 @@ def inject_pwa_support():
 
         .aficare-logo-text h1 {
             margin: 0;
-            color: #2E7D32;
+            color: #E85D04;
             font-size: 28px;
         }
 
         .aficare-logo-text h1 span {
-            color: #1B5E20;
+            color: #D62828;
         }
 
         .aficare-logo-text p {
@@ -1004,14 +1008,14 @@ def inject_pwa_support():
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: #2E7D32;
+            background: #E85D04;
             color: white;
             border: none;
             padding: 15px 25px;
             border-radius: 30px;
             font-size: 14px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(46, 125, 50, 0.4);
+            box-shadow: 0 4px 15px rgba(232, 93, 4, 0.4);
             z-index: 9999;
         }
     </style>
@@ -1091,7 +1095,7 @@ if 'registered_users' not in st.session_state:
 # Custom CSS
 st.markdown("""
 <style>
-.patient-theme { background: linear-gradient(90deg, #4CAF50, #45a049); }
+.patient-theme { background: linear-gradient(90deg, #F77F00, #D67504); }
 .doctor-theme { background: linear-gradient(90deg, #2196F3, #1976D2); }
 .admin-theme { background: linear-gradient(90deg, #FF9800, #F57C00); }
 .nurse-theme { background: linear-gradient(90deg, #9C27B0, #7B1FA2); }
@@ -1121,19 +1125,19 @@ st.markdown("""
     margin-left: 1rem;
 }
 
-.patient-badge { background: #4CAF50; color: white; }
+.patient-badge { background: #F77F00; color: white; }
 .doctor-badge { background: #2196F3; color: white; }
 .admin-badge { background: #FF9800; color: white; }
 .nurse-badge { background: #9C27B0; color: white; }
 
 .access-code {
-    background: #e8f5e8;
+    background: #fff3e0;
     padding: 1rem;
     border-radius: 8px;
     text-align: center;
     font-size: 1.5rem;
     font-weight: bold;
-    border: 2px solid #4CAF50;
+    border: 2px solid #F77F00;
 }
 
 .demo-alert {
@@ -1158,7 +1162,7 @@ st.markdown("""
 }
 
 .success-message {
-    background: #e8f5e8;
+    background: #fff3e0;
     border: 1px solid #4caf50;
     border-radius: 8px;
     padding: 1rem;
@@ -1216,7 +1220,33 @@ def authenticate_user(username: str, password: str, role: str) -> bool:
         }
     }
     
-    # Check registered users first (newly registered accounts)
+    # Check Supabase first (persistent storage)
+    sb_user = db.get_user_by_username(username)
+    if sb_user:
+        stored_pw = sb_user.get("metadata", {}).get("password_hash", "")
+        if stored_pw == password and sb_user.get("role") == role:
+            # Build user_data from Supabase record
+            meta = sb_user.get("metadata", {})
+            user_data = {
+                "full_name": sb_user["full_name"],
+                "role": sb_user["role"],
+                "medilink_id": sb_user.get("medilink_id"),
+                "phone": sb_user.get("phone"),
+                "email": sb_user.get("email"),
+                "department": sb_user.get("department"),
+                "hospital_id": sb_user.get("hospital_id"),
+                "age": meta.get("age"),
+                "gender": meta.get("gender"),
+                "supabase_id": sb_user["id"],
+            }
+            st.session_state.logged_in = True
+            st.session_state.user_role = role
+            st.session_state.user_data = user_data
+            st.session_state.medilink_id = sb_user.get("medilink_id")
+            db.log_audit("login", user_id=sb_user["id"], details={"method": "supabase"})
+            return True
+
+    # Check registered users in session state (fallback)
     if username in st.session_state.registered_users:
         user = st.session_state.registered_users[username]
         if user["password"] == password and user["role"] == role:
@@ -1225,7 +1255,7 @@ def authenticate_user(username: str, password: str, role: str) -> bool:
             st.session_state.user_data = user
             st.session_state.medilink_id = user.get("medilink_id")
             return True
-    
+
     # Check demo accounts
     if username in demo_accounts:
         account = demo_accounts[username]
@@ -1263,7 +1293,7 @@ def show_login_page():
     # Tagline
     st.markdown("""
     <p style="text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;">
-        Your Health Records, Your Control - <strong style="color: #2E7D32;">Completely FREE</strong>
+        Your Health Records, Your Control - <strong style="color: #E85D04;">Completely FREE</strong>
     </p>
     """, unsafe_allow_html=True)
     
@@ -1458,7 +1488,13 @@ def show_patient_registration_form():
                 "registration_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             
-            # Save user with both MediLink ID and phone as login options
+            # Save to Supabase (persistent) + session state (fallback)
+            sb_user = db.create_user(user_data)
+            if sb_user:
+                db.create_patient(sb_user["id"], user_data)
+                db.log_audit("patient_registered", user_id=sb_user["id"],
+                             details={"medilink_id": medilink_id})
+
             st.session_state.registered_users[medilink_id] = user_data
             st.session_state.registered_users[phone] = user_data  # Allow login with phone too
             
@@ -1603,7 +1639,12 @@ def show_healthcare_provider_registration_form():
                 "registration_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             
-            # Save user with username as login
+            # Save to Supabase (persistent) + session state (fallback)
+            sb_user = db.create_user(user_data)
+            if sb_user:
+                db.log_audit("provider_registered", user_id=sb_user["id"],
+                             details={"role": role, "provider_id": provider_id})
+
             st.session_state.registered_users[username] = user_data
             
             st.balloons()
@@ -1646,26 +1687,26 @@ def show_dashboard():
     # Display logo header with user info
     logo_b64 = get_logo_base64()
     role_colors = {
-        "patient": "#4CAF50",
+        "patient": "#F77F00",
         "doctor": "#2196F3",
         "nurse": "#9C27B0",
         "admin": "#FF9800"
     }
-    role_color = role_colors.get(role, "#4CAF50")
+    role_color = role_colors.get(role, "#F77F00")
 
     if logo_b64:
         header_html = f"""
         <div style="display: flex; align-items: center; justify-content: space-between;
-                    padding: 15px 20px; background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-                    border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(46, 125, 50, 0.1);">
+                    padding: 15px 20px; background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+                    border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(232, 93, 4, 0.1);">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #2E7D32, #66BB6A);
+                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #E85D04, #FF8C42);
                             border-radius: 12px; display: flex; align-items: center; justify-content: center;
-                            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);">
+                            box-shadow: 0 4px 12px rgba(232, 93, 4, 0.3);">
                     <img src="data:image/png;base64,{logo_b64}" style="width: 35px; height: 35px; border-radius: 6px;" alt="Logo">
                 </div>
                 <div>
-                    <h1 style="margin: 0; color: #2E7D32; font-size: 24px;">Afi<span style="color: #1B5E20;">Care</span></h1>
+                    <h1 style="margin: 0; color: #E85D04; font-size: 24px;">Afi<span style="color: #D62828;">Care</span></h1>
                     <p style="margin: 0; color: #666; font-size: 11px; letter-spacing: 1px;">MEDILINK</p>
                 </div>
             </div>
@@ -1679,10 +1720,10 @@ def show_dashboard():
     else:
         header_html = f"""
         <div style="display: flex; align-items: center; justify-content: space-between;
-                    padding: 15px 20px; background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+                    padding: 15px 20px; background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
                     border-radius: 15px; margin-bottom: 20px;">
             <div>
-                <h1 style="margin: 0; color: #2E7D32; font-size: 24px;">AfiCare MediLink</h1>
+                <h1 style="margin: 0; color: #E85D04; font-size: 24px;">AfiCare MediLink</h1>
             </div>
             <div style="text-align: right;">
                 <p style="margin: 0; font-weight: bold;">{user_data['full_name']}</p>
@@ -1701,7 +1742,7 @@ def show_dashboard():
             st.markdown(f"""
             <div style="text-align: center; padding: 10px; margin-bottom: 15px;">
                 <img src="data:image/png;base64,{logo_b64}" style="width: 60px; height: 60px; border-radius: 12px;" alt="Logo">
-                <p style="margin: 5px 0 0 0; color: #2E7D32; font-weight: bold; font-size: 14px;">AfiCare</p>
+                <p style="margin: 5px 0 0 0; color: #E85D04; font-weight: bold; font-size: 14px;">AfiCare</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -2384,14 +2425,32 @@ def show_patient_sharing_options():
         
         if st.button("🔢 Generate Secure Code", type="primary"):
             import random
+            from datetime import timedelta
             access_code = f"{random.randint(100000, 999999)}"
+
+            # Parse duration for expiry
+            duration_map = {"1 hour": 1, "4 hours": 4, "24 hours": 24, "48 hours": 48, "1 week": 168}
+            hours = duration_map.get(duration, 24)
+            expires_at = (datetime.utcnow() + timedelta(hours=hours)).isoformat()
+
+            # Persist access code to Supabase
+            patient_id = st.session_state.user_data.get("supabase_id")
+            if patient_id:
+                db.create_access_code({
+                    "patient_id": patient_id,
+                    "code": access_code,
+                    "expires_at": expires_at,
+                    "permissions": [access_level.lower().replace(" ", "_")],
+                })
+                db.log_audit("access_code_generated", user_id=patient_id,
+                             details={"code": access_code, "duration": duration})
             
             st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #e8f5e8, #c8e6c9); 
+            <div style="background: linear-gradient(135deg, #fff3e0, #ffe0b2); 
                         padding: 20px; border-radius: 15px; text-align: center; 
-                        border: 2px solid #4CAF50; margin: 15px 0;">
-                <h2 style="color: #2E7D32; margin: 0;">🔐 Access Code</h2>
-                <h1 style="color: #1B5E20; font-size: 48px; margin: 10px 0; 
+                        border: 2px solid #F77F00; margin: 15px 0;">
+                <h2 style="color: #E85D04; margin: 0;">🔐 Access Code</h2>
+                <h1 style="color: #D62828; font-size: 48px; margin: 10px 0; 
                            font-family: monospace; letter-spacing: 8px;">{access_code}</h1>
                 <p style="color: #666; margin: 5px 0;"><strong>Access Level:</strong> {access_level}</p>
                 <p style="color: #666; margin: 5px 0;"><strong>Valid for:</strong> {duration}</p>
@@ -2904,7 +2963,11 @@ def show_provider_patient_access():
         medilink_id = st.text_input("Enter MediLink ID", placeholder="ML-NBO-XXXX")
         
         if st.button("🔍 Search Patient", type="primary"):
-            if medilink_id == "ML-NBO-DEMO1":
+            # Check Supabase first, then fall back to demo
+            sb_patient = db.get_user_by_medilink_id(medilink_id) if medilink_id else None
+            if sb_patient:
+                show_patient_records_for_provider(sb_patient)
+            elif medilink_id == "ML-NBO-DEMO1":
                 show_patient_records_for_provider()
             else:
                 st.error("Patient not found or access denied")
@@ -2915,7 +2978,17 @@ def show_provider_patient_access():
         
         if st.button("🔓 Access with Code", type="primary"):
             if len(access_code) == 6:
-                show_patient_records_for_provider()
+                # Verify against Supabase
+                sb_code = db.get_access_code(access_code)
+                if sb_code:
+                    provider_id = st.session_state.user_data.get("supabase_id")
+                    if provider_id:
+                        db.mark_access_code_used(sb_code["id"], provider_id)
+                    # Load patient from Supabase
+                    sb_patient = db.get_user_by_medilink_id(None)  # patient_id from code
+                    show_patient_records_for_provider()
+                else:
+                    show_patient_records_for_provider()  # fallback demo
             else:
                 st.error("Please enter a valid 6-digit code")
 
