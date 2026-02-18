@@ -5,28 +5,32 @@ allprojects {
     }
 }
 
-// Fix for plugins that reference flutter.compileSdkVersion incorrectly
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                if (namespace == null) {
-                    namespace = project.group.toString()
-                }
-                compileSdkVersion 34
-            }
-        }
-    }
-}
-
 rootProject.buildDir = "../build"
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
     project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
+}
+
+// Fix for app_links and other plugins that reference flutter.compileSdkVersion.
+// Inject a flutter extension with SDK version info into subprojects that lack it.
+gradle.projectsLoaded {
+    rootProject.subprojects { sub ->
+        if (sub.name != "app") {
+            sub.extensions.create("flutter", FlutterExtension)
+        }
+    }
+}
+
+class FlutterExtension {
+    int compileSdkVersion = 34
+    int minSdkVersion = 21
+    int targetSdkVersion = 34
+    String ndkVersion = ""
+    int versionCode = 1
+    String versionName = "1.0.0"
 }
