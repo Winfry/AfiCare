@@ -77,7 +77,7 @@ jobs:
           # in library subprojects with the new Flutter Gradle plugin approach.
           # Patch it to use a hardcoded value instead.
           find ~/.pub-cache -path "*/app_links-*/android/build.gradle" -exec \
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/' {} \;
+            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/' {} \;
 
       - name: Build APK
         run: |
