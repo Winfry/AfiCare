@@ -46,7 +46,13 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (authProvider.isLoggedIn) {
       final role = authProvider.currentUser?.role.name ?? 'patient';
-      context.go('/$role');
+      const roleRoutes = {
+        'patient': '/patient',
+        'doctor': '/provider',
+        'nurse': '/provider',
+        'admin': '/admin',
+      };
+      context.go(roleRoutes[role] ?? '/patient');
     } else {
       context.go('/login');
     }

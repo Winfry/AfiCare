@@ -45,7 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success && mounted) {
       final role = authProvider.currentUser?.role.name ?? 'patient';
-      context.go('/$role');
+      const roleRoutes = {
+        'patient': '/patient',
+        'doctor': '/provider',
+        'nurse': '/provider',
+        'admin': '/admin',
+      };
+      context.go(roleRoutes[role] ?? '/patient');
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
