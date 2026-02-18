@@ -71,6 +71,14 @@ jobs:
           cd aficare_flutter
           flutter pub get
 
+      - name: Fix app_links compileSdk issue
+        run: |
+          # app_links 6.4.1 references flutter.compileSdkVersion which doesn't exist
+          # in library subprojects with the new Flutter Gradle plugin approach.
+          # Patch it to use a hardcoded value instead.
+          find ~/.pub-cache -path "*/app_links-*/android/build.gradle" -exec \
+            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/' {} \;
+
       - name: Build APK
         run: |
           cd aficare_flutter
