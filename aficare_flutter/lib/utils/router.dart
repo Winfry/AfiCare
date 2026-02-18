@@ -52,6 +52,16 @@ final appRouter = GoRouter(
       ],
     ),
 
+    // Doctor and Nurse redirect to provider dashboard
+    GoRoute(
+      path: '/doctor',
+      redirect: (context, state) => '/provider',
+    ),
+    GoRoute(
+      path: '/nurse',
+      redirect: (context, state) => '/provider',
+    ),
+
     // Healthcare Provider Routes
     GoRoute(
       path: '/provider',
