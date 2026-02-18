@@ -366,7 +366,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               child: ElevatedButton.icon(
                 onPressed: () {
                   if (accessCodeController.text.length == 6) {
-                    _showPatientRecords('ML-NBO-DEMO1', accessCodeController.text);
+                    _showPatientRecords('Unknown', accessCodeController.text);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -495,50 +495,45 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '✅ Access granted to patient records: $medilinkId',
+                'Access granted to patient records: $medilinkId',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.green,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                '👤 Patient: Jane Doe (ML-NBO-DEMO1)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                'Patient ID: $medilinkId',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const Text('Age: 28 | Gender: Female | Blood Type: O+'),
-              const Text('Phone: +254712345678 | Emergency Contact: John Doe'),
+              const Text('Patient details will load from their medical records.'),
             ],
           ),
         ),
         const SizedBox(height: 16),
 
-        // Critical Alerts
+        // Info notice
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.red[50],
+            color: Colors.blue[50],
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red),
+            border: Border.all(color: Colors.blue[200]!),
           ),
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '🚨 ALLERGIES: Penicillin, Sulfa drugs',
+                'Patient records are loaded from the database.',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                  fontSize: 16,
+                  color: Colors.blue,
                 ),
               ),
               SizedBox(height: 8),
               Text(
-                '💊 CURRENT MEDICATIONS: Metformin 500mg, Lisinopril 10mg',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
+                'Allergies, medications, and medical history will appear here once the patient has records in the system.',
+                style: TextStyle(color: Colors.blue),
               ),
             ],
           ),
@@ -551,23 +546,30 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        _buildMedicalHistoryItem(
-          'Jan 28, 2024',
-          'Routine diabetes follow-up',
-          'Dr. Mary Wanjiku',
-          'ROUTINE',
-        ),
-        _buildMedicalHistoryItem(
-          'Jan 15, 2024',
-          'Malaria (treated)',
-          'Dr. James Kiprotich',
-          'URGENT',
-        ),
-        _buildMedicalHistoryItem(
-          'Dec 10, 2023',
-          'Diabetes management review',
-          'Dr. Sarah Muthoni',
-          'ROUTINE',
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Column(
+              children: [
+                Icon(Icons.history, size: 48, color: Colors.grey),
+                SizedBox(height: 8),
+                Text(
+                  'No medical history recorded yet',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Records will appear here after consultations',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -580,15 +582,15 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         Row(
           children: [
             Expanded(
-              child: _buildVitalSignCard('BP', '125/82', 'mmHg', Colors.green),
+              child: _buildVitalSignCard('BP', '--/--', 'mmHg', Colors.green),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _buildVitalSignCard('Weight', '65.2', 'kg', Colors.blue),
+              child: _buildVitalSignCard('Weight', '--', 'kg', Colors.blue),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _buildVitalSignCard('Temp', '36.8', '°C', Colors.orange),
+              child: _buildVitalSignCard('Temp', '--', '°C', Colors.orange),
             ),
           ],
         ),
@@ -703,35 +705,31 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   }
 
   Widget _buildPatientsList() {
-    final patients = [
-      {
-        'id': 'ML-NBO-DEMO1',
-        'name': 'Jane Doe',
-        'lastVisit': 'Jan 28, 2024',
-        'condition': 'Diabetes follow-up',
-        'age': 28,
-        'gender': 'Female',
-      },
-      {
-        'id': 'ML-MSA-ABC123',
-        'name': 'Mary Smith',
-        'lastVisit': 'Jan 27, 2024',
-        'condition': 'Hypertension',
-        'age': 45,
-        'gender': 'Female',
-      },
-      {
-        'id': 'ML-KSM-DEF456',
-        'name': 'Peter Ochieng',
-        'lastVisit': 'Jan 26, 2024',
-        'condition': 'Malaria treatment',
-        'age': 32,
-        'gender': 'Male',
-      },
-    ];
-
-    return Column(
-      children: patients.map((patient) => _buildPatientCard(patient)).toList(),
+    // No hardcoded patients - show empty state until real patients are loaded
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No patients yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Patients will appear here after you access their records using the "Access Patient" tab.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

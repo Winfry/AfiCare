@@ -255,8 +255,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Health Score',
-                    '87%',
-                    '+3% this month',
+                    '--',
+                    'Complete profile to see',
                     Icons.favorite,
                     Colors.red,
                   ),
@@ -265,8 +265,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Total Visits',
-                    '23',
-                    '+3 this month',
+                    '0',
+                    'No visits yet',
                     Icons.local_hospital,
                     Colors.blue,
                   ),
@@ -279,8 +279,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Active Meds',
-                    '4',
-                    'Well managed',
+                    '0',
+                    'None prescribed',
                     Icons.medication,
                     Colors.orange,
                   ),
@@ -289,8 +289,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Risk Level',
-                    'Low',
-                    'Stable',
+                    '--',
+                    'Pending assessment',
                     Icons.security,
                     Colors.green,
                   ),
@@ -370,24 +370,19 @@ class _PatientDashboardState extends State<PatientDashboard>
             ),
             const SizedBox(height: 16),
             _buildAlertItem(
-              'Blood Pressure: Well controlled (Last: 125/82)',
-              Icons.check_circle,
-              Colors.green,
-            ),
-            _buildAlertItem(
-              'Medication Adherence: 95% compliance rate',
+              'Welcome! Complete your profile to get personalized health alerts.',
               Icons.info,
               Colors.blue,
             ),
             _buildAlertItem(
-              'Cholesterol Check: Due in 2 weeks',
-              Icons.warning,
-              Colors.orange,
+              'Visit a healthcare provider to record your first consultation.',
+              Icons.local_hospital,
+              Colors.green,
             ),
             _buildAlertItem(
-              'ALLERGY ALERT: Penicillin, Sulfa drugs - CRITICAL',
-              Icons.error,
-              Colors.red,
+              'Update your allergies and medications through your provider.',
+              Icons.warning,
+              Colors.orange,
             ),
           ],
         ),
@@ -449,7 +444,7 @@ class _PatientDashboardState extends State<PatientDashboard>
             ),
             const SizedBox(height: 12),
             const Text(
-              'Recent Readings: Jan 28: 125/82 mmHg (Normal)',
+              'Vital signs will be recorded during your consultations',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -481,26 +476,26 @@ class _PatientDashboardState extends State<PatientDashboard>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildMedicationItem(
-              'Metformin XR',
-              '1000mg',
-              'Once daily',
-              '98%',
-              'Feb 15, 2024',
-            ),
-            _buildMedicationItem(
-              'Lisinopril',
-              '10mg',
-              'Once daily',
-              '95%',
-              'Feb 20, 2024',
-            ),
-            _buildMedicationItem(
-              'Atorvastatin',
-              '20mg',
-              'Once daily (evening)',
-              '92%',
-              'Feb 10, 2024',
+            Container(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.medication_outlined, size: 48, color: Colors.grey[400]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No active medications',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Prescribed medications will be tracked here',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -661,8 +656,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Total Visits',
-                    '23',
-                    'Across 8 facilities',
+                    '0',
+                    'No visits yet',
                     Icons.local_hospital,
                     Colors.blue,
                   ),
@@ -671,8 +666,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Emergency Visits',
-                    '2',
-                    'Last: 8 months ago',
+                    '0',
+                    'None recorded',
                     Icons.emergency,
                     Colors.red,
                   ),
@@ -686,30 +681,6 @@ class _PatientDashboardState extends State<PatientDashboard>
   }
 
   Widget _buildVisitHistory() {
-    final visits = [
-      {
-        'date': 'Jan 28, 2024',
-        'hospital': 'Nairobi General Hospital',
-        'doctor': 'Dr. Mary Wanjiku',
-        'diagnosis': 'Routine diabetes follow-up',
-        'triage': 'ROUTINE',
-      },
-      {
-        'date': 'Jan 15, 2024',
-        'hospital': 'Nairobi General Hospital',
-        'doctor': 'Dr. James Kiprotich',
-        'diagnosis': 'Malaria (treated)',
-        'triage': 'URGENT',
-      },
-      {
-        'date': 'Dec 10, 2023',
-        'hospital': 'Kenyatta National Hospital',
-        'doctor': 'Dr. Sarah Muthoni',
-        'diagnosis': 'Diabetes management review',
-        'triage': 'ROUTINE',
-      },
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -718,7 +689,31 @@ class _PatientDashboardState extends State<PatientDashboard>
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        ...visits.map((visit) => _buildVisitCard(visit)),
+        Container(
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.local_hospital_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No visits recorded yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your visit history will appear here after your first consultation.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -243,18 +243,18 @@ class _HealthSummaryState extends State<HealthSummary> {
                   child: _buildVitalItem(
                     Icons.thermostat,
                     'Temperature',
-                    '36.8°C',
+                    '--',
                     Colors.orange,
-                    'Normal',
+                    'No data',
                   ),
                 ),
                 Expanded(
                   child: _buildVitalItem(
                     Icons.favorite,
                     'Blood Pressure',
-                    '120/80',
+                    '--/--',
                     Colors.red,
-                    'Normal',
+                    'No data',
                   ),
                 ),
               ],
@@ -266,18 +266,18 @@ class _HealthSummaryState extends State<HealthSummary> {
                   child: _buildVitalItem(
                     Icons.monitor_heart,
                     'Heart Rate',
-                    '72 bpm',
+                    '-- bpm',
                     Colors.pink,
-                    'Normal',
+                    'No data',
                   ),
                 ),
                 Expanded(
                   child: _buildVitalItem(
                     Icons.air,
                     'SpO2',
-                    '98%',
+                    '--%',
                     Colors.blue,
-                    'Normal',
+                    'No data',
                   ),
                 ),
               ],
@@ -289,18 +289,18 @@ class _HealthSummaryState extends State<HealthSummary> {
                   child: _buildVitalItem(
                     Icons.scale,
                     'Weight',
-                    '68 kg',
+                    '-- kg',
                     Colors.purple,
-                    'Stable',
+                    'No data',
                   ),
                 ),
                 Expanded(
                   child: _buildVitalItem(
                     Icons.height,
                     'BMI',
-                    '23.4',
+                    '--',
                     Colors.teal,
-                    'Healthy',
+                    'No data',
                   ),
                 ),
               ],
@@ -387,7 +387,7 @@ class _HealthSummaryState extends State<HealthSummary> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Last 7 days',
+              'No data recorded yet',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const SizedBox(height: 16),
@@ -436,38 +436,7 @@ class _HealthSummaryState extends State<HealthSummary> {
                   ),
                   borderData: FlBorderData(show: false),
                   lineBarsData: [
-                    // Systolic
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 122),
-                        FlSpot(1, 118),
-                        FlSpot(2, 125),
-                        FlSpot(3, 120),
-                        FlSpot(4, 119),
-                        FlSpot(5, 121),
-                        FlSpot(6, 120),
-                      ],
-                      isCurved: true,
-                      color: Colors.red,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                    ),
-                    // Diastolic
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 82),
-                        FlSpot(1, 78),
-                        FlSpot(2, 85),
-                        FlSpot(3, 80),
-                        FlSpot(4, 79),
-                        FlSpot(5, 81),
-                        FlSpot(6, 80),
-                      ],
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                    ),
+                    // No data yet - empty chart
                   ],
                   minY: 60,
                   maxY: 140,
@@ -507,12 +476,6 @@ class _HealthSummaryState extends State<HealthSummary> {
   }
 
   Widget _buildMedicationsCard() {
-    final medications = [
-      {'name': 'Metformin 500mg', 'frequency': 'Twice daily', 'status': 'Active'},
-      {'name': 'Lisinopril 10mg', 'frequency': 'Once daily', 'status': 'Active'},
-      {'name': 'Vitamin D3', 'frequency': 'Once daily', 'status': 'Active'},
-    ];
-
     return Card(
       elevation: 2,
       child: Padding(
@@ -520,25 +483,29 @@ class _HealthSummaryState extends State<HealthSummary> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Current Medications',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('View All'),
-                ),
-              ],
+            const Text(
+              'Current Medications',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            ...medications.map((med) => _buildMedicationItem(
-              med['name']!,
-              med['frequency']!,
-              med['status']!,
-            )),
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
+                children: [
+                  Icon(Icons.medication_outlined, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No medications recorded',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Medications prescribed during consultations will appear here',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -606,8 +573,6 @@ class _HealthSummaryState extends State<HealthSummary> {
   }
 
   Widget _buildAllergiesCard() {
-    final allergies = ['Penicillin', 'Sulfa drugs', 'Peanuts'];
-
     return Card(
       elevation: 2,
       child: Padding(
@@ -626,21 +591,23 @@ class _HealthSummaryState extends State<HealthSummary> {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: allergies.map((allergy) => Chip(
-                backgroundColor: Colors.red.shade50,
-                label: Text(
-                  allergy,
-                  style: TextStyle(color: Colors.red.shade700),
-                ),
-                avatar: Icon(
-                  Icons.dangerous,
-                  size: 18,
-                  color: Colors.red.shade700,
-                ),
-              )).toList(),
+            Center(
+              child: Column(
+                children: [
+                  Icon(Icons.check_circle_outline, size: 40, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No allergies recorded',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Update your allergies through your healthcare provider',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -656,40 +623,28 @@ class _HealthSummaryState extends State<HealthSummary> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Recent Visits',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('View All'),
-                ),
-              ],
+            const Text(
+              'Recent Visits',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            _buildVisitItem(
-              'General Checkup',
-              'Dr. Sarah Mwangi',
-              'Jan 15, 2026',
-              'Routine',
-              Colors.green,
-            ),
-            _buildVisitItem(
-              'Follow-up Visit',
-              'Dr. James Ochieng',
-              'Dec 28, 2025',
-              'Urgent',
-              Colors.orange,
-            ),
-            _buildVisitItem(
-              'Lab Results Review',
-              'Dr. Sarah Mwangi',
-              'Dec 10, 2025',
-              'Routine',
-              Colors.green,
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
+                children: [
+                  Icon(Icons.local_hospital_outlined, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No visits recorded yet',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your visit history will appear here after consultations',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -782,85 +737,21 @@ class _HealthSummaryState extends State<HealthSummary> {
               'Upcoming Appointments',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AfiCareTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AfiCareTheme.primaryGreen.withOpacity(0.3),
-                ),
-              ),
-              child: Row(
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AfiCareTheme.primaryGreen,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: const [
-                        Text(
-                          '18',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Feb',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
+                  Icon(Icons.calendar_today_outlined, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No upcoming appointments',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Follow-up Consultation',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Dr. Sarah Mwangi',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: 14,
-                              color: Colors.grey.shade500,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '10:00 AM',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () {},
+                  const SizedBox(height: 4),
+                  Text(
+                    'Scheduled appointments will appear here',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
