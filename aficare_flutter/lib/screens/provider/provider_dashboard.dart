@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -89,9 +90,10 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           },
         ),
         PopupMenuButton<String>(
-          onSelected: (value) {
+          onSelected: (value) async {
             if (value == 'logout') {
-              Provider.of<AuthProvider>(context, listen: false).signOut();
+              await Provider.of<AuthProvider>(context, listen: false).signOut();
+              if (context.mounted) context.go('/login');
             }
           },
           itemBuilder: (context) => [
