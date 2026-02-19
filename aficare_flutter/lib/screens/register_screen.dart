@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
+import '../models/facility_model.dart';
 import '../utils/theme.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -23,6 +25,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   UserRole _selectedRole = UserRole.patient;
   bool _obscurePassword = true;
   bool _agreedToTerms = false;
+
+  // Facility picker state (for doctor/nurse)
+  List<FacilityModel> _facilities = [];
+  FacilityModel? _selectedFacility;
+  bool _loadingFacilities = false;
 
   @override
   void dispose() {

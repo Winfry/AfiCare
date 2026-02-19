@@ -12,6 +12,7 @@ import '../screens/provider/provider_dashboard.dart';
 import '../screens/provider/consultation_screen.dart';
 import '../screens/provider/patient_access.dart';
 import '../screens/admin/admin_dashboard.dart';
+import '../screens/facility_registration_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -30,6 +31,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/register-facility',
+      builder: (context, state) => const FacilityRegistrationScreen(),
     ),
 
     // Patient Routes
