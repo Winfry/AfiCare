@@ -61,6 +61,7 @@ class AuthProvider with ChangeNotifier {
     required String fullName,
     required UserRole role,
     String? phone,
+    String? facilityId,
   }) async {
     _isLoading = true;
     _error = null;
@@ -83,8 +84,8 @@ class AuthProvider with ChangeNotifier {
         medilinkId = UserModel.generateMedilinkId();
       }
 
-      // Create user profile
-      await _supabase.from('users').insert({
+      // Build user profile record
+      final userRecord = <String, dynamic>{
         'id': authResponse.user!.id,
         'email': email,
         'full_name': fullName,
@@ -92,7 +93,13 @@ class AuthProvider with ChangeNotifier {
         'phone': phone,
         'medilink_id': medilinkId,
         'created_at': DateTime.now().toIso8601String(),
-      });
+      };
+      if (facilityId != null) {
+        userRecord['facility_id'] = facilityId;
+      }
+
+      // Create user profile
+      await _supabase.from('users').insert(userRecord);
 
       _isLoading = false;
       notifyListeners();
