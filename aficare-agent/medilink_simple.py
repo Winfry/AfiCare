@@ -495,7 +495,97 @@ class SimpleRuleEngine:
             ],
             "danger_signs": ["high_fever", "difficulty_breathing", "severe_headache"]
         }
-        
+
+        conditions["typhoid"] = {
+            "name": "Typhoid Fever",
+            "symptoms": {
+                "fever": 0.9,
+                "abdominal_pain": 0.8,
+                "headache": 0.7,
+                "fatigue": 0.7,
+                "nausea": 0.6,
+                "vomiting": 0.5,
+                "diarrhea": 0.6,
+                "loss_of_appetite": 0.5,
+            },
+            "treatment": [
+                "Ciprofloxacin 500 mg BD for 7 days (or Azithromycin if resistant)",
+                "Oral rehydration therapy",
+                "Paracetamol for fever control",
+                "Isolate patient and ensure safe water/food",
+                "Admit if unable to tolerate oral intake or severe symptoms",
+            ],
+            "danger_signs": ["intestinal_perforation", "severe_abdominal_pain", "high_fever", "confusion"]
+        }
+
+        conditions["tuberculosis"] = {
+            "name": "Pulmonary Tuberculosis",
+            "symptoms": {
+                "cough": 0.9,
+                "fever": 0.7,
+                "fatigue": 0.8,
+                "night_sweats": 0.8,
+                "weight_loss": 0.7,
+                "chest_pain": 0.5,
+                "difficulty_breathing": 0.4,
+                "coughing_blood": 0.6,
+            },
+            "treatment": [
+                "Refer to TB clinic for DOTS programme",
+                "First-line: RHZE regimen for 2 months, then RH for 4 months",
+                "Contact tracing and screening",
+                "Nutritional support",
+                "HIV co-testing recommended",
+            ],
+            "danger_signs": ["coughing_blood", "difficulty_breathing", "severe_weight_loss", "confusion"]
+        }
+
+        conditions["diabetes_type2"] = {
+            "name": "Type 2 Diabetes Mellitus",
+            "symptoms": {
+                "fatigue": 0.7,
+                "polyuria": 0.9,
+                "polydipsia": 0.8,
+                "blurred_vision": 0.6,
+                "weight_loss": 0.5,
+                "slow_healing_wounds": 0.6,
+                "numbness": 0.5,
+                "dizziness": 0.3,
+            },
+            "treatment": [
+                "Metformin 500 mg BD with meals (titrate up)",
+                "Blood glucose monitoring",
+                "Dietary modification: low-sugar, high-fibre",
+                "Regular physical activity (30 min/day)",
+                "HbA1c every 3 months",
+                "Annual eye, foot, and kidney screening",
+            ],
+            "danger_signs": ["very_high_blood_glucose", "ketoacidosis", "hypoglycemia", "chest_pain"]
+        }
+
+        conditions["malnutrition"] = {
+            "name": "Malnutrition (SAM/MAM)",
+            "symptoms": {
+                "weight_loss": 0.9,
+                "fatigue": 0.8,
+                "muscle_wasting": 0.8,
+                "edema": 0.7,
+                "hair_loss": 0.6,
+                "poor_wound_healing": 0.6,
+                "dizziness": 0.5,
+                "irritability": 0.5,
+            },
+            "treatment": [
+                "MUAC assessment and RUTF for SAM (<115 mm)",
+                "Vitamin A, zinc, iron supplementation",
+                "Treat underlying infections",
+                "Nutritional counselling for caregivers",
+                "Admit if oedema, complications, or no appetite",
+                "Follow-up at outpatient therapeutic programme",
+            ],
+            "danger_signs": ["severe_oedema", "hypoglycemia", "hypothermia", "inability_to_feed"]
+        }
+
         return conditions
     
     def analyze_symptoms(self, symptoms: List[str], vital_signs: Dict[str, float], age: int, gender: str):
@@ -3069,21 +3159,28 @@ def show_provider_consultation():
         chief_complaint = st.text_area("Chief Complaint")
         
         st.write("**Symptoms:**")
-        col1, col2 = st.columns(2)
-        
+        col1, col2, col3 = st.columns(3)
+
         with col1:
             fever = st.checkbox("Fever")
             cough = st.checkbox("Cough")
             headache = st.checkbox("Headache")
             nausea = st.checkbox("Nausea")
             vomiting = st.checkbox("Vomiting")
-        
+
         with col2:
             chest_pain = st.checkbox("Chest pain")
             difficulty_breathing = st.checkbox("Difficulty breathing")
             fatigue = st.checkbox("Fatigue")
             dizziness = st.checkbox("Dizziness")
             muscle_aches = st.checkbox("Muscle aches")
+
+        with col3:
+            joint_pain = st.checkbox("Joint pain")
+            abdominal_pain = st.checkbox("Abdominal pain")
+            sore_throat = st.checkbox("Sore throat")
+            rash = st.checkbox("Rash")
+            back_pain = st.checkbox("Back pain")
         
         st.write("**Vital Signs:**")
         col1, col2, col3 = st.columns(3)
@@ -3120,6 +3217,11 @@ def show_provider_consultation():
             if fatigue: symptoms_list.append("fatigue")
             if dizziness: symptoms_list.append("dizziness")
             if muscle_aches: symptoms_list.append("muscle aches")
+            if joint_pain: symptoms_list.append("joint pain")
+            if abdominal_pain: symptoms_list.append("abdominal pain")
+            if sore_throat: symptoms_list.append("sore throat")
+            if rash: symptoms_list.append("rash")
+            if back_pain: symptoms_list.append("back pain")
             
             if not symptoms_list:
                 st.error("Please select at least one symptom for analysis")
