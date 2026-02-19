@@ -32,6 +32,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _loadingFacilities = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadFacilities();
+  }
+
+  Future<void> _loadFacilities() async {
+    setState(() => _loadingFacilities = true);
+    try {
+      final result = await Supabase.instance.client
+          .from('facilities')
+          .select()
+          .order('name');
+      setState(() {
+        _facilities = (result as List)
+            .map((f) => FacilityModel.fromJson(f as Map<String, dynamic>))
+            .toList();
+      });
+    } catch (_) {
+      // Graceful fallback: facility list stays empty
+    } finally {
+      setState(() => _loadingFacilities = false);
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
@@ -58,6 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       fullName: _nameController.text,
       role: _selectedRole,
       phone: _phoneController.text,
+      facilityId: _selectedFacility?.id,
     );
 
     if (success && mounted) {
