@@ -133,27 +133,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: UserRole.values.map((role) {
-                    return ChoiceChip(
-                      selected: _selectedRole == role,
-                      label: Text(role.name.toUpperCase()),
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() => _selectedRole = role);
-                        }
-                      },
-                      selectedColor: _getRoleColor(role),
-                      labelStyle: TextStyle(
-                        color: _selectedRole == role
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    );
-                  }).toList(),
+                Semantics(
+                  label: 'Select your role',
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: UserRole.values.map((role) {
+                      return Semantics(
+                        label: '${role.name} role',
+                        selected: _selectedRole == role,
+                        button: true,
+                        child: ChoiceChip(
+                          selected: _selectedRole == role,
+                          label: Text(role.name.toUpperCase()),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedRole = role;
+                                _selectedFacility = null;
+                              });
+                            }
+                          },
+                          selectedColor: _getRoleColor(role),
+                          labelStyle: TextStyle(
+                            color: _selectedRole == role
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
+
+                // Facility picker for healthcare providers
+                if (_selectedRole == UserRole.doctor ||
+                    _selectedRole == UserRole.nurse) ...[
+                  const SizedBox(height: 16),
+                  if (_loadingFacilities)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_facilities.isEmpty)
+                    Semantics(
+                      label: 'No facilities registered yet',
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.add_business),
+                        label: const Text('Register a Facility First'),
+                        onPressed: () => context.push('/register-facility'),
+                      ),
+                    )
+                  else
+                    Semantics(
+                      label: 'Select your health facility',
+                      child: DropdownButtonFormField<FacilityModel>(
+                        value: _selectedFacility,
+                        decoration: const InputDecoration(
+                          labelText: 'Health Facility',
+                          prefixIcon: Icon(Icons.local_hospital),
+                        ),
+                        hint: const Text('Select your facility'),
+                        items: _facilities
+                            .map((f) => DropdownMenuItem(
+                                  value: f,
+                                  child: Text(f.name),
+                                ))
+                            .toList(),
+                        onChanged: (f) => setState(() => _selectedFacility = f),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Register new facility'),
+                      onPressed: () => context.push('/register-facility'),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 24),
 
