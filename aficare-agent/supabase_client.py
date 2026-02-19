@@ -175,6 +175,7 @@ def create_patient(user_id: str, data: Dict[str, Any]) -> Optional[Dict]:
             "chronic_conditions": [c.strip() for c in data.get("medical_history", "").split(",") if c.strip()] if data.get("medical_history") else None,
             "emergency_contact_name": data.get("emergency_name"),
             "emergency_contact_phone": data.get("emergency_phone"),
+            "disability_type": data.get("disability_type"),
         }
         # Remove None values
         patient_record = {k: v for k, v in patient_record.items() if v is not None}
@@ -184,6 +185,70 @@ def create_patient(user_id: str, data: Dict[str, Any]) -> Optional[Dict]:
             return result.data[0]
     except Exception as e:
         logger.error(f"create_patient error: {e}")
+    return None
+
+
+# ============================================
+# FACILITY OPERATIONS
+# ============================================
+
+def get_all_facilities() -> List[Dict]:
+    """Return all registered health facilities."""
+    client = get_client()
+    if not client:
+        return []
+    try:
+        result = (client.table("facilities")
+                  .select("*")
+                  .order("name")
+                  .execute())
+        return result.data or []
+    except Exception as e:
+        logger.error(f"get_all_facilities error: {e}")
+    return []
+
+
+def get_facility_by_id(facility_id: str) -> Optional[Dict]:
+    """Return a single facility by its UUID."""
+    client = get_client()
+    if not client:
+        return None
+    try:
+        result = (client.table("facilities")
+                  .select("*")
+                  .eq("id", facility_id)
+                  .single()
+                  .execute())
+        return result.data
+    except Exception as e:
+        logger.error(f"get_facility_by_id error: {e}")
+    return None
+
+
+def create_facility(data: Dict[str, Any]) -> Optional[Dict]:
+    """Register a new health facility. Returns created record or None."""
+    client = get_client()
+    if not client:
+        return None
+    try:
+        facility_record = {
+            "name": data["name"],
+            "type": data.get("type", "clinic"),
+            "county": data.get("county"),
+            "sub_county": data.get("sub_county"),
+            "address": data.get("address"),
+            "phone": data.get("phone"),
+            "email": data.get("email"),
+        }
+        # Remove None values
+        facility_record = {k: v for k, v in facility_record.items() if v is not None}
+
+        result = client.table("facilities").insert(facility_record).execute()
+        if result.data:
+            logger.info(f"Created facility: {data['name']}")
+            return result.data[0]
+    except Exception as e:
+        logger.error(f"create_facility error: {e}")
     return None
 
 
