@@ -115,7 +115,7 @@ class AfiCareTheme {
       ),
     ),
   );
-  );
+
 
   // High Contrast Theme
   static ThemeData highContrastTheme = ThemeData(
