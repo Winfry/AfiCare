@@ -89,7 +89,9 @@ class _HealthSummaryState extends State<HealthSummary> {
             radius: 40,
             backgroundColor: Colors.white,
             child: Text(
-              user?.fullName.substring(0, 1).toUpperCase() ?? 'U',
+              (user?.fullName.isNotEmpty == true
+                  ? user!.fullName[0].toUpperCase()
+                  : 'U'),
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
