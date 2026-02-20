@@ -10,7 +10,6 @@ import 'dart:math';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../models/user_model.dart';
-import '../../models/consultation_model.dart';
 import '../../utils/theme.dart';
 import '../common/notifications_screen.dart';
 
