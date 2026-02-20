@@ -140,7 +140,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user.fullName ?? 'Healthcare Provider',
+                  user.fullName,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -317,7 +317,6 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       
       setState(() {
         _isScanning = false;
-        _scannedPatientId = medilinkId;
       });
 
       _showPatientRecords(medilinkId, accessCode);
