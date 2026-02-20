@@ -143,7 +143,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                 radius: 30,
                 backgroundColor: Colors.white,
                 child: Text(
-                  user.fullName?.substring(0, 1).toUpperCase() ?? 'U',
+                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
