@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:convert';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../models/user_model.dart';
-import '../../models/consultation_model.dart';
-import '../../services/medical_ai_service.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
 import '../common/notifications_screen.dart';
@@ -24,7 +21,6 @@ class ProviderDashboard extends StatefulWidget {
 class _ProviderDashboardState extends State<ProviderDashboard>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  String? _scannedPatientId;
   bool _isScanning = false;
 
   @override
@@ -130,7 +126,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             radius: 30,
             backgroundColor: Colors.white,
             child: Text(
-              user.fullName?.substring(0, 1).toUpperCase() ?? 'D',
+              user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'D',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
