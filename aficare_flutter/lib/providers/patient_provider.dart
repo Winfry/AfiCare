@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/consultation_model.dart';
@@ -74,12 +75,8 @@ class PatientProvider with ChangeNotifier {
 
   String _generateSecureCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final random = DateTime.now().millisecondsSinceEpoch;
-    String code = '';
-    for (int i = 0; i < 8; i++) {
-      code += chars[(random + i * 7) % chars.length];
-    }
-    return code;
+    final rng = Random.secure();
+    return List.generate(8, (_) => chars[rng.nextInt(chars.length)]).join();
   }
 
   // Verify access code
