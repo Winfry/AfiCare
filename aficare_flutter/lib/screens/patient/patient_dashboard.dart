@@ -188,7 +188,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user.fullName ?? 'Unknown User',
+                      user.fullName,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

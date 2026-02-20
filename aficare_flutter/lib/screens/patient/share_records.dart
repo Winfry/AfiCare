@@ -5,7 +5,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../providers/auth_provider.dart';
-import '../../providers/patient_provider.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
 
