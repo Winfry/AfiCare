@@ -27,16 +27,44 @@ class _PatientDashboardState extends State<PatientDashboard>
   String? _generatedAccessCode;
   DateTime? _accessCodeExpiry;
 
+  // Settings toggle state
+  bool _allowEmergencyAccess = true;
+  bool _allowResearchData = false;
+  bool _enableAiRecommendations = true;
+  bool _medicationReminders = true;
+  bool _appointmentReminders = true;
+  bool _healthAlerts = true;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
-    _loadPatientData();
+    // Start with 4 tabs (no gender-specific tabs). Corrected in build when user loads.
+    _tabController = TabController(length: 4, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPatientData());
   }
 
   void _loadPatientData() {
+    if (!mounted) return;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final patientProvider = Provider.of<PatientProvider>(context, listen: false);
-    patientProvider.loadPatientData();
+    final userId = authProvider.currentUser?.id;
+    if (userId != null) {
+      patientProvider.loadConsultations(userId);
+    }
+  }
+
+  /// Ensures the TabController length matches the actual tab count for this user.
+  void _ensureTabController(bool isWoman) {
+    final needed = isWoman ? 6 : 4;
+    if (_tabController.length != needed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _tabController.dispose();
+          _tabController = TabController(length: needed, vsync: this);
+        });
+      });
+    }
   }
 
   @override
@@ -49,6 +77,10 @@ class _PatientDashboardState extends State<PatientDashboard>
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
+        // Keep tab count in sync with the logged-in user's gender
+        final isWoman = user.gender?.toLowerCase() == 'female';
+        _ensureTabController(isWoman);
 
         return Scaffold(
           appBar: _buildAppBar(user),
@@ -642,15 +674,20 @@ class _PatientDashboardState extends State<PatientDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildVisitSummary(),
+          _buildVisitSummary(patientProvider),
           const SizedBox(height: 20),
-          _buildVisitHistory(),
+          _buildVisitHistory(patientProvider),
         ],
       ),
     );
   }
 
-  Widget _buildVisitSummary() {
+  Widget _buildVisitSummary(PatientProvider patientProvider) {
+    final consultations = patientProvider.consultations;
+    final emergencyCount = consultations
+        .where((c) => c.triageLevel.toLowerCase() == 'emergency')
+        .length;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -667,8 +704,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Total Visits',
-                    '0',
-                    'No visits yet',
+                    '${consultations.length}',
+                    consultations.isEmpty ? 'No visits yet' : 'All time',
                     Icons.local_hospital,
                     Colors.blue,
                   ),
@@ -677,8 +714,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Emergency Visits',
-                    '0',
-                    'None recorded',
+                    '$emergencyCount',
+                    emergencyCount == 0 ? 'None recorded' : 'Recorded',
                     Icons.emergency,
                     Colors.red,
                   ),
@@ -691,7 +728,9 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildVisitHistory() {
+  Widget _buildVisitHistory(PatientProvider patientProvider) {
+    final consultations = patientProvider.consultations;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -700,31 +739,45 @@ class _PatientDashboardState extends State<PatientDashboard>
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(32),
-          child: Center(
-            child: Column(
-              children: [
-                Icon(Icons.local_hospital_outlined, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  'No visits recorded yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
+        if (patientProvider.isLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (consultations.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.local_hospital_outlined,
+                      size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No visits recorded yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Your visit history will appear here after your first consultation.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[500]),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your visit history will appear here after your first consultation.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          )
+        else
+          ...consultations.map((c) => _buildVisitCard({
+                'date': c.timestamp.toString().substring(0, 10),
+                'hospital': 'AfiCare',
+                'doctor': c.providerId,
+                'diagnosis': c.diagnoses.isNotEmpty
+                    ? c.diagnoses.first.condition
+                    : c.chiefComplaint,
+                'triage': c.triageLevel.toUpperCase(),
+              })),
       ],
     );
   }
@@ -1341,20 +1394,23 @@ class _PatientDashboardState extends State<PatientDashboard>
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Allow emergency access when unconscious'),
-              value: true,
-              onChanged: (value) {},
+              value: _allowEmergencyAccess,
+              onChanged: (value) =>
+                  setState(() => _allowEmergencyAccess = value),
               activeColor: AfiCareTheme.primaryGreen,
             ),
             SwitchListTile(
               title: const Text('Allow anonymized data for medical research'),
-              value: false,
-              onChanged: (value) {},
+              value: _allowResearchData,
+              onChanged: (value) =>
+                  setState(() => _allowResearchData = value),
               activeColor: AfiCareTheme.primaryGreen,
             ),
             SwitchListTile(
               title: const Text('Enable AI health recommendations'),
-              value: true,
-              onChanged: (value) {},
+              value: _enableAiRecommendations,
+              onChanged: (value) =>
+                  setState(() => _enableAiRecommendations = value),
               activeColor: AfiCareTheme.primaryGreen,
             ),
           ],
@@ -1377,20 +1433,22 @@ class _PatientDashboardState extends State<PatientDashboard>
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Medication reminders'),
-              value: true,
-              onChanged: (value) {},
+              value: _medicationReminders,
+              onChanged: (value) =>
+                  setState(() => _medicationReminders = value),
               activeColor: AfiCareTheme.primaryGreen,
             ),
             SwitchListTile(
               title: const Text('Appointment reminders'),
-              value: true,
-              onChanged: (value) {},
+              value: _appointmentReminders,
+              onChanged: (value) =>
+                  setState(() => _appointmentReminders = value),
               activeColor: AfiCareTheme.primaryGreen,
             ),
             SwitchListTile(
               title: const Text('Health alerts'),
-              value: true,
-              onChanged: (value) {},
+              value: _healthAlerts,
+              onChanged: (value) => setState(() => _healthAlerts = value),
               activeColor: AfiCareTheme.primaryGreen,
             ),
           ],
