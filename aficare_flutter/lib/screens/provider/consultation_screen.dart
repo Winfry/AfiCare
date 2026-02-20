@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../services/medical_ai_service.dart';
 import '../../models/consultation_model.dart';
@@ -433,20 +434,6 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         _aiResult = result;
         _isAnalyzing = false;
       });
-
-      // Save consultation
-      if (mounted) {
-        Provider.of<ConsultationProvider>(context, listen: false)
-            .saveConsultation(
-              patientId: result.patientId,
-              providerId: 'current_provider', // TODO: Get from AuthProvider
-              chiefComplaint: result.chiefComplaint,
-              symptoms: result.symptoms,
-              vitalSigns: result.vitalSigns,
-              recommendations: result.recommendations,
-              followUpRequired: result.followUpRequired,
-            );
-      }
     } catch (e) {
       setState(() {
         _isAnalyzing = false;
@@ -685,16 +672,39 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       ),
     );
 
-    // Simulate saving to database
-    await Future.delayed(const Duration(seconds: 1));
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final consultationProvider =
+        Provider.of<ConsultationProvider>(context, listen: false);
+    final providerId = authProvider.currentUser?.id ?? 'unknown';
 
-    // Close dialog
-    if (context.mounted) {
-      Navigator.of(context).pop();
+    final vitalSigns = VitalSigns(
+      temperature: _temperature,
+      systolicBP: _systolicBP,
+      diastolicBP: _diastolicBP,
+      pulseRate: _pulse,
+      respiratoryRate: _respiratoryRate,
+      oxygenSaturation: _oxygenSaturation.toDouble(),
+    );
 
-      // Show success with consultation ID
-      final consultationId = 'CON-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    final selectedSymptoms = _symptoms.entries
+        .where((e) => e.value)
+        .map((e) => e.key.replaceAll('_', ' '))
+        .toList();
 
+    final success = await consultationProvider.saveConsultation(
+      patientId: _medilinkIdController.text.trim(),
+      providerId: providerId,
+      chiefComplaint: _chiefComplaintController.text.trim(),
+      symptoms: selectedSymptoms,
+      vitalSigns: vitalSigns,
+      recommendations: _aiResult!.recommendations,
+      followUpRequired: _aiResult!.followUpRequired,
+    );
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // close spinner
+
+    if (success) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -709,14 +719,12 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Consultation ID: $consultationId'),
-              const SizedBox(height: 8),
               Text('Patient: ${_medilinkIdController.text}'),
               const SizedBox(height: 8),
               Text('Triage: ${_aiResult!.triageLevel.toUpperCase()}'),
               const SizedBox(height: 8),
               const Text(
-                'This consultation has been saved to the patient\'s medical record.',
+                'Consultation saved to the patient\'s medical record.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
@@ -725,7 +733,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Go back to dashboard
+                Navigator.of(context).pop(); // back to dashboard
               },
               child: const Text('Done'),
             ),
@@ -737,6 +745,13 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               child: const Text('Share with Patient'),
             ),
           ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to save consultation. Please try again.'),
+          backgroundColor: Colors.red,
         ),
       );
     }
