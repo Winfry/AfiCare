@@ -41,6 +41,7 @@ class AfiCareApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AfiCareTheme.lightTheme,
         darkTheme: AfiCareTheme.darkTheme,
+        highContrastTheme: AfiCareTheme.highContrastTheme,
         themeMode: ThemeMode.system,
         routerConfig: appRouter,
       ),
