@@ -5,6 +5,13 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Load key.properties for local signing (not committed to repo)
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.aficare.medilink"
     compileSdk = 35
@@ -19,10 +26,26 @@ android {
         jvmTarget = '17'
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                // Local build: use key.properties file
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storeFile = file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
+            } else if (System.getenv("KEYSTORE_PATH")) {
+                // CI build: use environment variables
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+                storeFile = file(System.getenv("KEYSTORE_PATH"))
+                storePassword = System.getenv("STORE_PASSWORD")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.aficare.medilink"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 21
         targetSdk = 35
         versionCode = flutter.versionCode
@@ -31,9 +54,9 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig = (keystorePropertiesFile.exists() || System.getenv("KEYSTORE_PATH"))
+                ? signingConfigs.release
+                : signingConfigs.debug
         }
     }
 }
