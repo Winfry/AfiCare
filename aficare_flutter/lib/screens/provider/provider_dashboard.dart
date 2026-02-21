@@ -1,8 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'dart:convert';
+import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
