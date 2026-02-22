@@ -258,11 +258,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Phone Number',
                     prefixIcon: Icon(Icons.phone),
                     hintText: '+254...',
                   ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      final digits = value.replaceAll(RegExp(r'[^\d]'), '');
+                      if (digits.length < 9 || digits.length > 15) {
+                        return 'Please enter a valid phone number';
+                      }
+                    }
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 16),
