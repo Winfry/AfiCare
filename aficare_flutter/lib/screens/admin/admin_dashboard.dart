@@ -18,6 +18,7 @@ class AdminDashboard extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
             onPressed: () async {
               await authProvider.signOut();
               if (context.mounted) context.go('/login');

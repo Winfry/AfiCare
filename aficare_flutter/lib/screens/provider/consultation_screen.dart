@@ -240,6 +240,8 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                     symptom.replaceAll('_', ' ').toUpperCase(),
                     style: TextStyle(
                       fontSize: 12,
+                      // Selected: white on #1D3557 (navy) = 12.6:1 ✓
+                      // Unselected: black87 on chip surface ✓
                       color: isSelected ? Colors.white : Colors.black87,
                     ),
                   ),
@@ -249,7 +251,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       _symptoms[symptom] = selected;
                     });
                   },
-                  selectedColor: AfiCareTheme.primaryGreen,
+                  selectedColor: AfiCareTheme.primaryBlue, // navy — passes contrast for white text
                   checkmarkColor: Colors.white,
                 );
               },

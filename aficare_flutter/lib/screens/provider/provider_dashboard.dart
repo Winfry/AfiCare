@@ -78,6 +78,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined),
+          tooltip: 'Notifications',
           onPressed: () {
             Navigator.push(
               context,
@@ -460,6 +461,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
+                    tooltip: 'Close patient records',
                   ),
                 ],
               ),
@@ -772,6 +774,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
                 _showPatientRecords(patient['id'], null);
               },
               icon: const Icon(Icons.visibility),
+              tooltip: 'View patient records',
               color: AfiCareTheme.primaryBlue,
             ),
           ],
