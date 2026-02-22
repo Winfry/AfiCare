@@ -132,13 +132,38 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Age'),
+                      Row(
+                        children: [
+                          const Text('Age'),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 60,
+                            child: TextFormField(
+                              initialValue: '$_age',
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                suffixText: 'yrs',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                isDense: true,
+                              ),
+                              onChanged: (v) {
+                                final n = int.tryParse(v);
+                                if (n != null && n >= 0 && n <= 120) {
+                                  setState(() => _age = n);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                       Slider(
                         value: _age.toDouble(),
                         min: 0,
                         max: 120,
                         divisions: 120,
                         label: '$_age years',
+                        semanticFormatterCallback: (v) => '${v.toInt()} years',
                         onChanged: (value) {
                           setState(() {
                             _age = value.toInt();
@@ -336,18 +361,40 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     Function(double) onChanged,
     String displayValue,
   ) {
+    // Extract unit from displayValue (e.g. "37.0°C" → unit "°C")
+    final unitMatch = RegExp(r'[^\d.]+$').firstMatch(displayValue);
+    final unit = unitMatch?.group(0) ?? '';
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label),
-              Text(
-                displayValue,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              Expanded(child: Text(label)),
+              // Text input alternative for motor-impaired users
+              SizedBox(
+                width: 80,
+                child: TextFormField(
+                  key: ValueKey('$label-$value'),
+                  initialValue: value % 1 == 0
+                      ? value.toInt().toString()
+                      : value.toStringAsFixed(1),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    suffixText: unit,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    isDense: true,
+                  ),
+                  onChanged: (v) {
+                    final n = double.tryParse(v);
+                    if (n != null && n >= min && n <= max) {
+                      onChanged(n);
+                    }
+                  },
+                ),
               ),
             ],
           ),
@@ -357,6 +404,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             max: max,
             onChanged: onChanged,
             activeColor: AfiCareTheme.primaryGreen,
+            semanticFormatterCallback: (v) => displayValue,
           ),
         ],
       ),
