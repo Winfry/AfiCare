@@ -281,10 +281,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
+                      tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility
@@ -311,6 +313,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
                     labelText: 'Confirm Password',
                     prefixIcon: Icon(Icons.lock_outline),
