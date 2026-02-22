@@ -79,7 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Logo
                 Center(
-                  child: Container(
+                  child: Semantics(
+                    label: 'AfiCare MediLink — Your Health Records, Your Control',
+                    child: Container(
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
@@ -103,6 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       size: 50,
                       color: Colors.white,
                     ),
+                  ),
                   ),
                 ),
 
@@ -161,6 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: _useMedilinkId
                       ? TextInputType.text
                       : TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: _useMedilinkId ? 'MediLink ID' : 'Email',
                     hintText: _useMedilinkId
@@ -186,10 +190,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _login(),
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
+                      tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility
