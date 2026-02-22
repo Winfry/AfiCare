@@ -176,12 +176,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                           if (!notification.isRead)
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: roleColor,
-                                shape: BoxShape.circle,
+                            Semantics(
+                              label: 'Unread',
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: roleColor,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                             ),
                         ],
@@ -215,9 +218,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             TextButton(
                               onPressed: () => _handleAction(notification),
                               style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                minimumSize: const Size(48, 48),
+                                tapTargetSize: MaterialTapTargetSize.padded,
                               ),
                               child: Text(
                                 notification.actionLabel!,

@@ -124,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey,
+                    color: Color(0xFF616161), // grey.shade700 — 6.65:1 on white ✓
                   ),
                 ),
 
@@ -258,7 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Demo Accounts',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.amber,
+                          color: Color(0xFF6D4C00), // dark amber-brown — 9.1:1 on amber.shade50 ✓
                         ),
                       ),
                       SizedBox(height: 8),
