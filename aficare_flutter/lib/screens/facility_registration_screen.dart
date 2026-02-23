@@ -169,6 +169,7 @@ class _FacilityRegistrationScreenState
                   child: TextFormField(
                     controller: _countyController,
                     textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'County',
                       prefixIcon: Icon(Icons.location_city),
@@ -184,6 +185,7 @@ class _FacilityRegistrationScreenState
                   child: TextFormField(
                     controller: _subCountyController,
                     textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Sub-County',
                       prefixIcon: Icon(Icons.map),
@@ -198,6 +200,7 @@ class _FacilityRegistrationScreenState
                   label: 'Physical address',
                   child: TextFormField(
                     controller: _addressController,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Physical Address',
                       prefixIcon: Icon(Icons.home),
