@@ -175,7 +175,9 @@ class _PatientAccessState extends State<PatientAccess>
             ),
           ),
           const SizedBox(height: 40),
-          TextField(
+          Semantics(
+            label: 'Access code input field, enter 6 characters provided by the patient',
+            child: TextField(
             controller: _accessCodeController,
             textAlign: TextAlign.center,
             style: const TextStyle(
@@ -215,6 +217,7 @@ class _PatientAccessState extends State<PatientAccess>
                 _verifyAccessCode(value);
               }
             },
+          ),
           ),
           const SizedBox(height: 24),
           SizedBox(

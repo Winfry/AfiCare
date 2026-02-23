@@ -67,10 +67,12 @@ class _QRScannerState extends State<QRScanner> with WidgetsBindingObserver {
         actions: [
           IconButton(
             icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off),
+            tooltip: _torchEnabled ? 'Turn off torch' : 'Turn on torch',
             onPressed: _toggleTorch,
           ),
           IconButton(
             icon: Icon(_frontCamera ? Icons.camera_front : Icons.camera_rear),
+            tooltip: _frontCamera ? 'Switch to rear camera' : 'Switch to front camera',
             onPressed: _switchCamera,
           ),
         ],

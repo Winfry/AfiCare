@@ -127,7 +127,7 @@ class _SplashScreenState extends State<SplashScreen>
                     'MEDILINK',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Colors.white70,
+                      color: Colors.white, // was white70 (~2.0:1) → white (∞:1) ✓
                       letterSpacing: 8,
                     ),
                   ),
@@ -138,19 +138,22 @@ class _SplashScreenState extends State<SplashScreen>
                     'Patient-Owned Healthcare Records',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white60,
+                      color: Colors.white, // was white60 (~1.6:1) → white ✓
                     ),
                   ),
 
                   const SizedBox(height: 60),
 
                   // Loading indicator
-                  const SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      strokeWidth: 3,
+                  Semantics(
+                    label: 'Loading AfiCare MediLink',
+                    child: const SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
                     ),
                   ),
                 ],

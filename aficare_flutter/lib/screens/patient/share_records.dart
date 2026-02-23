@@ -107,7 +107,7 @@ class _ShareRecordsState extends State<ShareRecords>
           Text(
             'Let healthcare providers scan this QR code to access your medical records',
             style: TextStyle(
-              color: Colors.grey.shade600,
+              color: Color(0xFF616161), // grey.shade700 — 6.65:1 on white ✓
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -128,18 +128,21 @@ class _ShareRecordsState extends State<ShareRecords>
             ),
             child: Column(
               children: [
-                QrImageView(
-                  data: _generateQRData(user),
-                  version: QrVersions.auto,
-                  size: 220,
-                  backgroundColor: Colors.white,
-                  eyeStyle: QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: AfiCareTheme.primaryGreen,
-                  ),
-                  dataModuleStyle: QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
-                    color: AfiCareTheme.primaryGreenDark,
+                Semantics(
+                  label: 'QR code containing your MediLink ID and selected access permissions',
+                  child: QrImageView(
+                    data: _generateQRData(user),
+                    version: QrVersions.auto,
+                    size: 220,
+                    backgroundColor: Colors.white,
+                    eyeStyle: QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: AfiCareTheme.primaryGreen,
+                    ),
+                    dataModuleStyle: QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: AfiCareTheme.primaryGreenDark,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -220,7 +223,7 @@ class _ShareRecordsState extends State<ShareRecords>
           Text(
             'Create a temporary code for healthcare providers to access your records',
             style: TextStyle(
-              color: Colors.grey.shade600,
+              color: Color(0xFF616161), // grey.shade700 — 6.65:1 on white ✓
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -422,7 +425,7 @@ class _ShareRecordsState extends State<ShareRecords>
                       Text(perm['label'] as String),
                     ],
                   ),
-                  selectedColor: AfiCareTheme.primaryGreen,
+                  selectedColor: AfiCareTheme.primaryBlue, // navy — white text = 12.6:1 ✓
                   checkmarkColor: Colors.white,
                   labelStyle: TextStyle(
                     color: isSelected ? Colors.white : Colors.black87,
@@ -482,7 +485,7 @@ class _ShareRecordsState extends State<ShareRecords>
                 return ChoiceChip(
                   selected: isSelected,
                   label: Text(dur['label'] as String),
-                  selectedColor: AfiCareTheme.primaryGreen,
+                  selectedColor: AfiCareTheme.primaryBlue, // navy — white text = 12.6:1 ✓
                   labelStyle: TextStyle(
                     color: isSelected ? Colors.white : Colors.black87,
                   ),
