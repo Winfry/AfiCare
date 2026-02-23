@@ -6,7 +6,9 @@ import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dependent_provider.dart';
 import '../../utils/theme.dart';
+import 'widgets/care_team_section.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
@@ -27,10 +29,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   Future<void> _load() async {
     if (!mounted) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final depProvider = Provider.of<DependentProvider>(context, listen: false);
     final apt = Provider.of<AppointmentProvider>(context, listen: false);
-    final uid = auth.currentUser?.id;
-    if (uid != null) {
-      await apt.loadAppointments(uid);
+    // Use active patient (own or dependent), fall back to auth uid
+    final activeId =
+        depProvider.activePatientId ?? auth.currentUser?.id;
+    if (activeId != null) {
+      await apt.loadAppointments(activeId);
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -45,7 +50,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         elevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openBookingSheet,
+        onPressed: () => _openBookingSheet(),
         backgroundColor: AfiCareTheme.primaryGreen,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -53,57 +58,90 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Consumer<AppointmentProvider>(
-              builder: (context, provider, _) {
+          : Consumer2<AppointmentProvider, DependentProvider>(
+              builder: (context, aptProvider, depProvider, _) {
+                final auth =
+                    Provider.of<AuthProvider>(context, listen: false);
+                final activeId = depProvider.activePatientId ??
+                    auth.currentUser?.id ??
+                    '';
+
                 final now = DateTime.now();
-                final upcoming = provider.appointments
+                final upcoming = aptProvider.appointments
                     .where((a) =>
                         a.scheduledAt.isAfter(now) &&
                         a.status != AppointmentStatus.cancelled &&
                         a.status != AppointmentStatus.completed)
                     .toList()
-                  ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-                final past = provider.appointments
+                  ..sort((a, b) =>
+                      a.scheduledAt.compareTo(b.scheduledAt));
+                final past = aptProvider.appointments
                     .where((a) =>
                         a.scheduledAt.isBefore(now) ||
                         a.status == AppointmentStatus.cancelled ||
                         a.status == AppointmentStatus.completed)
                     .toList()
-                  ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+                  ..sort((a, b) =>
+                      b.scheduledAt.compareTo(a.scheduledAt));
 
-                if (provider.appointments.isEmpty) {
-                  return _buildEmptyState();
-                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Care Team section — always visible above appointments
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: CareTeamSection(
+                        patientId: activeId,
+                        onBookFromCareTeam: (provider) =>
+                            _openBookingSheet(prefilledProvider: provider),
+                      ),
+                    ),
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (upcoming.isNotEmpty) ...[
-                        const Text(
-                          'Upcoming',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
-                        ...upcoming.map((a) => _buildAppointmentCard(a)),
-                        const SizedBox(height: 20),
-                      ],
-                      if (past.isNotEmpty)
-                        ExpansionTile(
-                          title: Text(
-                            'Past Appointments (${past.length})',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          leading: const Icon(Icons.history),
-                          children: past
-                              .map((a) =>
-                                  _buildAppointmentCard(a, greyed: true))
-                              .toList(),
-                        ),
-                    ],
-                  ),
+                    // Appointments list
+                    Expanded(
+                      child: aptProvider.appointments.isEmpty
+                          ? _buildEmptyState()
+                          : SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(
+                                  16, 0, 16, 80),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  if (upcoming.isNotEmpty) ...[
+                                    const Text(
+                                      'Upcoming',
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ...upcoming.map(
+                                        (a) => _buildAppointmentCard(a)),
+                                    const SizedBox(height: 20),
+                                  ],
+                                  if (past.isNotEmpty)
+                                    ExpansionTile(
+                                      title: Text(
+                                        'Past Appointments (${past.length})',
+                                        style: const TextStyle(
+                                            fontWeight:
+                                                FontWeight.bold),
+                                      ),
+                                      leading:
+                                          const Icon(Icons.history),
+                                      children: past
+                                          .map((a) =>
+                                              _buildAppointmentCard(
+                                                  a,
+                                                  greyed: true))
+                                          .toList(),
+                                    ),
+                                ],
+                              ),
+                            ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -159,7 +197,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   a.type == AppointmentType.telehealth
                       ? Icons.video_call
                       : Icons.local_hospital,
-                  color: greyed ? Colors.grey : AfiCareTheme.primaryGreen,
+                  color:
+                      greyed ? Colors.grey : AfiCareTheme.primaryGreen,
                   size: 22,
                 ),
                 const SizedBox(width: 10),
@@ -191,7 +230,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     ),
                     child: const Text(
                       'Follow-up',
-                      style: TextStyle(fontSize: 11, color: Colors.blue),
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.blue),
                     ),
                   ),
               ],
@@ -201,7 +241,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               const SizedBox(height: 8),
               Text(
                 a.chiefComplaint!,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                style:
+                    TextStyle(fontSize: 13, color: Colors.grey[600]),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -251,7 +292,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         break;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
@@ -271,7 +313,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   Widget _buildTypeBadge(AppointmentType type) {
     final isRemote = type == AppointmentType.telehealth;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color:
             (isRemote ? Colors.purple : Colors.teal).withOpacity(0.1),
@@ -303,7 +346,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final hour =
+        dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
     final amPm = dt.hour >= 12 ? 'PM' : 'AM';
     final min = dt.minute.toString().padLeft(2, '0');
     return '${dt.day} ${months[dt.month - 1]} ${dt.year} at $hour:$min $amPm';
@@ -330,10 +374,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (confirm != true || !mounted) return;
     final provider =
         Provider.of<AppointmentProvider>(context, listen: false);
-    final ok = await provider.updateStatus(a.id, AppointmentStatus.cancelled);
+    final ok =
+        await provider.updateStatus(a.id, AppointmentStatus.cancelled);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Appointment cancelled' : 'Could not cancel — try again'),
+        content: Text(ok
+            ? 'Appointment cancelled'
+            : 'Could not cancel — try again'),
         backgroundColor: ok ? Colors.green : Colors.red,
       ));
     }
@@ -341,15 +388,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   // ── Booking bottom sheet ──────────────────────────────────
 
-  void _openBookingSheet() {
+  void _openBookingSheet({UserModel? prefilledProvider}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _BookingSheet(
-        onBooked: () {
-          _load();
-        },
+        prefilledProvider: prefilledProvider,
+        onBooked: _load,
       ),
     );
   }
@@ -359,8 +405,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
 class _BookingSheet extends StatefulWidget {
   final VoidCallback onBooked;
+  final UserModel? prefilledProvider;
 
-  const _BookingSheet({required this.onBooked});
+  const _BookingSheet({required this.onBooked, this.prefilledProvider});
 
   @override
   State<_BookingSheet> createState() => _BookingSheetState();
@@ -395,10 +442,26 @@ class _BookingSheetState extends State<_BookingSheet> {
           .select()
           .inFilter('role', ['doctor', 'nurse']);
       if (mounted) {
+        final providers = (response as List)
+            .map((j) => UserModel.fromJson(j as Map<String, dynamic>))
+            .toList();
+
+        // Resolve prefilled provider against the full list
+        UserModel? selected;
+        if (widget.prefilledProvider != null) {
+          try {
+            selected = providers.firstWhere(
+                (p) => p.id == widget.prefilledProvider!.id);
+          } catch (_) {
+            // Not in list — add it so the dropdown stays valid
+            selected = widget.prefilledProvider;
+            providers.insert(0, widget.prefilledProvider!);
+          }
+        }
+
         setState(() {
-          _providers = (response as List)
-              .map((j) => UserModel.fromJson(j))
-              .toList();
+          _providers = providers;
+          _selectedProvider = selected;
           _loadingProviders = false;
         });
       }
@@ -421,8 +484,13 @@ class _BookingSheetState extends State<_BookingSheet> {
 
     setState(() => _isSubmitting = true);
 
+    // CRITICAL: use DependentProvider.activePatientId so child
+    // appointments are stored under the dependent's UUID, not the parent's.
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final patientId = auth.currentUser?.id ?? '';
+    final depProvider =
+        Provider.of<DependentProvider>(context, listen: false);
+    final patientId =
+        depProvider.activePatientId ?? auth.currentUser?.id ?? '';
 
     final scheduledAt = DateTime(
       _selectedDate!.year,
@@ -445,9 +513,9 @@ class _BookingSheetState extends State<_BookingSheet> {
       isFollowUp: false,
     );
 
-    final provider =
+    final aptProvider =
         Provider.of<AppointmentProvider>(context, listen: false);
-    final ok = await provider.bookAppointment(appointment);
+    final ok = await aptProvider.bookAppointment(appointment);
 
     if (mounted) {
       setState(() => _isSubmitting = false);
@@ -656,8 +724,8 @@ class _BookingSheetState extends State<_BookingSheet> {
                             strokeWidth: 2,
                             color: Colors.white))
                     : const Icon(Icons.check),
-                label:
-                    Text(_isSubmitting ? 'Booking…' : 'Book Appointment'),
+                label: Text(
+                    _isSubmitting ? 'Booking…' : 'Book Appointment'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AfiCareTheme.primaryGreen,
                   foregroundColor: Colors.white,
