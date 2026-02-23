@@ -746,99 +746,86 @@ class _PatientDashboardState extends State<PatientDashboard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Active Medication Management',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Latest Recommendations',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                if (consultations.isNotEmpty)
+                  Text(
+                    _dashFormatDate(consultations.first.timestamp),
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF616161)),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(24),
-              child: Center(
+            if (recs.isEmpty)
+              Center(
                 child: Column(
                   children: [
-                    Icon(Icons.medication_outlined, size: 48, color: Colors.grey[400]),
+                    Icon(Icons.medical_information_outlined,
+                        size: 48, color: Colors.grey[400]),
                     const SizedBox(height: 8),
                     Text(
-                      'No active medications',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      'No recommendations yet',
+                      style:
+                          TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Prescribed medications will be tracked here',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      'Clinical recommendations will appear after a consultation',
+                      style:
+                          TextStyle(color: Colors.grey[500], fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],
                 ),
+              )
+            else
+              ...recs.map(
+                (rec) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_circle,
+                          size: 18, color: AfiCareTheme.primaryGreen),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: Text(rec,
+                              style: const TextStyle(fontSize: 14))),
+                    ],
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMedicationItem(
-    String name,
-    String dosage,
-    String frequency,
-    String adherence,
-    String nextRefill,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$name $dosage',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  adherence,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.green[800],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Frequency: $frequency',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          Text(
-            'Next Refill: $nextRefill',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildFollowUpSummary(List<ConsultationModel> consultations) {
+    final now = DateTime.now();
+    final overdue = consultations
+        .where((c) =>
+            c.followUpRequired &&
+            c.followUpDate != null &&
+            c.followUpDate!.isBefore(now))
+        .toList()
+      ..sort((a, b) => a.followUpDate!.compareTo(b.followUpDate!));
+    final upcoming = consultations
+        .where((c) =>
+            c.followUpRequired &&
+            c.followUpDate != null &&
+            c.followUpDate!.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.followUpDate!.compareTo(b.followUpDate!));
 
-  Widget _buildHealthGoals() {
+    final items = [...overdue, ...upcoming];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -846,58 +833,81 @@ class _PatientDashboardState extends State<PatientDashboard>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Health Goals & Progress',
+              'Follow-up Schedule',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildGoalItem('Weight Management', 0.8, '72kg target'),
-            _buildGoalItem('Exercise Routine', 0.9, '5x/week target'),
-            _buildGoalItem('Blood Sugar Control', 0.85, 'HbA1c <7%'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGoalItem(String title, double progress, String target) {
-    return Semantics(
-      label: 'Goal: $title, Progress: ${(progress * 100).toInt()} percent, Target: $target',
-      value: '${(progress * 100).toInt()}%',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+            if (items.isEmpty)
+              Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.event_available,
+                        size: 48, color: Colors.grey[400]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No follow-ups scheduled',
+                      style:
+                          TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                  ],
                 ),
-                Text(
-                  '${(progress * 100).toInt()}%',
-                  style: TextStyle(
-                    color: AfiCareTheme.primaryGreen,
-                    fontWeight: FontWeight.bold,
+              )
+            else
+              ...items.map((c) {
+                final isOverdue = c.followUpDate!.isBefore(now);
+                final color = isOverdue ? Colors.red : Colors.green;
+                return Semantics(
+                  label:
+                      '${isOverdue ? 'Overdue' : 'Upcoming'} follow-up for ${c.chiefComplaint} on ${_dashFormatDate(c.followUpDate!)}',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isOverdue ? Icons.warning_amber : Icons.event,
+                          color: color,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.chiefComplaint,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _dashFormatDate(c.followUpDate!),
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isOverdue ? 'OVERDUE' : 'DUE',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: color,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(AfiCareTheme.primaryGreen),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              target,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
+                );
+              }),
           ],
         ),
       ),
