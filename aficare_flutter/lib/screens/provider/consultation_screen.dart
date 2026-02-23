@@ -301,6 +301,242 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
   }
 
+  // ---------------------------------------------------------------
+  // PWD Assessment — provider fills during consultation
+  // ---------------------------------------------------------------
+
+  /// Returns suggested referrals from the rule engine given the currently
+  /// selected disability types. Auto-populates _selectedReferrals on first
+  /// call; provider can then deselect any that do not apply.
+  List<String> _getPwdReferralSuggestions() {
+    if (_pwdTypes.isEmpty) return [];
+    final profile = DisabilityProfile(
+      patientId: '',
+      disabilityTypes: _pwdTypes,
+      severity: _pwdSeverity,
+      assistiveDevices: const [],
+      lastUpdated: DateTime.now(),
+      updatedBy: 'provider',
+    );
+    return PwdRuleEngine().getSuggestedReferrals(profile);
+  }
+
+  Widget _buildPwdAssessment() {
+    final suggestedReferrals = _getPwdReferralSuggestions();
+
+    // Auto-populate referrals when disability types are first selected
+    if (_pwdTypes.isNotEmpty && _selectedReferrals.isEmpty) {
+      _selectedReferrals.addAll(suggestedReferrals);
+    }
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        key: const Key('pwd_assessment_tile'),
+        initiallyExpanded: _pwdSectionExpanded,
+        onExpansionChanged: (v) => setState(() => _pwdSectionExpanded = v),
+        leading: const Icon(Icons.accessibility_new),
+        title: const Text(
+          'PWD Assessment',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          _pwdTypes.isEmpty
+              ? 'Tap to record disability profile'
+              : _pwdTypes.map((t) => t.displayName).join(', '),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF616161)),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ---- Disability type multi-select ----
+                const Text(
+                  'Disability Type(s)',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: DisabilityType.values.map((type) {
+                    final selected = _pwdTypes.contains(type);
+                    return Semantics(
+                      label: '${type.displayName}: ${type.description}',
+                      child: FilterChip(
+                        label: Text(
+                          type.displayName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: selected ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        selected: selected,
+                        selectedColor: AfiCareTheme.primaryBlue,
+                        checkmarkColor: Colors.white,
+                        tooltip: type.description,
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              _pwdTypes.add(type);
+                            } else {
+                              _pwdTypes.remove(type);
+                            }
+                            // Refresh referral suggestions when types change
+                            _selectedReferrals
+                              ..clear()
+                              ..addAll(_getPwdReferralSuggestions());
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ---- Severity ----
+                const Text(
+                  'Severity',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<DisabilitySeverity>(
+                  segments: DisabilitySeverity.values
+                      .map((s) => ButtonSegment(
+                            value: s,
+                            label: Text(s.displayName),
+                          ))
+                      .toList(),
+                  selected: {_pwdSeverity},
+                  onSelectionChanged: (v) =>
+                      setState(() => _pwdSeverity = v.first),
+                  style: ButtonStyle(
+                    textStyle: WidgetStateProperty.all(
+                      const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ---- Clinical diagnosis ----
+                Semantics(
+                  label: 'Clinical diagnosis field',
+                  child: TextFormField(
+                    controller: _clinicalDiagnosisController,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Clinical / Medical Diagnosis',
+                      hintText: 'e.g. Spastic Diplegia Cerebral Palsy',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.medical_information),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // ---- Provider notes ----
+                Semantics(
+                  label: 'Provider notes for other clinicians',
+                  child: TextFormField(
+                    controller: _providerNotesController,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Clinical Notes',
+                      hintText:
+                          'Notes for other providers — accommodations needed, communication preferences…',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.notes),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // ---- Caregiver consent ----
+                Semantics(
+                  label: 'Requires caregiver for consent toggle',
+                  child: SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Requires Caregiver for Consent'),
+                    subtitle: const Text(
+                      'Patient cannot give informed consent independently',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    value: _requiresCaregiverConsent,
+                    activeColor: AfiCareTheme.primaryGreen,
+                    onChanged: (v) =>
+                        setState(() => _requiresCaregiverConsent = v),
+                  ),
+                ),
+
+                // ---- Specialist referrals (rule-engine suggested) ----
+                if (suggestedReferrals.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.hub_outlined, size: 16,
+                          color: Color(0xFF616161)),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Suggested Referrals',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      Semantics(
+                        button: true,
+                        label: 'Information about referral suggestions',
+                        child: Tooltip(
+                          message:
+                              'Auto-suggested by rule engine based on selected disability types. Deselect any that do not apply.',
+                          child: const Icon(Icons.info_outline, size: 16,
+                              color: Color(0xFF616161)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: suggestedReferrals.map((ref) {
+                      final selected = _selectedReferrals.contains(ref);
+                      return FilterChip(
+                        label: Text(
+                          ref,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: selected ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        selected: selected,
+                        selectedColor: AfiCareTheme.primaryGreen,
+                        checkmarkColor: Colors.white,
+                        onSelected: (val) => setState(() {
+                          if (val) {
+                            _selectedReferrals.add(ref);
+                          } else {
+                            _selectedReferrals.remove(ref);
+                          }
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVitalSigns() {
     return Card(
       child: Padding(
