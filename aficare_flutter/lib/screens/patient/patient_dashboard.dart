@@ -10,13 +10,17 @@ import 'dart:math';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/appointment_provider.dart';
+import '../../providers/dependent_provider.dart';
+import '../../providers/prescription_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/consultation_model.dart';
 import '../../models/appointment_model.dart';
 import '../../utils/theme.dart';
 import '../common/notifications_screen.dart';
+import 'manage_dependents_screen.dart';
 import 'pwd_tab.dart';
 import 'prescriptions_tab.dart';
+import 'widgets/profile_switcher_chip.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -30,6 +34,10 @@ class _PatientDashboardState extends State<PatientDashboard>
   late TabController _tabController;
   String? _generatedAccessCode;
   DateTime? _accessCodeExpiry;
+
+  // Active profile gender — drives tab count & female-specific tab visibility
+  // (null = default 6 tabs; initialised from logged-in user on first load)
+  String? _activeGender;
 
   // Settings — personal info controllers
   final _nameController  = TextEditingController();
@@ -113,21 +121,202 @@ class _PatientDashboardState extends State<PatientDashboard>
     }
   }
 
+  // ── Profile switching ─────────────────────────────────────
+
+  void _showProfileSwitcherSheet(
+      DependentProvider depProvider, UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Switch Profile',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // Own profile tile
+            _profileOptionTile(
+              ctx: ctx,
+              name: user.fullName,
+              subtitle: 'Your profile',
+              medilinkId: user.medilinkId,
+              isActive: !depProvider.isViewingDependent,
+              onTap: () {
+                Navigator.pop(ctx);
+                _switchProfile(depProvider, user.id, user.gender);
+              },
+            ),
+
+            // Dependent tiles
+            if (depProvider.dependents.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'No dependents added yet.\nGo to Settings → Manage Dependents to add one.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              ...depProvider.dependents.map((d) => _profileOptionTile(
+                    ctx: ctx,
+                    name: d.fullName,
+                    subtitle: _capitalize(d.relationship),
+                    medilinkId: d.medilinkId,
+                    isActive: depProvider.activePatientId == d.id,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _switchProfile(depProvider, d.id, d.gender);
+                    },
+                  )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _profileOptionTile({
+    required BuildContext ctx,
+    required String name,
+    required String subtitle,
+    String? medilinkId,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AfiCareTheme.primaryGreen.withOpacity(0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive
+                ? AfiCareTheme.primaryGreen.withOpacity(0.4)
+                : Colors.grey.withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: isActive
+                  ? AfiCareTheme.primaryGreen
+                  : Colors.grey[300],
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.grey[600],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(subtitle,
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey[600])),
+                  if (medilinkId != null)
+                    Text(medilinkId,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey[500])),
+                ],
+              ),
+            ),
+            if (isActive)
+              Icon(Icons.check_circle,
+                  color: AfiCareTheme.primaryGreen, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Switch the active profile, reset the tab controller for the profile's
+  /// gender, then reload all data.
+  void _switchProfile(
+    DependentProvider depProvider,
+    String patientId,
+    String? gender,
+  ) {
+    depProvider.switchTo(patientId);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final isWoman = gender?.toLowerCase() == 'female';
+      final needed = isWoman ? 8 : 6;
+      setState(() {
+        _activeGender = gender;
+        _tabController.dispose();
+        _tabController = TabController(length: needed, vsync: this);
+      });
+      _loadPatientData();
+    });
+  }
+
+  // ── Data loading ───────────────────────────────────────────
+
   void _loadPatientData() {
     if (!mounted) return;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final patientProvider = Provider.of<PatientProvider>(context, listen: false);
     final aptProvider = Provider.of<AppointmentProvider>(context, listen: false);
+    final prescProvider = Provider.of<PrescriptionProvider>(context, listen: false);
+    final depProvider = Provider.of<DependentProvider>(context, listen: false);
+
     final userId = authProvider.currentUser?.id;
-    if (userId != null) {
-      patientProvider.loadConsultations(userId);
-      aptProvider.loadAppointments(userId);
+    if (userId == null) return;
+
+    // Register own UUID so DependentProvider knows the logged-in user.
+    // Resets to own profile only when a different user is detected.
+    depProvider.setOwnId(userId);
+    depProvider.loadDependents(userId);
+
+    final activeId = depProvider.activePatientId ?? userId;
+
+    // Consultations are always queried for the logged-in user's own profile
+    // (dependents have no consultation records in the system).
+    patientProvider.loadConsultations(userId);
+
+    // Appointments and prescriptions reload for the currently active profile.
+    aptProvider.loadAppointments(activeId);
+    prescProvider.loadPrescriptions(activeId);
+
+    // Initialise _activeGender from the active profile on first load.
+    if (_activeGender == null) {
+      final gender = depProvider.isViewingDependent
+          ? depProvider.activeDependent?.gender
+          : authProvider.currentUser?.gender;
+      if (gender != _activeGender) {
+        setState(() => _activeGender = gender);
+      }
     }
   }
 
-  /// Ensures the TabController length matches the actual tab count for this user.
-  void _ensureTabController(bool isWoman) {
-    final needed = isWoman ? 8 : 6;
+  /// Ensures the TabController length matches the active profile's gender.
+  /// Uses [_activeGender] rather than the auth user's gender so that
+  /// profile switching (e.g. to a male dependent of a female parent) works.
+  void _ensureTabController() {
+    final needed = _activeGender?.toLowerCase() == 'female' ? 8 : 6;
     if (_tabController.length != needed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -141,8 +330,8 @@ class _PatientDashboardState extends State<PatientDashboard>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<AuthProvider, PatientProvider>(
-      builder: (context, authProvider, patientProvider, child) {
+    return Consumer3<AuthProvider, PatientProvider, DependentProvider>(
+      builder: (context, authProvider, patientProvider, depProvider, child) {
         final user = authProvider.currentUser;
         if (user == null) {
           return const Scaffold(
@@ -150,15 +339,17 @@ class _PatientDashboardState extends State<PatientDashboard>
           );
         }
 
-        // Keep tab count in sync with the logged-in user's gender
-        final isWoman = user.gender?.toLowerCase() == 'female';
-        _ensureTabController(isWoman);
+        // Keep tab count in sync with the active profile's gender.
+        _ensureTabController();
+
+        final activeId = depProvider.activePatientId ?? user.id;
+        final isActiveWoman = _activeGender?.toLowerCase() == 'female';
 
         return Scaffold(
           appBar: _buildAppBar(user),
           body: Column(
             children: [
-              _buildMedilinkHeader(user),
+              _buildMedilinkHeader(user, depProvider),
               _buildTabBar(),
               Expanded(
                 child: TabBarView(
@@ -166,12 +357,12 @@ class _PatientDashboardState extends State<PatientDashboard>
                   children: [
                     _buildHealthSummaryTab(patientProvider),
                     _buildVisitHistoryTab(patientProvider),
-                    if (user.gender?.toLowerCase() == 'female') ...[
+                    if (isActiveWoman) ...[
                       _buildMaternalHealthTab(patientProvider),
                       _buildWomensHealthTab(patientProvider),
                     ],
-                    PrescriptionsTab(patientId: user.id),
-                    PwdTab(patientId: user.id),
+                    PrescriptionsTab(patientId: activeId),
+                    PwdTab(patientId: activeId),
                     _buildSharingTab(user),
                     _buildSettingsTab(user),
                   ],
@@ -230,7 +421,19 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildMedilinkHeader(UserModel user) {
+  Widget _buildMedilinkHeader(UserModel user, DependentProvider depProvider) {
+    // Display name and MediLink ID for the active profile
+    final isViewingDependent = depProvider.isViewingDependent;
+    final activeDependent = depProvider.activeDependent;
+    final displayName = isViewingDependent
+        ? (activeDependent?.fullName ?? user.fullName)
+        : user.fullName;
+    final displayMedilinkId = isViewingDependent
+        ? (activeDependent?.medilinkId ?? 'ML-DEP-????')
+        : (user.medilinkId ?? 'ML-XXX-XXXX');
+    final avatarInitial =
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -241,67 +444,56 @@ class _PatientDashboardState extends State<PatientDashboard>
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: Colors.white,
-                child: Text(
-                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AfiCareTheme.primaryGreen,
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            child: Text(
+              avatarInitial,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AfiCareTheme.primaryGreen,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Profile switcher chip — replaces the static name+ID display
+                ProfileSwitcherChip(
+                  currentName: displayName,
+                  currentMedilinkId: displayMedilinkId,
+                  isViewingDependent: isViewingDependent,
+                  onSwitchRequested: () =>
+                      _showProfileSwitcherSheet(depProvider, user),
+                ),
+                if (isViewingDependent) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Viewing ${_capitalize(activeDependent?.relationship ?? 'dependent')}\'s profile',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.75),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.fullName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'MediLink ID: ${user.medilinkId ?? 'ML-XXX-XXXX'}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  String _capitalize(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
   Widget _buildTabBar() {
-    final user = Provider.of<AuthProvider>(context).currentUser;
-    final isWoman = user?.gender?.toLowerCase() == 'female';
+    final isWoman = _activeGender?.toLowerCase() == 'female';
 
     return Container(
       color: Colors.white,
@@ -2047,6 +2239,45 @@ class _PatientDashboardState extends State<PatientDashboard>
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ---- Family / Dependents ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Text(
+                        'Family',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.child_care,
+                          color: AfiCareTheme.primaryGreen),
+                      title: const Text('Manage Dependents'),
+                      subtitle: const Text(
+                          'Add children or family members to manage their health records'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const ManageDependentsScreen()),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
