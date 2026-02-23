@@ -28,7 +28,19 @@ class _PatientDashboardState extends State<PatientDashboard>
   String? _generatedAccessCode;
   DateTime? _accessCodeExpiry;
 
-  // Settings toggle state
+  // Settings — personal info controllers
+  final _nameController  = TextEditingController();
+  final _phoneController = TextEditingController();
+  bool _settingsInitialized = false;
+  bool _isSavingSettings = false;
+
+  // Settings — metadata-backed profile fields
+  String? _bloodType;
+  DateTime? _dateOfBirth;
+  String? _emergencyContactName;
+  String? _emergencyContactPhone;
+
+  // Settings — privacy & notifications (persisted to user.metadata)
   bool _allowEmergencyAccess = true;
   bool _allowResearchData = false;
   bool _enableAiRecommendations = true;
@@ -39,9 +51,63 @@ class _PatientDashboardState extends State<PatientDashboard>
   @override
   void initState() {
     super.initState();
-    // Start with 4 tabs (no gender-specific tabs). Corrected in build when user loads.
-    _tabController = TabController(length: 4, vsync: this);
+    // Start with 5 tabs (no gender-specific tabs). Corrected in build when user loads.
+    _tabController = TabController(length: 5, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPatientData());
+  }
+
+  /// One-time initialisation of settings fields from UserModel metadata.
+  void _initSettings(UserModel user) {
+    if (_settingsInitialized) return;
+    _settingsInitialized = true;
+    _nameController.text  = user.fullName;
+    _phoneController.text = user.phone ?? '';
+    final meta   = user.metadata ?? {};
+    _bloodType             = meta['blood_type'] as String?;
+    _emergencyContactName  = meta['emergency_contact_name'] as String?;
+    _emergencyContactPhone = meta['emergency_contact_phone'] as String?;
+    if (meta['date_of_birth'] != null) {
+      _dateOfBirth = DateTime.tryParse(meta['date_of_birth'] as String);
+    }
+    final privacy = (meta['privacy'] as Map<String, dynamic>?) ?? {};
+    _allowEmergencyAccess  = privacy['allow_emergency_access']  as bool? ?? true;
+    _allowResearchData     = privacy['allow_research_data']     as bool? ?? false;
+    _enableAiRecommendations = privacy['enable_ai_recommendations'] as bool? ?? true;
+    final notifs = (meta['notifications'] as Map<String, dynamic>?) ?? {};
+    _medicationReminders   = notifs['medication_reminders']  as bool? ?? true;
+    _appointmentReminders  = notifs['appointment_reminders'] as bool? ?? true;
+    _healthAlerts          = notifs['health_alerts']         as bool? ?? true;
+  }
+
+  Future<void> _saveSettings(AuthProvider authProvider, UserModel user) async {
+    setState(() => _isSavingSettings = true);
+    final meta = Map<String, dynamic>.from(user.metadata ?? {});
+    meta['blood_type']              = _bloodType;
+    meta['emergency_contact_name']  = _emergencyContactName;
+    meta['emergency_contact_phone'] = _emergencyContactPhone;
+    meta['date_of_birth']           = _dateOfBirth?.toIso8601String();
+    meta['privacy'] = {
+      'allow_emergency_access':   _allowEmergencyAccess,
+      'allow_research_data':      _allowResearchData,
+      'enable_ai_recommendations': _enableAiRecommendations,
+    };
+    meta['notifications'] = {
+      'medication_reminders':  _medicationReminders,
+      'appointment_reminders': _appointmentReminders,
+      'health_alerts':         _healthAlerts,
+    };
+    final ok = await authProvider.updateProfile(
+      fullName: _nameController.text.trim(),
+      phone:    _phoneController.text.trim(),
+      metadata: meta,
+    );
+    if (mounted) {
+      setState(() => _isSavingSettings = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok ? 'Settings saved' : 'Could not save — try again'),
+        backgroundColor: ok ? Colors.green : Colors.red,
+      ));
+    }
   }
 
   void _loadPatientData() {
@@ -1581,138 +1647,412 @@ class _PatientDashboardState extends State<PatientDashboard>
   }
 
   Widget _buildSettingsTab(UserModel user) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Settings',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          _buildPersonalInformation(user),
-          const SizedBox(height: 20),
-          _buildPrivacySettings(),
-          const SizedBox(height: 20),
-          _buildNotificationSettings(),
-        ],
-      ),
-    );
-  }
+    // One-time init of controllers from user data
+    _initSettings(user);
 
-  Widget _buildPersonalInformation(UserModel user) {
-    return Card(
-      child: Padding(
+    return Consumer<AuthProvider>(
+      builder: (ctx, authProvider, _) => SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Personal Information',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              'Settings',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              initialValue: user.fullName,
-              decoration: const InputDecoration(
-                labelText: 'Full Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              initialValue: user.phone,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              initialValue: user.email,
-              decoration: const InputDecoration(
-                labelText: 'Email Address',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 20),
 
-  Widget _buildPrivacySettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Privacy & Security',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Allow emergency access when unconscious'),
-              value: _allowEmergencyAccess,
-              onChanged: (value) =>
-                  setState(() => _allowEmergencyAccess = value),
-              activeColor: AfiCareTheme.primaryGreen,
-            ),
-            SwitchListTile(
-              title: const Text('Allow anonymized data for medical research'),
-              value: _allowResearchData,
-              onChanged: (value) =>
-                  setState(() => _allowResearchData = value),
-              activeColor: AfiCareTheme.primaryGreen,
-            ),
-            SwitchListTile(
-              title: const Text('Enable AI health recommendations'),
-              value: _enableAiRecommendations,
-              onChanged: (value) =>
-                  setState(() => _enableAiRecommendations = value),
-              activeColor: AfiCareTheme.primaryGreen,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            // ---- Personal Information ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Personal Information',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Semantics(
+                      label: 'Full name field',
+                      child: TextField(
+                        controller: _nameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Full Name',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Semantics(
+                      label: 'Phone number field',
+                      child: TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.phone),
+                          hintText: '+254...',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Email — read-only (changing email requires re-auth)
+                    Semantics(
+                      label: 'Email address, read only',
+                      child: TextFormField(
+                        initialValue: user.email,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Email Address',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.email),
+                          suffixIcon: Tooltip(
+                            message: 'Contact support to change email',
+                            child: Icon(Icons.lock_outline, size: 18),
+                          ),
+                        ),
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
 
-  Widget _buildNotificationSettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Notifications',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    // Blood type
+                    Semantics(
+                      label: 'Blood type selector',
+                      child: DropdownButtonFormField<String>(
+                        value: _bloodType,
+                        decoration: const InputDecoration(
+                          labelText: 'Blood Type',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.bloodtype),
+                        ),
+                        hint: const Text('Select blood type'),
+                        items: const [
+                          'A+', 'A-', 'B+', 'B-',
+                          'AB+', 'AB-', 'O+', 'O-', 'Unknown',
+                        ].map((t) => DropdownMenuItem(
+                          value: t, child: Text(t))).toList(),
+                        onChanged: (v) =>
+                            setState(() => _bloodType = v),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Date of birth
+                    Semantics(
+                      label: 'Date of birth',
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _dateOfBirth ??
+                                DateTime(1990),
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setState(() => _dateOfBirth = picked);
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Date of Birth',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.cake),
+                          ),
+                          child: Text(
+                            _dateOfBirth != null
+                                ? '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}'
+                                : 'Tap to select',
+                            style: TextStyle(
+                              color: _dateOfBirth != null
+                                  ? Colors.black87
+                                  : Colors.grey[500],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+
             const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Medication reminders'),
-              value: _medicationReminders,
-              onChanged: (value) =>
-                  setState(() => _medicationReminders = value),
-              activeColor: AfiCareTheme.primaryGreen,
+
+            // ---- Emergency Contact ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.emergency,
+                            color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Emergency Contact',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Semantics(
+                      label: 'Emergency contact name',
+                      child: TextField(
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Contact Name',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        controller: TextEditingController(
+                            text: _emergencyContactName),
+                        onChanged: (v) =>
+                            _emergencyContactName = v.trim().isEmpty
+                                ? null
+                                : v.trim(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Semantics(
+                      label: 'Emergency contact phone',
+                      child: TextField(
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          labelText: 'Contact Phone',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.phone),
+                          hintText: '+254...',
+                        ),
+                        controller: TextEditingController(
+                            text: _emergencyContactPhone),
+                        onChanged: (v) =>
+                            _emergencyContactPhone = v.trim().isEmpty
+                                ? null
+                                : v.trim(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            SwitchListTile(
-              title: const Text('Appointment reminders'),
-              value: _appointmentReminders,
-              onChanged: (value) =>
-                  setState(() => _appointmentReminders = value),
-              activeColor: AfiCareTheme.primaryGreen,
+
+            const SizedBox(height: 16),
+
+            // ---- Privacy ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Privacy & Security',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile.adaptive(
+                      title: const Text(
+                          'Allow emergency access when unconscious'),
+                      subtitle: const Text(
+                          'Providers can view basic vitals in an emergency',
+                          style: TextStyle(fontSize: 12)),
+                      value: _allowEmergencyAccess,
+                      onChanged: (v) =>
+                          setState(() => _allowEmergencyAccess = v),
+                      activeColor: AfiCareTheme.primaryGreen,
+                    ),
+                    SwitchListTile.adaptive(
+                      title: const Text(
+                          'Share anonymized data for research'),
+                      subtitle: const Text(
+                          'Helps improve healthcare in Kenya',
+                          style: TextStyle(fontSize: 12)),
+                      value: _allowResearchData,
+                      onChanged: (v) =>
+                          setState(() => _allowResearchData = v),
+                      activeColor: AfiCareTheme.primaryGreen,
+                    ),
+                    SwitchListTile.adaptive(
+                      title:
+                          const Text('Enable AI health recommendations'),
+                      value: _enableAiRecommendations,
+                      onChanged: (v) =>
+                          setState(() => _enableAiRecommendations = v),
+                      activeColor: AfiCareTheme.primaryGreen,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            SwitchListTile(
-              title: const Text('Health alerts'),
-              value: _healthAlerts,
-              onChanged: (value) => setState(() => _healthAlerts = value),
-              activeColor: AfiCareTheme.primaryGreen,
+
+            const SizedBox(height: 16),
+
+            // ---- Notifications ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Notifications',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile.adaptive(
+                      title: const Text('Medication reminders'),
+                      value: _medicationReminders,
+                      onChanged: (v) =>
+                          setState(() => _medicationReminders = v),
+                      activeColor: AfiCareTheme.primaryGreen,
+                    ),
+                    SwitchListTile.adaptive(
+                      title: const Text('Appointment reminders'),
+                      value: _appointmentReminders,
+                      onChanged: (v) =>
+                          setState(() => _appointmentReminders = v),
+                      activeColor: AfiCareTheme.primaryGreen,
+                    ),
+                    SwitchListTile.adaptive(
+                      title: const Text('Health alerts'),
+                      value: _healthAlerts,
+                      onChanged: (v) =>
+                          setState(() => _healthAlerts = v),
+                      activeColor: AfiCareTheme.primaryGreen,
+                    ),
+                  ],
+                ),
+              ),
             ),
+
+            const SizedBox(height: 16),
+
+            // ---- Save button ----
+            SizedBox(
+              width: double.infinity,
+              child: Semantics(
+                button: true,
+                label: 'Save settings button',
+                child: ElevatedButton.icon(
+                  onPressed: _isSavingSettings
+                      ? null
+                      : () => _saveSettings(authProvider, user),
+                  icon: _isSavingSettings
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white))
+                      : const Icon(Icons.save),
+                  label: Text(
+                      _isSavingSettings ? 'Saving…' : 'Save Settings'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AfiCareTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ---- Account ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Text(
+                        'Account',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.lock_outline),
+                      title: const Text('Change Password'),
+                      subtitle:
+                          const Text('Send a reset link to your email'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final ok = await authProvider
+                            .resetPassword(user.email);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ok
+                                  ? 'Password reset email sent to ${user.email}'
+                                  : 'Could not send reset email'),
+                              backgroundColor:
+                                  ok ? Colors.green : Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading:
+                          const Icon(Icons.logout, color: Colors.red),
+                      title: const Text('Sign Out',
+                          style: TextStyle(color: Colors.red)),
+                      onTap: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Sign out?'),
+                            content: const Text(
+                                'You will need to sign in again to access your health records.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(ctx, true),
+                                child: const Text('Sign Out',
+                                    style:
+                                        TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true && mounted) {
+                          await authProvider.signOut();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -1722,6 +2062,8 @@ class _PatientDashboardState extends State<PatientDashboard>
   @override
   void dispose() {
     _tabController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 }
