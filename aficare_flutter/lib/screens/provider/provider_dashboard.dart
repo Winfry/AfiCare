@@ -23,7 +23,6 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isScanning = false;
-  String? _scannedPatientId;
 
   @override
   void initState() {
@@ -320,7 +319,6 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       
       setState(() {
         _isScanning = false;
-        _scannedPatientId = medilinkId;
       });
 
       _showPatientRecords(medilinkId, accessCode);

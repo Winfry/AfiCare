@@ -216,6 +216,7 @@ class _FacilityRegistrationScreenState
                   child: TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Phone Number',
                       prefixIcon: Icon(Icons.phone),
@@ -232,6 +233,7 @@ class _FacilityRegistrationScreenState
                   child: TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(
                       labelText: 'Email Address',
                       prefixIcon: Icon(Icons.email),
