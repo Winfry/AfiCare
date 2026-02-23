@@ -8,6 +8,7 @@
 
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/disability_profile.dart';
 import '../../services/pwd_rule_engine.dart';
@@ -29,25 +30,36 @@ class _PwdTabState extends State<PwdTab> {
 
   // ---- UI state ----
   bool _isSaving = false;
+  bool _isLoading = true;
 
   final _engine = const PwdRuleEngine();
+  static SupabaseClient get _sb => Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
     _profile = DisabilityProfile.empty(widget.patientId);
-    // TODO: load saved profile from Supabase:
-    //   final saved = await supabase
-    //       .from('disability_profiles')
-    //       .select()
-    //       .eq('patient_id', widget.patientId)
-    //       .maybeSingle();
-    //   if (saved != null) {
-    //     setState(() {
-    //       _profile = DisabilityProfile.fromMap(saved);
-    //       _hasPwdCondition = !_profile.isEmpty;
-    //     });
-    //   }
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final data = await _sb
+          .from('disability_profiles')
+          .select()
+          .eq('patient_id', widget.patientId)
+          .maybeSingle();
+      if (data != null && mounted) {
+        setState(() {
+          _profile = DisabilityProfile.fromMap(data as Map<String, dynamic>);
+          _hasPwdCondition = !_profile.isEmpty;
+        });
+      }
+    } catch (_) {
+      // Profile not yet created — use the empty default
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // ----------------------------------------------------------------
@@ -56,18 +68,31 @@ class _PwdTabState extends State<PwdTab> {
 
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
-    await Future.delayed(const Duration(milliseconds: 600)); // simulate save
-    // TODO: upsert to Supabase:
-    //   await supabase.from('disability_profiles').upsert(_profile.toMap());
-    if (mounted) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Accessibility profile saved'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
+    try {
+      await _sb.from('disability_profiles').upsert(
+        _profile.toMap(),
+        onConflict: 'patient_id',
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Accessibility profile saved'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -77,6 +102,10 @@ class _PwdTabState extends State<PwdTab> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final recommendations = _hasPwdCondition && !_profile.isEmpty
         ? _engine.getRecommendations(_profile)
         : <PwdRecommendation>[];
@@ -1074,13 +1103,20 @@ class _PwdTabState extends State<PwdTab> {
       );
     });
 
-    // TODO: save to Supabase
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Caregiver code $code generated — valid 24 hours'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // Persist code to Supabase so the caregiver can use it from any device
+    _sb.from('disability_profiles').upsert(
+      _profile.toMap(),
+      onConflict: 'patient_id',
+    ).then((_) {}).catchError((_) {});
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Caregiver code $code generated — valid 24 hours'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   // ----------------------------------------------------------------
@@ -1207,7 +1243,11 @@ class _PwdTabState extends State<PwdTab> {
                         );
                       });
                       Navigator.pop(ctx);
-                      // TODO: save to Supabase
+                      // Persist caregiver designation to Supabase
+                      _sb.from('disability_profiles').upsert(
+                        _profile.toMap(),
+                        onConflict: 'patient_id',
+                      ).then((_) {}).catchError((_) {});
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
