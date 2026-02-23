@@ -1,11 +1,11 @@
 {
-    "name": "aficare_flutter",
-    "short_name": "aficare_flutter",
+    "name": "AfiCare MediLink",
+    "short_name": "MediLink",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1B5E20",
+    "theme_color": "#2E7D32",
+    "description": "AfiCare MediLink — Your Health Records, Your Control. Kenya's digital health record platform.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
