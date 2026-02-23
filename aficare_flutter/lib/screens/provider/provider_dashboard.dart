@@ -7,7 +7,9 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../models/user_model.dart';
+import '../../models/appointment_model.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
 import '../common/notifications_screen.dart';
@@ -28,6 +30,17 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProviderData());
+  }
+
+  void _loadProviderData() {
+    if (!mounted) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final aptProvider = Provider.of<AppointmentProvider>(context, listen: false);
+    final uid = auth.currentUser?.id;
+    if (uid != null) {
+      aptProvider.loadProviderAppointments(uid);
+    }
   }
 
   @override
@@ -812,7 +825,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
                           MaterialPageRoute(
                             builder: (context) => const ConsultationScreen(),
                           ),
-                        );
+                        ).then((_) => _loadProviderData());
                       },
                       icon: const Icon(Icons.add_circle),
                       label: const Text('Start Consultation'),
@@ -827,9 +840,183 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               ),
             ),
           ),
+          const SizedBox(height: 20),
+          _buildTodaysAppointments(),
         ],
       ),
     );
+  }
+
+  Widget _buildTodaysAppointments() {
+    return Consumer<AppointmentProvider>(
+      builder: (ctx, aptProvider, _) {
+        final now = DateTime.now();
+        final today = aptProvider.appointments.where((a) {
+          final d = a.scheduledAt;
+          return d.year == now.year &&
+              d.month == now.month &&
+              d.day == now.day;
+        }).toList()
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      "Today's Appointments",
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    if (today.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AfiCareTheme.primaryBlue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${today.length}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (aptProvider.isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else if (today.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Column(
+                        children: [
+                          Icon(Icons.event_available,
+                              size: 40, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No appointments today',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...today.map((a) => _buildProviderAppointmentRow(a)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProviderAppointmentRow(AppointmentModel a) {
+    final statusColor = _aptStatusColor(a.status);
+    final hour = a.scheduledAt.hour > 12
+        ? a.scheduledAt.hour - 12
+        : (a.scheduledAt.hour == 0 ? 12 : a.scheduledAt.hour);
+    final amPm = a.scheduledAt.hour >= 12 ? 'PM' : 'AM';
+    final min = a.scheduledAt.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour:$min $amPm';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: AfiCareTheme.primaryBlue.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              timeStr,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AfiCareTheme.primaryBlue),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  a.chiefComplaint ?? 'General visit',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w500, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  a.type == AppointmentType.telehealth
+                      ? 'Telehealth'
+                      : 'In-Person',
+                  style:
+                      TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              _aptStatusLabel(a.status),
+              style: TextStyle(
+                  fontSize: 11,
+                  color: statusColor,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _aptStatusColor(AppointmentStatus s) {
+    switch (s) {
+      case AppointmentStatus.pending:
+        return Colors.orange;
+      case AppointmentStatus.confirmed:
+        return Colors.green;
+      case AppointmentStatus.completed:
+        return Colors.grey;
+      case AppointmentStatus.cancelled:
+        return Colors.red;
+    }
+  }
+
+  String _aptStatusLabel(AppointmentStatus s) {
+    switch (s) {
+      case AppointmentStatus.pending:
+        return 'Pending';
+      case AppointmentStatus.confirmed:
+        return 'Confirmed';
+      case AppointmentStatus.completed:
+        return 'Done';
+      case AppointmentStatus.cancelled:
+        return 'Cancelled';
+    }
   }
 
   Widget _buildAIAgentDemoTab() {

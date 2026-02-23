@@ -6,6 +6,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'providers/patient_provider.dart';
 import 'providers/consultation_provider.dart';
+import 'providers/prescription_provider.dart';
+import 'providers/appointment_provider.dart';
 import 'utils/theme.dart';
 import 'utils/router.dart';
 import 'config/supabase_config.dart';
@@ -35,6 +37,8 @@ class AfiCareApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PatientProvider()),
         ChangeNotifierProvider(create: (_) => ConsultationProvider()),
+        ChangeNotifierProvider(create: (_) => PrescriptionProvider()),
+        ChangeNotifierProvider(create: (_) => AppointmentProvider()),
       ],
       child: MaterialApp.router(
         title: 'AfiCare MediLink',
