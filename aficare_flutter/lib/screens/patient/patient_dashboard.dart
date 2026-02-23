@@ -1060,7 +1060,20 @@ class _PatientDashboardState extends State<PatientDashboard>
                               max: 10,
                               divisions: 9,
                               label: '6',
+                              semanticFormatterCallback: (v) => '${v.toInt()} out of 10',
                               onChanged: (value) {},
+                            ),
+                          ),
+                          // Text alternative for motor-impaired users
+                          SizedBox(
+                            width: 48,
+                            child: Text(
+                              '6/10',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AfiCareTheme.primaryGreen,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ],
@@ -1262,16 +1275,19 @@ class _PatientDashboardState extends State<PatientDashboard>
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.grey[300]!),
                     ),
-                    child: QrImageView(
-                      data: jsonEncode({
-                        'medilink_id': user.medilinkId,
-                        'access_code': _generatedAccessCode ?? '123456',
-                        'expires_at': DateTime.now()
-                            .add(const Duration(hours: 1))
-                            .toIso8601String(),
-                      }),
-                      version: QrVersions.auto,
-                      size: 200.0,
+                    child: Semantics(
+                      label: 'QR code containing your MediLink ID and access code for sharing medical records',
+                      child: QrImageView(
+                        data: jsonEncode({
+                          'medilink_id': user.medilinkId,
+                          'access_code': _generatedAccessCode ?? '123456',
+                          'expires_at': DateTime.now()
+                              .add(const Duration(hours: 1))
+                              .toIso8601String(),
+                        }),
+                        version: QrVersions.auto,
+                        size: 200.0,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

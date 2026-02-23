@@ -128,6 +128,7 @@ class _FacilityRegistrationScreenState
                   child: TextFormField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Facility Name *',
                       prefixIcon: Icon(Icons.local_hospital),
