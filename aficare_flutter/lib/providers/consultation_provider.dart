@@ -48,8 +48,8 @@ class ConsultationProvider with ChangeNotifier {
     }
   }
 
-  // Save consultation
-  Future<bool> saveConsultation({
+  // Save consultation — returns the consultation ID on success, null on failure.
+  Future<String?> saveConsultation({
     required String patientId,
     required String providerId,
     required String chiefComplaint,
@@ -90,10 +90,10 @@ class ConsultationProvider with ChangeNotifier {
 
       _currentConsultation = consultation;
       notifyListeners();
-      return true;
+      return consultation.id;
     } catch (e) {
       debugPrint('Error saving consultation: $e');
-      return false;
+      return null;
     }
   }
 

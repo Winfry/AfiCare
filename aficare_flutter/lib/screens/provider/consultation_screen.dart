@@ -3,9 +3,13 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
+import '../../providers/prescription_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../services/medical_ai_service.dart';
 import '../../models/consultation_model.dart';
 import '../../models/disability_profile.dart';
+import '../../models/prescription_model.dart';
+import '../../models/appointment_model.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../utils/theme.dart';
 
@@ -64,6 +68,17 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   // Referrals auto-suggested by rule engine; provider can deselect
   final Set<String> _selectedReferrals = {};
 
+  // Prescriptions card
+  bool _prescriptionSectionExpanded = false;
+  final List<Map<String, String>> _prescriptions = [];
+
+  // Appointment scheduling card
+  bool _appointmentSectionExpanded = false;
+  DateTime? _appointmentDate;
+  TimeOfDay? _appointmentTime;
+  AppointmentType _appointmentType = AppointmentType.inPerson;
+  final _appointmentNotesController = TextEditingController();
+
   ConsultationResult? _aiResult;
   bool _isAnalyzing = false;
 
@@ -97,6 +112,10 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               _buildSymptomsSection(),
               const SizedBox(height: 20),
               _buildPwdAssessment(),
+              const SizedBox(height: 20),
+              _buildPrescriptionsCard(),
+              const SizedBox(height: 20),
+              _buildAppointmentSchedulingCard(),
               const SizedBox(height: 20),
               _buildVitalSigns(),
               const SizedBox(height: 20),
@@ -946,6 +965,342 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     }
   }
 
+  // ── Prescriptions card ───────────────────────────────────
+  Widget _buildPrescriptionsCard() {
+    return Card(
+      child: ExpansionTile(
+        initiallyExpanded: _prescriptionSectionExpanded,
+        onExpansionChanged: (v) =>
+            setState(() => _prescriptionSectionExpanded = v),
+        leading: const Icon(Icons.medication),
+        title: const Text(
+          'Prescriptions',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          _prescriptions.isEmpty
+              ? 'No medications added'
+              : '${_prescriptions.length} medication(s)',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              children: [
+                ..._prescriptions.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final med = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    color: Colors.grey[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  med['medication'] ?? '',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close,
+                                    size: 18, color: Colors.red),
+                                onPressed: () => setState(
+                                    () => _prescriptions.removeAt(i)),
+                                tooltip: 'Remove',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              _infoChip('${med['dosage']}'),
+                              const SizedBox(width: 8),
+                              _infoChip('${med['frequency']}'),
+                              const SizedBox(width: 8),
+                              _infoChip('${med['duration']}'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _addMedicationDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Medication'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AfiCareTheme.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AfiCareTheme.primaryBlue.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11, color: AfiCareTheme.primaryBlue)),
+    );
+  }
+
+  void _addMedicationDialog() {
+    final medController = TextEditingController();
+    final dosageController = TextEditingController();
+    String frequency = 'Once daily';
+    final durationController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Add Medication'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: medController,
+                  decoration: const InputDecoration(
+                    labelText: 'Medication Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: dosageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Dosage (e.g. 500mg)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: frequency,
+                  decoration: const InputDecoration(
+                    labelText: 'Frequency',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    'Once daily',
+                    'Twice daily',
+                    'Three times daily',
+                    'Four times daily',
+                    'As needed',
+                  ]
+                      .map((f) => DropdownMenuItem(
+                            value: f,
+                            child: Text(f),
+                          ))
+                      .toList(),
+                  onChanged: (v) =>
+                      setDialogState(() => frequency = v ?? frequency),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: durationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Duration (e.g. 7 days)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (medController.text.trim().isEmpty) return;
+                setState(() {
+                  _prescriptions.add({
+                    'medication': medController.text.trim(),
+                    'dosage': dosageController.text.trim().isEmpty
+                        ? '-'
+                        : dosageController.text.trim(),
+                    'frequency': frequency,
+                    'duration': durationController.text.trim().isEmpty
+                        ? '-'
+                        : durationController.text.trim(),
+                  });
+                });
+                Navigator.pop(ctx);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Appointment scheduling card ──────────────────────────
+  Widget _buildAppointmentSchedulingCard() {
+    return Card(
+      child: ExpansionTile(
+        initiallyExpanded: _appointmentSectionExpanded,
+        onExpansionChanged: (v) =>
+            setState(() => _appointmentSectionExpanded = v),
+        leading: const Icon(Icons.calendar_month),
+        title: const Text(
+          'Schedule Follow-up Appointment',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          _appointmentDate != null
+              ? 'Set: ${_appointmentDate!.day}/${_appointmentDate!.month}/${_appointmentDate!.year}'
+              : 'Optional',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date picker
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate:
+                          DateTime.now().add(const Duration(days: 7)),
+                      firstDate:
+                          DateTime.now().add(const Duration(days: 1)),
+                      lastDate: DateTime.now()
+                          .add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => _appointmentDate = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      _appointmentDate != null
+                          ? '${_appointmentDate!.day}/${_appointmentDate!.month}/${_appointmentDate!.year}'
+                          : 'Select date',
+                      style: TextStyle(
+                        color: _appointmentDate != null
+                            ? Colors.black87
+                            : Colors.grey[500],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Time picker
+                InkWell(
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setState(() => _appointmentTime = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Time',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.access_time),
+                    ),
+                    child: Text(
+                      _appointmentTime != null
+                          ? _appointmentTime!.format(context)
+                          : 'Select time',
+                      style: TextStyle(
+                        color: _appointmentTime != null
+                            ? Colors.black87
+                            : Colors.grey[500],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Type toggle
+                const Text('Type',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                SegmentedButton<AppointmentType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: AppointmentType.inPerson,
+                      icon: Icon(Icons.location_on),
+                      label: Text('In-Person'),
+                    ),
+                    ButtonSegment(
+                      value: AppointmentType.telehealth,
+                      icon: Icon(Icons.video_call),
+                      label: Text('Telehealth'),
+                    ),
+                  ],
+                  selected: {_appointmentType},
+                  onSelectionChanged: (s) =>
+                      setState(() => _appointmentType = s.first),
+                  style: ButtonStyle(
+                    backgroundColor:
+                        WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return AfiCareTheme.primaryBlue;
+                      }
+                      return null;
+                    }),
+                    foregroundColor:
+                        WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return Colors.white;
+                      }
+                      return null;
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _appointmentNotesController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _saveConsultation(BuildContext context) async {
     if (_aiResult == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -991,7 +1346,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         .map((e) => e.key.replaceAll('_', ' '))
         .toList();
 
-    final success = await consultationProvider.saveConsultation(
+    final consultationId = await consultationProvider.saveConsultation(
       patientId: _medilinkIdController.text.trim(),
       providerId: providerId,
       chiefComplaint: _chiefComplaintController.text.trim(),
@@ -1000,6 +1355,58 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       recommendations: _aiResult!.recommendations,
       followUpRequired: _aiResult!.followUpRequired,
     );
+
+    final success = consultationId != null;
+
+    // Save prescriptions if any
+    if (success && _prescriptions.isNotEmpty) {
+      final prescriptionProvider =
+          Provider.of<PrescriptionProvider>(context, listen: false);
+      for (final med in _prescriptions) {
+        await prescriptionProvider.createPrescription(
+          PrescriptionModel(
+            id: '',
+            patientId: _medilinkIdController.text.trim(),
+            providerId: providerId,
+            consultationId: consultationId,
+            medicationName: med['medication'] ?? '',
+            dosage: med['dosage'] ?? '',
+            frequency: med['frequency'] ?? '',
+            duration: med['duration'] ?? '',
+            issuedAt: DateTime.now(),
+            status: PrescriptionStatus.active,
+          ),
+        );
+      }
+    }
+
+    // Save follow-up appointment if date is set
+    if (success && _appointmentDate != null) {
+      final appointmentProvider =
+          Provider.of<AppointmentProvider>(context, listen: false);
+      final scheduledAt = DateTime(
+        _appointmentDate!.year,
+        _appointmentDate!.month,
+        _appointmentDate!.day,
+        _appointmentTime?.hour ?? 9,
+        _appointmentTime?.minute ?? 0,
+      );
+      await appointmentProvider.bookAppointment(
+        AppointmentModel(
+          id: '',
+          patientId: _medilinkIdController.text.trim(),
+          providerId: providerId,
+          scheduledAt: scheduledAt,
+          type: _appointmentType,
+          status: AppointmentStatus.pending,
+          notes: _appointmentNotesController.text.trim().isEmpty
+              ? null
+              : _appointmentNotesController.text.trim(),
+          isFollowUp: true,
+          consultationId: consultationId,
+        ),
+      );
+    }
 
     if (!context.mounted) return;
     Navigator.of(context).pop(); // close spinner
@@ -1168,6 +1575,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     _medilinkIdController.dispose();
     _clinicalDiagnosisController.dispose();
     _providerNotesController.dispose();
+    _appointmentNotesController.dispose();
     super.dispose();
   }
 }

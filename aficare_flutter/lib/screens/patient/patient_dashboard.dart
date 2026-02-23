@@ -9,11 +9,14 @@ import 'dart:math';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/consultation_model.dart';
+import '../../models/appointment_model.dart';
 import '../../utils/theme.dart';
 import '../common/notifications_screen.dart';
 import 'pwd_tab.dart';
+import 'prescriptions_tab.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -51,8 +54,8 @@ class _PatientDashboardState extends State<PatientDashboard>
   @override
   void initState() {
     super.initState();
-    // Start with 5 tabs (no gender-specific tabs). Corrected in build when user loads.
-    _tabController = TabController(length: 5, vsync: this);
+    // Start with 6 tabs (no gender-specific tabs). Corrected in build when user loads.
+    _tabController = TabController(length: 6, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPatientData());
   }
 
@@ -114,15 +117,17 @@ class _PatientDashboardState extends State<PatientDashboard>
     if (!mounted) return;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final patientProvider = Provider.of<PatientProvider>(context, listen: false);
+    final aptProvider = Provider.of<AppointmentProvider>(context, listen: false);
     final userId = authProvider.currentUser?.id;
     if (userId != null) {
       patientProvider.loadConsultations(userId);
+      aptProvider.loadAppointments(userId);
     }
   }
 
   /// Ensures the TabController length matches the actual tab count for this user.
   void _ensureTabController(bool isWoman) {
-    final needed = isWoman ? 7 : 5;
+    final needed = isWoman ? 8 : 6;
     if (_tabController.length != needed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -165,6 +170,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                       _buildMaternalHealthTab(patientProvider),
                       _buildWomensHealthTab(patientProvider),
                     ],
+                    PrescriptionsTab(patientId: user.id),
                     PwdTab(patientId: user.id),
                     _buildSharingTab(user),
                     _buildSettingsTab(user),
@@ -312,11 +318,83 @@ class _PatientDashboardState extends State<PatientDashboard>
             const Tab(icon: Icon(Icons.pregnant_woman), text: 'Maternal'),
             const Tab(icon: Icon(Icons.female), text: 'Women\'s Health'),
           ],
+          const Tab(icon: Icon(Icons.medication), text: 'Prescriptions'),
           const Tab(icon: Icon(Icons.accessibility_new), text: 'PWD Profile'),
           const Tab(icon: Icon(Icons.share), text: 'Share'),
           const Tab(icon: Icon(Icons.settings), text: 'Settings'),
         ],
       ),
+    );
+  }
+
+  Widget _buildAppointmentsCard(BuildContext context) {
+    return Consumer<AppointmentProvider>(
+      builder: (ctx, aptProvider, _) {
+        final now = DateTime.now();
+        final upcoming = aptProvider.appointments
+            .where((a) =>
+                a.scheduledAt.isAfter(now) &&
+                a.status != AppointmentStatus.cancelled &&
+                a.status != AppointmentStatus.completed)
+            .toList()
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+        final next = upcoming.isNotEmpty ? upcoming.first : null;
+
+        return Card(
+          child: InkWell(
+            onTap: () => context.go('/patient/appointments'),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AfiCareTheme.primaryGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.calendar_month,
+                        color: AfiCareTheme.primaryGreen, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Appointments',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          next != null
+                              ? 'Next: ${_dashFormatDate(next.scheduledAt)}'
+                              : 'No upcoming appointments',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => context.go('/patient/appointments'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AfiCareTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                    child: const Text('Book'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -336,6 +414,8 @@ class _PatientDashboardState extends State<PatientDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildAppointmentsCard(context),
+          const SizedBox(height: 16),
           _buildHealthMetrics(consultations, latestVitals, score),
           const SizedBox(height: 20),
           _buildHealthAlerts(consultations),

@@ -7,6 +7,7 @@ import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/health_summary.dart';
 import '../screens/patient/share_records.dart';
 import '../screens/patient/qr_scanner.dart';
+import '../screens/patient/appointments_screen.dart';
 import '../screens/provider/provider_dashboard.dart';
 import '../screens/provider/consultation_screen.dart';
 import '../screens/provider/patient_access.dart';
@@ -52,6 +53,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'scan',
           builder: (context, state) => const QRScanner(),
+        ),
+        GoRoute(
+          path: 'appointments',
+          builder: (context, state) => const AppointmentsScreen(),
         ),
       ],
     ),
