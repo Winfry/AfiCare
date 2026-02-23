@@ -174,6 +174,27 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Update profile (name, phone, metadata — e.g. blood type, prefs)
+  Future<bool> updateProfile({
+    String? fullName,
+    String? phone,
+    Map<String, dynamic>? metadata,
+  }) async {
+    if (_currentUser == null) return false;
+    try {
+      final updates = <String, dynamic>{};
+      if (fullName != null) updates['full_name'] = fullName;
+      if (phone != null) updates['phone'] = phone;
+      if (metadata != null) updates['metadata'] = metadata;
+      await _supabase.from('users').update(updates).eq('id', _currentUser!.id);
+      await _loadUserProfile(_currentUser!.id);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    }
+  }
+
   // Reset Password
   Future<bool> resetPassword(String email) async {
     try {

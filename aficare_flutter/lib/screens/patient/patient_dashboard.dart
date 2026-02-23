@@ -10,6 +10,7 @@ import 'dart:math';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../models/user_model.dart';
+import '../../models/consultation_model.dart';
 import '../../utils/theme.dart';
 import '../common/notifications_screen.dart';
 import 'pwd_tab.dart';
@@ -254,26 +255,107 @@ class _PatientDashboardState extends State<PatientDashboard>
   }
 
   Widget _buildHealthSummaryTab(PatientProvider patientProvider) {
+    final consultations = patientProvider.consultations;
+    final latestVitals =
+        consultations.isNotEmpty ? consultations.first.vitalSigns : null;
+    final score = _calcDashHealthScore(latestVitals);
+    // Last 7 in chronological order for the trend chart
+    final trend = (List<ConsultationModel>.from(consultations)
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp)))
+        .toList();
+    final trendData = trend.length > 7 ? trend.sublist(trend.length - 7) : trend;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHealthMetrics(),
+          _buildHealthMetrics(consultations, latestVitals, score),
           const SizedBox(height: 20),
-          _buildHealthAlerts(),
+          _buildHealthAlerts(consultations),
           const SizedBox(height: 20),
-          _buildVitalSignsTrends(),
+          _buildVitalSignsTrends(trendData),
           const SizedBox(height: 20),
-          _buildMedicationManagement(),
+          _buildMedicationManagement(consultations),
           const SizedBox(height: 20),
-          _buildHealthGoals(),
+          _buildFollowUpSummary(consultations),
         ],
       ),
     );
   }
 
-  Widget _buildHealthMetrics() {
+  int? _calcDashHealthScore(VitalSigns? v) {
+    if (v == null) return null;
+    int checks = 0, passed = 0;
+    if (v.temperature != null) {
+      checks++;
+      if (v.temperature! >= 36.1 && v.temperature! <= 37.2) passed++;
+    }
+    if (v.systolicBP != null) {
+      checks++;
+      if (v.systolicBP! >= 90 && v.systolicBP! <= 120) passed++;
+    }
+    if (v.diastolicBP != null) {
+      checks++;
+      if (v.diastolicBP! >= 60 && v.diastolicBP! <= 80) passed++;
+    }
+    if (v.pulseRate != null) {
+      checks++;
+      if (v.pulseRate! >= 60 && v.pulseRate! <= 100) passed++;
+    }
+    if (v.oxygenSaturation != null) {
+      checks++;
+      if (v.oxygenSaturation! >= 95) passed++;
+    }
+    if (checks == 0) return null;
+    return ((passed / checks) * 100).round();
+  }
+
+  String _dashScoreLabel(int? score) {
+    if (score == null) return '--';
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    return 'Poor';
+  }
+
+  Color _dashScoreColor(int? score) {
+    if (score == null) return Colors.grey;
+    if (score >= 80) return Colors.green;
+    if (score >= 60) return AfiCareTheme.primaryGreen;
+    if (score >= 40) return Colors.orange;
+    return Colors.red;
+  }
+
+  String _dashTriageRisk(List<ConsultationModel> consultations) {
+    if (consultations.isEmpty) return '--';
+    final level = consultations.first.triageLevel.toLowerCase();
+    if (level.contains('critical')) return 'High';
+    if (level.contains('urgent')) return 'Medium';
+    return 'Low';
+  }
+
+  Color _dashTriageColor(List<ConsultationModel> consultations) {
+    if (consultations.isEmpty) return Colors.grey;
+    final level = consultations.first.triageLevel.toLowerCase();
+    if (level.contains('critical')) return Colors.red;
+    if (level.contains('urgent')) return Colors.orange;
+    return Colors.green;
+  }
+
+  Widget _buildHealthMetrics(
+    List<ConsultationModel> consultations,
+    VitalSigns? latestVitals,
+    int? score,
+  ) {
+    final totalVisits = consultations.length;
+    final followUps = consultations
+        .where((c) =>
+            c.followUpRequired &&
+            c.followUpDate != null &&
+            c.followUpDate!.isAfter(DateTime.now()))
+        .length;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -290,18 +372,20 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Health Score',
-                    '--',
-                    'Complete profile to see',
+                    score?.toString() ?? '--',
+                    score != null
+                        ? _dashScoreLabel(score)
+                        : 'Visit a provider',
                     Icons.favorite,
-                    Colors.red,
+                    _dashScoreColor(score),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildMetricCard(
                     'Total Visits',
-                    '0',
-                    'No visits yet',
+                    totalVisits.toString(),
+                    totalVisits == 0 ? 'No visits yet' : 'Consultations',
                     Icons.local_hospital,
                     Colors.blue,
                   ),
@@ -313,10 +397,10 @@ class _PatientDashboardState extends State<PatientDashboard>
               children: [
                 Expanded(
                   child: _buildMetricCard(
-                    'Active Meds',
-                    '0',
-                    'None prescribed',
-                    Icons.medication,
+                    'Follow-ups Due',
+                    followUps.toString(),
+                    followUps == 0 ? 'None pending' : 'Scheduled',
+                    Icons.event,
                     Colors.orange,
                   ),
                 ),
@@ -324,10 +408,12 @@ class _PatientDashboardState extends State<PatientDashboard>
                 Expanded(
                   child: _buildMetricCard(
                     'Risk Level',
-                    '--',
-                    'Pending assessment',
+                    _dashTriageRisk(consultations),
+                    consultations.isEmpty
+                        ? 'Pending assessment'
+                        : 'From last visit',
                     Icons.security,
-                    Colors.green,
+                    _dashTriageColor(consultations),
                   ),
                 ),
               ],
@@ -395,7 +481,74 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildHealthAlerts() {
+  Widget _buildHealthAlerts(List<ConsultationModel> consultations) {
+    final alerts = <({String text, IconData icon, Color color})>[];
+
+    if (consultations.isEmpty) {
+      alerts.add((
+        text: 'Visit a healthcare provider to record your first consultation.',
+        icon: Icons.local_hospital,
+        color: Colors.blue,
+      ));
+      alerts.add((
+        text:
+            'Your health score, vitals, and visit history will appear once you have a consultation.',
+        icon: Icons.info_outline,
+        color: Colors.blue,
+      ));
+    } else {
+      // Check for overdue follow-ups
+      final overdue = consultations.where((c) =>
+          c.followUpRequired &&
+          c.followUpDate != null &&
+          c.followUpDate!.isBefore(DateTime.now()));
+      for (final c in overdue) {
+        alerts.add((
+          text:
+              'Overdue follow-up for "${c.chiefComplaint}" — scheduled ${_dashFormatDate(c.followUpDate!)}.',
+          icon: Icons.warning_amber,
+          color: Colors.red,
+        ));
+      }
+
+      // Upcoming follow-ups
+      final upcoming = consultations
+          .where((c) =>
+              c.followUpRequired &&
+              c.followUpDate != null &&
+              c.followUpDate!.isAfter(DateTime.now()))
+          .toList()
+        ..sort((a, b) => a.followUpDate!.compareTo(b.followUpDate!));
+      if (upcoming.isNotEmpty) {
+        final next = upcoming.first;
+        alerts.add((
+          text:
+              'Upcoming follow-up on ${_dashFormatDate(next.followUpDate!)} for "${next.chiefComplaint}".',
+          icon: Icons.event,
+          color: Colors.orange,
+        ));
+      }
+
+      // Critical triage from last visit
+      final last = consultations.first;
+      if (last.triageLevel.toLowerCase().contains('critical')) {
+        alerts.add((
+          text:
+              'Your last visit was classified as critical. Seek urgent care if symptoms persist.',
+          icon: Icons.emergency,
+          color: Colors.red,
+        ));
+      }
+
+      if (alerts.isEmpty) {
+        alerts.add((
+          text: 'All clear! No urgent alerts. Keep up with scheduled follow-ups.',
+          icon: Icons.check_circle_outline,
+          color: Colors.green,
+        ));
+      }
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -407,26 +560,15 @@ class _PatientDashboardState extends State<PatientDashboard>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildAlertItem(
-              'Welcome! Complete your profile to get personalized health alerts.',
-              Icons.info,
-              Colors.blue,
-            ),
-            _buildAlertItem(
-              'Visit a healthcare provider to record your first consultation.',
-              Icons.local_hospital,
-              Colors.green,
-            ),
-            _buildAlertItem(
-              'Update your allergies and medications through your provider.',
-              Icons.warning,
-              Colors.orange,
-            ),
+            ...alerts.map((a) => _buildAlertItem(a.text, a.icon, a.color)),
           ],
         ),
       ),
     );
   }
+
+  String _dashFormatDate(DateTime dt) =>
+      '${dt.day}/${dt.month}/${dt.year}';
 
   Widget _buildAlertItem(String text, IconData icon, Color color) {
     return Semantics(
@@ -452,7 +594,21 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildVitalSignsTrends() {
+  Widget _buildVitalSignsTrends(List<ConsultationModel> trendData) {
+    // Build BP spots from real consultations
+    final systolicSpots = <FlSpot>[];
+    final diastolicSpots = <FlSpot>[];
+    for (int i = 0; i < trendData.length; i++) {
+      final v = trendData[i].vitalSigns;
+      if (v.systolicBP != null) {
+        systolicSpots.add(FlSpot(i.toDouble(), v.systolicBP!.toDouble()));
+      }
+      if (v.diastolicBP != null) {
+        diastolicSpots.add(FlSpot(i.toDouble(), v.diastolicBP!.toDouble()));
+      }
+    }
+    final hasData = systolicSpots.length >= 2 || diastolicSpots.length >= 2;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -460,52 +616,130 @@ class _PatientDashboardState extends State<PatientDashboard>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Vital Signs Trends (Last 6 Months)',
+              'Blood Pressure Trend',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 4),
+            Text(
+              hasData
+                  ? 'Last ${trendData.length} visits'
+                  : 'Needs 2+ visits to show trend',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF616161)),
+            ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  gridData: const FlGridData(show: true),
-                  titlesData: const FlTitlesData(show: true),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: _generateSampleData(),
-                      isCurved: true,
-                      color: AfiCareTheme.primaryGreen,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: false),
+            if (!hasData)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Icon(Icons.show_chart, size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Chart will appear after 2+ consultations',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 200,
+                child: LineChart(
+                  LineChartData(
+                    gridData: FlGridData(show: true, drawVerticalLine: false),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 36,
+                          getTitlesWidget: (v, _) => Text(
+                            v.toInt().toString(),
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, _) {
+                            final i = value.toInt();
+                            if (i < 0 || i >= trendData.length) {
+                              return const Text('');
+                            }
+                            final d = trendData[i].timestamp;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text('${d.day}/${d.month}',
+                                  style: const TextStyle(fontSize: 9)),
+                            );
+                          },
+                        ),
+                      ),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
                     ),
-                  ],
+                    borderData: FlBorderData(show: false),
+                    lineBarsData: [
+                      if (systolicSpots.length >= 2)
+                        LineChartBarData(
+                          spots: systolicSpots,
+                          isCurved: true,
+                          color: Colors.red,
+                          barWidth: 2,
+                          dotData: const FlDotData(show: true),
+                        ),
+                      if (diastolicSpots.length >= 2)
+                        LineChartBarData(
+                          spots: diastolicSpots,
+                          isCurved: true,
+                          color: Colors.blue,
+                          barWidth: 2,
+                          dotData: const FlDotData(show: true),
+                        ),
+                    ],
+                    minY: 40,
+                    maxY: 180,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Vital signs will be recorded during your consultations',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            if (hasData) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _bpLegend('Systolic', Colors.red),
+                  const SizedBox(width: 20),
+                  _bpLegend('Diastolic', Colors.blue),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  List<FlSpot> _generateSampleData() {
-    final random = Random();
-    return List.generate(
-      6,
-      (index) => FlSpot(
-        index.toDouble(),
-        120 + random.nextDouble() * 20,
-      ),
-    );
-  }
+  Widget _bpLegend(String label, Color color) => Row(
+        children: [
+          Container(
+              width: 10,
+              height: 10,
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 11)),
+        ],
+      );
 
-  Widget _buildMedicationManagement() {
+  Widget _buildMedicationManagement(List<ConsultationModel> consultations) {
+    final recs = consultations.isNotEmpty
+        ? consultations.first.recommendations
+        : <String>[];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
