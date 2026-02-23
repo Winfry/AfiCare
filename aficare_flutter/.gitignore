@@ -42,3 +42,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .vercel
+
+# Signing — never commit keystores or passwords
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
