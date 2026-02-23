@@ -54,4 +54,26 @@ class PrescriptionProvider with ChangeNotifier {
       return false;
     }
   }
+
+  /// Update the status of a prescription (e.g. active → completed / cancelled).
+  /// Used by providers to close out prescriptions.
+  Future<bool> updateStatus(String id, PrescriptionStatus status) async {
+    try {
+      await _supabase
+          .from('prescriptions')
+          .update({'status': status.name})
+          .eq('id', id);
+      // Optimistic update in local list
+      final idx = _prescriptions.indexWhere((p) => p.id == id);
+      if (idx != -1) {
+        _prescriptions[idx] = _prescriptions[idx].copyWith(status: status);
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 }
