@@ -5,6 +5,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../services/medical_ai_service.dart';
 import '../../models/consultation_model.dart';
+import '../../models/disability_profile.dart';
+import '../../services/pwd_rule_engine.dart';
 import '../../utils/theme.dart';
 
 class ConsultationScreen extends StatefulWidget {
@@ -52,6 +54,16 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   int _respiratoryRate = 16;
   int _oxygenSaturation = 98;
   
+  // PWD Assessment (provider-fills during consultation)
+  bool _pwdSectionExpanded = false;
+  final List<DisabilityType> _pwdTypes = [];
+  DisabilitySeverity _pwdSeverity = DisabilitySeverity.mild;
+  final _clinicalDiagnosisController = TextEditingController();
+  final _providerNotesController = TextEditingController();
+  bool _requiresCaregiverConsent = false;
+  // Referrals auto-suggested by rule engine; provider can deselect
+  final Set<String> _selectedReferrals = {};
+
   ConsultationResult? _aiResult;
   bool _isAnalyzing = false;
 
@@ -83,6 +95,8 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               _buildChiefComplaint(),
               const SizedBox(height: 20),
               _buildSymptomsSection(),
+              const SizedBox(height: 20),
+              _buildPwdAssessment(),
               const SizedBox(height: 20),
               _buildVitalSigns(),
               const SizedBox(height: 20),
@@ -916,6 +930,8 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   void dispose() {
     _chiefComplaintController.dispose();
     _medilinkIdController.dispose();
+    _clinicalDiagnosisController.dispose();
+    _providerNotesController.dispose();
     super.dispose();
   }
 }
