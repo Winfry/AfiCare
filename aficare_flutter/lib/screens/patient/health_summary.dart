@@ -1090,6 +1090,6 @@ class _HealthSummaryState extends State<HealthSummary> {
         sb.writeln('  SpO₂: ${v.oxygenSaturation}%');
       }
     }
-    SharePlus.instance.share(ShareParams(text: sb.toString()));
+    Share.share(sb.toString());
   }
 }
