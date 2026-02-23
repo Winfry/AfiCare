@@ -12,6 +12,7 @@ import '../../providers/patient_provider.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
 import '../common/notifications_screen.dart';
+import 'pwd_tab.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -54,7 +55,7 @@ class _PatientDashboardState extends State<PatientDashboard>
 
   /// Ensures the TabController length matches the actual tab count for this user.
   void _ensureTabController(bool isWoman) {
-    final needed = isWoman ? 6 : 4;
+    final needed = isWoman ? 7 : 5;
     if (_tabController.length != needed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
