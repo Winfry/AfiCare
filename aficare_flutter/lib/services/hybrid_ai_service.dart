@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/consultation_model.dart';
 
@@ -41,7 +42,7 @@ class HybridAIService {
       }
     } catch (e) {
       // Fallback to local AI simulation
-      print('Backend unavailable, using local simulation: $e');
+      debugPrint('Backend unavailable, using local simulation: $e');
       return _simulateAIConsultation(
         patientId: patientId,
         symptoms: symptoms,

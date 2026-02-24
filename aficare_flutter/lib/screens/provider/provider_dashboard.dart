@@ -104,7 +104,8 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           onSelected: (value) async {
             if (value == 'logout') {
               await Provider.of<AuthProvider>(context, listen: false).signOut();
-              if (context.mounted) context.go('/login');
+              if (!mounted) return;
+              context.go('/login');
             }
           },
           itemBuilder: (context) => [
@@ -606,56 +607,6 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildMedicalHistoryItem(
-    String date,
-    String condition,
-    String doctor,
-    String triage,
-  ) {
-    Color triageColor = triage == 'URGENT' ? Colors.orange : Colors.green;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$date - $condition',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text('Doctor: $doctor'),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: triageColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              triage,
-              style: TextStyle(
-                fontSize: 12,
-                color: triageColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

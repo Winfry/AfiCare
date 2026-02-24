@@ -1358,10 +1358,14 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
 
     final success = consultationId != null;
 
+    // Capture providers before async gaps to avoid using context after await
+    final prescriptionProvider =
+        Provider.of<PrescriptionProvider>(context, listen: false);
+    final appointmentProvider =
+        Provider.of<AppointmentProvider>(context, listen: false);
+
     // Save prescriptions if any
     if (success && _prescriptions.isNotEmpty) {
-      final prescriptionProvider =
-          Provider.of<PrescriptionProvider>(context, listen: false);
       for (final med in _prescriptions) {
         await prescriptionProvider.createPrescription(
           PrescriptionModel(
@@ -1382,8 +1386,6 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
 
     // Save follow-up appointment if date is set
     if (success && _appointmentDate != null) {
-      final appointmentProvider =
-          Provider.of<AppointmentProvider>(context, listen: false);
       final scheduledAt = DateTime(
         _appointmentDate!.year,
         _appointmentDate!.month,
@@ -1408,7 +1410,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       );
     }
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     Navigator.of(context).pop(); // close spinner
 
     if (success) {
