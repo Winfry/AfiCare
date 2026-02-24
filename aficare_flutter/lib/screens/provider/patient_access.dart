@@ -146,7 +146,7 @@ class _PatientAccessState extends State<PatientAccess>
                 color: AfiCareTheme.primaryBlue.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.pin,
                 size: 60,
                 color: AfiCareTheme.primaryBlue,
@@ -200,7 +200,7 @@ class _PatientAccessState extends State<PatientAccess>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
+                borderSide: const BorderSide(
                   color: AfiCareTheme.primaryBlue,
                   width: 2,
                 ),
@@ -263,7 +263,7 @@ class _PatientAccessState extends State<PatientAccess>
                 color: AfiCareTheme.primaryBlue.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.badge,
                 size: 60,
                 color: AfiCareTheme.primaryBlue,
@@ -310,7 +310,7 @@ class _PatientAccessState extends State<PatientAccess>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
+                borderSide: const BorderSide(
                   color: AfiCareTheme.primaryBlue,
                   width: 2,
                 ),
@@ -414,7 +414,7 @@ class _PatientAccessState extends State<PatientAccess>
               backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
               child: Text(
                 search['name']!.substring(0, 1),
-                style: TextStyle(
+                style: const TextStyle(
                   color: AfiCareTheme.primaryGreen,
                   fontWeight: FontWeight.bold,
                 ),
@@ -463,7 +463,7 @@ class _PatientAccessState extends State<PatientAccess>
                   backgroundColor: Colors.white,
                   child: Text(
                     patient['name'].substring(0, 1).toUpperCase(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
                       color: AfiCareTheme.primaryBlue,
@@ -699,11 +699,11 @@ class _PatientAccessState extends State<PatientAccess>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
                 Icon(Icons.medication, color: AfiCareTheme.primaryGreen),
-                const SizedBox(width: 8),
-                const Text(
+                SizedBox(width: 8),
+                Text(
                   'Current Medications',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -726,7 +726,7 @@ class _PatientAccessState extends State<PatientAccess>
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AfiCareTheme.primaryGreen,
                         shape: BoxShape.circle,
                       ),
@@ -749,11 +749,11 @@ class _PatientAccessState extends State<PatientAccess>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
                 Icon(Icons.history, color: AfiCareTheme.primaryBlue),
-                const SizedBox(width: 8),
-                const Text(
+                SizedBox(width: 8),
+                Text(
                   'Medical History',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -773,7 +773,7 @@ class _PatientAccessState extends State<PatientAccess>
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.circle, size: 8, color: AfiCareTheme.primaryBlue),
+                    const Icon(Icons.circle, size: 8, color: AfiCareTheme.primaryBlue),
                     const SizedBox(width: 12),
                     Expanded(child: Text(condition.toString())),
                   ],
@@ -795,11 +795,11 @@ class _PatientAccessState extends State<PatientAccess>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.monitor_heart, color: Colors.red),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Latest Vital Signs',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -1044,11 +1044,10 @@ class _ScannerOverlay extends ShapeBorder {
   const _ScannerOverlay({
     this.borderColor = Colors.white,
     this.borderWidth = 3.0,
-    this.overlayColor = const Color.fromRGBO(0, 0, 0, 0.5),
     this.borderRadius = 0,
     this.borderLength = 40,
     this.cutOutSize = 250,
-  });
+  }) : overlayColor = const Color.fromRGBO(0, 0, 0, 0.5);
 
   @override
   EdgeInsetsGeometry get dimensions => const EdgeInsets.all(10);

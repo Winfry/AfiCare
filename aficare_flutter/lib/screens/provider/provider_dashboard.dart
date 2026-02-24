@@ -143,7 +143,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             backgroundColor: Colors.white,
             child: Text(
               user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'D',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AfiCareTheme.primaryBlue,
@@ -846,7 +846,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             child: Text(
               timeStr,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: AfiCareTheme.primaryBlue),
@@ -948,7 +948,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           children: [
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.smart_toy,
                   color: AfiCareTheme.primaryGreen,
                   size: 32,
@@ -1002,7 +1002,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       children: [
         Text(
           value,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AfiCareTheme.primaryGreen,

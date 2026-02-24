@@ -104,7 +104,7 @@ class _ShareRecordsState extends State<ShareRecords>
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Let healthcare providers scan this QR code to access your medical records',
             style: TextStyle(
               color: Color(0xFF616161), // grey.shade700 — 6.65:1 on white ✓
@@ -135,11 +135,11 @@ class _ShareRecordsState extends State<ShareRecords>
                     version: QrVersions.auto,
                     size: 220,
                     backgroundColor: Colors.white,
-                    eyeStyle: QrEyeStyle(
+                    eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
                       color: AfiCareTheme.primaryGreen,
                     ),
-                    dataModuleStyle: QrDataModuleStyle(
+                    dataModuleStyle: const QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.square,
                       color: AfiCareTheme.primaryGreenDark,
                     ),
@@ -157,7 +157,7 @@ class _ShareRecordsState extends State<ShareRecords>
                   ),
                   child: Text(
                     user?.medilinkId ?? 'ML-XXX-XXXX',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AfiCareTheme.primaryGreen,
                       fontSize: 16,
@@ -181,7 +181,7 @@ class _ShareRecordsState extends State<ShareRecords>
                   label: const Text('Share QR'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: AfiCareTheme.primaryGreen),
+                    side: const BorderSide(color: AfiCareTheme.primaryGreen),
                   ),
                 ),
               ),
@@ -220,7 +220,7 @@ class _ShareRecordsState extends State<ShareRecords>
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Create a temporary code for healthcare providers to access your records',
             style: TextStyle(
               color: Color(0xFF616161), // grey.shade700 — 6.65:1 on white ✓
@@ -275,7 +275,7 @@ class _ShareRecordsState extends State<ShareRecords>
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [AfiCareTheme.primaryGreen, AfiCareTheme.secondaryGreen],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -565,7 +565,7 @@ class _ShareRecordsState extends State<ShareRecords>
               children: [
                 CircleAvatar(
                   backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
-                  child: Icon(
+                  child: const Icon(
                     Icons.local_hospital,
                     color: AfiCareTheme.primaryBlue,
                   ),
