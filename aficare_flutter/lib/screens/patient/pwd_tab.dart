@@ -51,7 +51,7 @@ class _PwdTabState extends State<PwdTab> {
           .maybeSingle();
       if (data != null && mounted) {
         setState(() {
-          _profile = DisabilityProfile.fromMap(data as Map<String, dynamic>);
+          _profile = DisabilityProfile.fromMap(data);
           _hasPwdCondition = !_profile.isEmpty;
         });
       }
@@ -152,7 +152,7 @@ class _PwdTabState extends State<PwdTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
             AfiCareTheme.primaryGreen,
             AfiCareTheme.primaryGreenDark,
@@ -754,7 +754,7 @@ class _PwdTabState extends State<PwdTab> {
               ),
               child: Text(
                 '${recommendations.length} items',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: AfiCareTheme.primaryGreen,
                   fontWeight: FontWeight.bold,
@@ -782,7 +782,7 @@ class _PwdTabState extends State<PwdTab> {
     final icon   = _categoryIcon(rec.category);
 
     return Semantics(
-      label: '${label}: ${rec.title}. ${rec.description}',
+      label: '$label: ${rec.title}. ${rec.description}',
       child: Card(
         margin: const EdgeInsets.only(bottom: 10),
         shape: RoundedRectangleBorder(
