@@ -51,6 +51,8 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading user profile: $e');
+      _error = e.toString();
+      notifyListeners();
     }
   }
 
