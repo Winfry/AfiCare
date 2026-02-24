@@ -30,7 +30,7 @@ class AdminDashboard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           // Stats Row
-          Row(
+          const Row(
             children: [
               Expanded(
                 child: _AdminStatCard(
@@ -40,7 +40,7 @@ class AdminDashboard extends StatelessWidget {
                   color: Colors.blue,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _AdminStatCard(
                   title: 'Providers',
@@ -54,7 +54,7 @@ class AdminDashboard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          Row(
+          const Row(
             children: [
               Expanded(
                 child: _AdminStatCard(
@@ -64,7 +64,7 @@ class AdminDashboard extends StatelessWidget {
                   color: Colors.purple,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _AdminStatCard(
                   title: 'Today',

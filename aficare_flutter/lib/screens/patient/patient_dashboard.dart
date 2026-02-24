@@ -547,7 +547,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                       color: AfiCareTheme.primaryGreen.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.calendar_month,
+                    child: const Icon(Icons.calendar_month,
                         color: AfiCareTheme.primaryGreen, size: 24),
                   ),
                   const SizedBox(width: 14),
@@ -987,7 +987,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                 height: 200,
                 child: LineChart(
                   LineChartData(
-                    gridData: FlGridData(show: true, drawVerticalLine: false),
+                    gridData: const FlGridData(show: true, drawVerticalLine: false),
                     titlesData: FlTitlesData(
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
@@ -1130,7 +1130,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.check_circle,
+                      const Icon(Icons.check_circle,
                           size: 18, color: AfiCareTheme.primaryGreen),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1489,7 +1489,7 @@ class _PatientDashboardState extends State<PatientDashboard>
             LinearProgressIndicator(
               value: 0.6,
               backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(AfiCareTheme.primaryGreen),
+              valueColor: const AlwaysStoppedAnimation<Color>(AfiCareTheme.primaryGreen),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -1602,17 +1602,17 @@ class _PatientDashboardState extends State<PatientDashboard>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ExpansionTile(
-              title: const Text('PCOS Management'),
-              leading: const Icon(Icons.medical_information),
+            const ExpansionTile(
+              title: Text('PCOS Management'),
+              leading: Icon(Icons.medical_information),
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Current Symptoms:'),
-                      const SizedBox(height: 8),
+                      Text('Current Symptoms:'),
+                      SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
                         children: [
@@ -1651,7 +1651,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                             ),
                           ),
                           // Text alternative for motor-impaired users
-                          SizedBox(
+                          const SizedBox(
                             width: 48,
                             child: Text(
                               '6/10',
@@ -1898,18 +1898,18 @@ class _PatientDashboardState extends State<PatientDashboard>
   }
 
   Widget _buildActiveSessions() {
-    return Card(
+    return const Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Active Sharing Sessions',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'No active sessions',
               style: TextStyle(color: Colors.grey),
             ),
@@ -2265,7 +2265,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                       ),
                     ),
                     ListTile(
-                      leading: Icon(Icons.child_care,
+                      leading: const Icon(Icons.child_care,
                           color: AfiCareTheme.primaryGreen),
                       title: const Text('Manage Dependents'),
                       subtitle: const Text(
