@@ -124,14 +124,20 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
+      // Load profile NOW before returning, so currentUser is ready
+      // when the login screen navigates to the dashboard.
+      if (response.user != null) {
+        await _loadUserProfile(response.user!.id);
+      }
+
       _isLoading = false;
       notifyListeners();
-      return true;
+      return _currentUser != null;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;

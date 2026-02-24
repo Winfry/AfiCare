@@ -334,8 +334,36 @@ class _PatientDashboardState extends State<PatientDashboard>
       builder: (context, authProvider, patientProvider, depProvider, child) {
         final user = authProvider.currentUser;
         if (user == null) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (authProvider.error != null) ...[
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Failed to load profile',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(authProvider.error!,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          textAlign: TextAlign.center),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => authProvider.signOut().then((_) {
+                        if (context.mounted) context.go('/login');
+                      }),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Back to Login'),
+                    ),
+                  ] else
+                    const CircularProgressIndicator(),
+                ],
+              ),
+            ),
           );
         }
 
