@@ -1,0 +1,80 @@
+{
+  "name": "Malaria",
+  "icd10": "B54",
+  "category": "infectious_disease",
+  "description": "Parasitic infection caused by Plasmodium species, transmitted through the bite of infected Anopheles mosquitoes.",
+  "symptoms": {
+    "common": ["fever", "chills", "headache", "muscle aches", "fatigue", "sweating", "nausea", "vomiting"],
+    "severe": ["confusion", "seizures", "difficulty breathing", "dark urine", "jaundice", "severe anemia", "prostration"]
+  },
+  "danger_signs": [
+    "inability to drink or breastfeed",
+    "persistent vomiting",
+    "convulsions",
+    "lethargy or unconsciousness",
+    "severe pallor",
+    "respiratory distress",
+    "jaundice",
+    "hemoglobinuria (dark/cola-colored urine)"
+  ],
+  "diagnosis": {
+    "primary": "mRDT (Malaria Rapid Diagnostic Test)",
+    "confirmatory": "Blood smear microscopy (thick and thin films)",
+    "note": "All suspected malaria cases should be confirmed parasitologically before treatment (WHO recommendation)"
+  },
+  "treatment": {
+    "uncomplicated": {
+      "first_line": "Artemether-Lumefantrine (AL)",
+      "dosing": [
+        { "weight_kg": "5-14", "tablets_per_dose": 1, "doses": 6, "schedule": "0h, 8h, 24h, 36h, 48h, 60h" },
+        { "weight_kg": "15-24", "tablets_per_dose": 2, "doses": 6, "schedule": "0h, 8h, 24h, 36h, 48h, 60h" },
+        { "weight_kg": "25-34", "tablets_per_dose": 3, "doses": 6, "schedule": "0h, 8h, 24h, 36h, 48h, 60h" },
+        { "weight_kg": "35+", "tablets_per_dose": 4, "doses": 6, "schedule": "0h, 8h, 24h, 36h, 48h, 60h" }
+      ],
+      "alternative": "Dihydroartemisinin-Piperaquine (DHA-PPQ)"
+    },
+    "severe": {
+      "first_line": "IV/IM Artesunate",
+      "dosing": "2.4 mg/kg at 0h, 12h, 24h, then once daily until oral medication tolerated",
+      "alternative": "IM Artemether if artesunate unavailable",
+      "pre_referral": "Rectal artesunate 10 mg/kg for children under 6 years",
+      "note": "Severe malaria requires immediate hospitalization"
+    },
+    "pregnancy": {
+      "first_trimester": "Quinine + Clindamycin for 7 days",
+      "second_third_trimester": "Artemether-Lumefantrine (AL) or DHA-PPQ"
+    }
+  },
+  "prevention": [
+    "Long-lasting insecticidal nets (LLINs)",
+    "Indoor residual spraying (IRS)",
+    "Intermittent preventive treatment in pregnancy (IPTp-SP)",
+    "Seasonal malaria chemoprevention (SMC) for children",
+    "Chemoprophylaxis for travelers"
+  ],
+  "triage_rules": [
+    {
+      "trigger": "symptom_fever",
+      "condition": "temperature > 37.5",
+      "action": "recommend_test",
+      "test_type": "mRDT",
+      "urgency": "urgent"
+    },
+    {
+      "trigger": "test_result_positive",
+      "test_type": "mRDT",
+      "action": "prescribe_medication",
+      "medication": "Artemether-Lumefantrine (AL)"
+    },
+    {
+      "trigger": "danger_sign_present",
+      "action": "refer_immediately",
+      "urgency": "emergency",
+      "note": "Severe malaria — refer to hospital immediately"
+    }
+  ],
+  "references": [
+    "WHO Guidelines for Malaria Treatment, 3rd Edition (2015, updated 2022)",
+    "Kenya MOH National Guidelines for Diagnosis, Treatment and Prevention of Malaria, 2023"
+  ]
+}
