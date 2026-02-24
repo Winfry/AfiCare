@@ -243,7 +243,7 @@ class _PatientDashboardState extends State<PatientDashboard>
               ),
             ),
             if (isActive)
-              Icon(Icons.check_circle,
+              const Icon(Icons.check_circle,
                   color: AfiCareTheme.primaryGreen, size: 20),
           ],
         ),
@@ -438,7 +438,7 @@ class _PatientDashboardState extends State<PatientDashboard>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AfiCareTheme.primaryGreen, AfiCareTheme.secondaryGreen],
           begin: Alignment.topLeft,
@@ -452,7 +452,7 @@ class _PatientDashboardState extends State<PatientDashboard>
             backgroundColor: Colors.white,
             child: Text(
               avatarInitial,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AfiCareTheme.primaryGreen,
