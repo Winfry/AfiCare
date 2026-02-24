@@ -1,0 +1,685 @@
+{
+  "info": {
+    "name": "AfiCare MediLink API",
+    "description": "Complete API collection for AfiCare MediLink — Supabase REST + FastAPI AI Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "supabase_url",
+      "value": "https://uxphfdezypgshgfklcky.supabase.co",
+      "type": "string"
+    },
+    {
+      "key": "supabase_anon_key",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cGhmZGV6eXBnc2hnZmtsY2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTAxMzcsImV4cCI6MjA4NTg2NjEzN30.tv4-MxEIWK9cBKxuvYPKbSSlE32zFpDVOnXnn_TN7Co",
+      "type": "string"
+    },
+    {
+      "key": "user_jwt",
+      "value": "",
+      "type": "string",
+      "description": "Set this after logging in via Supabase Auth"
+    },
+    {
+      "key": "backend_url",
+      "value": "https://aficare-backend.up.railway.app",
+      "type": "string"
+    },
+    {
+      "key": "patient_id",
+      "value": "ML-NBO-123456",
+      "type": "string"
+    },
+    {
+      "key": "user_uuid",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "apikey", "type": "string" },
+      { "key": "value", "value": "{{supabase_anon_key}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Supabase authentication endpoints",
+      "item": [
+        {
+          "name": "Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/signup",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "signup"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"your_password_here\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sign In (get JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "  pm.collectionVariables.set('user_jwt', json.access_token);",
+                  "  pm.collectionVariables.set('user_uuid', json.user.id);",
+                  "  console.log('JWT and user_uuid saved!');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "token"],
+              "query": [{ "key": "grant_type", "value": "password" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"your_password_here\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/user",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "user"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User profiles table",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/users?id=eq.{{user_uuid}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "users"],
+              "query": [
+                { "key": "id", "value": "eq.{{user_uuid}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Providers (doctors & nurses)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/users?role=in.(doctor,nurse)&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "users"],
+              "query": [
+                { "key": "role", "value": "in.(doctor,nurse)" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create User Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/users",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "users"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{user_uuid}}\",\n  \"email\": \"testuser@example.com\",\n  \"full_name\": \"Test User\",\n  \"role\": \"patient\",\n  \"phone\": \"+254700000000\",\n  \"medilink_id\": \"ML-NBO-TEST01\",\n  \"created_at\": \"2026-02-24T10:00:00Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/users?id=eq.{{user_uuid}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "users"],
+              "query": [{ "key": "id", "value": "eq.{{user_uuid}}" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Updated Name\",\n  \"phone\": \"+254711111111\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consultations",
+      "description": "Medical consultations",
+      "item": [
+        {
+          "name": "Get Patient Consultations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/consultations?patient_id=eq.{{patient_id}}&order=timestamp.desc&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "consultations"],
+              "query": [
+                { "key": "patient_id", "value": "eq.{{patient_id}}" },
+                { "key": "order", "value": "timestamp.desc" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Consultation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/consultations",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "consultations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"provider_id\": \"{{user_uuid}}\",\n  \"timestamp\": \"2026-02-24T10:30:00Z\",\n  \"chief_complaint\": \"Fever and cough\",\n  \"symptoms\": [\"fever\", \"cough\", \"fatigue\"],\n  \"vital_signs\": {\n    \"temperature\": 38.5,\n    \"systolic_bp\": 120,\n    \"diastolic_bp\": 80,\n    \"pulse\": 92,\n    \"respiratory_rate\": 20,\n    \"oxygen_saturation\": 98.0\n  },\n  \"triage_level\": \"urgent\",\n  \"diagnoses\": [\n    {\n      \"condition\": \"Pneumonia\",\n      \"confidence\": 0.85,\n      \"matching_symptoms\": [\"cough\", \"fever\"]\n    }\n  ],\n  \"recommendations\": [\"Chest X-ray\", \"Antibiotic therapy\"],\n  \"notes\": \"Patient appears distressed\",\n  \"follow_up_required\": true,\n  \"follow_up_date\": \"2026-02-27T10:00:00Z\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "description": "Appointment booking and management",
+      "item": [
+        {
+          "name": "Get Patient Appointments",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/appointments?patient_id=eq.{{patient_id}}&order=scheduled_at.desc&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "appointments"],
+              "query": [
+                { "key": "patient_id", "value": "eq.{{patient_id}}" },
+                { "key": "order", "value": "scheduled_at.desc" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Book Appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/appointments",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "appointments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"provider_id\": \"{{user_uuid}}\",\n  \"scheduled_at\": \"2026-02-28T14:00:00Z\",\n  \"status\": \"scheduled\",\n  \"notes\": \"Routine checkup\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Appointment Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/appointments?id=eq.<appointment_uuid>",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "appointments"],
+              "query": [{ "key": "id", "value": "eq.<appointment_uuid>" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Prescriptions",
+      "description": "Prescription management",
+      "item": [
+        {
+          "name": "Get Patient Prescriptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/prescriptions?patient_id=eq.{{patient_id}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "prescriptions"],
+              "query": [
+                { "key": "patient_id", "value": "eq.{{patient_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Prescription",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/prescriptions",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "prescriptions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"provider_id\": \"{{user_uuid}}\",\n  \"medication_name\": \"Amoxicillin\",\n  \"dosage\": \"500mg\",\n  \"frequency\": \"three times daily\",\n  \"duration\": \"5 days\",\n  \"instructions\": \"Take with food\",\n  \"status\": \"active\",\n  \"issued_at\": \"2026-02-24T10:00:00Z\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dependents",
+      "description": "Dependent profile management (children, elderly, etc.)",
+      "item": [
+        {
+          "name": "Get My Dependents",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/dependent_profiles?guardian_id=eq.{{user_uuid}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "dependent_profiles"],
+              "query": [
+                { "key": "guardian_id", "value": "eq.{{user_uuid}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Dependent",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/dependent_profiles",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "dependent_profiles"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guardian_id\": \"{{user_uuid}}\",\n  \"full_name\": \"John Smith Jr\",\n  \"date_of_birth\": \"2020-05-15\",\n  \"gender\": \"male\",\n  \"relationship\": \"child\",\n  \"blood_type\": \"O+\",\n  \"medilink_id\": \"ML-DEP-ABC123\",\n  \"notes\": \"Allergic to penicillin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Dependent",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/dependent_profiles?id=eq.<dependent_uuid>",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "dependent_profiles"],
+              "query": [{ "key": "id", "value": "eq.<dependent_uuid>" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Care Team",
+      "description": "Care team management",
+      "item": [
+        {
+          "name": "Get Care Team",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/care_team?patient_id=eq.{{patient_id}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "care_team"],
+              "query": [
+                { "key": "patient_id", "value": "eq.{{patient_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add to Care Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/care_team",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "care_team"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"provider_id\": \"{{user_uuid}}\",\n  \"specialty_label\": \"Primary Physician\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove from Care Team",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/care_team?id=eq.<care_team_uuid>",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "care_team"],
+              "query": [{ "key": "id", "value": "eq.<care_team_uuid>" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Access Codes",
+      "description": "Patient access code management for sharing records",
+      "item": [
+        {
+          "name": "Get Access Codes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/access_codes?patient_id=eq.{{user_uuid}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "access_codes"],
+              "query": [
+                { "key": "patient_id", "value": "eq.{{user_uuid}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate Access Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/access_codes",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "access_codes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{user_uuid}}\",\n  \"code\": \"ABCD1234\",\n  \"expires_at\": \"2026-02-25T10:00:00Z\",\n  \"permissions\": [\"view_consultations\", \"view_prescriptions\"],\n  \"is_used\": false\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Log",
+      "description": "Audit logging for compliance",
+      "item": [
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/audit_log?order=timestamp.desc&limit=50&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "audit_log"],
+              "query": [
+                { "key": "order", "value": "timestamp.desc" },
+                { "key": "limit", "value": "50" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Backend (FastAPI)",
+      "description": "AfiCare AI consultation engine on Railway",
+      "item": [
+        {
+          "name": "Health Check — Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/",
+              "host": ["{{backend_url}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health Check — System Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/health",
+              "host": ["{{backend_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "AI Consultation (Full)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{backend_url}}/api/consultations",
+              "host": ["{{backend_url}}"],
+              "path": ["api", "consultations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"age\": 35,\n  \"gender\": \"male\",\n  \"symptoms\": [\"fever\", \"cough\", \"fatigue\"],\n  \"vital_signs\": {\n    \"temperature\": 38.5,\n    \"systolic_bp\": 120,\n    \"diastolic_bp\": 80,\n    \"pulse\": 92,\n    \"respiratory_rate\": 20,\n    \"oxygen_saturation\": 98.0\n  },\n  \"medical_history\": [\"asthma\"],\n  \"current_medications\": [\"lisinopril\"],\n  \"chief_complaint\": \"Fever and cough for 3 days\",\n  \"risk_factors\": [\"smoking\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "AI Triage Assessment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{backend_url}}/api/triage",
+              "host": ["{{backend_url}}"],
+              "path": ["api", "triage"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"age\": 28,\n  \"gender\": \"female\",\n  \"symptoms\": [\"headache\", \"nausea\", \"dizziness\"],\n  \"vital_signs\": {\n    \"temperature\": 37.2,\n    \"systolic_bp\": 140,\n    \"diastolic_bp\": 95,\n    \"pulse\": 88,\n    \"respiratory_rate\": 18,\n    \"oxygen_saturation\": 99.0\n  },\n  \"chief_complaint\": \"Severe headache and dizziness\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Patient History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/api/patients/{{patient_id}}/history",
+              "host": ["{{backend_url}}"],
+              "path": ["api", "patients", "{{patient_id}}", "history"]
+            }
+          }
+        },
+        {
+          "name": "List All Conditions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/api/conditions",
+              "host": ["{{backend_url}}"],
+              "path": ["api", "conditions"]
+            }
+          }
+        },
+        {
+          "name": "Get Condition Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/api/conditions/malaria",
+              "host": ["{{backend_url}}"],
+              "path": ["api", "conditions", "malaria"]
+            }
+          }
+        },
+        {
+          "name": "System Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/api/statistics",
+              "host": ["{{backend_url}}"],
+              "path": ["api", "statistics"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
