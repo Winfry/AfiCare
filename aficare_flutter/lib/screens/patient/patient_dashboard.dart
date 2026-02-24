@@ -401,7 +401,8 @@ class _PatientDashboardState extends State<PatientDashboard>
           onSelected: (value) async {
             if (value == 'logout') {
               await Provider.of<AuthProvider>(context, listen: false).signOut();
-              if (context.mounted) context.go('/login');
+              if (!mounted) return;
+              context.go('/login');
             }
           },
           itemBuilder: (context) => [

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/consultation_model.dart';
 
@@ -50,7 +51,7 @@ class MedicalAIService {
       return result;
     } catch (e) {
       // Fallback to local AI
-      print('Backend unavailable, using local AI: $e');
+      debugPrint('Backend unavailable, using local AI: $e');
       return await _consultWithLocalAI(
         patientId: patientId,
         symptoms: symptoms,
