@@ -17,14 +17,30 @@ import 'config/supabase_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for offline storage
-  await Hive.initFlutter();
+  try {
+    // Initialize Hive for offline storage
+    await Hive.initFlutter();
 
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
-  );
+    // Initialize Supabase
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+    );
+  } catch (e) {
+    debugPrint('Initialization error: $e');
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text('Failed to initialize: $e',
+                style: const TextStyle(color: Colors.red, fontSize: 16)),
+          ),
+        ),
+      ),
+    ));
+    return;
+  }
 
   runApp(const AfiCareApp());
 }
