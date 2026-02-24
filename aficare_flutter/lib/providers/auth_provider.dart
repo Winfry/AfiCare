@@ -41,17 +41,19 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> _loadUserProfile(String userId) async {
     try {
+      debugPrint('Loading profile for userId: $userId');
       final response = await _supabase
           .from('users')
           .select()
           .eq('id', userId)
           .single();
 
+      debugPrint('Profile loaded: ${response['email']}');
       _currentUser = UserModel.fromJson(response);
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading user profile: $e');
-      _error = e.toString();
+      debugPrint('ERROR loading user profile: $e');
+      _error = 'Profile load failed: $e';
       notifyListeners();
     }
   }
@@ -136,6 +138,9 @@ class AuthProvider with ChangeNotifier {
       }
 
       _isLoading = false;
+      if (_currentUser == null) {
+        _error = 'Signed in but could not load profile. Check users table / RLS.';
+      }
       notifyListeners();
       return _currentUser != null;
     } catch (e) {
