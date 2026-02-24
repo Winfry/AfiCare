@@ -910,7 +910,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _saveConsultation(context),
+                    onPressed: _saveConsultation,
                     icon: const Icon(Icons.save),
                     label: const Text('Save'),
                   ),
@@ -918,7 +918,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _shareConsultation(context),
+                    onPressed: _shareConsultation,
                     icon: const Icon(Icons.share),
                     label: const Text('Share'),
                     style: ElevatedButton.styleFrom(
@@ -1301,7 +1301,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
   }
 
-  void _saveConsultation(BuildContext context) async {
+  void _saveConsultation() async {
     if (_aiResult == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1312,11 +1312,21 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       return;
     }
 
+    // Capture all providers before any async gap
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final consultationProvider =
+        Provider.of<ConsultationProvider>(context, listen: false);
+    final prescriptionProvider =
+        Provider.of<PrescriptionProvider>(context, listen: false);
+    final appointmentProvider =
+        Provider.of<AppointmentProvider>(context, listen: false);
+    final providerId = authProvider.currentUser?.id ?? 'unknown';
+
     // Show saving dialog
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (ctx) => const AlertDialog(
         content: Row(
           children: [
             CircularProgressIndicator(),
@@ -1326,11 +1336,6 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         ),
       ),
     );
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final consultationProvider =
-        Provider.of<ConsultationProvider>(context, listen: false);
-    final providerId = authProvider.currentUser?.id ?? 'unknown';
 
     final vitalSigns = VitalSigns(
       temperature: _temperature,
@@ -1357,12 +1362,6 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
 
     final success = consultationId != null;
-
-    // Capture providers before async gaps to avoid using context after await
-    final prescriptionProvider =
-        Provider.of<PrescriptionProvider>(context, listen: false);
-    final appointmentProvider =
-        Provider.of<AppointmentProvider>(context, listen: false);
 
     // Save prescriptions if any
     if (success && _prescriptions.isNotEmpty) {
@@ -1449,7 +1448,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _shareConsultation(context);
+                _shareConsultation();
               },
               child: const Text('Share with Patient'),
             ),
@@ -1466,7 +1465,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     }
   }
 
-  void _shareConsultation(BuildContext context) {
+  void _shareConsultation() {
     if (_aiResult == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

@@ -108,7 +108,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
                   backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.15),
                   child: Text(
                     d.fullName.isNotEmpty ? d.fullName[0].toUpperCase() : '?',
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AfiCareTheme.primaryGreen),
