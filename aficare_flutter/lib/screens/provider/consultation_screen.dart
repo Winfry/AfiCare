@@ -337,7 +337,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       lastUpdated: DateTime.now(),
       updatedBy: 'provider',
     );
-    return PwdRuleEngine().getSuggestedReferrals(profile);
+    return const PwdRuleEngine().getSuggestedReferrals(profile);
   }
 
   Widget _buildPwdAssessment() {
@@ -511,10 +511,10 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       Semantics(
                         button: true,
                         label: 'Information about referral suggestions',
-                        child: Tooltip(
+                        child: const Tooltip(
                           message:
                               'Auto-suggested by rule engine based on selected disability types. Deselect any that do not apply.',
-                          child: const Icon(Icons.info_outline, size: 16,
+                          child: Icon(Icons.info_outline, size: 16,
                               color: Color(0xFF616161)),
                         ),
                       ),
@@ -778,15 +778,15 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
                 Icon(
                   Icons.smart_toy,
                   color: AfiCareTheme.primaryGreen,
                   size: 24,
                 ),
-                const SizedBox(width: 8),
-                const Text(
+                SizedBox(width: 8),
+                Text(
                   'AI Analysis Results',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
@@ -887,7 +887,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       margin: const EdgeInsets.only(top: 6),
                       width: 6,
                       height: 6,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AfiCareTheme.primaryGreen,
                         shape: BoxShape.circle,
                       ),
@@ -1059,7 +1059,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label,
-          style: TextStyle(
+          style: const TextStyle(
               fontSize: 11, color: AfiCareTheme.primaryBlue)),
     );
   }

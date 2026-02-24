@@ -695,56 +695,6 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     );
   }
 
-  Widget _buildPatientCard(Map<String, dynamic> patient) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: AfiCareTheme.primaryGreen,
-              child: Text(
-                patient['name'].toString().substring(0, 1),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    patient['name'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text('${patient['age']} years, ${patient['gender']}'),
-                  Text('Last visit: ${patient['lastVisit']}'),
-                  Text('Condition: ${patient['condition']}'),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                _showPatientRecords(patient['id'], null);
-              },
-              icon: const Icon(Icons.visibility),
-              tooltip: 'View patient records',
-              color: AfiCareTheme.primaryBlue,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildNewConsultationTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
