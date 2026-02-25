@@ -937,7 +937,7 @@ class _PwdTabState extends State<PwdTab> {
                     : 'Add Caregiver'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: AfiCareTheme.primaryBlue),
+                  side: BorderSide(color: AfiCareTheme.primaryBlue),
                   foregroundColor: AfiCareTheme.primaryBlue,
                 ),
               ),
@@ -968,7 +968,7 @@ class _PwdTabState extends State<PwdTab> {
                 backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.15),
                 child: Text(
                   c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AfiCareTheme.primaryBlue,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -1038,7 +1038,7 @@ class _PwdTabState extends State<PwdTab> {
                     if (codeValid) ...[
                       Text(
                         c.accessCode!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 4,
@@ -1086,7 +1086,7 @@ class _PwdTabState extends State<PwdTab> {
 
   void _generateCaregiverCode() {
     if (_profile.caregiver == null) return;
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rng   = Random();
     final code  = List.generate(6, (_) => chars[rng.nextInt(chars.length)])
         .join();
@@ -1289,7 +1289,7 @@ class _PwdTabState extends State<PwdTab> {
         children: [
           Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1301,7 +1301,7 @@ class _PwdTabState extends State<PwdTab> {
                     fontSize: 14,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   'Your healthcare provider can also add clinical details '
                   '(diagnosis, specialist referrals, provider notes) to this '

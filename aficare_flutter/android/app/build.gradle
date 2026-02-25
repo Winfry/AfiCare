@@ -57,9 +57,6 @@ android {
             signingConfig = (keystorePropertiesFile.exists() || System.getenv("KEYSTORE_PATH"))
                 ? signingConfigs.release
                 : signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

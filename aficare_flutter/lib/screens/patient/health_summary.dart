@@ -201,7 +201,7 @@ class _HealthSummaryState extends State<HealthSummary> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AfiCareTheme.primaryGreen, AfiCareTheme.secondaryGreen],
           begin: Alignment.topLeft,
@@ -217,7 +217,7 @@ class _HealthSummaryState extends State<HealthSummary> {
               user?.fullName.isNotEmpty == true
                   ? user!.fullName[0].toUpperCase()
                   : 'U',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: AfiCareTheme.primaryGreen,
@@ -592,7 +592,7 @@ class _HealthSummaryState extends State<HealthSummary> {
                 height: 200,
                 child: LineChart(
                   LineChartData(
-                    gridData: const FlGridData(
+                    gridData: FlGridData(
                         show: true, drawVerticalLine: false),
                     titlesData: FlTitlesData(
                       leftTitles: AxisTitles(
@@ -743,7 +743,7 @@ class _HealthSummaryState extends State<HealthSummary> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.check_circle,
+                      Icon(Icons.check_circle,
                           size: 18,
                           color: AfiCareTheme.primaryGreen),
                       const SizedBox(width: 10),
@@ -897,7 +897,7 @@ class _HealthSummaryState extends State<HealthSummary> {
               color: AfiCareTheme.primaryBlue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.local_hospital,
+            child: Icon(Icons.local_hospital,
                 color: AfiCareTheme.primaryBlue),
           ),
           const SizedBox(width: 12),
