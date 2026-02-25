@@ -60,11 +60,11 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.group, color: AfiCareTheme.primaryGreen, size: 20),
-                        SizedBox(width: 8),
-                        Text(
+                        const SizedBox(width: 8),
+                        const Text(
                           'My Care Team',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
@@ -73,9 +73,9 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                     ),
                     TextButton.icon(
                       onPressed: () => _showAddProviderSheet(ct),
-                      icon: const Icon(Icons.add, size: 16,
+                      icon: Icon(Icons.add, size: 16,
                           color: AfiCareTheme.primaryGreen),
-                      label: const Text('Add',
+                      label: Text('Add',
                           style: TextStyle(color: AfiCareTheme.primaryGreen)),
                       style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
@@ -175,7 +175,7 @@ class _CareTeamSectionState extends State<CareTeamSection> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.medical_services,
+                  Icon(Icons.medical_services,
                       size: 14, color: AfiCareTheme.primaryGreen),
                   const Spacer(),
                   if (m.isPrimary)
@@ -246,7 +246,7 @@ class _CareTeamSectionState extends State<CareTeamSection> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.add_circle_outline,
+                Icon(Icons.add_circle_outline,
                     size: 15, color: AfiCareTheme.primaryGreen),
                 const SizedBox(width: 6),
                 Expanded(

@@ -49,29 +49,8 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       builder: (context, authProvider, consultationProvider, child) {
         final user = authProvider.currentUser;
         if (user == null) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (authProvider.error != null) ...[
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text('Failed to load profile',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[700])),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () => authProvider.signOut().then((_) {
-                        if (context.mounted) context.go('/login');
-                      }),
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Back to Login'),
-                    ),
-                  ] else
-                    const CircularProgressIndicator(),
-                ],
-              ),
-            ),
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -164,7 +143,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             backgroundColor: Colors.white,
             child: Text(
               user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'D',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AfiCareTheme.primaryBlue,
@@ -867,7 +846,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             child: Text(
               timeStr,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: AfiCareTheme.primaryBlue),
@@ -969,7 +948,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.smart_toy,
                   color: AfiCareTheme.primaryGreen,
                   size: 32,
@@ -1023,7 +1002,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AfiCareTheme.primaryGreen,

@@ -255,7 +255,7 @@ class _QRScannerState extends State<QRScanner> with WidgetsBindingObserver {
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
-                    child: const Icon(
+                    child: Icon(
                       Icons.local_hospital,
                       size: 40,
                       color: AfiCareTheme.primaryBlue,
