@@ -1,4 +1,4 @@
-package com.example.aficare_flutter
+package com.aficare.medilink
 
 import io.flutter.embedding.android.FlutterActivity
 
