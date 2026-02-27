@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,16 +18,32 @@ import 'config/supabase_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for offline storage
-  await Hive.initFlutter();
+  String? initError;
 
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
-  );
+  try {
+    await Hive.initFlutter();
+  } catch (e) {
+    initError = 'Offline storage init failed: $e';
+    debugPrint(initError);
+  }
 
-  runApp(const AfiCareApp());
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+    );
+  } catch (e) {
+    initError = 'Network init failed: $e';
+    debugPrint(initError);
+  }
+
+  // Catch any uncaught Flutter framework errors
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError: ${details.exceptionAsString()}');
+  };
+
+  runApp(initError != null ? ErrorApp(error: initError) : const AfiCareApp());
 }
 
 class AfiCareApp extends StatelessWidget {
@@ -52,6 +69,46 @@ class AfiCareApp extends StatelessWidget {
         highContrastTheme: AfiCareTheme.highContrastTheme,
         themeMode: ThemeMode.system,
         routerConfig: appRouter,
+      ),
+    );
+  }
+}
+
+class ErrorApp extends StatelessWidget {
+  final String error;
+  const ErrorApp({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text(
+                  'AfiCare failed to start',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Please check your internet connection and restart the app.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
