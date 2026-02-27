@@ -19,24 +19,29 @@ class AuthProvider with ChangeNotifier {
   }
 
   void _initAuth() {
-    // Check if user is already logged in
-    final session = _supabase.auth.currentSession;
-    if (session != null) {
-      _loadUserProfile(session.user.id);
-    }
-
-    // Listen to auth state changes
-    _supabase.auth.onAuthStateChange.listen((data) {
-      final AuthChangeEvent event = data.event;
-      final Session? session = data.session;
-
-      if (event == AuthChangeEvent.signedIn && session != null) {
+    try {
+      // Check if user is already logged in
+      final session = _supabase.auth.currentSession;
+      if (session != null) {
         _loadUserProfile(session.user.id);
-      } else if (event == AuthChangeEvent.signedOut) {
-        _currentUser = null;
-        notifyListeners();
       }
-    });
+
+      // Listen to auth state changes
+      _supabase.auth.onAuthStateChange.listen((data) {
+        final AuthChangeEvent event = data.event;
+        final Session? session = data.session;
+
+        if (event == AuthChangeEvent.signedIn && session != null) {
+          _loadUserProfile(session.user.id);
+        } else if (event == AuthChangeEvent.signedOut) {
+          _currentUser = null;
+          notifyListeners();
+        }
+      });
+    } catch (e) {
+      debugPrint('AuthProvider init error: $e');
+      _error = 'Authentication service unavailable';
+    }
   }
 
   Future<void> _loadUserProfile(String userId) async {
