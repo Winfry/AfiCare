@@ -106,6 +106,9 @@ class AuthProvider with ChangeNotifier {
       // Create user profile
       await _supabase.from('users').insert(userRecord);
 
+      // Load the user profile so currentUser is available before navigating
+      await _loadUserProfile(authResponse.user!.id);
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -127,10 +130,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
+      // Wait for the user profile to load before navigating
+      if (response.user != null) {
+        await _loadUserProfile(response.user!.id);
+      }
 
       _isLoading = false;
       notifyListeners();
