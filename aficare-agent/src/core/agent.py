@@ -176,11 +176,19 @@ class AfiCareAgent:
             condition_matches = legacy_matches + plugin_matches
             
             # Step 3: LLM-based reasoning for complex cases
-            llm_analysis = await self.llm.analyze_case(
-                patient_data,
-                condition_matches,
-                triage_result
-            )
+            if self.llm and self.llm.is_loaded():
+                llm_analysis = await self.llm.analyze_case(
+                    patient_data,
+                    condition_matches,
+                    triage_result
+                )
+            else:
+                # Fallback when LLM not available
+                llm_analysis = {
+                    "confidence": max([c.get('confidence', 0) for c in condition_matches], default=0.5),
+                    "recommendations": [],
+                    "notes": "Analysis based on rule engine only (LLM not available)"
+                }
             
             # Step 4: Generate recommendations
             recommendations = await self._generate_recommendations(
@@ -275,9 +283,9 @@ class AfiCareAgent:
         """Get agent system status and health"""
         return {
             "status": "operational",
-            "llm_loaded": self.llm.is_loaded(),
+            "llm_loaded": self.llm.is_loaded() if self.llm else False,
             "rules_loaded": len(self.rule_engine.get_loaded_rules()),
-            "plugins_loaded": [p.name for p in self.plugin_manager.plugins.values()],
-            "database_connected": self.patient_store.is_connected(),
+            "plugins_loaded": [p.name for p in self.plugin_manager.plugins.values()] if hasattr(self.plugin_manager, 'plugins') else [],
+            "database_connected": self.patient_store.is_connected() if hasattr(self.patient_store, 'is_connected') else True,
             "timestamp": datetime.now().isoformat()
         }

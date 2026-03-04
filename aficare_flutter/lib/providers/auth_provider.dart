@@ -53,9 +53,12 @@ class AuthProvider with ChangeNotifier {
           .single();
 
       _currentUser = UserModel.fromJson(response);
+      _error = null;
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading user profile: $e');
+      _error = 'Profile load failed: $e';
+      notifyListeners();
     }
   }
 
