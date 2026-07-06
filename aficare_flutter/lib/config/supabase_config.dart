@@ -12,6 +12,7 @@ class SupabaseConfig {
   static const String consultationsTable = 'consultations';
   static const String accessCodesTable = 'access_codes';
   static const String auditLogTable = 'audit_log';
+  static const String expensesTable = 'medical_expenses';
 }
 
 /// Instructions to set up Supabase (FREE):

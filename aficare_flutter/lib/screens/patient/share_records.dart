@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
 
 import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
+import '../../services/medical_ai_service.dart';
 
 class ShareRecords extends StatefulWidget {
   const ShareRecords({super.key});
@@ -166,41 +169,43 @@ class _ShareRecordsState extends State<ShareRecords>
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 30),
-          _buildPermissionsSelector(),
-          const SizedBox(height: 20),
-          _buildDurationSelector(),
-          const SizedBox(height: 30),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _shareQRCode(user),
-                  icon: const Icon(Icons.share),
-                  label: const Text('Share QR'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: AfiCareTheme.primaryGreen),
-                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _downloadQRCode(user),
-                  icon: const Icon(Icons.download),
-                  label: const Text('Save QR'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AfiCareTheme.primaryGreen,
-                  ),
+                const SizedBox(height: 24),
+                _buildShareLinkCard(),
+                const SizedBox(height: 30),
+                _buildPermissionsSelector(),
+                const SizedBox(height: 20),
+                _buildDurationSelector(),
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _copyCode(),
+                        icon: const Icon(Icons.link),
+                        label: const Text('Copy Link'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: AfiCareTheme.primaryGreen),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _shareCode(),
+                        icon: const Icon(Icons.share),
+                        label: const Text('Share Link'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: AfiCareTheme.primaryGreen,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildSecurityNote(),
+                const SizedBox(height: 20),
+                _buildSecurityNote(),
         ],
       ),
     );
@@ -271,6 +276,7 @@ class _ShareRecordsState extends State<ShareRecords>
     final timeRemaining = _codeExpiry?.difference(DateTime.now());
     final hoursRemaining = timeRemaining?.inHours ?? 0;
     final minutesRemaining = (timeRemaining?.inMinutes ?? 0) % 60;
+    final url = _getShareUrl();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -292,37 +298,29 @@ class _ShareRecordsState extends State<ShareRecords>
       child: Column(
         children: [
           const Text(
-            'Your Access Code',
+            'Share Link Generated',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: _generatedCode!.split('').map((char) {
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  char,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              );
-            }).toList(),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              url,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
           const SizedBox(height: 16),
           Container(
@@ -354,7 +352,7 @@ class _ShareRecordsState extends State<ShareRecords>
                 onPressed: _copyCode,
                 icon: const Icon(Icons.copy, color: Colors.white, size: 18),
                 label: const Text(
-                  'Copy',
+                  'Copy Link',
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -368,6 +366,68 @@ class _ShareRecordsState extends State<ShareRecords>
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Opens in any browser — no app needed',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareLinkCard() {
+    final url = _getShareUrl();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AfiCareTheme.primaryGreen.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AfiCareTheme.primaryGreen.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.link, size: 18, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Share this link with any doctor',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No app needed — opens in any phone browser.',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    url,
+                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _copyCode,
+                  child: Icon(Icons.copy, size: 18, color: AfiCareTheme.primaryGreen),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -729,8 +789,17 @@ class _ShareRecordsState extends State<ShareRecords>
     );
   }
 
+  String _getShareUrl() {
+    if (_generatedCode != null) {
+      return '${MedicalAIService.backendUrl}/v/$_generatedCode';
+    }
+    final user = context.read<AuthProvider>().currentUser;
+    final id = user?.medilinkId ?? 'unknown';
+    return '${MedicalAIService.backendUrl}/v/${id}';
+  }
+
   String _generateQRData(UserModel? user) {
-    return 'AFICARE:${user?.medilinkId ?? 'ML-XXX-XXXX'}:${_selectedPermissions.join(',')}:${_selectedDuration}h';
+    return _getShareUrl();
   }
 
   void _generateAccessCode(UserModel? user) async {
@@ -738,41 +807,65 @@ class _ShareRecordsState extends State<ShareRecords>
       _isGenerating = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await http.post(
+        Uri.parse('${MedicalAIService.backendUrl}/api/access-codes'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'medilink_id': user?.medilinkId ?? '',
+          'duration_hours': _selectedDuration,
+          'permissions': {
+            for (final p in _selectedPermissions)
+              p: true,
+          },
+        }),
+      ).timeout(const Duration(seconds: 10));
 
-    setState(() {
-      _generatedCode = _generateRandomCode();
-      _codeExpiry = DateTime.now().add(Duration(hours: _selectedDuration));
-      _isGenerating = false;
-    });
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _generatedCode = data['access_code'] as String;
+          _codeExpiry = DateTime.now().add(Duration(hours: _selectedDuration));
+          _isGenerating = false;
+        });
+      } else {
+        throw Exception('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Offline fallback: generate code locally
+      debugPrint('Backend unavailable, using local code: $e');
+      final fallbackCode = _generateLocalCode(user);
+      setState(() {
+        _generatedCode = fallbackCode;
+        _codeExpiry = DateTime.now().add(Duration(hours: _selectedDuration));
+        _isGenerating = false;
+      });
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Access code generated! Valid for $_selectedDuration hours'),
+          content: Text('Share link created! Valid for $_selectedDuration hours'),
           backgroundColor: Colors.green,
         ),
       );
     }
   }
 
-  String _generateRandomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    String code = '';
-    for (int i = 0; i < 6; i++) {
-      code += chars[(timestamp + i * 7) % chars.length];
-    }
-    return code;
+  String _generateLocalCode(UserModel? user) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final id = user?.medilinkId ?? 'ML';
+    final hash = id.hashCode.abs().toString().padLeft(4, '0');
+    return '${hash.substring(0, 4)}${ts.toString().substring(ts.toString().length - 4)}';
   }
 
   void _copyCode() {
-    if (_generatedCode != null) {
-      Clipboard.setData(ClipboardData(text: _generatedCode!));
+    final url = _getShareUrl();
+    if (url.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: url));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Code copied to clipboard'),
+          content: Text('Share link copied to clipboard'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -780,17 +873,19 @@ class _ShareRecordsState extends State<ShareRecords>
   }
 
   void _shareCode() {
-    if (_generatedCode != null) {
+    final url = _getShareUrl();
+    if (url.isNotEmpty) {
       Share.share(
-        'AfiCare MediLink Access Code: $_generatedCode\n\nUse this code to access my medical records.\nValid for $_selectedDuration hours.',
-        subject: 'AfiCare Access Code',
+        'Access my medical records via AfiCare: $url\n\nLink expires in $_selectedDuration hours.',
+        subject: 'AfiCare Medical Records',
       );
     }
   }
 
   void _shareQRCode(UserModel? user) {
+    final url = _getShareUrl();
     Share.share(
-      'Access my AfiCare MediLink records using MediLink ID: ${user?.medilinkId ?? 'ML-XXX-XXXX'}',
+      'Access my AfiCare MediLink records: $url',
       subject: 'AfiCare MediLink Access',
     );
   }
