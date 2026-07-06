@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,6 +10,7 @@ import 'providers/prescription_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/dependent_provider.dart';
 import 'providers/care_team_provider.dart';
+import 'providers/expense_provider.dart';
 import 'utils/theme.dart';
 import 'utils/router.dart';
 import 'config/supabase_config.dart';
@@ -60,6 +60,7 @@ class AfiCareApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
         ChangeNotifierProvider(create: (_) => DependentProvider()),
         ChangeNotifierProvider(create: (_) => CareTeamProvider()),
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
       ],
       child: MaterialApp.router(
         title: 'AfiCare MediLink',
