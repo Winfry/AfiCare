@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/appointment_model.dart';
+import '../../models/consultation_model.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
 import '../common/notifications_screen.dart';
@@ -26,6 +28,16 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   late TabController _tabController;
   bool _isScanning = false;
 
+  // Patient lookup state
+  bool _isLoadingPatient = false;
+  Map<String, dynamic>? _loadedPatient;
+  List<Map<String, dynamic>> _patientConsultations = [];
+  String? _patientLookupError;
+
+  // My Patients list (providers who have done consultations)
+  List<Map<String, dynamic>> _myPatients = [];
+  bool _isLoadingMyPatients = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +52,92 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     final uid = auth.currentUser?.id;
     if (uid != null) {
       aptProvider.loadProviderAppointments(uid);
+      _loadMyPatients(uid);
+    }
+  }
+
+  Future<void> _loadMyPatients(String providerId) async {
+    setState(() => _isLoadingMyPatients = true);
+    try {
+      final supabase = Supabase.instance.client;
+      // Get distinct patients this provider has consulted
+      final rows = await supabase
+          .from('consultations')
+          .select('patient_id, timestamp, chief_complaint, triage_level')
+          .eq('provider_id', providerId)
+          .order('timestamp', ascending: false);
+
+      // Group by patient_id keeping only the latest consultation
+      final Map<String, Map<String, dynamic>> latest = {};
+      for (final row in rows as List) {
+        final pid = row['patient_id'] as String;
+        if (!latest.containsKey(pid)) latest[pid] = Map<String, dynamic>.from(row);
+      }
+
+      // Fetch user info for each patient
+      final patients = <Map<String, dynamic>>[];
+      for (final entry in latest.values) {
+        try {
+          final user = await supabase
+              .from('users')
+              .select('id, full_name, medilink_id, phone')
+              .eq('id', entry['patient_id'])
+              .single();
+          patients.add({...user, 'last_complaint': entry['chief_complaint'], 'last_triage': entry['triage_level'], 'last_visit': entry['timestamp']});
+        } catch (_) {}
+      }
+
+      if (mounted) setState(() { _myPatients = patients; _isLoadingMyPatients = false; });
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingMyPatients = false);
+    }
+  }
+
+  Future<void> _lookupPatient(String medilinkId) async {
+    setState(() { _isLoadingPatient = true; _patientLookupError = null; _loadedPatient = null; _patientConsultations = []; });
+    try {
+      final supabase = Supabase.instance.client;
+      // Find patient by MediLink ID
+      final userRows = await supabase
+          .from('users')
+          .select('id, full_name, medilink_id, phone, gender, metadata')
+          .eq('medilink_id', medilinkId);
+
+      if ((userRows as List).isEmpty) {
+        setState(() { _isLoadingPatient = false; _patientLookupError = 'No patient found with MediLink ID: $medilinkId'; });
+        return;
+      }
+
+      final patient = Map<String, dynamic>.from(userRows.first);
+
+      // Fetch patient extended profile
+      try {
+        final profile = await supabase
+            .from('patients')
+            .select('date_of_birth, gender, blood_type, allergies, chronic_conditions')
+            .eq('id', patient['id'])
+            .single();
+        patient.addAll(profile);
+      } catch (_) {}
+
+      // Fetch recent consultations
+      final consultRows = await supabase
+          .from('consultations')
+          .select('id, timestamp, chief_complaint, triage_level, diagnoses, recommendations, vital_signs')
+          .eq('patient_id', patient['id'])
+          .order('timestamp', ascending: false)
+          .limit(10);
+
+      if (mounted) {
+        setState(() {
+          _loadedPatient = patient;
+          _patientConsultations = List<Map<String, dynamic>>.from(consultRows as List);
+          _isLoadingPatient = false;
+        });
+        _showPatientRecords(medilinkId, null);
+      }
+    } catch (e) {
+      if (mounted) setState(() { _isLoadingPatient = false; _patientLookupError = e.toString(); });
     }
   }
 
@@ -326,23 +424,24 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   }
 
   void _handleQRCodeScanned(String qrData) {
+    setState(() => _isScanning = false);
     try {
-      final data = jsonDecode(qrData);
-      final medilinkId = data['medilink_id'];
-      final accessCode = data['access_code'];
-      
-      setState(() {
-        _isScanning = false;
-      });
-
-      _showPatientRecords(medilinkId, accessCode);
+      // QR may encode a full URL like https://backend/v/ML-NBO-XXXX
+      // or a JSON with medilink_id field
+      String medilinkId;
+      if (qrData.contains('ML-')) {
+        // Extract MediLink ID from URL or plain text
+        final regex = RegExp(r'ML-[A-Z0-9\-]+');
+        final match = regex.firstMatch(qrData);
+        medilinkId = match?.group(0) ?? qrData;
+      } else {
+        final data = jsonDecode(qrData);
+        medilinkId = data['medilink_id'] as String? ?? qrData;
+      }
+      _lookupPatient(medilinkId);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid QR code format'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Not JSON — try as raw MediLink ID
+      _lookupPatient(qrData.trim());
     }
   }
 
@@ -376,12 +475,14 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  if (accessCodeController.text.length == 6) {
-                    _showPatientRecords('Unknown', accessCodeController.text);
+                  final code = accessCodeController.text.trim();
+                  if (code.isNotEmpty) {
+                    // For access codes, show patient records directly
+                    _showPatientRecords(code, code);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Please enter a valid 6-digit code'),
+                        content: Text('Please enter an access code'),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -431,7 +532,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               child: ElevatedButton.icon(
                 onPressed: () {
                   if (medilinkController.text.isNotEmpty) {
-                    _showPatientRecords(medilinkController.text, null);
+                    _lookupPatient(medilinkController.text.trim().toUpperCase());
                   }
                 },
                 icon: const Icon(Icons.search),
@@ -492,121 +593,184 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   }
 
   Widget _buildPatientRecordsContent(String medilinkId) {
+    if (_isLoadingPatient) {
+      return const Padding(
+        padding: EdgeInsets.all(48),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_patientLookupError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 12),
+            Text(_patientLookupError!, textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red)),
+          ],
+        ),
+      );
+    }
+
+    final patient = _loadedPatient;
+    if (patient == null) return const SizedBox.shrink();
+
+    final name = patient['full_name'] ?? 'Unknown';
+    final mlId = patient['medilink_id'] ?? medilinkId;
+    final phone = patient['phone'] ?? 'N/A';
+    final dob = patient['date_of_birth'] ?? 'N/A';
+    final bloodType = patient['blood_type'] ?? 'Unknown';
+    final allergies = (patient['allergies'] as List?)?.join(', ') ?? 'None reported';
+    final chronic = (patient['chronic_conditions'] as List?)?.join(', ') ?? 'None';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Patient Summary
+        // Patient header
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green),
+            gradient: const LinearGradient(
+              colors: [AfiCareTheme.primaryGreen, Color(0xFF1B5E20)],
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text(
-                'Access granted to patient records: $medilinkId',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: Colors.white,
+                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AfiCareTheme.primaryGreen)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text(mlId, style: const TextStyle(fontSize: 13, color: Colors.white70)),
+                    if (phone != 'N/A') Text(phone, style: const TextStyle(fontSize: 12, color: Colors.white60)),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Patient ID: $medilinkId',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Text('Patient details will load from their medical records.'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Info notice
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue[200]!),
-          ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Patient records are loaded from the database.',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Allergies, medications, and medical history will appear here once the patient has records in the system.',
-                style: TextStyle(color: Colors.blue),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
 
-        // Medical History
-        const Text(
-          'Recent Medical History',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: const Center(
+        // Medical profile
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.history, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text(
-                  'No medical history recorded yet',
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Records will appear here after consultations',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+                const Text('Medical Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                _profileRow('Date of Birth', dob.toString().length >= 10 ? dob.toString().substring(0, 10) : dob.toString()),
+                _profileRow('Blood Type', bloodType),
+                _profileRow('Chronic Conditions', chronic),
+                if (allergies != 'None reported')
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 90, child: Text('Allergies', style: TextStyle(fontSize: 12, color: Colors.grey))),
+                      Expanded(child: Text(allergies, style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.w600))),
+                    ],
+                  )
+                else
+                  _profileRow('Allergies', 'None reported'),
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
 
-        // Vital Signs
-        const Text(
-          'Latest Vital Signs',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        // Consultations
+        Text('Recent Consultations (${_patientConsultations.length})',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildVitalSignCard('BP', '--/--', 'mmHg', Colors.green),
+        if (_patientConsultations.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[300]!)),
+            child: const Center(child: Column(children: [
+              Icon(Icons.history, size: 40, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('No consultations recorded yet', style: TextStyle(color: Colors.grey)),
+            ])),
+          )
+        else
+          ..._patientConsultations.map((c) {
+            final date = c['timestamp']?.toString().substring(0, 10) ?? 'N/A';
+            final complaint = c['chief_complaint'] ?? 'N/A';
+            final triage = c['triage_level'] ?? 'non_urgent';
+            final triageColor = triage == 'emergency' ? Colors.red : triage == 'urgent' ? Colors.orange : Colors.green;
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(complaint, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(date, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      ],
+                    )),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: triageColor.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                      child: Text(triage.toUpperCase().replaceAll('_', ' '),
+                          style: TextStyle(fontSize: 11, color: triageColor, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+        const SizedBox(height: 16),
+
+        // Start consultation button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ConsultationScreen()))
+                  .then((_) => _loadProviderData());
+            },
+            icon: const Icon(Icons.add_circle),
+            label: const Text('Start New Consultation'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AfiCareTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildVitalSignCard('Weight', '--', 'kg', Colors.blue),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildVitalSignCard('Temp', '--', '°C', Colors.orange),
-            ),
-          ],
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _profileRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 120, child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
     );
   }
 
@@ -650,49 +814,69 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   }
 
   Widget _buildMyPatientsTab(ConsultationProvider consultationProvider) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'My Recent Patients',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          _buildPatientsList(),
-        ],
-      ),
-    );
-  }
+    return _isLoadingMyPatients
+        ? const Center(child: CircularProgressIndicator())
+        : _myPatients.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text('No patients yet',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Patients you have consulted will appear here.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _myPatients.length,
+                itemBuilder: (ctx, i) {
+                  final p = _myPatients[i];
+                  final name = p['full_name'] ?? 'Unknown';
+                  final mlId = p['medilink_id'] ?? '';
+                  final lastVisit = p['last_visit']?.toString().substring(0, 10) ?? '';
+                  final triage = p['last_triage'] ?? 'non_urgent';
+                  final triageColor = triage == 'emergency'
+                      ? Colors.red
+                      : triage == 'urgent'
+                          ? Colors.orange
+                          : Colors.green;
 
-  Widget _buildPatientsList() {
-    // No hardcoded patients - show empty state until real patients are loaded
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'No patients yet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Patients will appear here after you access their records using the "Access Patient" tab.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-          ],
-        ),
-      ),
-    );
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.15),
+                        child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                            style: const TextStyle(color: AfiCareTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                      ),
+                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('$mlId  •  Last visit: $lastVisit',
+                          style: const TextStyle(fontSize: 12)),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: triageColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(triage.toUpperCase().replaceAll('_', ' '),
+                            style: TextStyle(fontSize: 10, color: triageColor, fontWeight: FontWeight.bold)),
+                      ),
+                      onTap: () => _lookupPatient(mlId),
+                    ),
+                  );
+                },
+              );
   }
 
   Widget _buildNewConsultationTab() {
