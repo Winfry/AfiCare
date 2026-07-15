@@ -87,7 +87,7 @@ class AfiCareAgent:
         # Initialize LLM (optional - graceful fallback)
         try:
             self.llm = LocalLLM(config)
-            logger.info("✅ LLM component loaded")
+            logger.info("LLM component loaded")
         except Exception as e:
             logger.warning(f"⚠️ LLM component not available: {e}")
             self.llm = None
