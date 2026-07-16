@@ -1,8 +1,11 @@
 import importlib
+import logging
 import os
 import pkgutil
 from typing import Dict, List, Type
 from .interfaces.plugin import AfiCarePlugin
+
+logger = logging.getLogger(__name__)
 
 class PluginManager:
     """
@@ -22,12 +25,12 @@ class PluginManager:
 
     def register_plugin(self, plugin: AfiCarePlugin):
         """Registers a verified plugin into the core system."""
-        print(f"🔌 Loading Plugin: {plugin.name} ({plugin.id})...")
+        logger.info(f"Loading Plugin: {plugin.name} ({plugin.id})...")
         if plugin.health_check():
             self.plugins[plugin.id] = plugin
-            print(f"✅ {plugin.name} ready.")
+            logger.info(f"{plugin.name} ready.")
         else:
-            print(f"❌ {plugin.name} failed health check!")
+            logger.error(f"{plugin.name} failed health check!")
 
     def get_all_rules(self) -> List[dict]:
         """Aggregates medical rules from ALL loaded plugins."""
