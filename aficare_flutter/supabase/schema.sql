@@ -202,6 +202,44 @@ INSERT INTO users (id, email, full_name, role, medilink_id, department) VALUES
 -- ============================================
 
 -- Grant access to authenticated users
+-- ============================================
+-- MEDICAL EXPENSES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS medical_expenses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL CHECK (category IN ('medication', 'consultation', 'labTest', 'procedure', 'hospitalStay', 'other')),
+    amount DECIMAL(12, 2) NOT NULL,
+    currency TEXT DEFAULT 'KES',
+    description TEXT NOT NULL,
+    date DATE NOT NULL,
+    facility_name TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_patient ON medical_expenses(patient_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON medical_expenses(date DESC);
+CREATE INDEX IF NOT EXISTS idx_expenses_category ON medical_expenses(category);
+
+ALTER TABLE medical_expenses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can manage own expenses"
+    ON medical_expenses FOR ALL
+    USING (patient_id = auth.uid());
+
+CREATE TRIGGER expenses_updated_at
+    BEFORE UPDATE ON medical_expenses
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON medical_expenses TO authenticated;
+
+-- ============================================
+-- GRANTS
+-- ============================================
+
 GRANT SELECT, INSERT, UPDATE ON users TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON patients TO authenticated;
 GRANT SELECT, INSERT ON consultations TO authenticated;

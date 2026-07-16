@@ -2274,6 +2274,41 @@ class _PatientDashboardState extends State<PatientDashboard>
 
             const SizedBox(height: 16),
 
+            // ---- Medical Expenses ----
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Text(
+                        'Finance',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.receipt_long,
+                          color: AfiCareTheme.primaryGreen),
+                      title: const Text('Medical Expenses'),
+                      subtitle: const Text(
+                          'Track medication, consultation, and treatment costs'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          context.push('/patient/expenses'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // ---- Family / Dependents ----
             Card(
               child: Padding(
