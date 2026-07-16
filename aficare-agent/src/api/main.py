@@ -155,7 +155,7 @@ def _build_patient_page(patient: dict, consultations: list, expires_at: str, per
     if consultations:
         body += '<div class="card"><h3 style="margin-bottom:12px">Recent Consultations</h3>'
         for c in consultations[:5]:
-            date = c.get('consultation_date', '')[:10] if c.get('consultation_date') else 'N/A'
+            date = c.get('timestamp', c.get('consultation_date', ''))[:10] if c.get('timestamp') or c.get('consultation_date') else 'N/A'
             triage = c.get('triage_level', 'unknown')
             chief = c.get('chief_complaint', 'N/A')
             badge_class = {'emergency': 'badge-red', 'urgent': 'badge-orange', 'less_urgent': 'badge-blue'}.get(triage, 'badge-green')
@@ -436,11 +436,11 @@ async def view_patient_summary(code: str):
         import sqlite3
         with sqlite3.connect(db.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM users WHERE medilink_id = ?', (medilink_id,))
+            cursor.execute('SELECT * FROM patients WHERE medilink_id = ?', (medilink_id,))
             cols = [d[0] for d in cursor.description]
             row = cursor.fetchone()
             patient = dict(zip(cols, row)) if row else {}
-            cursor.execute("SELECT * FROM consultations WHERE patient_medilink_id = ? ORDER BY consultation_date DESC LIMIT 10", (medilink_id,))
+            cursor.execute("SELECT * FROM consultations WHERE patient_id = ? ORDER BY timestamp DESC LIMIT 10", (medilink_id,))
             ccols = [d[0] for d in cursor.description]
             consultations = [dict(zip(ccols, r)) for r in cursor.fetchall()]
     except Exception as e:

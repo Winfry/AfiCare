@@ -2,9 +2,9 @@
 /// Replace these with your actual Supabase project credentials
 /// Get them from: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/api
 class SupabaseConfig {
-  static const String url = 'https://uxphfdezypgshgfklcky.supabase.co';
+  static const String url = 'https://jjzfozfsswvemgdptfdk.supabase.co';
 
-  static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cGhmZGV6eXBnc2hnZmtsY2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTAxMzcsImV4cCI6MjA4NTg2NjEzN30.tv4-MxEIWK9cBKxuvYPKbSSlE32zFpDVOnXnn_TN7Co';
+  static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqemZvemZzc3d2ZW1nZHB0ZmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNjQ2MDQsImV4cCI6MjA5OTc0MDYwNH0.gRmCQFxFOE06uSqSt0e5xKk_rk_Fkn4-zEEYiW6HArc';
 
   // Table names
   static const String usersTable = 'users';
