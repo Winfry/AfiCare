@@ -111,60 +111,196 @@ PATIENT_SUMMARY_HTML = """<!DOCTYPE html>
   .header{{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-radius:12px;padding:24px;margin-bottom:16px;text-align:center}}
   .header h1{{font-size:22px;margin-bottom:4px}}
   .header .id{{font-size:13px;opacity:.8}}
+  .header .meta{{font-size:12px;opacity:.7;margin-top:8px}}
   .badge{{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin:2px}}
   .badge-red{{background:#fee2e2;color:#dc2626}}
   .badge-green{{background:#dcfce7;color:#16a34a}}
   .badge-blue{{background:#dbeafe;color:#2563eb}}
   .badge-orange{{background:#ffedd5;color:#ea580c}}
+  .badge-purple{{background:#f3e8ff;color:#7c3aed}}
   .label{{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}}
   .value{{font-size:16px;color:#1a202c}}
   .grid{{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
+  .grid-3{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}}
   .footer{{text-align:center;font-size:12px;color:#94a3b8;margin-top:24px}}
-  .alert{{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;align-items:center;gap:8px}}
-  .alert-icon{{color:#dc2626;font-size:18px}}
   .expired{{background:#fef2f2;color:#dc2626;text-align:center;padding:40px;border-radius:12px}}
   .expired h2{{font-size:20px;margin-bottom:8px}}
+  .vital{{text-align:center;padding:12px;background:#f8fafc;border-radius:8px}}
+  .vital .v-label{{font-size:11px;color:#64748b;text-transform:uppercase}}
+  .vital .v-value{{font-size:20px;font-weight:700;color:#1a202c}}
+  .vital .v-unit{{font-size:12px;color:#64748b}}
+  .diagnosis-entry{{padding:8px 0;border-bottom:1px solid #e2e8f0}}
+  .diagnosis-entry:last-child{{border:none}}
+  .rec-list{{list-style:none;padding:0}}
+  .rec-list li{{padding:6px 0 6px 20px;position:relative;font-size:14px;color:#475569}}
+  .rec-list li::before{{content:"\\25CF";position:absolute;left:0;color:#2563eb}}
+  .section-title{{font-size:16px;font-weight:600;color:#1a202c;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0}}
+  .consult-card{{padding:16px;margin-bottom:12px;background:#f8fafc;border-radius:8px;border-left:4px solid #2563eb}}
+  .consult-card.emergency{{border-left-color:#dc2626}}
+  .consult-card.urgent{{border-left-color:#ea580c}}
+  .consult-card.less_urgent{{border-left-color:#2563eb}}
+  .consult-card.non_urgent{{border-left-color:#16a34a}}
+  .consult-card .date{{font-size:12px;color:#64748b;margin-bottom:4px}}
+  .consult-card .chief{{font-size:15px;font-weight:600;margin-bottom:6px}}
+  .consult-card .detail-row{{font-size:13px;color:#475569;margin-bottom:2px}}
+  .consult-card .detail-row strong{{color:#1a202c}}
+  .tag{{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;margin:1px;background:#f1f5f9;color:#475569}}
+  .critical{{color:#dc2626;font-weight:700}}
+  .btn{{display:inline-block;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;text-align:center;margin:4px}}
+  .btn-primary{{background:#2563eb;color:#fff}}
+  .btn-outline{{border:1px solid #2563eb;color:#2563eb;background:transparent}}
+  @media print{{.no-print{{display:none}}}}
 </style>
 </head>
 <body>
 {}
+<div class="footer no-print">Powered by AfiCare — AI-Powered Medical Assistant</div>
 </body>
 </html>"""
 
+def _fmt(val, default='N/A'):
+    if val is None or val == '' or val == 'None reported':
+        return default
+    return str(val)
+
+def _parse_json(val):
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    return []
+
+def _safe_str_list(val):
+    parsed = _parse_json(val)
+    if isinstance(parsed, list):
+        return [str(x) if isinstance(x, (str, int, float)) else x.get('name', str(x)) for x in parsed]
+    if isinstance(parsed, str):
+        return [parsed]
+    return []
+
+def _build_vitals_html(vital_signs):
+    vs = _parse_json(vital_signs)
+    if not vs or not isinstance(vs, dict):
+        return ''
+    vitals_map = {
+        'bp': ('BP', 'mmHg'), 'hr': ('HR', 'bpm'), 'temp': ('Temp', '°C'),
+        'rr': ('RR', '/min'), 'spo2': ('SpO₂', '%'), 'weight': ('Wt', 'kg'),
+        'height': ('Ht', 'cm'), 'bmi': ('BMI', ''),
+    }
+    html = '<div class="grid-3" style="margin-top:8px">'
+    for key, (label, unit) in vitals_map.items():
+        if key in vs:
+            val = vs[key]
+            html += f'<div class="vital"><div class="v-label">{label}</div><div class="v-value">{val}</div><div class="v-unit">{unit}</div></div>'
+    html += '</div>'
+    return html
+
 def _build_patient_page(patient: dict, consultations: list, expires_at: str, permissions: dict) -> str:
-    name = patient.get('full_name', 'Unknown')
-    medilink_id = patient.get('medilink_id', 'N/A')
-    age = patient.get('age', 'N/A')
-    gender = patient.get('gender', 'N/A')
-    phone = patient.get('phone', 'N/A')
-    allergies = patient.get('allergies', '') or 'None reported'
+    name = _fmt(patient.get('full_name'))
+    medilink_id = _fmt(patient.get('medilink_id'))
+    age = _fmt(patient.get('age'))
+    gender = _fmt(patient.get('gender'))
+    phone = _fmt(patient.get('phone'))
+    blood_type = _fmt(patient.get('blood_type'))
+    allergies = patient.get('allergies') or ''
+    chronic = patient.get('chronic_conditions') or ''
+    dob = _fmt(patient.get('date_of_birth', ''), '')
 
-    body = f'<div class="header"><h1>{name}</h1><div class="id">{medilink_id}</div></div>'
+    body = f'<div class="header"><h1>{name}</h1><div class="id">{medilink_id}</div>'
+    if dob:
+        body += f'<div class="meta">DOB: {dob[:10]}</div>'
+    body += '</div>'
 
-    body += '<div class="card"><div class="grid">'
+    # Demographics card
+    body += '<div class="card"><div class="section-title">Patient Information</div><div class="grid">'
     body += f'<div><div class="label">Age</div><div class="value">{age}</div></div>'
     body += f'<div><div class="label">Gender</div><div class="value">{gender}</div></div>'
     body += f'<div><div class="label">Phone</div><div class="value">{phone}</div></div>'
-    body += f'<div><div class="label">Allergies</div><div class="value">'
-    if allergies and allergies != 'None reported':
-        body += f'<span class="badge badge-red">{allergies}</span>'
-    else:
-        body += 'None reported'
-    body += '</div></div></div></div>'
+    body += f'<div><div class="label">Blood Type</div><div class="value">{blood_type}</div></div>'
+    body += '</div>'
 
+    if allergies:
+        body += f'<div style="margin-top:12px"><div class="label">Allergies</div><div>'
+        for a in allergies.split(','):
+            a = a.strip()
+            if a:
+                body += f'<span class="badge badge-red">{a}</span> '
+        body += '</div></div>'
+
+    if chronic:
+        body += f'<div style="margin-top:12px"><div class="label">Chronic Conditions</div><div>'
+        for c in chronic.split(','):
+            c = c.strip()
+            if c:
+                body += f'<span class="badge badge-orange">{c}</span> '
+        body += '</div></div>'
+
+    body += '</div>'
+
+    # Consultations
     if consultations:
-        body += '<div class="card"><h3 style="margin-bottom:12px">Recent Consultations</h3>'
-        for c in consultations[:5]:
-            date = c.get('timestamp', c.get('consultation_date', ''))[:10] if c.get('timestamp') or c.get('consultation_date') else 'N/A'
+        body += '<div class="card"><div class="section-title">Consultation History</div>'
+        for c in consultations[:10]:
+            date = _fmt(c.get('timestamp', ''))[:10]
             triage = c.get('triage_level', 'unknown')
-            chief = c.get('chief_complaint', 'N/A')
+            chief = _fmt(c.get('chief_complaint'))
+            symptoms = c.get('symptoms', [])
+            diagnoses = c.get('diagnoses', [])
+            recommendations = c.get('recommendations', [])
+            vitals = c.get('vital_signs', {})
+            notes = _fmt(c.get('notes', ''))
+            follow_up = c.get('follow_up_required', False)
+            follow_up_date = c.get('follow_up_date', '')
+
             badge_class = {'emergency': 'badge-red', 'urgent': 'badge-orange', 'less_urgent': 'badge-blue'}.get(triage, 'badge-green')
-            body += f'<div style="padding:8px 0;border-bottom:1px solid #e2e8f0"><small style="color:#64748b">{date}</small> <span class="badge {badge_class}">{triage}</span><div style="margin-top:4px">{chief}</div></div>'
+            body += f'<div class="consult-card {triage}">'
+            body += f'<div class="date">{date} <span class="badge {badge_class}">{triage}</span></div>'
+            body += f'<div class="chief">{chief}</div>'
+
+            vs_html = _build_vitals_html(vitals)
+            if vs_html:
+                body += vs_html
+
+            symps = _safe_str_list(symptoms)
+            if symps:
+                body += f'<div class="detail-row" style="margin-top:6px"><strong>Symptoms:</strong> '
+                body += ' '.join(f'<span class="tag">{s}</span>' for s in symps)
+                body += '</div>'
+
+            diags = _parse_json(diagnoses)
+            if diags:
+                body += f'<div class="detail-row" style="margin-top:6px"><strong>Diagnoses:</strong></div>'
+                for d in diags:
+                    d_name = d.get('name', str(d)) if isinstance(d, dict) else str(d)
+                    d_code = d.get('code', '') if isinstance(d, dict) else ''
+                    body += f'<div class="diagnosis-entry">{d_name} <span style="font-size:11px;color:#64748b">{d_code}</span></div>'
+
+            recs = recommendations
+            if isinstance(recs, str):
+                recs = _safe_str_list(recs)
+            if isinstance(recs, list) and recs:
+                body += f'<div class="detail-row" style="margin-top:6px"><strong>Recommendations:</strong></div>'
+                body += '<ul class="rec-list">'
+                for r in recs:
+                    body += f'<li>{str(r)}</li>'
+                body += '</ul>'
+
+            if notes:
+                body += f'<div class="detail-row" style="margin-top:6px"><strong>Notes:</strong> {notes}</div>'
+
+            if follow_up:
+                fd = _fmt(follow_up_date, '')
+                body += f'<div class="detail-row" style="margin-top:6px;color:#2563eb"><strong>Follow-up required:</strong> {fd if fd else "Yes"}</div>'
+
+            body += '</div>'
         body += '</div>'
 
+    # Expiry info
     body += f'<div class="card" style="text-align:center;font-size:13px;color:#64748b">This summary expires: {expires_at[:16] if expires_at else "N/A"}<br>Shared via AfiCare MediLink</div>'
 
-    body += '<div class="footer">Powered by AfiCare — AI-Powered Medical Assistant</div>'
     return PATIENT_SUMMARY_HTML.format(body)
 
 def _build_expired_page() -> str:
