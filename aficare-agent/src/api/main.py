@@ -572,13 +572,30 @@ async def view_patient_summary(code: str):
         import sqlite3
         with sqlite3.connect(db.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM patients WHERE medilink_id = ?', (medilink_id,))
-            cols = [d[0] for d in cursor.description]
-            row = cursor.fetchone()
-            patient = dict(zip(cols, row)) if row else {}
-            cursor.execute("SELECT * FROM consultations WHERE patient_id = ? ORDER BY timestamp DESC LIMIT 10", (medilink_id,))
-            ccols = [d[0] for d in cursor.description]
-            consultations = [dict(zip(ccols, r)) for r in cursor.fetchall()]
+            # Look up user by medilink_id (local users table)
+            cursor.execute("SELECT * FROM users WHERE medilink_id = ?", (medilink_id,))
+            ucols = [d[0] for d in cursor.description]
+            urow = cursor.fetchone()
+            patient = dict(zip(ucols, urow)) if urow else {}
+
+            # Get extended patient profile (local patients table, joined by username/id)
+            if patient.get('username'):
+                cursor.execute("SELECT * FROM patients WHERE id = ?", (patient['username'],))
+                pcols = [d[0] for d in cursor.description]
+                prow = cursor.fetchone()
+                if prow:
+                    pdata = dict(zip(pcols, prow))
+                    for k, v in pdata.items():
+                        if k not in patient or patient[k] is None:
+                            patient[k] = v
+
+            # Get consultations (local consultations table)
+            if patient.get('username'):
+                cursor.execute("SELECT * FROM consultations WHERE patient_id = ? ORDER BY timestamp DESC LIMIT 10", (patient['username'],))
+                ccols = [d[0] for d in cursor.description]
+                consultations = [dict(zip(ccols, r)) for r in cursor.fetchall()]
+            else:
+                consultations = []
     except Exception as e:
         logger.error(f"Error loading patient data: {e}")
         patient, consultations = {}, []
