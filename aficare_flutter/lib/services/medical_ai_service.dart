@@ -10,7 +10,7 @@ class MedicalAIService {
   // Backend URL - uses Railway deployment or falls back to local AI
   // Set to your Railway/Render/Heroku URL when deployed, e.g.:
   // static const String backendUrl = 'https://aficare-backend.up.railway.app';
-  static const String backendUrl = 'https://aficare-backend.up.railway.app'; // Production URL
+  static const String backendUrl = 'https://ecstatically-unremonstrated-isiah.ngrok-free.dev'; // ngrok URL
 
   // Set to false to use cloud backend first (recommended for production)
   // Falls back to local AI only when backend is unavailable
@@ -102,9 +102,6 @@ class MedicalAIService {
     required String gender,
     required String chiefComplaint,
   }) async {
-    // Simulate processing time
-    await Future.delayed(const Duration(milliseconds: 800));
-
     final vitalSignsModel = VitalSigns(
       temperature: vitalSigns['temperature'],
       systolicBP: vitalSigns['systolic_bp']?.toInt(),
