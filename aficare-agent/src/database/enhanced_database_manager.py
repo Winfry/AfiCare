@@ -177,12 +177,215 @@ class EnhancedDatabaseManager(DatabaseManager):
                     )
                 ''')
                 
+                # Triage queue table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS triage_queue (
+                        id TEXT PRIMARY KEY,
+                        patient_medilink_id TEXT NOT NULL,
+                        provider_username TEXT,
+                        triage_level TEXT NOT NULL,
+                        priority_score INTEGER DEFAULT 0,
+                        estimated_wait_time INTEGER DEFAULT 0,
+                        danger_signs TEXT DEFAULT '[]',
+                        chief_complaint TEXT,
+                        check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        status TEXT DEFAULT 'waiting',
+                        seen_by TEXT,
+                        seen_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Lab orders table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS lab_orders (
+                        id TEXT PRIMARY KEY,
+                        patient_medilink_id TEXT NOT NULL,
+                        provider_username TEXT NOT NULL,
+                        consultation_id TEXT,
+                        test_name TEXT NOT NULL,
+                        test_category TEXT DEFAULT 'other',
+                        priority TEXT DEFAULT 'routine',
+                        status TEXT DEFAULT 'ordered',
+                        ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        notes TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Lab results table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS lab_results (
+                        id TEXT PRIMARY KEY,
+                        lab_order_id TEXT NOT NULL,
+                        result_value TEXT,
+                        result_unit TEXT,
+                        reference_range_low TEXT,
+                        reference_range_high TEXT,
+                        result_flag TEXT DEFAULT 'normal',
+                        performed_by TEXT,
+                        resulted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        notes TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (lab_order_id) REFERENCES lab_orders(id)
+                    )
+                ''')
+
+                # Radiology orders table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS radiology_orders (
+                        id TEXT PRIMARY KEY,
+                        patient_medilink_id TEXT NOT NULL,
+                        provider_username TEXT NOT NULL,
+                        consultation_id TEXT,
+                        study_type TEXT NOT NULL,
+                        body_part TEXT NOT NULL,
+                        clinical_indication TEXT,
+                        priority TEXT DEFAULT 'routine',
+                        status TEXT DEFAULT 'ordered',
+                        ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Radiology reports table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS radiology_reports (
+                        id TEXT PRIMARY KEY,
+                        radiology_order_id TEXT NOT NULL,
+                        radiologist_name TEXT,
+                        findings TEXT NOT NULL,
+                        impression TEXT,
+                        recommendations TEXT,
+                        reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (radiology_order_id) REFERENCES radiology_orders(id)
+                    )
+                ''')
+
+                # Referrals table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS referrals (
+                        id TEXT PRIMARY KEY,
+                        patient_medilink_id TEXT NOT NULL,
+                        from_username TEXT NOT NULL,
+                        to_facility TEXT,
+                        to_provider_username TEXT,
+                        to_specialty TEXT,
+                        reason TEXT NOT NULL,
+                        urgency TEXT DEFAULT 'routine',
+                        status TEXT DEFAULT 'pending',
+                        referral_notes TEXT,
+                        response_notes TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        completed_at TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Messages table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS messages (
+                        id TEXT PRIMARY KEY,
+                        sender_username TEXT NOT NULL,
+                        receiver_username TEXT NOT NULL,
+                        patient_medilink_id TEXT,
+                        content TEXT NOT NULL,
+                        message_type TEXT DEFAULT 'text',
+                        reference_id TEXT,
+                        read BOOLEAN DEFAULT 0,
+                        read_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Adherence log table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS adherence_log (
+                        id TEXT PRIMARY KEY,
+                        prescription_id TEXT NOT NULL,
+                        patient_medilink_id TEXT NOT NULL,
+                        scheduled_time TIMESTAMP NOT NULL,
+                        taken_time TIMESTAMP,
+                        skipped_reason TEXT,
+                        status TEXT DEFAULT 'pending',
+                        noted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # User preferences table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS user_preferences (
+                        username TEXT PRIMARY KEY,
+                        theme TEXT DEFAULT 'light',
+                        language TEXT DEFAULT 'en',
+                        notifications_enabled BOOLEAN DEFAULT 1,
+                        email_notifications BOOLEAN DEFAULT 1,
+                        sms_notifications BOOLEAN DEFAULT 0,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (username) REFERENCES users(username)
+                    )
+                ''')
+
+                # Prescriptions table (extended with adherence support)
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS prescriptions (
+                        id TEXT PRIMARY KEY,
+                        patient_id TEXT NOT NULL,
+                        provider_username TEXT NOT NULL,
+                        consultation_id TEXT,
+                        medication_name TEXT NOT NULL,
+                        dosage TEXT NOT NULL,
+                        frequency TEXT NOT NULL,
+                        duration TEXT,
+                        route TEXT DEFAULT 'oral',
+                        quantity INTEGER,
+                        refills INTEGER DEFAULT 0,
+                        instructions TEXT,
+                        reason TEXT,
+                        status TEXT DEFAULT 'active',
+                        issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (patient_id) REFERENCES users(username)
+                    )
+                ''')
+
+                # Patients table (extended profile)
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS patients (
+                        id TEXT PRIMARY KEY,
+                        user_id TEXT UNIQUE,
+                        date_of_birth TEXT,
+                        blood_type TEXT,
+                        allergies TEXT,
+                        chronic_conditions TEXT,
+                        emergency_contact_name TEXT,
+                        emergency_contact_phone TEXT,
+                        insurance_provider TEXT,
+                        insurance_number TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (id) REFERENCES users(username)
+                    )
+                ''')
+
                 # Create indexes for performance
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_access_codes_patient ON access_codes_enhanced(patient_medilink_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_access_codes_expires ON access_codes_enhanced(expires_at)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_log_patient ON audit_log_enhanced(patient_medilink_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_log_accessed_by ON audit_log_enhanced(accessed_by)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_log_date ON audit_log_enhanced(accessed_at)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_triage_status ON triage_queue(status)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_triage_score ON triage_queue(priority_score DESC)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_lo_patient ON lab_orders(patient_medilink_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_lr_order ON lab_results(lab_order_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_ro_patient ON radiology_orders(patient_medilink_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_rr_order ON radiology_reports(radiology_order_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_ref_patient ON referrals(patient_medilink_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_ref_from ON referrals(from_username)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_msg_receiver ON messages(receiver_username)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_adh_patient ON adherence_log(patient_medilink_id)')
                 
                 conn.commit()
                 logger.info("Enhanced database tables initialized successfully")
