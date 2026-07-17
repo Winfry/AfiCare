@@ -443,7 +443,309 @@ CREATE POLICY "Providers can view disability profiles"
 GRANT SELECT, INSERT, UPDATE ON disability_profiles TO authenticated;
 
 -- ============================================
--- GRANTS
+-- TRIAGE QUEUE TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS triage_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID REFERENCES users(id),
+    triage_level TEXT NOT NULL CHECK (triage_level IN ('emergency', 'urgent', 'less_urgent', 'non_urgent')),
+    priority_score INT DEFAULT 0,
+    estimated_wait_time INT DEFAULT 0,
+    danger_signs TEXT[] DEFAULT '{}',
+    chief_complaint TEXT,
+    check_in_time TIMESTAMPTZ DEFAULT NOW(),
+    status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_consultation', 'completed', 'cancelled')),
+    seen_by UUID REFERENCES users(id),
+    seen_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_triage_status ON triage_queue(status);
+CREATE INDEX IF NOT EXISTS idx_triage_priority ON triage_queue(priority_score DESC);
+CREATE INDEX IF NOT EXISTS idx_triage_checkin ON triage_queue(check_in_time);
+
+ALTER TABLE triage_queue ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Providers can view triage queue"
+    ON triage_queue FOR SELECT
+    USING (auth.role() IN ('doctor', 'nurse'));
+
+CREATE POLICY "Triage queue insert"
+    ON triage_queue FOR INSERT
+    WITH CHECK (auth.role() IN ('doctor', 'nurse'));
+
+CREATE POLICY "Triage queue update"
+    ON triage_queue FOR UPDATE
+    USING (auth.role() IN ('doctor', 'nurse'));
+
+GRANT SELECT, INSERT, UPDATE ON triage_queue TO authenticated;
+
+-- ============================================
+-- LAB ORDERS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS lab_orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES users(id),
+    consultation_id UUID REFERENCES consultations(id) ON DELETE SET NULL,
+    test_name TEXT NOT NULL,
+    test_category TEXT DEFAULT 'other',
+    priority TEXT NOT NULL DEFAULT 'routine' CHECK (priority IN ('routine', 'urgent', 'stat')),
+    status TEXT NOT NULL DEFAULT 'ordered' CHECK (status IN ('ordered', 'collected', 'processing', 'completed', 'cancelled')),
+    ordered_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lo_patient ON lab_orders(patient_id);
+CREATE INDEX IF NOT EXISTS idx_lo_status ON lab_orders(status);
+CREATE INDEX IF NOT EXISTS idx_lo_category ON lab_orders(test_category);
+
+ALTER TABLE lab_orders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own lab orders"
+    ON lab_orders FOR SELECT
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Providers can manage lab orders"
+    ON lab_orders FOR ALL
+    USING (provider_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE ON lab_orders TO authenticated;
+
+-- ============================================
+-- LAB RESULTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS lab_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    lab_order_id UUID NOT NULL REFERENCES lab_orders(id) ON DELETE CASCADE,
+    result_value TEXT,
+    result_unit TEXT,
+    reference_range_low TEXT,
+    reference_range_high TEXT,
+    result_flag TEXT DEFAULT 'normal' CHECK (result_flag IN ('normal', 'abnormal', 'critical')),
+    performed_by TEXT,
+    resulted_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lr_order ON lab_results(lab_order_id);
+CREATE INDEX IF NOT EXISTS idx_lr_flag ON lab_results(result_flag);
+
+ALTER TABLE lab_results ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own lab results"
+    ON lab_results FOR SELECT
+    USING (EXISTS (SELECT 1 FROM lab_orders WHERE id = lab_results.lab_order_id AND patient_id = auth.uid()));
+
+CREATE POLICY "Providers can view lab results"
+    ON lab_results FOR SELECT
+    USING (EXISTS (SELECT 1 FROM lab_orders WHERE id = lab_results.lab_order_id AND provider_id = auth.uid()));
+
+CREATE POLICY "Lab techs can insert results"
+    ON lab_results FOR INSERT
+    WITH CHECK (auth.role() IN ('doctor', 'nurse'));
+
+GRANT SELECT, INSERT ON lab_results TO authenticated;
+
+-- ============================================
+-- RADIOLOGY ORDERS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS radiology_orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES users(id),
+    consultation_id UUID REFERENCES consultations(id) ON DELETE SET NULL,
+    study_type TEXT NOT NULL CHECK (study_type IN ('X-ray', 'CT', 'Ultrasound', 'MRI', 'PET-CT', 'Mammography', 'Other')),
+    body_part TEXT NOT NULL,
+    clinical_indication TEXT,
+    priority TEXT NOT NULL DEFAULT 'routine' CHECK (priority IN ('routine', 'urgent', 'stat')),
+    status TEXT NOT NULL DEFAULT 'ordered' CHECK (status IN ('ordered', 'scheduled', 'performed', 'reported', 'cancelled')),
+    ordered_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ro_patient ON radiology_orders(patient_id);
+CREATE INDEX IF NOT EXISTS idx_ro_status ON radiology_orders(status);
+
+ALTER TABLE radiology_orders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own radiology orders"
+    ON radiology_orders FOR SELECT
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Providers can manage radiology orders"
+    ON radiology_orders FOR ALL
+    USING (provider_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE ON radiology_orders TO authenticated;
+
+-- ============================================
+-- RADIOLOGY REPORTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS radiology_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    radiology_order_id UUID NOT NULL REFERENCES radiology_orders(id) ON DELETE CASCADE,
+    radiologist_name TEXT,
+    findings TEXT NOT NULL,
+    impression TEXT,
+    recommendations TEXT,
+    reported_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rr_order ON radiology_reports(radiology_order_id);
+
+ALTER TABLE radiology_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own radiology reports"
+    ON radiology_reports FOR SELECT
+    USING (EXISTS (SELECT 1 FROM radiology_orders WHERE id = radiology_reports.radiology_order_id AND patient_id = auth.uid()));
+
+CREATE POLICY "Providers can view radiology reports"
+    ON radiology_reports FOR SELECT
+    USING (EXISTS (SELECT 1 FROM radiology_orders WHERE id = radiology_reports.radiology_order_id AND provider_id = auth.uid()));
+
+CREATE POLICY "Radiologists can insert reports"
+    ON radiology_reports FOR INSERT
+    WITH CHECK (auth.role() IN ('doctor', 'nurse'));
+
+GRANT SELECT, INSERT ON radiology_reports TO authenticated;
+
+-- ============================================
+-- REFERRALS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS referrals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    from_provider_id UUID NOT NULL REFERENCES users(id),
+    to_facility_id UUID REFERENCES facilities(id) ON DELETE SET NULL,
+    to_provider_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    to_specialty TEXT,
+    reason TEXT NOT NULL,
+    urgency TEXT NOT NULL DEFAULT 'routine' CHECK (urgency IN ('routine', 'urgent', 'emergency')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'completed', 'rejected', 'closed')),
+    referral_notes TEXT,
+    response_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_patient ON referrals(patient_id);
+CREATE INDEX IF NOT EXISTS idx_ref_from ON referrals(from_provider_id);
+CREATE INDEX IF NOT EXISTS idx_ref_to ON referrals(to_facility_id);
+CREATE INDEX IF NOT EXISTS idx_ref_status ON referrals(status);
+
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own referrals"
+    ON referrals FOR SELECT
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Referring providers can manage referrals"
+    ON referrals FOR ALL
+    USING (from_provider_id = auth.uid());
+
+CREATE POLICY "Receiving providers can view referrals"
+    ON referrals FOR SELECT
+    USING (to_provider_id = auth.uid() OR to_facility_id IS NOT NULL);
+
+GRANT SELECT, INSERT, UPDATE ON referrals TO authenticated;
+
+-- ============================================
+-- MESSAGES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES users(id),
+    receiver_id UUID NOT NULL REFERENCES users(id),
+    patient_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    message_type TEXT NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'lab_result', 'referral', 'appointment')),
+    reference_id UUID,
+    read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_msg_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_msg_receiver ON messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_msg_patient ON messages(patient_id);
+CREATE INDEX IF NOT EXISTS idx_msg_read ON messages(receiver_id, read);
+CREATE INDEX IF NOT EXISTS idx_msg_created ON messages(created_at DESC);
+
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can send messages"
+    ON messages FOR INSERT
+    WITH CHECK (sender_id = auth.uid());
+
+CREATE POLICY "Users can view their messages"
+    ON messages FOR SELECT
+    USING (sender_id = auth.uid() OR receiver_id = auth.uid());
+
+CREATE POLICY "Users can mark messages as read"
+    ON messages FOR UPDATE
+    USING (receiver_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE ON messages TO authenticated;
+
+-- ============================================
+-- ADHERENCE LOG TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS adherence_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    scheduled_time TIMESTAMPTZ NOT NULL,
+    taken_time TIMESTAMPTZ,
+    skipped_reason TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'taken', 'skipped')),
+    noted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adh_prescription ON adherence_log(prescription_id);
+CREATE INDEX IF NOT EXISTS idx_adh_patient ON adherence_log(patient_id);
+CREATE INDEX IF NOT EXISTS idx_adh_scheduled ON adherence_log(scheduled_time);
+
+ALTER TABLE adherence_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can manage own adherence"
+    ON adherence_log FOR ALL
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Providers can view patient adherence"
+    ON adherence_log FOR SELECT
+    USING (EXISTS (SELECT 1 FROM prescriptions WHERE id = adherence_log.prescription_id AND provider_id = auth.uid()));
+
+GRANT SELECT, INSERT, UPDATE ON adherence_log TO authenticated;
+
+-- ============================================
+-- USER PREFERENCES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark', 'high_contrast')),
+    language TEXT NOT NULL DEFAULT 'en',
+    notifications_enabled BOOLEAN DEFAULT TRUE,
+    email_notifications BOOLEAN DEFAULT TRUE,
+    sms_notifications BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own preferences"
+    ON user_preferences FOR ALL
+    USING (user_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE ON user_preferences TO authenticated;
+
+-- ============================================
+-- GRANTS (Consolidated)
 -- ============================================
 GRANT SELECT, INSERT, UPDATE ON users TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON patients TO authenticated;

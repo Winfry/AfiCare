@@ -102,9 +102,6 @@ class MedicalAIService {
     required String gender,
     required String chiefComplaint,
   }) async {
-    // Simulate processing time
-    await Future.delayed(const Duration(milliseconds: 800));
-
     final vitalSignsModel = VitalSigns(
       temperature: vitalSigns['temperature'],
       systolicBP: vitalSigns['systolic_bp']?.toInt(),

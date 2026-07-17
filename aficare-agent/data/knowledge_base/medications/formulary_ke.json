@@ -1,0 +1,1434 @@
+{
+  "source": "Kenya Essential Medicines List (KEML) 2023",
+  "last_updated": "2024-01-15",
+  "medications": [
+    {
+      "generic_name": "Artemether-Lumefantrine",
+      "brand_names": ["Coartem", "Artem-L", "Lumether"],
+      "category": "antimalarial",
+      "formulations": [
+        {"form": "tablet", "strengths": ["20/120 mg", "40/240 mg", "80/480 mg"]},
+        {"form": "suspension", "strengths": ["40/240 mg per 5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["uncomplicated_plasmodium_falciparum_malaria"],
+      "contraindications": ["severe_malaria_monotherapy", "first_trimester_pregnancy_caution"],
+      "side_effects": ["nausea", "vomiting", "headache", "dizziness", "prolonged_qt_interval"]
+    },
+    {
+      "generic_name": "Artesunate",
+      "brand_names": ["Artesunat", "Malacin"],
+      "category": "antimalarial",
+      "formulations": [
+        {"form": "injection", "strengths": ["60 mg", "120 mg"]},
+        {"form": "suppository", "strengths": ["50 mg", "100 mg", "200 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["severe_malaria", "complicated_malaria"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["nausea", "vomiting", "diarrhea", "dizziness"]
+    },
+    {
+      "generic_name": "Dihydroartemisinin-Piperaquine",
+      "brand_names": ["DuoCotecxin", "Artekin"],
+      "category": "antimalarial",
+      "formulations": [
+        {"form": "tablet", "strengths": ["40/320 mg", "60/480 mg"]}
+      ],
+      "kenya_eml_tier": "tier_2",
+      "indications": ["uncomplicated_malaria_alternative"],
+      "contraindications": ["cardiac_arrhythmia", "severe_renal_impairment"],
+      "side_effects": ["nausea", "abdominal_pain", "headache", "dizziness"]
+    },
+    {
+      "generic_name": "Amoxicillin",
+      "brand_names": ["Amoxil", "Moxilin", "Clamoxyl"],
+      "category": "antibiotic_penicillin",
+      "formulations": [
+        {"form": "capsule", "strengths": ["250 mg", "500 mg"]},
+        {"form": "suspension", "strengths": ["125 mg/5mL", "250 mg/5mL"]},
+        {"form": "injection", "strengths": ["500 mg vial", "1 g vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["respiratory_tract_infection", "otitis_media", "urinary_tract_infection", "skin_infection", "dental_infection"],
+      "contraindications": ["penicillin_allergy"],
+      "side_effects": ["diarrhea", "nausea", "rash", "urticaria"]
+    },
+    {
+      "generic_name": "Amoxicillin-Clavulanic Acid",
+      "brand_names": ["Augmentin", "Co-amoxiclav", "Clavulin"],
+      "category": "antibiotic_penicillin",
+      "formulations": [
+        {"form": "tablet", "strengths": ["500/125 mg", "875/125 mg"]},
+        {"form": "suspension", "strengths": ["250/62.5 mg per 5mL", "400/57 mg per 5mL"]},
+        {"form": "injection", "strengths": ["1 g/200 mg vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["sinusitis", "community_acquired_pneumonia", "complicated_uti", "skin_and_soft_tissue_infection"],
+      "contraindications": ["penicillin_allergy", "hepatic_impairment"],
+      "side_effects": ["diarrhea", "nausea", "vomiting", "rash", "hepatitis"]
+    },
+    {
+      "generic_name": "Ceftriaxone",
+      "brand_names": ["Rocephin", "Triaxone", "Ceftriaxone-K"],
+      "category": "antibiotic_cephalosporin",
+      "formulations": [
+        {"form": "injection", "strengths": ["250 mg vial", "500 mg vial", "1 g vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["sepsis", "meningitis", "gonorrhea", "severe_pneumonia", "typhoid_fever"],
+      "contraindications": ["cephalosporin_allergy", "neonatal_hyperbilirubinemia"],
+      "side_effects": ["diarrhea", "rash", "eosinophilia", "biliary_pseudolithiasis"]
+    },
+    {
+      "generic_name": "Azithromycin",
+      "brand_names": ["Zithromax", "Zmax", "Azithro-K"],
+      "category": "antibiotic_macrolide",
+      "formulations": [
+        {"form": "tablet", "strengths": ["250 mg", "500 mg"]},
+        {"form": "suspension", "strengths": ["200 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["respiratory_tract_infection", "skin_infection", "sexually_transmitted_infection", "trachoma", "typhoid_fever_alternative"],
+      "contraindications": ["macrolide_allergy", "hepatic_impairment"],
+      "side_effects": ["nausea", "diarrhea", "abdominal_pain", "qt_prolongation"]
+    },
+    {
+      "generic_name": "Metronidazole",
+      "brand_names": ["Flagyl", "Metrozol", "Nidazole"],
+      "category": "antibiotic_nitroimidazole",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg", "400 mg"]},
+        {"form": "suspension", "strengths": ["200 mg/5mL"]},
+        {"form": "injection", "strengths": ["500 mg/100mL"]},
+        {"form": "suppository", "strengths": ["500 mg", "1 g"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["anaerobic_infection", "bacterial_vaginosis", "trichomoniasis", "amoebic_dysentery", "giardiasis"],
+      "contraindications": ["first_trimester_pregnancy"],
+      "side_effects": ["metallic_taste", "nausea", "headache", "dark_urine"]
+    },
+    {
+      "generic_name": "Ciprofloxacin",
+      "brand_names": ["Ciprotab", "Ciproxin", "Floxabid"],
+      "category": "antibiotic_fluoroquinolone",
+      "formulations": [
+        {"form": "tablet", "strengths": ["250 mg", "500 mg", "750 mg"]},
+        {"form": "injection", "strengths": ["200 mg/100mL", "400 mg/200mL"]},
+        {"form": "ear_drops", "strengths": ["0.3%"]},
+        {"form": "eye_drops", "strengths": ["0.3%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["uti", "acute_chronic_bronchitis", "pneumonia_gram_negative", "skin_infection", "typhoid_fever"],
+      "contraindications": ["quinolone_allergy", "epilepsy", "children_under_18", "pregnancy_lactation"],
+      "side_effects": ["nausea", "diarrhea", "tendonitis", "qt_prolongation", "cns_effects"]
+    },
+    {
+      "generic_name": "Doxycycline",
+      "brand_names": ["Doxycap", "Vibramycin", "Doxylin"],
+      "category": "antibiotic_tetracycline",
+      "formulations": [
+        {"form": "capsule", "strengths": ["100 mg"]},
+        {"form": "tablet", "strengths": ["100 mg"]},
+        {"form": "suspension", "strengths": ["50 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["acne", "malaria_prophylaxis", "rickettsial_infection", "cholera", "brucellosis", "std_alternative"],
+      "contraindications": ["children_under_8", "pregnancy_lactation", "tetracycline_allergy"],
+      "side_effects": ["photosensitivity", "GI_upset", "esophagitis", "tooth_discoloration"]
+    },
+    {
+      "generic_name": "Paracetamol",
+      "brand_names": ["Panadol", "Pamol", "Acetaminophen"],
+      "category": "analgesic_antipyretic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["500 mg", "1 g"]},
+        {"form": "suspension", "strengths": ["120 mg/5mL", "250 mg/5mL"]},
+        {"form": "injection", "strengths": ["10 mg/mL", "1 g/100mL"]},
+        {"form": "suppository", "strengths": ["125 mg", "250 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["fever", "mild_to_moderate_pain", "headache", "muscle_ache", "dental_pain"],
+      "contraindications": ["severe_hepatic_impairment", "known_allergy"],
+      "side_effects": ["rare_at_therapeutic_doses", "hepatic_necrosis_in_overdose"]
+    },
+    {
+      "generic_name": "Ibuprofen",
+      "brand_names": ["Brufen", "Advil", "Motrin"],
+      "category": "nsaid",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg", "400 mg", "600 mg"]},
+        {"form": "suspension", "strengths": ["100 mg/5mL", "200 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["fever", "mild_to_moderate_pain", "inflammation", "arthritis", "dysmenorrhea"],
+      "contraindications": ["peptic_ulcer", "severe_renal_impairment", "aspirin_allergy", "third_trimester_pregnancy"],
+      "side_effects": ["GI_upset", "bleeding", "renal_impairment", "hypertension"]
+    },
+    {
+      "generic_name": "Diclofenac",
+      "brand_names": ["Voltaren", "Diclomax", "Diclac"],
+      "category": "nsaid",
+      "formulations": [
+        {"form": "tablet", "strengths": ["25 mg", "50 mg", "75 mg"]},
+        {"form": "injection", "strengths": ["75 mg/3mL"]},
+        {"form": "gel", "strengths": ["1%", "2%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["moderate_to_severe_pain", "rheumatoid_arthritis", "osteoarthritis", "acute_musculoskeletal_injury"],
+      "contraindications": ["peptic_ulcer", "severe_renal_impairment", "aspirin_allergy", "cardiac_disease"],
+      "side_effects": ["GI_bleeding", "renal_impairment", "hypertension", "fluid_retention"]
+    },
+    {
+      "generic_name": "Omeprazole",
+      "brand_names": ["Losec", "Omepradex", "Prilosec"],
+      "category": "proton_pump_inhibitor",
+      "formulations": [
+        {"form": "capsule", "strengths": ["20 mg", "40 mg"]},
+        {"form": "injection", "strengths": ["40 mg vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["gerd", "peptic_ulcer", "gastritis", "h_pylori_eradication", "stress_ulcer_prophylaxis"],
+      "contraindications": ["long_term_use_caution"],
+      "side_effects": ["headache", "diarrhea", "constipation", "vitamin_b12_deficiency_long_term"]
+    },
+    {
+      "generic_name": "Metformin",
+      "brand_names": ["Glucophage", "Metforal", "Diaformin"],
+      "category": "antidiabetic_biguanide",
+      "formulations": [
+        {"form": "tablet", "strengths": ["500 mg", "850 mg", "1 g"]},
+        {"form": "sustained_release_tablet", "strengths": ["500 mg", "750 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["type_2_diabetes_mellitus", "prediabetes", "gestational_diabetes"],
+      "contraindications": ["renal_impairment_egfr_under_30", "hepatic_impairment", "sepsis", "metabolic_acidosis"],
+      "side_effects": ["GI_upset", "diarrhea", "metallic_taste", "lactic_acidosis_rare"]
+    },
+    {
+      "generic_name": "Glibenclamide",
+      "brand_names": ["Daonil", "Glynase", "Micronase"],
+      "category": "antidiabetic_sulfonylurea",
+      "formulations": [
+        {"form": "tablet", "strengths": ["2.5 mg", "5 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["type_2_diabetes_mellitus"],
+      "contraindications": ["severe_renal_impairment", "hepatic_impairment", "pregnancy_lactation"],
+      "side_effects": ["hypoglycemia", "weight_gain", "GI_upset"]
+    },
+    {
+      "generic_name": "Insulin Human (Soluble)",
+      "brand_names": ["Actrapid", "Humulin R"],
+      "category": "antidiabetic_insulin_short_acting",
+      "formulations": [
+        {"form": "injection_vial", "strengths": ["100 IU/mL", "40 IU/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["type_1_diabetes", "diabetic_ketoacidosis", "type_2_diabetes_uncontrolled"],
+      "contraindications": ["hypoglycemia"],
+      "side_effects": ["hypoglycemia", "injection_site_reaction", "lipodystrophy"]
+    },
+    {
+      "generic_name": "Insulin NPH",
+      "brand_names": ["Insulatard", "Humulin N"],
+      "category": "antidiabetic_insulin_intermediate",
+      "formulations": [
+        {"form": "injection_vial", "strengths": ["100 IU/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["type_1_diabetes", "type_2_diabetes_uncontrolled"],
+      "contraindications": ["hypoglycemia"],
+      "side_effects": ["hypoglycemia", "injection_site_reaction", "lipodystrophy"]
+    },
+    {
+      "generic_name": "Enalapril",
+      "brand_names": ["Renitec", "Enapril", "Enalapril-K"],
+      "category": "ace_inhibitor",
+      "formulations": [
+        {"form": "tablet", "strengths": ["2.5 mg", "5 mg", "10 mg", "20 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "heart_failure", "diabetic_nephropathy"],
+      "contraindications": ["pregnancy", "angioedema_history", "bilateral_renal_artery_stenosis", "hyperkalemia"],
+      "side_effects": ["dry_cough", "hyperkalemia", "hypotension", "renal_impairment", "angioedema_rare"]
+    },
+    {
+      "generic_name": "Losartan",
+      "brand_names": ["Cozaar", "Lorista", "Losaprex"],
+      "category": "angiotensin_receptor_blocker",
+      "formulations": [
+        {"form": "tablet", "strengths": ["25 mg", "50 mg", "100 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "heart_failure", "diabetic_nephropathy"],
+      "contraindications": ["pregnancy", "hyperkalemia", "bilateral_renal_artery_stenosis"],
+      "side_effects": ["dizziness", "hyperkalemia", "hypotension", "renal_impairment"]
+    },
+    {
+      "generic_name": "Amlodipine",
+      "brand_names": ["Norvasc", "Amlipin", "Amlocor"],
+      "category": "calcium_channel_blocker",
+      "formulations": [
+        {"form": "tablet", "strengths": ["2.5 mg", "5 mg", "10 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "angina", "coronary_artery_disease"],
+      "contraindications": ["cardiogenic_shock", "severe_aortic_stenosis", "unstable_angina"],
+      "side_effects": ["peripheral_edema", "headache", "dizziness", "flushing", "palpitations"]
+    },
+    {
+      "generic_name": "Hydrochlorothiazide",
+      "brand_names": ["Esidrix", "Hypothiazide", "HCTZ"],
+      "category": "diuretic_thiazide",
+      "formulations": [
+        {"form": "tablet", "strengths": ["12.5 mg", "25 mg", "50 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "mild_to_moderate_heart_failure", "edema"],
+      "contraindications": ["anuria", "severe_renal_impairment", "electrolyte_imbalance"],
+      "side_effects": ["hypokalemia", "hyponatremia", "hyperglycemia", "hyperuricemia", "dizziness"]
+    },
+    {
+      "generic_name": "Furosemide",
+      "brand_names": ["Lasix", "Frumex", "Fusid"],
+      "category": "diuretic_loop",
+      "formulations": [
+        {"form": "tablet", "strengths": ["20 mg", "40 mg", "80 mg"]},
+        {"form": "injection", "strengths": ["20 mg/2mL", "40 mg/4mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["heart_failure", "pulmonary_edema", "hypertension_renal_impairment", "nephrotic_syndrome"],
+      "contraindications": ["anuria", "severe_hypokalemia", "digitalis_intoxication"],
+      "side_effects": ["hypokalemia", "hypotension", "dehydration", "ototoxicity", "hyperglycemia"]
+    },
+    {
+      "generic_name": "Atorvastatin",
+      "brand_names": ["Lipitor", "Atorin", "Storvas"],
+      "category": "statin",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "20 mg", "40 mg", "80 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hyperlipidemia", "coronary_artery_disease_prevention", "diabetic_dyslipidemia"],
+      "contraindications": ["active_liver_disease", "pregnancy_lactation", "statin_allergy"],
+      "side_effects": ["myalgia", "hepatic_enzyme_elevation", "rhabdomyolysis_rare", "GI_upset"]
+    },
+    {
+      "generic_name": "Simvastatin",
+      "brand_names": ["Zocor", "Simvador", "Simvastatin-K"],
+      "category": "statin",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "20 mg", "40 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hyperlipidemia", "coronary_artery_disease_prevention"],
+      "contraindications": ["active_liver_disease", "pregnancy_lactation", "concurrent_strong_cyp3a4_inhibitors"],
+      "side_effects": ["myalgia", "hepatic_enzyme_elevation", "rhabdomyolysis_rare"]
+    },
+    {
+      "generic_name": "Aspirin",
+      "brand_names": ["Aspirin", "Aspro", "Disprin"],
+      "category": "antiplatelet_nsaid",
+      "formulations": [
+        {"form": "tablet", "strengths": ["75 mg", "100 mg", "300 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["acute_coronary_syndrome", "stroke_prevention", "fever"],
+      "contraindications": ["peptic_ulcer", "hemophilia", "children_under_12_reye_syndrome", "aspirin_allergy", "third_trimester_pregnancy"],
+      "side_effects": ["GI_bleeding", "bronchospasm", "tinnitus_in_overdose"]
+    },
+    {
+      "generic_name": "Warfarin",
+      "brand_names": ["Marevan", "Coumadin"],
+      "category": "anticoagulant",
+      "formulations": [
+        {"form": "tablet", "strengths": ["1 mg", "3 mg", "5 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["atrial_fibrillation", "deep_vein_thrombosis", "pulmonary_embolism", "mechanical_heart_valve"],
+      "contraindications": ["active_bleeding", "severe_hypertension", "pregnancy_first_trimester", "recent_surgery"],
+      "side_effects": ["bleeding", "bruising", "skin_necrosis_rare", "purple_toe_syndrome"]
+    },
+    {
+      "generic_name": "Salbutamol",
+      "brand_names": ["Ventolin", "Salbulin", "Asthalin"],
+      "category": "bronchodilator_beta2_agonist",
+      "formulations": [
+        {"form": "inhaler", "strengths": ["100 mcg/dose", "200 mcg/dose"]},
+        {"form": "nebulizer_solution", "strengths": ["2.5 mg/2.5mL", "5 mg/2.5mL"]},
+        {"form": "tablet", "strengths": ["2 mg", "4 mg"]},
+        {"form": "injection", "strengths": ["0.5 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["asthma", "copd"],
+      "contraindications": ["hypersensitivity"],
+      "side_effects": ["tremor", "tachycardia", "palpitations", "hypokalemia", "headache"]
+    },
+    {
+      "generic_name": "Beclometasone",
+      "brand_names": ["Becotide", "Beclate", "Qvar"],
+      "category": "corticosteroid_inhaled",
+      "formulations": [
+        {"form": "inhaler", "strengths": ["50 mcg/dose", "100 mcg/dose", "250 mcg/dose"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["asthma_prevention", "copd"],
+      "contraindications": ["acute_asthma_attack_monotherapy"],
+      "side_effects": ["oropharyngeal_candidiasis", "dysphonia", "throat_irritation"]
+    },
+    {
+      "generic_name": "Prednisolone",
+      "brand_names": ["Predsol", "Deltacortril", "Prednicare"],
+      "category": "corticosteroid_systemic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["5 mg", "10 mg", "20 mg"]},
+        {"form": "suspension", "strengths": ["5 mg/5mL", "15 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["severe_asthma", "autoimmune_disease", "allergic_reaction", "inflammatory_condition"],
+      "contraindications": ["systemic_fungal_infection", "live_vaccine"],
+      "side_effects": ["weight_gain", "hyperglycemia", "osteoporosis_long_term", "immunosuppression", "cushing_syndrome_long_term"]
+    },
+    {
+      "generic_name": "Dexamethasone",
+      "brand_names": ["Decadron", "Dexapred", "Dexasone"],
+      "category": "corticosteroid_systemic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["0.5 mg", "2 mg", "4 mg"]},
+        {"form": "injection", "strengths": ["4 mg/mL", "8 mg/2mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["severe_allergic_reaction", "cerebral_edema", "covid_19_severe", "shock"],
+      "contraindications": ["systemic_fungal_infection"],
+      "side_effects": ["hyperglycemia", "immunosuppression", "GI_bleeding", "psychosis"]
+    },
+    {
+      "generic_name": "Sulfamethoxazole-Trimethoprim",
+      "brand_names": ["Septrin", "Bactrim", "Cotrimoxazole"],
+      "category": "antibiotic_sulfonamide",
+      "formulations": [
+        {"form": "tablet", "strengths": ["400/80 mg", "800/160 mg"]},
+        {"form": "suspension", "strengths": ["200/40 mg per 5mL"]},
+        {"form": "injection", "strengths": ["400/80 mg per 5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["uti", "respiratory_infection", "pneumocystis_prophylaxis", "shigellosis"],
+      "contraindications": ["sulfa_allergy", "severe_hepatic_impairment", "pregnancy_third_trimester", "neonates"],
+      "side_effects": ["rash", "nausea", "vomiting", "stevens_johnson_syndrome_rare"]
+    },
+    {
+      "generic_name": "Gentamicin",
+      "brand_names": ["Genticin", "Garamycin", "Genta-K"],
+      "category": "antibiotic_aminoglycoside",
+      "formulations": [
+        {"form": "injection", "strengths": ["20 mg/2mL", "40 mg/2mL", "80 mg/2mL"]},
+        {"form": "eye_drops", "strengths": ["0.3%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["sepsis", "complicated_uti", "neonatal_infection", "eye_infection"],
+      "contraindications": ["myasthenia_gravis", "renal_impairment_caution"],
+      "side_effects": ["nephrotoxicity", "ototoxicity", "neuromuscular_blockade"]
+    },
+    {
+      "generic_name": "Mebendazole",
+      "brand_names": ["Vermox", "Mebendal", "Ovex"],
+      "category": "anthelmintic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["100 mg", "500 mg"]},
+        {"form": "suspension", "strengths": ["100 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["ascariasis", "trichuriasis", "enterobiasis", "hookworm_infection"],
+      "contraindications": ["pregnancy_first_trimester"],
+      "side_effects": ["abdominal_pain", "diarrhea", "rare_allergic_reaction"]
+    },
+    {
+      "generic_name": "Albendazole",
+      "brand_names": ["Zentel", "Albenza", "Bendex"],
+      "category": "anthelmintic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg", "400 mg"]},
+        {"form": "suspension", "strengths": ["200 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["soil_transmitted_helminths", "neurocysticercosis", "hydatid_disease"],
+      "contraindications": ["pregnancy", "known_allergy"],
+      "side_effects": ["abdominal_pain", "headache", "dizziness", "hepatic_enzyme_elevation"]
+    },
+    {
+      "generic_name": "Oral Rehydration Salts",
+      "brand_names": ["ORS", "Rehydrate", "Pedialyte"],
+      "category": "electrolyte_replacement",
+      "formulations": [
+        {"form": "powder_for_solution", "strengths": ["20.5 g/L WHO formulation"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["dehydration_diarrhea", "vomiting", "heat_exhaustion", "cholera"],
+      "contraindications": ["severe_dehydration_needing_iv", "unconscious_patient"],
+      "side_effects": ["hypernatremia_if_improperly_prepared"]
+    },
+    {
+      "generic_name": "Zinc Sulfate",
+      "brand_names": ["Zincas", "Zincovit", "Zincolac"],
+      "category": "mineral_supplement",
+      "formulations": [
+        {"form": "tablet", "strengths": ["20 mg", "25 mg"]},
+        {"form": "suspension", "strengths": ["10 mg/5mL", "20 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["diarrhea_adjunct", "zinc_deficiency", "growth_promotion"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["nausea", "metallic_taste", "GI_upset"]
+    },
+    {
+      "generic_name": "Vitamin A",
+      "brand_names": ["Vit A", "Retinol", "A-Vite"],
+      "category": "vitamin_supplement",
+      "formulations": [
+        {"form": "capsule", "strengths": ["50000 IU", "100000 IU", "200000 IU"]},
+        {"form": "suspension", "strengths": ["50000 IU/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["vitamin_a_deficiency", "measles_adjunct", "xerophthalmia_prevention"],
+      "contraindications": ["hypervitaminosis_a"],
+      "side_effects": ["headache", "nausea", "blurred_vision_in_overdose"]
+    },
+    {
+      "generic_name": "Iron and Folic Acid",
+      "brand_names": ["Ferrous Sulfate + Folate", "Ferro-Fol", "Irovit"],
+      "category": "hematinic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg Fe + 400 mcg Folate", "60 mg Fe + 400 mcg Folate"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["anemia_prevention_treatment", "pregnancy_supplementation"],
+      "contraindications": ["hemochromatosis", "iron_overload"],
+      "side_effects": ["constipation", "dark_stools", "GI_upset", "nausea"]
+    },
+    {
+      "generic_name": "Naloxone",
+      "brand_names": ["Narcan", "Nalone", "Naloxone-K"],
+      "category": "opioid_antagonist",
+      "formulations": [
+        {"form": "injection", "strengths": ["0.4 mg/mL", "1 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["opioid_overdose_reversal", "neonatal_opioid_respiratory_depression"],
+      "contraindications": ["opioid_dependence_caution_withdrawal"],
+      "side_effects": ["withdrawal_syndrome", "nausea", "vomiting", "tachycardia"]
+    },
+    {
+      "generic_name": "Morphine",
+      "brand_names": ["Morphine Sulfate", "MST", "Oramorph"],
+      "category": "opioid_analgesic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "15 mg", "30 mg"]},
+        {"form": "injection", "strengths": ["10 mg/mL", "15 mg/mL"]},
+        {"form": "suspension", "strengths": ["10 mg/5mL", "100 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["severe_pain", "palliative_care", "acute_myocardial_infarction_pain"],
+      "contraindications": ["respiratory_depression", "head_injury", "paralytic_ileus"],
+      "side_effects": ["respiratory_depression", "constipation", "nausea", "sedation", "addiction"]
+    },
+    {
+      "generic_name": "Ketamine",
+      "brand_names": ["Ketalar", "Ketajet", "Ketanest"],
+      "category": "anesthetic_dissociative",
+      "formulations": [
+        {"form": "injection", "strengths": ["10 mg/mL", "50 mg/mL", "100 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["anesthesia", "procedural_sedation", "severe_pain_adjunct"],
+      "contraindications": ["uncontrolled_hypertension", "severe_ischemic_heart_disease"],
+      "side_effects": ["emergence_delirium", "hallucinations", "hypertension", "tachycardia"]
+    },
+    {
+      "generic_name": "Fluconazole",
+      "brand_names": ["Diflucan", "Flucozol", "Zemyc"],
+      "category": "antifungal_azole",
+      "formulations": [
+        {"form": "capsule", "strengths": ["50 mg", "150 mg", "200 mg"]},
+        {"form": "suspension", "strengths": ["50 mg/5mL", "200 mg/5mL"]},
+        {"form": "injection", "strengths": ["2 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["vaginal_candidiasis", "oral_candidiasis_thrush", "cryptococcal_meningitis", "systemic_candidiasis"],
+      "contraindications": ["azole_allergy", "qt_prolongation"],
+      "side_effects": ["headache", "nausea", "abdominal_pain", "hepatic_enzyme_elevation"]
+    },
+    {
+      "generic_name": "Clotrimazole",
+      "brand_names": ["Canesten", "Clotriderm", "Lotremin"],
+      "category": "antifungal_topical",
+      "formulations": [
+        {"form": "cream", "strengths": ["1%"]},
+        {"form": "suspension", "strengths": ["1%"]},
+        {"form": "pessary", "strengths": ["100 mg", "200 mg", "500 mg"]},
+        {"form": "dusting_powder", "strengths": ["1%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tinea_infection", "vaginal_candidiasis", "oral_candidiasis"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["local_irritation", "burning_sensation"]
+    },
+    {
+      "generic_name": "Acyclovir",
+      "brand_names": ["Zovirax", "Acivir", "Herpex"],
+      "category": "antiviral",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg", "400 mg", "800 mg"]},
+        {"form": "suspension", "strengths": ["200 mg/5mL"]},
+        {"form": "cream", "strengths": ["5%"]},
+        {"form": "injection", "strengths": ["250 mg vial", "500 mg vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["herpes_simplex", "herpes_zoster", "varicella_chickenpox", "herpes_encephalitis"],
+      "contraindications": ["acyclovir_allergy"],
+      "side_effects": ["nausea", "headache", "renal_impairment", "confusion_iv"]
+    },
+    {
+      "generic_name": "Tenofovir Disoproxil Fumarate",
+      "brand_names": ["TDF", "Viread", "Tenof-K"],
+      "category": "antiretroviral_nrti",
+      "formulations": [
+        {"form": "tablet", "strengths": ["300 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hiv_aids_treatment", "hiv_prep"],
+      "contraindications": ["severe_renal_impairment_egfr_under_30"],
+      "side_effects": ["renal_toxicity", "bone_density_loss", "nausea", "diarrhea"]
+    },
+    {
+      "generic_name": "Tenofovir Alafenamide",
+      "brand_names": ["TAF", "Vemlidy", "Descovy"],
+      "category": "antiretroviral_nrti",
+      "formulations": [
+        {"form": "tablet", "strengths": ["25 mg", "200 mg"]}
+      ],
+      "kenya_eml_tier": "tier_2",
+      "indications": ["hiv_aids_treatment", "hiv_prep"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["nausea", "headache", "diarrhea", "increased_lipids"]
+    },
+    {
+      "generic_name": "Lamivudine",
+      "brand_names": ["3TC", "Epivir", "Lamivir"],
+      "category": "antiretroviral_nrti",
+      "formulations": [
+        {"form": "tablet", "strengths": ["150 mg", "300 mg"]},
+        {"form": "suspension", "strengths": ["10 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hiv_aids_treatment", "hbv_coinfection"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["headache", "nausea", "fatigue", "peripheral_neuropathy"]
+    },
+    {
+      "generic_name": "Efavirenz",
+      "brand_names": ["EFV", "Stocrin", "Sustiva"],
+      "category": "antiretroviral_nnrti",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg", "600 mg"]},
+        {"form": "capsule", "strengths": ["50 mg", "100 mg", "200 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hiv_aids_treatment"],
+      "contraindications": ["pregnancy_first_trimester", "severe_hepatic_impairment"],
+      "side_effects": ["cns_symptoms_dizziness", "nightmares", "rash", "hepatic_enzyme_elevation"]
+    },
+    {
+      "generic_name": "Dolutegravir",
+      "brand_names": ["DTG", "Tivicay", "Doluteg"],
+      "category": "antiretroviral_integrase_inhibitor",
+      "formulations": [
+        {"form": "tablet", "strengths": ["50 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hiv_aids_treatment"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["insomnia", "headache", "weight_gain", "nausea"]
+    },
+    {
+      "generic_name": "Tenofovir/Lamivudine/Dolutegravir (TLD)",
+      "brand_names": ["TLD", "Dolutegravir Combination"],
+      "category": "antiretroviral_fdc",
+      "formulations": [
+        {"form": "tablet", "strengths": ["300/300/50 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hiv_aids_treatment_first_line"],
+      "contraindications": ["severe_renal_impairment"],
+      "side_effects": ["renal_toxicity", "insomnia", "headache", "weight_gain"]
+    },
+    {
+      "generic_name": "Isoniazid",
+      "brand_names": ["INH", "Isokin", "Nydrazid"],
+      "category": "antitubercular",
+      "formulations": [
+        {"form": "tablet", "strengths": ["100 mg", "300 mg"]},
+        {"form": "suspension", "strengths": ["50 mg/5mL"]},
+        {"form": "injection", "strengths": ["100 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tuberculosis_treatment", "tb_prophylaxis"],
+      "contraindications": ["severe_hepatic_impairment", "isoniazid_allergy"],
+      "side_effects": ["peripheral_neuropathy", "hepatitis", "rash", "pyridoxine_deficiency"]
+    },
+    {
+      "generic_name": "Rifampicin",
+      "brand_names": ["Rifadin", "Rimactane", "Rifampin"],
+      "category": "antitubercular",
+      "formulations": [
+        {"form": "capsule", "strengths": ["150 mg", "300 mg"]},
+        {"form": "suspension", "strengths": ["100 mg/5mL"]},
+        {"form": "injection", "strengths": ["600 mg vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tuberculosis_treatment", "leprosy"],
+      "contraindications": ["porphyria", "rifampicin_allergy"],
+      "side_effects": ["hepatotoxicity", "orange_discoloration_of_body_fluids", "rash", "thrombocytopenia"]
+    },
+    {
+      "generic_name": "Ethambutol",
+      "brand_names": ["Ebutol", "Myambutol", "Ethamb-K"],
+      "category": "antitubercular",
+      "formulations": [
+        {"form": "tablet", "strengths": ["100 mg", "400 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tuberculosis_treatment"],
+      "contraindications": ["optic_neuritis", "severe_renal_impairment"],
+      "side_effects": ["optic_neuritis", "red_green_color_blindness", "peripheral_neuropathy"]
+    },
+    {
+      "generic_name": "Pyrazinamide",
+      "brand_names": ["PZA", "Pyrazide", "Zinamide"],
+      "category": "antitubercular",
+      "formulations": [
+        {"form": "tablet", "strengths": ["400 mg", "500 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tuberculosis_treatment"],
+      "contraindications": ["severe_hepatic_impairment", "gout"],
+      "side_effects": ["hepatotoxicity", "hyperuricemia", "arthralgia", "rash"]
+    },
+    {
+      "generic_name": "Magnesium Sulfate",
+      "brand_names": ["MgSO4", "Magnesuphate"],
+      "category": "electrolyte_anticonvulsant",
+      "formulations": [
+        {"form": "injection", "strengths": ["50% 2g/4mL", "50% 5g/10mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["severe_pre_eclampsia_eclampsia", "severe_asthma", "hypomagnesemia"],
+      "contraindications": ["myasthenia_gravis", "heart_block", "severe_renal_impairment"],
+      "side_effects": ["flushing", "respiratory_depression", "hypotension", "muscle_weakness"]
+    },
+    {
+      "generic_name": "Oxytocin",
+      "brand_names": ["Syntocinon", "Pitocin", "Oxypart"],
+      "category": "uterotonic",
+      "formulations": [
+        {"form": "injection", "strengths": ["5 IU/mL", "10 IU/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["induction_of_labor", "augmentation_of_labor", "postpartum_hemorrhage_prevention_treatment"],
+      "contraindications": ["fetal_distress", "placenta_previa", "cephalopelvic_disproportion"],
+      "side_effects": ["uterine_hyperstimulation", "nausea", "vomiting", "water_intoxication"]
+    },
+    {
+      "generic_name": "Methylergometrine",
+      "brand_names": ["Methergine", "Ergometrine", "Methylergon"],
+      "category": "uterotonic_ergot",
+      "formulations": [
+        {"form": "injection", "strengths": ["0.2 mg/mL"]},
+        {"form": "tablet", "strengths": ["0.125 mg", "0.2 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["postpartum_hemorrhage", "uterine_atony"],
+      "contraindications": ["hypertension", "preeclampsia", "cardiovascular_disease"],
+      "side_effects": ["hypertension", "nausea", "vomiting", "headache"]
+    },
+    {
+      "generic_name": "Benzathine Penicillin",
+      "brand_names": ["Bicillin", "Penadur", "Benzapen"],
+      "category": "antibiotic_penicillin_long_acting",
+      "formulations": [
+        {"form": "injection", "strengths": ["600000 IU", "1200000 IU", "2400000 IU"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["rheumatic_fever_prophylaxis", "syphilis", "streptococcal_tonsillitis"],
+      "contraindications": ["penicillin_allergy"],
+      "side_effects": ["allergic_reaction", "injection_site_pain", "procaine_reaction"]
+    },
+    {
+      "generic_name": "Carbamazepine",
+      "brand_names": ["Tegretol", "Carbatrol", "Epitol"],
+      "category": "antiepileptic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["100 mg", "200 mg", "400 mg"]},
+        {"form": "suspension", "strengths": ["100 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["epilepsy_partial_generalized", "trigeminal_neuralgia", "bipolar_disorder"],
+      "contraindications": ["av_block", "porphyria", "carbamazepine_allergy"],
+      "side_effects": ["dizziness", "diplopia", "hyponatremia", "rash", "hepatic_enzyme_elevation"]
+    },
+    {
+      "generic_name": "Phenobarbital",
+      "brand_names": ["Luminal", "Phenobarb", "Gardenal"],
+      "category": "antiepileptic_barbiturate",
+      "formulations": [
+        {"form": "tablet", "strengths": ["15 mg", "30 mg", "60 mg", "100 mg"]},
+        {"form": "injection", "strengths": ["200 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["epilepsy", "neonatal_seizures", "status_epilepticus"],
+      "contraindications": ["porphyria", "severe_hepatic_impairment", "respiratory_depression"],
+      "side_effects": ["sedation", "cognitive_impairment", "dependency", "ras"]
+    },
+    {
+      "generic_name": "Diazepam",
+      "brand_names": ["Valium", "Diazem", "Seduxen"],
+      "category": "benzodiazepine",
+      "formulations": [
+        {"form": "tablet", "strengths": ["2 mg", "5 mg", "10 mg"]},
+        {"form": "injection", "strengths": ["5 mg/mL", "10 mg/2mL"]},
+        {"form": "suppository", "strengths": ["5 mg", "10 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["anxiety", "seizures", "status_epilepticus", "alcohol_withdrawal", "sedation"],
+      "contraindications": ["myasthenia_gravis", "severe_hepatic_impairment", "respiratory_depression"],
+      "side_effects": ["sedation", "dizziness", "dependency", "respiratory_depression"]
+    },
+    {
+      "generic_name": "Haloperidol",
+      "brand_names": ["Haldol", "Serenace", "Haloperidol-K"],
+      "category": "antipsychotic_typical",
+      "formulations": [
+        {"form": "tablet", "strengths": ["0.5 mg", "2 mg", "5 mg", "10 mg"]},
+        {"form": "injection", "strengths": ["5 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["schizophrenia", "acute_psychosis", "mania", "delirium", "agitation"],
+      "contraindications": ["parkinsonism", "qt_prolongation", "cns_depression"],
+      "side_effects": ["extrapyramidal_symptoms", "sedation", "qt_prolongation", "neuroleptic_malignant_syndrome_rare"]
+    },
+    {
+      "generic_name": "Amitriptyline",
+      "brand_names": ["Elavil", "Tryptizol", "Amitrip"],
+      "category": "antidepressant_tricyclic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "25 mg", "50 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["depression", "neuropathic_pain", "migraine_prophylaxis", "insomnia"],
+      "contraindications": ["recent_myocardial_infarction", "glaucoma", "urinary_retention", "mania"],
+      "side_effects": ["drowsiness", "dry_mouth", "constipation", "qt_prolongation", "weight_gain"]
+    },
+    {
+      "generic_name": "Chlorpromazine",
+      "brand_names": ["Largactil", "Thorazine", "Promacid"],
+      "category": "antipsychotic_typical",
+      "formulations": [
+        {"form": "tablet", "strengths": ["25 mg", "50 mg", "100 mg"]},
+        {"form": "injection", "strengths": ["25 mg/mL", "50 mg/2mL"]},
+        {"form": "suspension", "strengths": ["25 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["schizophrenia", "mania", "acute_psychosis", "persistent_hiccups", "nausea_vomiting"],
+      "contraindications": ["parkinsonism", "porphyria", "cns_depression"],
+      "side_effects": ["extrapyramidal_symptoms", "sedation", "photosensitivity", "anticholinergic_effects"]
+    },
+    {
+      "generic_name": "Sodium Valproate",
+      "brand_names": ["Epilim", "Depakote", "Valparin"],
+      "category": "antiepileptic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mg", "500 mg"]},
+        {"form": "suspension", "strengths": ["200 mg/5mL"]},
+        {"form": "injection", "strengths": ["400 mg vial"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["epilepsy", "bipolar_disorder", "migraine_prophylaxis"],
+      "contraindications": ["pregnancy", "hepatic_impairment", "porphyria"],
+      "side_effects": ["weight_gain", "tremor", "hepatotoxicity", "thrombocytopenia", "hair_loss"]
+    },
+    {
+      "generic_name": "Phenytoin",
+      "brand_names": ["Dilantin", "Epanutin", "Phenytek"],
+      "category": "antiepileptic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["50 mg", "100 mg"]},
+        {"form": "suspension", "strengths": ["30 mg/5mL", "125 mg/5mL"]},
+        {"form": "injection", "strengths": ["50 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["epilepsy_partial_generalized", "status_epilepticus"],
+      "contraindications": ["porphyria", "phenytoin_allergy"],
+      "side_effects": ["gingival_hyperplasia", "dizziness", "nystagmus", "ataxia", "rash"]
+    },
+    {
+      "generic_name": "Loratadine",
+      "brand_names": ["Clarityn", "Loratine", "Alavert"],
+      "category": "antihistamine",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg"]},
+        {"form": "suspension", "strengths": ["5 mg/5mL", "10 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["allergic_rhinitis", "urticaria", "allergic_reaction"],
+      "contraindications": ["severe_hepatic_impairment"],
+      "side_effects": ["headache", "somnolence_rare", "dry_mouth"]
+    },
+    {
+      "generic_name": "Chlorpheniramine",
+      "brand_names": ["Piriton", "Chlortab", "Allergex"],
+      "category": "antihistamine",
+      "formulations": [
+        {"form": "tablet", "strengths": ["4 mg"]},
+        {"form": "suspension", "strengths": ["2 mg/5mL"]},
+        {"form": "injection", "strengths": ["10 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["allergic_reaction", "urticaria", "anaphylaxis_adjunct"],
+      "contraindications": ["neonates", "mao_inhibitor_use"],
+      "side_effects": ["drowsiness", "dry_mouth", "urinary_retention"]
+    },
+    {
+      "generic_name": "Hydrocortisone",
+      "brand_names": ["Hydrocortone", "Solu-Cortef", "Hycort"],
+      "category": "corticosteroid_short_acting",
+      "formulations": [
+        {"form": "injection", "strengths": ["100 mg vial", "500 mg vial"]},
+        {"form": "cream", "strengths": ["0.5%", "1%", "2.5%"]},
+        {"form": "tablet", "strengths": ["10 mg", "20 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["severe_allergic_reaction", "anaphylaxis", "adrenal_insufficiency", "asthma_severe"],
+      "contraindications": ["systemic_fungal_infection"],
+      "side_effects": ["immunosuppression", "hyperglycemia", "fluid_retention_long_term"]
+    },
+    {
+      "generic_name": "Adrenaline (Epinephrine)",
+      "brand_names": ["EpiPen", "Adrenalin", "Epifrin"],
+      "category": "sympathomimetic",
+      "formulations": [
+        {"form": "injection", "strengths": ["1 mg/mL (1:1000)", "0.1 mg/mL (1:10000)"]},
+        {"form": "auto_injector", "strengths": ["0.15 mg", "0.3 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["anaphylaxis", "cardiac_arrest", "severe_asthma_refractory", "croup"],
+      "contraindications": ["hypertension_caution", "thyrotoxicosis_caution"],
+      "side_effects": ["tachycardia", "hypertension", "arrhythmia", "anxiety", "tremor"]
+    },
+    {
+      "generic_name": "Heparin (Unfractionated)",
+      "brand_names": ["Heparin", "Hepalean", "Liquemin"],
+      "category": "anticoagulant_injectable",
+      "formulations": [
+        {"form": "injection", "strengths": ["5000 IU/mL", "10000 IU/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["acute_venous_thromboembolism", "acute_coronary_syndrome", "anticoagulation_bridging"],
+      "contraindications": ["active_bleeding", "severe_thrombocytopenia", "recent_neurological_surgery"],
+      "side_effects": ["bleeding", "heparin_induced_thrombocytopenia", "osteoporosis_long_term"]
+    },
+    {
+      "generic_name": "Enoxaparin",
+      "brand_names": ["Clexane", "Lovenox", "Enoxa-K"],
+      "category": "anticoagulant_low_molecular_weight_heparin",
+      "formulations": [
+        {"form": "injection", "strengths": ["20 mg/0.2mL", "40 mg/0.4mL", "60 mg/0.6mL", "80 mg/0.8mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["dvt_prophylaxis", "dvt_treatment", "acute_coronary_syndrome"],
+      "contraindications": ["active_bleeding", "heparin_induced_thrombocytopenia", "severe_renal_impairment"],
+      "side_effects": ["bleeding", "thrombocytopenia", "injection_site_hematoma"]
+    },
+    {
+      "generic_name": "Nitroglycerin",
+      "brand_names": ["Nitrostat", "Angised", "Nitroderm"],
+      "category": "antianginal_nitrate",
+      "formulations": [
+        {"form": "tablet_sublingual", "strengths": ["0.3 mg", "0.5 mg", "0.6 mg"]},
+        {"form": "spray", "strengths": ["0.4 mg/dose"]},
+        {"form": "patch", "strengths": ["0.2 mg/hr", "0.4 mg/hr", "0.6 mg/hr"]},
+        {"form": "injection", "strengths": ["1 mg/mL", "5 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["angina_pectoris", "acute_coronary_syndrome", "hypertensive_emergency"],
+      "contraindications": ["severe_hypotension", "severe_aortic_stenosis", "phosphodiesterase_inhibitor_use"],
+      "side_effects": ["headache", "hypotension", "dizziness", "flushing", "tachycardia"]
+    },
+    {
+      "generic_name": "Captopril",
+      "brand_names": ["Capoten", "Acepril", "Capto-K"],
+      "category": "ace_inhibitor",
+      "formulations": [
+        {"form": "tablet", "strengths": ["6.25 mg", "12.5 mg", "25 mg", "50 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "heart_failure", "acute_myocardial_infarction"],
+      "contraindications": ["pregnancy", "angioedema_history", "bilateral_renal_artery_stenosis"],
+      "side_effects": ["dry_cough", "hyperkalemia", "hypotension", "angioedema_rare"]
+    },
+    {
+      "generic_name": "Digoxin",
+      "brand_names": ["Lanoxin", "Digoxin-K", "Cardoxin"],
+      "category": "cardiac_glycoside",
+      "formulations": [
+        {"form": "tablet", "strengths": ["0.0625 mg", "0.125 mg", "0.25 mg"]},
+        {"form": "injection", "strengths": ["0.25 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["heart_failure_with_atrial_fibrillation", "atrial_fibrillation_rate_control"],
+      "contraindications": ["heart_block", "ventricular_fibrillation", "hypertrophic_obstructive_cardiomyopathy"],
+      "side_effects": ["nausea", "arrhythmia", "bradycardia", "visual_disturbance", "digitalis_toxicity"]
+    },
+    {
+      "generic_name": "Bisoprolol",
+      "brand_names": ["Bisocor", "Concor", "Zebeta"],
+      "category": "beta_blocker",
+      "formulations": [
+        {"form": "tablet", "strengths": ["1.25 mg", "2.5 mg", "5 mg", "10 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "heart_failure", "angina", "arrhythmia"],
+      "contraindications": ["severe_bradycardia", "heart_block", "severe_asthma", "cardiogenic_shock"],
+      "side_effects": ["bradycardia", "hypotension", "fatigue", "bronchospasm", "cold_extremities"]
+    },
+    {
+      "generic_name": "Propranolol",
+      "brand_names": ["Inderal", "Beta-Tab", "Propal"],
+      "category": "beta_blocker",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "20 mg", "40 mg", "80 mg"]},
+        {"form": "injection", "strengths": ["1 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "angina", "migraine_prophylaxis", "thyrotoxicosis", "essential_tremor"],
+      "contraindications": ["severe_bradycardia", "heart_block", "asthma", "cardiogenic_shock"],
+      "side_effects": ["bradycardia", "bronchospasm", "fatigue", "sleep_disturbance", "cold_hands_feet"]
+    },
+    {
+      "generic_name": "Spironolactone",
+      "brand_names": ["Aldactone", "Spiro-K", "Spironol"],
+      "category": "diuretic_potassium_sparing",
+      "formulations": [
+        {"form": "tablet", "strengths": ["25 mg", "50 mg", "100 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["heart_failure", "cirrhosis_ascites", "nephrotic_syndrome", "primary_hyperaldosteronism"],
+      "contraindications": ["hyperkalemia", "severe_renal_impairment", "anuria"],
+      "side_effects": ["hyperkalemia", "gynecomastia", "menstrual_irregularity"]
+    },
+    {
+      "generic_name": "Methyldopa",
+      "brand_names": ["Aldomet", "Dopamet", "Hydopa"],
+      "category": "antihypertensive_central_acting",
+      "formulations": [
+        {"form": "tablet", "strengths": ["250 mg", "500 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension_in_pregnancy", "mild_to_moderate_hypertension"],
+      "contraindications": ["liver_disease", "depression", "pheochromocytoma"],
+      "side_effects": ["sedation", "dizziness", "dry_mouth", "hemolytic_anemia_rare"]
+    },
+    {
+      "generic_name": "Nifedipine",
+      "brand_names": ["Adalat", "Nifecard", "Nifelat"],
+      "category": "calcium_channel_blocker",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "20 mg"]},
+        {"form": "sustained_release", "strengths": ["20 mg", "30 mg", "60 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypertension", "angina", "raynaud_phenomenon", "preterm_labor_tocolysis"],
+      "contraindications": ["cardiogenic_shock", "severe_aortic_stenosis"],
+      "side_effects": ["headache", "flushing", "peripheral_edema", "dizziness", "hypotension"]
+    },
+    {
+      "generic_name": "Misoprostol",
+      "brand_names": ["Cytotec", "Misodel", "Misotrol"],
+      "category": "prostaglandin_analogue",
+      "formulations": [
+        {"form": "tablet", "strengths": ["200 mcg", "400 mcg", "600 mcg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["postpartum_hemorrhage", "peptic_ulcer", "cervical_ripening", "medical_abortion"],
+      "contraindications": ["pregnancy_except_obstetric_indications"],
+      "side_effects": ["diarrhea", "abdominal_pain", "fever", "chills", "uterine_hyperstimulation"]
+    },
+    {
+      "generic_name": "Ergocalciferol (Vitamin D2)",
+      "brand_names": ["Vit D2", "Calciferol", "D-Cure"],
+      "category": "vitamin_supplement",
+      "formulations": [
+        {"form": "capsule", "strengths": ["50000 IU"]},
+        {"form": "tablet", "strengths": ["400 IU", "1000 IU"]},
+        {"form": "suspension", "strengths": ["1000 IU/mL", "2000 IU/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["vitamin_d_deficiency", "osteoporosis", "rickets", "osteomalacia"],
+      "contraindications": ["hypercalcemia", "hypervitaminosis_d"],
+      "side_effects": ["hypercalcemia_in_overdose", "nausea", "constipation"]
+    },
+    {
+      "generic_name": "Calcium Gluconate",
+      "brand_names": ["Calglucon", "Calcium-K", "Gluconate"],
+      "category": "electrolyte_replacement",
+      "formulations": [
+        {"form": "injection", "strengths": ["1 g/10mL", "10% solution"]},
+        {"form": "tablet", "strengths": ["500 mg", "1 g"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["hypocalcemia", "magnesium_toxicity_antidote", "hyperkalemia_cardioprotection"],
+      "contraindications": ["hypercalcemia", "digitalis_toxicity_caution"],
+      "side_effects": ["bradycardia", "hypotension", "tissue_necrosis_if_extravasation"]
+    },
+    {
+      "generic_name": "Sodium Bicarbonate",
+      "brand_names": ["Bicarb", "Soda Bicarb", "Neut"],
+      "category": "alkalizing_agent",
+      "formulations": [
+        {"form": "injection", "strengths": ["8.4% 1 mmol/mL", "4.2% 0.5 mmol/mL"]},
+        {"form": "tablet", "strengths": ["300 mg", "600 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["metabolic_acidosis", "cardiac_arrest_hyperkalemia", "tricyclic_antidepressant_overdose"],
+      "contraindications": ["metabolic_alkalosis", "hypocalcemia"],
+      "side_effects": ["hypernatremia", "hypocalcemia", "tissue_necrosis_if_extravasation"]
+    },
+    {
+      "generic_name": "Halothane",
+      "brand_names": ["Fluothane", "Halothane-K"],
+      "category": "anesthetic_inhalation",
+      "formulations": [
+        {"form": "inhalation_liquid", "strengths": ["99.99%", "250 mL bottle"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["general_anesthesia_induction_maintenance"],
+      "contraindications": ["malignant_hyperthermia_history", "severe_hepatic_impairment", "catecholamine_induced_arrhythmia"],
+      "side_effects": ["hepatotoxicity", "malignant_hyperthermia", "cardiac_depression", "arrhythmia"]
+    },
+    {
+      "generic_name": "Lidocaine",
+      "brand_names": ["Xylocaine", "Lidocaine-K", "Lidocard"],
+      "category": "local_anesthetic_antiarrhythmic",
+      "formulations": [
+        {"form": "injection", "strengths": ["1%", "2%", "5% (heavy)"]},
+        {"form": "gel", "strengths": ["2%"]},
+        {"form": "spray", "strengths": ["10%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["local_anesthesia", "ventricular_arrhythmia", "epidural_anesthesia"],
+      "contraindications": ["sinoatrial_block", "heart_block", "lidocaine_allergy"],
+      "side_effects": ["dizziness", "tremor", "seizures_in_overdose", "cardiac_depression"]
+    },
+    {
+      "generic_name": "Atropine",
+      "brand_names": ["Atropine-K", "Atrocare", "Atropisol"],
+      "category": "anticholinergic",
+      "formulations": [
+        {"form": "injection", "strengths": ["0.4 mg/mL", "0.6 mg/mL", "1 mg/mL"]},
+        {"form": "eye_drops", "strengths": ["1%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["bradycardia", "organophosphate_poisoning_antidote", "pre_anesthetic", "mydriasis"],
+      "contraindications": ["glaucoma", "obstructive_uropathy", "myasthenia_gravis"],
+      "side_effects": ["dry_mouth", "blurred_vision", "tachycardia", "urinary_retention"]
+    },
+    {
+      "generic_name": "Protamine Sulfate",
+      "brand_names": ["Protamine", "Protamine-K"],
+      "category": "anticoagulant_antagonist",
+      "formulations": [
+        {"form": "injection", "strengths": ["10 mg/mL", "50 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_2",
+      "indications": ["heparin_overdose_reversal", "heparin_anticoagulation_reversal"],
+      "contraindications": ["protamine_allergy", "fish_allergy_caution"],
+      "side_effects": ["hypotension", "pulmonary_hypertension", "allergic_reaction"]
+    },
+    {
+      "generic_name": "Vitamin K (Phytomenadione)",
+      "brand_names": ["Konakion", "Aquamephyton", "Vit K"],
+      "category": "vitamin_supplement_hemostatic",
+      "formulations": [
+        {"form": "injection", "strengths": ["1 mg/0.5mL", "10 mg/mL"]},
+        {"form": "tablet", "strengths": ["5 mg", "10 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["vitamin_k_deficiency", "warfarin_overdose", "neonatal_hemorrhage_prophylaxis"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["anaphylaxis_rare", "flushing", "taste_disturbance"]
+    },
+    {
+      "generic_name": "Neostigmine",
+      "brand_names": ["Prostigmin", "Neostig-K", "Bloxiverz"],
+      "category": "anticholinesterase",
+      "formulations": [
+        {"form": "injection", "strengths": ["0.5 mg/mL", "2.5 mg/mL"]},
+        {"form": "tablet", "strengths": ["15 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["myasthenia_gravis", "postoperative_ileus", "neuromuscular_blockade_reversal"],
+      "contraindications": ["mechanical_intestinal_obstruction", "urinary_obstruction", "peritonitis"],
+      "side_effects": ["bradycardia", "increased_secretions", "salivation", "muscle_fasciculation"]
+    },
+    {
+      "generic_name": "Chlorhexidine",
+      "brand_names": ["Hibitane", "Chlorhex-K", "Denthex"],
+      "category": "antiseptic_disinfectant",
+      "formulations": [
+        {"form": "solution", "strengths": ["0.05%", "0.2%", "0.5%", "2%", "4%"]},
+        {"form": "gel", "strengths": ["0.5%", "1%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["skin_antisepsis", "wound_cleaning", "umbilical_cord_care", "mouthwash"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["skin_irritation", "staining", "ototoxicity_avoid_in_ear"]
+    },
+    {
+      "generic_name": "Povidone Iodine",
+      "brand_names": ["Betadine", "Isodine", "Poviod"],
+      "category": "antiseptic_disinfectant",
+      "formulations": [
+        {"form": "solution", "strengths": ["5%", "10%"]},
+        {"form": "ointment", "strengths": ["5%", "10%"]},
+        {"form": "scrub", "strengths": ["7.5%"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["preoperative_skin_preparation", "wound_antisepsis", "vaginal_antisepsis"],
+      "contraindications": ["iodine_allergy", "thyroid_disorders_caution"],
+      "side_effects": ["skin_irritation", "staining", "thyroid_dysfunction_in_absorbed"]
+    },
+    {
+      "generic_name": "Tetanus Toxoid Vaccine",
+      "brand_names": ["TT", "Tetanus Vaccine", "Tetanol"],
+      "category": "vaccine",
+      "formulations": [
+        {"form": "injection", "strengths": ["5 Lf/dose", "10 Lf/dose"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tetanus_prevention", "pregnancy_td_booster"],
+      "contraindications": ["severe_allergic_reaction_to_previous_dose", "acute_febrile_illness"],
+      "side_effects": ["injection_site_pain", "fever", "headache", "fatigue"]
+    },
+    {
+      "generic_name": "Measles Vaccine",
+      "brand_names": ["Measles Only", "MR Vaccine", "MMR"],
+      "category": "vaccine",
+      "formulations": [
+        {"form": "injection", "strengths": ["1000 TCID50/dose"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["measles_prevention"],
+      "contraindications": ["pregnancy", "severe_immunosuppression", "egg_allergy_severe"],
+      "side_effects": ["fever", "rash", "parotitis", "febrile_seizures_rare"]
+    },
+    {
+      "generic_name": "BCG Vaccine",
+      "brand_names": ["BCG", "Tuberculosis Vaccine"],
+      "category": "vaccine",
+      "formulations": [
+        {"form": "injection_intradermal", "strengths": ["0.05 mL (neonatal)", "0.1 mL (children)"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["tuberculosis_prevention", "leprosy_prevention"],
+      "contraindications": ["severe_immunosuppression", "hiv_symptomatic"],
+      "side_effects": ["injection_site_ulcer", "lymphadenitis", "osteitis_rare"]
+    },
+    {
+      "generic_name": "Oral Polio Vaccine (OPV)",
+      "brand_names": ["OPV", "Sabin", "Polio Oral"],
+      "category": "vaccine",
+      "formulations": [
+        {"form": "oral_drops", "strengths": ["2 drops/dose"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["polio_prevention"],
+      "contraindications": ["severe_immunosuppression"],
+      "side_effects": ["rare_vaccine_associated_paralytic_polio"]
+    },
+    {
+      "generic_name": "Mebendazole (Mass Deworming)",
+      "brand_names": ["Mebendazole-K", "Deworm-K"],
+      "category": "anthelmintic",
+      "formulations": [
+        {"form": "tablet_chewable", "strengths": ["500 mg single dose"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["mass_deworming_campaign", "soil_transmitted_helminthiasis"],
+      "contraindications": ["pregnancy_first_trimester"],
+      "side_effects": ["abdominal_pain", "diarrhea"]
+    },
+    {
+      "generic_name": "Multivitamin",
+      "brand_names": ["Multivit-K", "Vitaplex", "Polyvit"],
+      "category": "vitamin_supplement",
+      "formulations": [
+        {"form": "tablet", "strengths": ["multivitamin complex"]},
+        {"form": "suspension", "strengths": ["multivitamin per 5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["general_nutritional_support", "deficiency_prevention"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["rare_nausea", "GI_upset"]
+    },
+    {
+      "generic_name": "Folic Acid",
+      "brand_names": ["Folate", "Folicil", "Folvite"],
+      "category": "vitamin_supplement",
+      "formulations": [
+        {"form": "tablet", "strengths": ["400 mcg", "1 mg", "5 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["pregnancy_supplementation", "megaloblastic_anemia_folate_deficiency"],
+      "contraindications": ["vitamin_b12_deficiency_masking"],
+      "side_effects": ["rare_allergic_reaction"]
+    },
+    {
+      "generic_name": "Tranexamic Acid",
+      "brand_names": ["Cyklokapron", "Texamic", "Transamin"],
+      "category": "hemostatic_antifibrinolytic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["500 mg"]},
+        {"form": "injection", "strengths": ["500 mg/5mL", "1 g/10mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["postpartum_hemorrhage", "heavy_menstrual_bleeding", "trauma_with_bleeding", "epistaxis"],
+      "contraindications": ["active_thromboembolism", "subarachnoid_hemorrhage"],
+      "side_effects": ["nausea", "vomiting", "diarrhea", "thrombosis_rare"]
+    },
+    {
+      "generic_name": "Ondansetron",
+      "brand_names": ["Zofran", "Ondem", "Setron"],
+      "category": "antiemetic",
+      "formulations": [
+        {"form": "tablet", "strengths": ["4 mg", "8 mg"]},
+        {"form": "injection", "strengths": ["2 mg/mL", "4 mg/2mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["nausea_vomiting", "chemotherapy_induced_nausea"],
+      "contraindications": ["qt_prolongation_caution"],
+      "side_effects": ["headache", "constipation", "qt_prolongation"]
+    },
+    {
+      "generic_name": "Promethazine",
+      "brand_names": ["Phenergan", "Prometh", "Avomine"],
+      "category": "antiemetic_antihistamine",
+      "formulations": [
+        {"form": "tablet", "strengths": ["10 mg", "25 mg"]},
+        {"form": "injection", "strengths": ["25 mg/mL", "50 mg/2mL"]},
+        {"form": "suspension", "strengths": ["5 mg/5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["nausea_vomiting", "motion_sickness", "allergic_reaction", "sedation"],
+      "contraindications": ["children_under_2", "cns_depression"],
+      "side_effects": ["drowsiness", "dry_mouth", "extrapyramidal_symptoms_children"]
+    },
+    {
+      "generic_name": "Pethidine (Meperidine)",
+      "brand_names": ["Demerol", "Pethidine-K", "Meperidine"],
+      "category": "opioid_analgesic",
+      "formulations": [
+        {"form": "injection", "strengths": ["50 mg/mL", "100 mg/2mL"]},
+        {"form": "tablet", "strengths": ["50 mg", "100 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["moderate_to_severe_pain", "labor_pain"],
+      "contraindications": ["mao_inhibitor_use", "respiratory_depression", "seizure_disorder"],
+      "side_effects": ["nausea", "vomiting", "constipation", "seizures_in_overdose", "serotonin_syndrome_with_maois"]
+    },
+    {
+      "generic_name": "Tramadol",
+      "brand_names": ["Ultram", "Tramal", "Tradol"],
+      "category": "opioid_analgesic_weak",
+      "formulations": [
+        {"form": "tablet", "strengths": ["50 mg", "100 mg"]},
+        {"form": "injection", "strengths": ["50 mg/mL", "100 mg/2mL"]},
+        {"form": "capsule", "strengths": ["50 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["moderate_to_severe_pain"],
+      "contraindications": ["seizure_disorder", "mao_inhibitor_use", "opioid_dependence"],
+      "side_effects": ["nausea", "dizziness", "seizures", "constipation", "serotonin_syndrome"]
+    },
+    {
+      "generic_name": "Diazepam (Rectal)",
+      "brand_names": ["Valium Rectal", "Diazepam-K"],
+      "category": "anticonvulsant_benzodiazepine",
+      "formulations": [
+        {"form": "rectal_tube", "strengths": ["5 mg/2.5mL", "10 mg/2.5mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["febrile_seizures", "acute_seizure_emergency"],
+      "contraindications": ["myasthenia_gravis", "severe_hepatic_impairment"],
+      "side_effects": ["sedation", "respiratory_depression", "hypotension"]
+    },
+    {
+      "generic_name": "Levonorgestrel (Emergency Contraception)",
+      "brand_names": ["Postinor-2", "Levonelle", "Escapelle"],
+      "category": "contraceptive_emergency",
+      "formulations": [
+        {"form": "tablet", "strengths": ["0.75 mg", "1.5 mg"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["emergency_contraception"],
+      "contraindications": ["known_allergy"],
+      "side_effects": ["nausea", "vomiting", "headache", "menstrual_irregularity"]
+    },
+    {
+      "generic_name": "Medroxyprogesterone Acetate",
+      "brand_names": ["Depo-Provera", "MPA", "Depo-K"],
+      "category": "contraceptive_injectable",
+      "formulations": [
+        {"form": "injection", "strengths": ["150 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["contraception", "secondary_amenorrhea", "endometriosis"],
+      "contraindications": ["pregnancy", "undiagnosed_vaginal_bleeding", "liver_disease"],
+      "side_effects": ["menstrual_irregularity", "weight_gain", "bone_density_loss_long_term"]
+    },
+    {
+      "generic_name": "Implanon (Etonogestrel Implant)",
+      "brand_names": ["Implanon NXT", "Nexplanon"],
+      "category": "contraceptive_implant",
+      "formulations": [
+        {"form": "implant", "strengths": ["68 mg"]}
+      ],
+      "kenya_eml_tier": "tier_2",
+      "indications": ["long_acting_reversible_contraception"],
+      "contraindications": ["pregnancy", "liver_disease", "thromboembolic_disorder"],
+      "side_effects": ["menstrual_irregularity", "headache", "weight_gain", "mood_changes"]
+    },
+    {
+      "generic_name": "Copper T 380A IUD",
+      "brand_names": ["Cu-T 380A", "ParaGard", "IUD"],
+      "category": "contraceptive_iud",
+      "formulations": [
+        {"form": "intrauterine_device", "strengths": ["380 mm2 copper"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["long_acting_reversible_contraception", "emergency_contraception"],
+      "contraindications": ["current_pelvic_infection", "uterine_anatomical_abnormality", "wilson_disease"],
+      "side_effects": ["increased_bleeding", "cramps", "perforation_rare"]
+    },
+    {
+      "generic_name": "Norethisterone Enanthate",
+      "brand_names": ["Noristerat", "NET-EN", "Noreth-K"],
+      "category": "contraceptive_injectable",
+      "formulations": [
+        {"form": "injection", "strengths": ["200 mg/mL"]}
+      ],
+      "kenya_eml_tier": "tier_1",
+      "indications": ["contraception"],
+      "contraindications": ["pregnancy", "thromboembolic_disorder", "liver_disease"],
+      "side_effects": ["menstrual_irregularity", "weight_gain", "headache"]
+    }
+  ]
+}

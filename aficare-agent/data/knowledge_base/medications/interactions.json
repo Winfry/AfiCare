@@ -1,0 +1,582 @@
+{
+  "source": "WHO Drug Interactions Guide, Kenya MOH Drug Interactions Reference 2023",
+  "last_updated": "2024-01-15",
+  "interactions": [
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Aspirin",
+      "severity": "high",
+      "effect": "Increased risk of bleeding",
+      "mechanism": "Synergistic anticoagulant and antiplatelet effect",
+      "management": "Avoid combination unless specific indication. If combined, monitor INR closely and check for signs of bleeding.",
+      "evidence": "Multiple RCTs demonstrate increased bleeding risk"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Amoxicillin",
+      "severity": "moderate",
+      "effect": "Increased INR and bleeding risk",
+      "mechanism": "Antibiotic reduces gut flora producing Vitamin K",
+      "management": "Monitor INR during and shortly after antibiotic course. Adjust warfarin dose if needed.",
+      "evidence": "Well-documented interaction"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Ciprofloxacin",
+      "severity": "high",
+      "effect": "Significant increase in INR, high bleeding risk",
+      "mechanism": "CYP1A2 and CYP3A4 inhibition reducing warfarin metabolism",
+      "management": "Avoid if possible. If unavoidable, reduce warfarin dose and monitor INR every 2-3 days.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Metronidazole",
+      "severity": "high",
+      "effect": "Increased INR and bleeding risk",
+      "mechanism": "CYP2C9 inhibition reducing S-warfarin metabolism",
+      "management": "Reduce warfarin dose by 20-30% and monitor INR closely.",
+      "evidence": "Well-established interaction"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Fluconazole",
+      "severity": "high",
+      "effect": "Marked increase in INR",
+      "mechanism": "CYP2C9 inhibition",
+      "management": "Avoid combination if possible. If needed, significantly reduce warfarin dose and monitor INR daily.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Rifampicin",
+      "severity": "high",
+      "effect": "Decreased warfarin effect, reduced INR",
+      "mechanism": "CYP3A4 and CYP2C9 induction increasing warfarin metabolism",
+      "management": "Increase warfarin dose 2-3 times. Monitor INR frequently. Effect lasts 2-3 weeks after rifampicin stopped.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Decreased warfarin efficacy",
+      "mechanism": "Hepatic enzyme induction",
+      "management": "Monitor INR and adjust warfarin dose. Effect may persist after carbamazepine discontinuation.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Ibuprofen",
+      "severity": "high",
+      "effect": "Increased bleeding risk (GI bleeding + anticoagulation)",
+      "mechanism": "NSAID inhibits platelet function + GI mucosal damage",
+      "management": "Avoid NSAIDs in warfarin patients. Use paracetamol for analgesia.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Warfarin",
+      "drug_b": "Sulfamethoxazole-Trimethoprim",
+      "severity": "high",
+      "effect": "Significant increase in INR",
+      "mechanism": "CYP2C9 inhibition by sulfamethoxazole",
+      "management": "Avoid combination. If unavoidable, reduce warfarin dose and monitor INR closely.",
+      "evidence": "Well-established"
+    },
+    {
+      "drug_a": "ACE Inhibitor (Enalapril)",
+      "drug_b": "Spironolactone",
+      "severity": "high",
+      "effect": "Life-threatening hyperkalemia",
+      "mechanism": "Both drugs reduce aldosterone, decreasing potassium excretion",
+      "management": "Avoid combination in patients with renal impairment. Monitor potassium and renal function regularly.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "ACE Inhibitor (Enalapril)",
+      "drug_b": "Ibuprofen",
+      "severity": "moderate",
+      "effect": "Reduced antihypertensive effect + increased renal impairment risk",
+      "mechanism": "NSAID inhibits prostaglandin-mediated vasodilation",
+      "management": "Monitor BP and renal function. Consider alternative analgesic.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "ACE Inhibitor (Enalapril)",
+      "drug_b": "Metformin",
+      "severity": "moderate",
+      "effect": "Increased risk of lactic acidosis in renal impairment",
+      "mechanism": "ACE inhibitor can reduce renal function, increasing metformin levels",
+      "management": "Monitor renal function. Hold metformin if eGFR < 30.",
+      "evidence": "Clinical consensus"
+    },
+    {
+      "drug_a": "Metformin",
+      "drug_b": "Glibenclamide",
+      "severity": "moderate",
+      "effect": "Increased risk of hypoglycemia",
+      "mechanism": "Additive glucose-lowering effect",
+      "management": "Monitor blood glucose. Adjust doses based on response. Educate patient on hypoglycemia symptoms.",
+      "evidence": "Common clinical finding"
+    },
+    {
+      "drug_a": "Aspirin",
+      "drug_b": "Ibuprofen",
+      "severity": "moderate",
+      "effect": "Reduced cardioprotective effect of aspirin + increased GI bleeding",
+      "mechanism": "Ibuprofen competes with aspirin for COX-1 binding site",
+      "management": "Take ibuprofen at least 30 min after or 8 hours before aspirin. Use alternative analgesic if possible.",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Aspirin",
+      "drug_b": "Metronidazole",
+      "severity": "moderate",
+      "effect": "Increased INR and bleeding risk",
+      "mechanism": "Metronidazole inhibits warfarin metabolism (if patient also on warfarin)",
+      "management": "Monitor INR and bleeding signs.",
+      "evidence": "Case reports"
+    },
+    {
+      "drug_a": "Ciprofloxacin",
+      "drug_b": "NSAIDs (Ibuprofen/Diclofenac)",
+      "severity": "high",
+      "effect": "Increased risk of CNS stimulation and seizures",
+      "mechanism": "Synergistic GABA-A receptor antagonism",
+      "management": "Avoid combination. Use alternative antibiotic or analgesic.",
+      "evidence": "Clinical evidence and case reports"
+    },
+    {
+      "drug_a": "Ciprofloxacin",
+      "drug_b": "Iron and Folic Acid",
+      "severity": "moderate",
+      "effect": "Reduced ciprofloxacin absorption",
+      "mechanism": "Chelation of fluoroquinolone by iron",
+      "management": "Space doses at least 2 hours apart. Take ciprofloxacin 2 hours before or 6 hours after iron.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Doxycycline",
+      "drug_b": "Iron and Folic Acid",
+      "severity": "moderate",
+      "effect": "Reduced doxycycline absorption",
+      "mechanism": "Chelation by divalent/trivalent cations",
+      "management": "Space doses at least 2-3 hours apart.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Doxycycline",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Reduced doxycycline efficacy",
+      "mechanism": "Hepatic enzyme induction increases doxycycline metabolism",
+      "management": "Monitor clinical response. Consider alternative antibiotic.",
+      "evidence": "Clinical reports"
+    },
+    {
+      "drug_a": "Rifampicin",
+      "drug_b": "Efavirenz",
+      "severity": "high",
+      "effect": "Reduced efavirenz levels, risk of treatment failure",
+      "mechanism": "CYP2B6 induction",
+      "management": "Standard efavirenz 600 mg daily is adequate with rifampicin. Monitor virologic response.",
+      "evidence": "Clinical trials"
+    },
+    {
+      "drug_a": "Rifampicin",
+      "drug_b": "Dolutegravir",
+      "severity": "high",
+      "effect": "Reduced dolutegravir levels",
+      "mechanism": "UGT1A1 and CYP3A4 induction",
+      "management": "Increase dolutegravir to 50 mg twice daily when co-administered with rifampicin.",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Rifampicin",
+      "drug_b": "Oral Contraceptives",
+      "severity": "high",
+      "effect": "Reduced contraceptive efficacy",
+      "mechanism": "Hepatic enzyme induction increases estrogen/progestin metabolism",
+      "management": "Use alternative or additional barrier contraception during rifampicin course.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Rifampicin",
+      "drug_b": "Prednisolone",
+      "severity": "moderate",
+      "effect": "Reduced corticosteroid efficacy",
+      "mechanism": "CYP3A4 induction increases corticosteroid metabolism",
+      "management": "Increase prednisolone dose if needed. Monitor clinical response.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Efavirenz",
+      "drug_b": "Carbamazepine",
+      "severity": "high",
+      "effect": "Reduced efavirenz levels + reduced carbamazepine levels",
+      "mechanism": "Mutual CYP enzyme induction",
+      "management": "Avoid combination. Use alternative anticonvulsant (e.g., valproate) or alternative ART.",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Isoniazid",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Increased risk of isoniazid hepatotoxicity + reduced carbamazepine levels",
+      "mechanism": "CYP3A4 induction by carbamazepine increases toxic metabolite formation",
+      "management": "Monitor LFTs closely. Consider alternative anticonvulsant.",
+      "evidence": "Clinical reports"
+    },
+    {
+      "drug_a": "Isoniazid",
+      "drug_b": "Paracetamol",
+      "severity": "moderate",
+      "effect": "Increased risk of paracetamol hepatotoxicity",
+      "mechanism": "CYP2E1 induction by isoniazid increases toxic NAPQI formation",
+      "management": "Limit paracetamol use. Use alternative analgesic if possible.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Magnesium Sulfate",
+      "drug_b": "Nifedipine",
+      "severity": "high",
+      "effect": "Severe hypotension, neuromuscular weakness",
+      "mechanism": "Synergistic calcium channel blockade",
+      "management": "Monitor BP and deep tendon reflexes. Avoid or use with extreme caution.",
+      "evidence": "Case reports in obstetrics"
+    },
+    {
+      "drug_a": "Oxytocin",
+      "drug_b": "Methylergometrine",
+      "severity": "moderate",
+      "effect": "Sustained uterine contraction, hypertension risk",
+      "mechanism": "Synergistic uterotonic effect",
+      "management": "Sequential use is acceptable under medical supervision. Monitor BP.",
+      "evidence": "Standard obstetric practice"
+    },
+    {
+      "drug_a": "Salbutamol",
+      "drug_b": "Prednisolone",
+      "severity": "moderate",
+      "effect": "Increased risk of hypokalemia and hyperglycemia",
+      "mechanism": "Both drugs can lower potassium and raise blood glucose",
+      "management": "Monitor potassium and blood glucose, especially in acute severe asthma.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Salbutamol",
+      "drug_b": "Digoxin",
+      "severity": "moderate",
+      "effect": "Increased risk of cardiac arrhythmia from hypokalemia",
+      "mechanism": "Beta-agonist causes intracellular shift of potassium",
+      "management": "Monitor potassium levels. Correct hypokalemia promptly.",
+      "evidence": "Clinical reports"
+    },
+    {
+      "drug_a": "Amoxicillin-Clavulanic Acid",
+      "drug_b": "Warfarin",
+      "severity": "moderate",
+      "effect": "Increased INR and bleeding risk",
+      "mechanism": "Gut flora disruption reduces Vitamin K production",
+      "management": "Monitor INR during and after antibiotic course.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Chlorpromazine",
+      "drug_b": "Haloperidol",
+      "severity": "high",
+      "effect": "Increased risk of QT prolongation, extrapyramidal symptoms",
+      "mechanism": "Additive dopamine blockade and QT prolongation",
+      "management": "Avoid combination. Use single antipsychotic where possible. Monitor ECG if combined.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Amitriptyline",
+      "drug_b": "Haloperidol",
+      "severity": "moderate",
+      "effect": "Increased anticholinergic effects, QT prolongation risk",
+      "mechanism": "Additive anticholinergic and cardiac effects",
+      "management": "Monitor ECG and anticholinergic side effects. Use lowest effective doses.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Amitriptyline",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Reduced amitriptyline levels",
+      "mechanism": "CYP3A4 induction by carbamazepine",
+      "management": "Monitor clinical response. Increase amitriptyline dose if needed.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Morphine",
+      "drug_b": "Amitriptyline",
+      "severity": "moderate",
+      "effect": "Increased sedation and respiratory depression risk",
+      "mechanism": "Additive CNS depression",
+      "management": "Use lower doses of both. Monitor sedation level and respiratory rate.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Morphine",
+      "drug_b": "Diazepam",
+      "severity": "high",
+      "effect": "Severe respiratory depression, excessive sedation",
+      "mechanism": "Both are CNS and respiratory depressants",
+      "management": "Avoid combination unless in monitored setting. Reduce both doses if combined.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Losartan",
+      "drug_b": "Spironolactone",
+      "severity": "high",
+      "effect": "Life-threatening hyperkalemia",
+      "mechanism": "Both drugs reduce aldosterone effect, increasing potassium",
+      "management": "Avoid combination. If required, monitor potassium weekly. Restrict dietary potassium.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Losartan",
+      "drug_b": "Ibuprofen",
+      "severity": "moderate",
+      "effect": "Reduced antihypertensive effect + renal impairment risk",
+      "mechanism": "NSAID inhibits prostaglandin-mediated vasodilation",
+      "management": "Monitor BP and renal function. Use paracetamol if possible.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Digoxin",
+      "drug_b": "Furosemide",
+      "severity": "high",
+      "effect": "Increased risk of digoxin toxicity",
+      "mechanism": "Furosemide-induced hypokalemia potentiates digoxin toxicity",
+      "management": "Monitor potassium levels and digoxin levels. Maintain normal potassium.",
+      "evidence": "Well-established"
+    },
+    {
+      "drug_a": "Digoxin",
+      "drug_b": "Amiodarone",
+      "severity": "high",
+      "effect": "Significant increase in digoxin levels (up to 100%)",
+      "mechanism": "Reduced digoxin clearance and volume of distribution",
+      "management": "Reduce digoxin dose by 50% when starting amiodarone. Monitor digoxin levels.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Phenytoin",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Reduced phenytoin and carbamazepine levels",
+      "mechanism": "Mutual CYP enzyme induction",
+      "management": "Monitor drug levels. May need dose adjustment of both.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Phenytoin",
+      "drug_b": "Isoniazid",
+      "severity": "high",
+      "effect": "Increased phenytoin levels (toxicity risk)",
+      "mechanism": "Isoniazid inhibits CYP2C9",
+      "management": "Monitor phenytoin levels. Reduce phenytoin dose by 30-50% if possible.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Valproate",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Reduced valproate levels + increased carbamazepine epoxide levels (toxicity)",
+      "mechanism": "Enzyme induction + metabolic competition",
+      "management": "Monitor drug levels and clinical response. Consider alternative combination.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Tenofovir",
+      "drug_b": "Gentamicin",
+      "severity": "high",
+      "effect": "Increased risk of nephrotoxicity",
+      "mechanism": "Both drugs accumulate in proximal renal tubules",
+      "management": "Avoid combination if possible. Monitor renal function daily if combined.",
+      "evidence": "Clinical evidence"
+    },
+    {
+      "drug_a": "Tenofovir",
+      "drug_b": "Ibuprofen",
+      "severity": "moderate",
+      "effect": "Increased risk of renal impairment",
+      "mechanism": "Additive effect on renal tubules",
+      "management": "Limit NSAID use in patients on tenofovir. Monitor renal function.",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Amlodipine",
+      "drug_b": "Simvastatin",
+      "severity": "moderate",
+      "effect": "Increased simvastatin levels, myopathy risk",
+      "mechanism": "CYP3A4 inhibition by amlodipine",
+      "management": "Limit simvastatin to 20 mg daily. Use atorvastatin or rosuvastatin instead.",
+      "evidence": "FDA warning, clinical evidence"
+    },
+    {
+      "drug_a": "Atorvastatin",
+      "drug_b": "Rifampicin",
+      "severity": "moderate",
+      "effect": "Reduced atorvastatin efficacy (short-term), increased toxicity (long-term)",
+      "mechanism": "OATP1B1 induction + complex CYP3A4 interaction",
+      "management": "Monitor lipid levels. Consider timing doses apart from rifampicin.",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Fluconazole",
+      "drug_b": "Sulfamethoxazole-Trimethoprim",
+      "severity": "moderate",
+      "effect": "Increased risk of hematotoxicity",
+      "mechanism": "Additive folate antagonism",
+      "management": "Monitor FBC regularly. Consider folinic acid supplementation.",
+      "evidence": "Clinical reports"
+    },
+    {
+      "drug_a": "Tramadol",
+      "drug_b": "Amitriptyline",
+      "severity": "high",
+      "effect": "Increased risk of serotonin syndrome (agitation, hyperthermia, clonus)",
+      "mechanism": "Both drugs increase serotonin activity",
+      "management": "Avoid combination. If unavoidable, use lowest doses and monitor for serotonin syndrome signs.",
+      "evidence": "Case reports, FDA warning"
+    },
+    {
+      "drug_a": "Tramadol",
+      "drug_b": "Ondansetron",
+      "severity": "moderate",
+      "effect": "Reduced tramadol efficacy",
+      "mechanism": "Ondansetron is a 5-HT3 antagonist, opposes tramadol's serotonergic effect",
+      "management": "Consider alternative antiemetic (e.g., metoclopramide).",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Pethidine",
+      "drug_b": "Amitriptyline",
+      "severity": "high",
+      "effect": "High risk of serotonin syndrome",
+      "mechanism": "Pethidine inhibits serotonin reuptake + amitriptyline serotonergic activity",
+      "management": "Contraindicated. Use alternative analgesic (e.g., morphine).",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Clotrimazole (Oral)",
+      "drug_b": "Warfarin",
+      "severity": "moderate",
+      "effect": "Increased INR",
+      "mechanism": "CYP2C9 and CYP3A4 inhibition",
+      "management": "Monitor INR. Topical use minimal risk.",
+      "evidence": "Case reports"
+    },
+    {
+      "drug_a": "Azithromycin",
+      "drug_b": "Warfarin",
+      "severity": "moderate",
+      "effect": "Increased INR and bleeding risk",
+      "mechanism": "Unknown, possible gut flora disruption",
+      "management": "Monitor INR during and after antibiotic course.",
+      "evidence": "Case reports"
+    },
+    {
+      "drug_a": "Ceftriaxone",
+      "drug_b": "Calcium-containing IV fluids",
+      "severity": "high",
+      "effect": "Formation of ceftriaxone-calcium precipitates in lungs and kidneys",
+      "mechanism": "Chemical precipitation",
+      "management": "Do not administer ceftriaxone and calcium-containing IV fluids within 48 hours of each other in neonates.",
+      "evidence": "FDA warning, clinical reports"
+    },
+    {
+      "drug_a": "Ketamine",
+      "drug_b": "Haloperidol",
+      "severity": "moderate",
+      "effect": "Increased risk of emergence delirium, hypertension",
+      "mechanism": "Additive dopaminergic effects",
+      "management": "Administer ketamine in calm environment. Consider benzodiazepine co-administration.",
+      "evidence": "Clinical reports"
+    },
+    {
+      "drug_a": "Propranolol",
+      "drug_b": "Salbutamol",
+      "severity": "moderate",
+      "effect": "Beta-blocker may antagonize bronchodilator effect of salbutamol",
+      "mechanism": "Beta-2 receptor blockade",
+      "management": "Use cardioselective beta-blockers (e.g., bisoprolol) in asthma patients. Monitor lung function.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Bisoprolol",
+      "drug_b": "Insulin",
+      "severity": "moderate",
+      "effect": "Masking of hypoglycemia symptoms (tachycardia, palpitations)",
+      "mechanism": "Beta-blockade blunts adrenergic response to hypoglycemia",
+      "management": "Educate patient to monitor for non-adrenergic hypoglycemia symptoms. Monitor glucose closely.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Nifedipine",
+      "drug_b": "Magnesium Sulfate",
+      "severity": "high",
+      "effect": "Severe hypotension, neuromuscular blockade",
+      "mechanism": "Synergistic calcium channel blockade",
+      "management": "Avoid concurrent use in pre-eclampsia. Monitor BP and reflexes if combined.",
+      "evidence": "Case reports"
+    },
+    {
+      "drug_a": "Hydrochlorothiazide",
+      "drug_b": "Lithium",
+      "severity": "high",
+      "effect": "Increased lithium levels, toxicity risk",
+      "mechanism": "Thiazide diuretics reduce lithium clearance",
+      "management": "Monitor lithium levels frequently. Reduce lithium dose by 25-50%. Maintain adequate hydration.",
+      "evidence": "Well-established"
+    },
+    {
+      "drug_a": "Sodium Valproate",
+      "drug_b": "Aspirin",
+      "severity": "moderate",
+      "effect": "Increased valproate levels",
+      "mechanism": "Aspirin displaces valproate from protein binding and inhibits metabolism",
+      "management": "Monitor valproate levels. Use paracetamol instead of aspirin if possible.",
+      "evidence": "Clinical studies"
+    },
+    {
+      "drug_a": "Sodium Valproate",
+      "drug_b": "Carbamazepine",
+      "severity": "moderate",
+      "effect": "Carbamazepine reduces valproate levels, valproate increases carbamazepine epoxide",
+      "mechanism": "Enzyme induction + metabolic inhibition",
+      "management": "Monitor both drug levels. Watch for carbamazepine toxicity despite normal levels.",
+      "evidence": "Well-documented"
+    },
+    {
+      "drug_a": "Chlorpheniramine",
+      "drug_b": "Amitriptyline",
+      "severity": "moderate",
+      "effect": "Excessive anticholinergic effects (dry mouth, constipation, confusion)",
+      "mechanism": "Additive anticholinergic activity",
+      "management": "Avoid combination in elderly. Monitor for anticholinergic toxicity.",
+      "evidence": "Clinical consensus"
+    },
+    {
+      "drug_a": "Halothane",
+      "drug_b": "Adrenaline (Epinephrine)",
+      "severity": "high",
+      "effect": "Risk of ventricular arrhythmia",
+      "mechanism": "Halothane sensitizes myocardium to catecholamines",
+      "management": "Limit adrenaline dose. Use alternative volatile anesthetic or alternative vasopressor.",
+      "evidence": "Strong clinical evidence"
+    },
+    {
+      "drug_a": "Tetracosactide (ACTH)",
+      "drug_b": "Prednisolone",
+      "severity": "moderate",
+      "effect": "Additive immunosuppression, increased infection risk",
+      "mechanism": "Both suppress adrenal function",
+      "management": "Monitor for signs of infection. Use lowest effective doses.",
+      "evidence": "Clinical consensus"
+    }
+  ]
+}
