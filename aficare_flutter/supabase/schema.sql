@@ -240,6 +240,211 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON medical_expenses TO authenticated;
 -- GRANTS
 -- ============================================
 
+-- ============================================
+-- PRESCRIPTIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS prescriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES users(id),
+    consultation_id UUID REFERENCES consultations(id) ON DELETE SET NULL,
+    medication_name TEXT NOT NULL,
+    dosage TEXT NOT NULL,
+    frequency TEXT NOT NULL,
+    duration TEXT NOT NULL,
+    instructions TEXT,
+    issued_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rx_patient ON prescriptions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_rx_provider ON prescriptions(provider_id);
+CREATE INDEX IF NOT EXISTS idx_rx_status ON prescriptions(status);
+
+ALTER TABLE prescriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own prescriptions"
+    ON prescriptions FOR SELECT
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Providers can view prescriptions they created"
+    ON prescriptions FOR SELECT
+    USING (provider_id = auth.uid());
+
+CREATE POLICY "Providers can create prescriptions"
+    ON prescriptions FOR INSERT
+    WITH CHECK (provider_id = auth.uid());
+
+CREATE POLICY "Providers can update own prescriptions"
+    ON prescriptions FOR UPDATE
+    USING (provider_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE ON prescriptions TO authenticated;
+
+-- ============================================
+-- FACILITIES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS facilities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    type TEXT DEFAULT 'clinic',
+    county TEXT,
+    sub_county TEXT,
+    address TEXT,
+    phone TEXT,
+    email TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE facilities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view facilities"
+    ON facilities FOR SELECT
+    USING (TRUE);
+
+CREATE POLICY "Authenticated users can register facilities"
+    ON facilities FOR INSERT
+    WITH CHECK (auth.role() = 'authenticated');
+
+GRANT SELECT, INSERT ON facilities TO authenticated;
+
+-- ============================================
+-- APPOINTMENTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS appointments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES users(id),
+    facility_id UUID REFERENCES facilities(id) ON DELETE SET NULL,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    duration_minutes INT DEFAULT 30,
+    type TEXT NOT NULL DEFAULT 'in-person' CHECK (type IN ('in-person', 'telehealth')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+    chief_complaint TEXT,
+    notes TEXT,
+    is_follow_up BOOLEAN DEFAULT FALSE,
+    consultation_id UUID REFERENCES consultations(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_appt_patient ON appointments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_appt_provider ON appointments(provider_id);
+CREATE INDEX IF NOT EXISTS idx_appt_scheduled ON appointments(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_appt_status ON appointments(status);
+
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can view own appointments"
+    ON appointments FOR SELECT
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Patients can book appointments"
+    ON appointments FOR INSERT
+    WITH CHECK (patient_id = auth.uid());
+
+CREATE POLICY "Providers can view their appointments"
+    ON appointments FOR SELECT
+    USING (provider_id = auth.uid());
+
+CREATE POLICY "Providers can update appointment status"
+    ON appointments FOR UPDATE
+    USING (provider_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE ON appointments TO authenticated;
+
+-- ============================================
+-- DEPENDENT PROFILES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS dependent_profiles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    guardian_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    date_of_birth DATE,
+    gender TEXT CHECK (gender IN ('male', 'female', 'other')),
+    relationship TEXT NOT NULL,
+    blood_type TEXT,
+    medilink_id TEXT UNIQUE,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dep_guardian ON dependent_profiles(guardian_id);
+
+ALTER TABLE dependent_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can manage own dependents"
+    ON dependent_profiles FOR ALL
+    USING (guardian_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON dependent_profiles TO authenticated;
+
+-- ============================================
+-- CARE TEAM TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS care_team (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES users(id),
+    specialty_label TEXT,
+    notes TEXT,
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(patient_id, provider_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ct_patient ON care_team(patient_id);
+CREATE INDEX IF NOT EXISTS idx_ct_provider ON care_team(provider_id);
+
+ALTER TABLE care_team ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can manage care team"
+    ON care_team FOR ALL
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Providers can view care team assignments"
+    ON care_team FOR SELECT
+    USING (provider_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON care_team TO authenticated;
+
+-- ============================================
+-- DISABILITY PROFILES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS disability_profiles (
+    patient_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    disability_types TEXT[] NOT NULL DEFAULT '{}',
+    severity TEXT NOT NULL DEFAULT 'mild' CHECK (severity IN ('mild', 'moderate', 'severe')),
+    is_congenital BOOLEAN DEFAULT FALSE,
+    onset_date DATE,
+    assistive_devices TEXT[] DEFAULT '{}',
+    clinical_diagnosis TEXT,
+    provider_notes TEXT,
+    requires_caregiver_for_consent BOOLEAN DEFAULT FALSE,
+    specialist_referrals TEXT[] DEFAULT '{}',
+    caregiver JSONB DEFAULT '{}'::jsonb,
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    updated_by TEXT DEFAULT 'patient'
+);
+
+ALTER TABLE disability_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Patients can manage own disability profile"
+    ON disability_profiles FOR ALL
+    USING (patient_id = auth.uid());
+
+CREATE POLICY "Providers can view disability profiles"
+    ON disability_profiles FOR SELECT
+    USING (EXISTS (
+        SELECT 1 FROM care_team WHERE provider_id = auth.uid() AND patient_id = disability_profiles.patient_id
+    ));
+
+GRANT SELECT, INSERT, UPDATE ON disability_profiles TO authenticated;
+
+-- ============================================
+-- GRANTS
+-- ============================================
 GRANT SELECT, INSERT, UPDATE ON users TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON patients TO authenticated;
 GRANT SELECT, INSERT ON consultations TO authenticated;
