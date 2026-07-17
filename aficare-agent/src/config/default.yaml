@@ -1,0 +1,23 @@
+api:
+  host: 0.0.0.0
+  port: 8000
+app:
+  debug: false
+  log_level: INFO
+  name: AfiCare Medical Agent
+  version: 0.1.0
+database:
+  echo: false
+  url: sqlite:///./aficare.db
+llm:
+  context_length: 4096
+  max_tokens: 512
+  model_path: ./data/models/llama-3.2-3b-instruct.Q4_K_M.gguf
+  n_gpu_layers: 0
+  temperature: 0.3
+security:
+  algorithm: HS256
+  secret_key: change-this-in-production
+ui:
+  host: localhost
+  port: 8501
