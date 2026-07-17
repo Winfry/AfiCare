@@ -642,6 +642,570 @@ async def get_statistics():
         logger.error(f"Failed to get statistics: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
 
+# ============================================================
+# NEW API ENDPOINTS — Patient Search, Detail, Triage, Lab,
+#                     Radiology, Referrals, Messages, Adherence
+# ============================================================
+
+class SearchRequest(BaseModel):
+    q: str
+    limit: int = 20
+
+class TriageCheckinRequest(BaseModel):
+    medilink_id: str
+    triage_level: str
+    priority_score: int = 0
+    estimated_wait_time: int = 0
+    danger_signs: List[str] = []
+    chief_complaint: str = ""
+    provider_username: str = ""
+
+class LabOrderRequest(BaseModel):
+    patient_medilink_id: str
+    provider_username: str
+    consultation_id: str = ""
+    test_name: str
+    test_category: str = "other"
+    priority: str = "routine"
+    notes: str = ""
+
+class LabResultRequest(BaseModel):
+    lab_order_id: str
+    result_value: str = ""
+    result_unit: str = ""
+    reference_range_low: str = ""
+    reference_range_high: str = ""
+    result_flag: str = "normal"
+    performed_by: str = ""
+    notes: str = ""
+
+class RadiologyOrderRequest(BaseModel):
+    patient_medilink_id: str
+    provider_username: str
+    consultation_id: str = ""
+    study_type: str
+    body_part: str
+    clinical_indication: str = ""
+    priority: str = "routine"
+
+class RadiologyReportRequest(BaseModel):
+    radiology_order_id: str
+    radiologist_name: str = ""
+    findings: str
+    impression: str = ""
+    recommendations: str = ""
+
+class ReferralRequest(BaseModel):
+    patient_medilink_id: str
+    from_username: str
+    to_facility: str = ""
+    to_provider_username: str = ""
+    to_specialty: str = ""
+    reason: str
+    urgency: str = "routine"
+    referral_notes: str = ""
+
+class MessageRequest(BaseModel):
+    sender_username: str
+    receiver_username: str
+    patient_medilink_id: str = ""
+    content: str
+    message_type: str = "text"
+    reference_id: str = ""
+
+class AdherenceRequest(BaseModel):
+    prescription_id: str
+    patient_medilink_id: str
+    scheduled_time: str
+    taken_time: str = ""
+    skipped_reason: str = ""
+    status: str = "pending"
+
+
+def _get_db_cursor():
+    import sqlite3
+    if not db or not db.db_path:
+        return None, None
+    conn = sqlite3.connect(db.db_path)
+    conn.row_factory = sqlite3.Row
+    return conn, conn.cursor()
+
+
+def _generate_uuid():
+    return str(secrets.token_hex(16))
+
+
+def _rows_to_dicts(cursor):
+    cols = [d[0] for d in cursor.description]
+    return [dict(zip(cols, r)) for r in cursor.fetchall()]
+
+
+@app.get("/api/patients/search")
+async def search_patients(q: str = "", limit: int = 20):
+    """Search patients by name, MediLink ID, or phone"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        pattern = f"%{q}%"
+        cur.execute('''
+            SELECT username, full_name, medilink_id, phone, email, role, age, gender
+            FROM users
+            WHERE (full_name LIKE ? OR medilink_id LIKE ? OR phone LIKE ? OR username LIKE ?)
+            AND role = 'patient'
+            LIMIT ?
+        ''', (pattern, pattern, pattern, pattern, limit))
+        results = _rows_to_dicts(cur)
+        conn.close()
+        return {"patients": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        raise HTTPException(500, f"Search failed: {e}")
+
+
+@app.get("/api/patients/{patient_id}/detail")
+async def get_patient_detail(patient_id: str):
+    """Get full patient detail: profile + recent consultations"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+
+        # Get user info
+        cur.execute("SELECT * FROM users WHERE username = ? OR medilink_id = ?", (patient_id, patient_id))
+        user = _rows_to_dicts(cur)
+        if not user:
+            conn.close()
+            raise HTTPException(404, "Patient not found")
+        user = user[0]
+
+        result = {"user": user}
+
+        try:
+            cur.execute("SELECT * FROM patients WHERE id = ?", (user['username'],))
+            patient_ext = _rows_to_dicts(cur)
+            if patient_ext:
+                result["profile"] = patient_ext[0]
+        except Exception as e:
+            logger.warning(f"Could not fetch patient profile: {e}")
+
+        try:
+            cur.execute("SELECT * FROM patient_profiles_enhanced WHERE medilink_id = ?", (user.get('medilink_id', ''),))
+            enhanced = _rows_to_dicts(cur)
+            if enhanced:
+                result["enhanced"] = enhanced[0]
+        except Exception as e:
+            logger.warning(f"Could not fetch enhanced profile: {e}")
+
+        try:
+            cur.execute('''
+                SELECT * FROM consultations
+                WHERE patient_id = ? ORDER BY timestamp DESC LIMIT 10
+            ''', (user['username'],))
+            consultations = _rows_to_dicts(cur)
+            if consultations:
+                result["consultations"] = consultations
+        except Exception as e:
+            logger.warning(f"Could not fetch consultations: {e}")
+
+        try:
+            cur.execute('''
+                SELECT lo.*, lr.result_value, lr.result_unit, lr.result_flag, lr.reference_range_low, lr.reference_range_high
+                FROM lab_orders lo
+                LEFT JOIN lab_results lr ON lr.lab_order_id = lo.id
+                WHERE lo.patient_medilink_id = ?
+                ORDER BY lo.ordered_at DESC LIMIT 10
+            ''', (user.get('medilink_id', ''),))
+            labs = _rows_to_dicts(cur)
+            if labs:
+                result["labs"] = labs
+        except Exception as e:
+            logger.warning(f"Could not fetch lab orders: {e}")
+
+        try:
+            cur.execute('''
+                SELECT * FROM prescriptions
+                WHERE patient_id = ? AND status = 'active'
+                ORDER BY issued_at DESC
+            ''', (user['username'],))
+            prescriptions = _rows_to_dicts(cur)
+            if prescriptions:
+                result["prescriptions"] = prescriptions
+        except Exception as e:
+            logger.warning(f"Could not fetch prescriptions: {e}")
+
+        conn.close()
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Patient detail failed: {e}")
+        raise HTTPException(500, f"Failed to get patient detail: {e}")
+
+
+@app.get("/api/triage/queue")
+async def get_triage_queue(status: str = "waiting"):
+    """Get triage queue sorted by priority"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        cur.execute('''
+            SELECT t.*, u.full_name, u.medilink_id, u.age, u.gender
+            FROM triage_queue t
+            JOIN users u ON u.medilink_id = t.patient_medilink_id
+            WHERE t.status = ?
+            ORDER BY t.priority_score DESC, t.check_in_time ASC
+        ''', (status,))
+        results = _rows_to_dicts(cur)
+        conn.close()
+        return {"queue": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Triage queue failed: {e}")
+        raise HTTPException(500, f"Failed to get triage queue: {e}")
+
+
+@app.post("/api/triage/checkin")
+async def triage_checkin(req: TriageCheckinRequest):
+    """Add patient to triage queue"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO triage_queue (id, patient_medilink_id, provider_username,
+                triage_level, priority_score, estimated_wait_time, danger_signs,
+                chief_complaint, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting')
+        ''', (uid, req.medilink_id, req.provider_username,
+              req.triage_level, req.priority_score, req.estimated_wait_time,
+              json.dumps(req.danger_signs), req.chief_complaint))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "status": "waiting", "success": True}
+    except Exception as e:
+        logger.error(f"Triage checkin failed: {e}")
+        raise HTTPException(500, f"Checkin failed: {e}")
+
+
+@app.post("/api/lab/orders")
+async def create_lab_order(req: LabOrderRequest):
+    """Create a lab order"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO lab_orders (id, patient_medilink_id, provider_username,
+                consultation_id, test_name, test_category, priority, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'ordered', ?)
+        ''', (uid, req.patient_medilink_id, req.provider_username,
+              req.consultation_id, req.test_name, req.test_category, req.priority, req.notes))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "status": "ordered", "success": True}
+    except Exception as e:
+        logger.error(f"Lab order failed: {e}")
+        raise HTTPException(500, f"Lab order failed: {e}")
+
+
+@app.get("/api/lab/orders/{patient_medilink_id}")
+async def get_lab_orders(patient_medilink_id: str):
+    """Get lab orders for a patient"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        cur.execute('''
+            SELECT lo.*, lr.result_value, lr.result_unit, lr.result_flag,
+                   lr.reference_range_low, lr.reference_range_high, lr.resulted_at
+            FROM lab_orders lo
+            LEFT JOIN lab_results lr ON lr.lab_order_id = lo.id
+            WHERE lo.patient_medilink_id = ?
+            ORDER BY lo.ordered_at DESC
+        ''', (patient_medilink_id,))
+        results = _rows_to_dicts(cur)
+        conn.close()
+        return {"orders": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Get lab orders failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.post("/api/lab/results")
+async def add_lab_result(req: LabResultRequest):
+    """Add lab result to an order"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO lab_results (id, lab_order_id, result_value, result_unit,
+                reference_range_low, reference_range_high, result_flag, performed_by, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (uid, req.lab_order_id, req.result_value, req.result_unit,
+              req.reference_range_low, req.reference_range_high,
+              req.result_flag, req.performed_by, req.notes))
+        # Update order status to completed
+        cur.execute("UPDATE lab_orders SET status = 'completed' WHERE id = ?", (req.lab_order_id,))
+        conn.commit()
+        conn.close()
+
+        # Alert if critical
+        alert = None
+        if req.result_flag == "critical":
+            alert = {"lab_order_id": req.lab_order_id, "result_flag": "critical", "message": "Critical lab result"}
+
+        return {"id": uid, "result_flag": req.result_flag, "success": True, "alert": alert}
+    except Exception as e:
+        logger.error(f"Lab result failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.post("/api/radiology/orders")
+async def create_radiology_order(req: RadiologyOrderRequest):
+    """Create a radiology order"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO radiology_orders (id, patient_medilink_id, provider_username,
+                consultation_id, study_type, body_part, clinical_indication, priority, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ordered')
+        ''', (uid, req.patient_medilink_id, req.provider_username,
+              req.consultation_id, req.study_type, req.body_part,
+              req.clinical_indication, req.priority))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "status": "ordered", "success": True}
+    except Exception as e:
+        logger.error(f"Radiology order failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.get("/api/radiology/orders/{patient_medilink_id}")
+async def get_radiology_orders(patient_medilink_id: str):
+    """Get radiology orders for a patient"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        cur.execute('''
+            SELECT ro.*, rr.findings, rr.impression, rr.recommendations, rr.radiologist_name, rr.reported_at
+            FROM radiology_orders ro
+            LEFT JOIN radiology_reports rr ON rr.radiology_order_id = ro.id
+            WHERE ro.patient_medilink_id = ?
+            ORDER BY ro.ordered_at DESC
+        ''', (patient_medilink_id,))
+        results = _rows_to_dicts(cur)
+        conn.close()
+        return {"orders": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Get radiology orders failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.post("/api/radiology/reports")
+async def add_radiology_report(req: RadiologyReportRequest):
+    """Add radiology report"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO radiology_reports (id, radiology_order_id, radiologist_name,
+                findings, impression, recommendations)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (uid, req.radiology_order_id, req.radiologist_name,
+              req.findings, req.impression, req.recommendations))
+        cur.execute("UPDATE radiology_orders SET status = 'reported' WHERE id = ?", (req.radiology_order_id,))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "success": True}
+    except Exception as e:
+        logger.error(f"Radiology report failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.post("/api/referrals")
+async def create_referral(req: ReferralRequest):
+    """Create a referral"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO referrals (id, patient_medilink_id, from_username,
+                to_facility, to_provider_username, to_specialty, reason, urgency,
+                referral_notes, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        ''', (uid, req.patient_medilink_id, req.from_username,
+              req.to_facility, req.to_provider_username, req.to_specialty,
+              req.reason, req.urgency, req.referral_notes))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "status": "pending", "success": True}
+    except Exception as e:
+        logger.error(f"Referral failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.get("/api/referrals/{patient_medilink_id}")
+async def get_referrals(patient_medilink_id: str):
+    """Get referrals for a patient"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        cur.execute('''
+            SELECT r.*, u.full_name as patient_name
+            FROM referrals r
+            JOIN users u ON u.medilink_id = r.patient_medilink_id
+            WHERE r.patient_medilink_id = ?
+            ORDER BY r.created_at DESC
+        ''', (patient_medilink_id,))
+        results = _rows_to_dicts(cur)
+        conn.close()
+        return {"referrals": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Get referrals failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.put("/api/referrals/{referral_id}/status")
+async def update_referral_status(referral_id: str, status: str = ""):
+    """Update referral status"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        now = datetime.now().isoformat()
+        if status in ("completed", "closed"):
+            cur.execute("UPDATE referrals SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?",
+                       (status, now, now, referral_id))
+        else:
+            cur.execute("UPDATE referrals SET status = ?, updated_at = ? WHERE id = ?",
+                       (status, now, referral_id))
+        conn.commit()
+        conn.close()
+        return {"success": True, "status": status}
+    except Exception as e:
+        logger.error(f"Update referral status failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.post("/api/messages")
+async def send_message(req: MessageRequest):
+    """Send a message"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO messages (id, sender_username, receiver_username,
+                patient_medilink_id, content, message_type, reference_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (uid, req.sender_username, req.receiver_username,
+              req.patient_medilink_id, req.content, req.message_type,
+              req.reference_id or None))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "success": True}
+    except Exception as e:
+        logger.error(f"Send message failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.get("/api/messages/{username}")
+async def get_messages(username: str, limit: int = 50):
+    """Get messages for a user (sent + received)"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        cur.execute('''
+            SELECT * FROM messages
+            WHERE sender_username = ? OR receiver_username = ?
+            ORDER BY created_at DESC LIMIT ?
+        ''', (username, username, limit))
+        results = _rows_to_dicts(cur)
+        conn.close()
+        return {"messages": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Get messages failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.post("/api/adherence")
+async def log_adherence(req: AdherenceRequest):
+    """Log medication adherence"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        uid = _generate_uuid()
+        cur.execute('''
+            INSERT INTO adherence_log (id, prescription_id, patient_medilink_id,
+                scheduled_time, taken_time, skipped_reason, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (uid, req.prescription_id, req.patient_medilink_id,
+              req.scheduled_time, req.taken_time or None,
+              req.skipped_reason or None, req.status))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "status": req.status, "success": True}
+    except Exception as e:
+        logger.error(f"Adherence log failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
+@app.get("/api/adherence/{patient_medilink_id}")
+async def get_adherence(patient_medilink_id: str):
+    """Get adherence log with stats"""
+    try:
+        conn, cur = _get_db_cursor()
+        if not cur:
+            raise HTTPException(503, "Database not initialized")
+        cur.execute('''
+            SELECT a.*, p.medication_name, p.dosage, p.frequency
+            FROM adherence_log a
+            JOIN prescriptions p ON p.id = a.prescription_id
+            WHERE a.patient_medilink_id = ?
+            ORDER BY a.scheduled_time DESC LIMIT 50
+        ''', (patient_medilink_id,))
+        log = _rows_to_dicts(cur)
+
+        # Calculate stats
+        cur.execute('''
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'taken' THEN 1 ELSE 0 END) as taken,
+                SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) as skipped
+            FROM adherence_log WHERE patient_medilink_id = ?
+        ''', (patient_medilink_id,))
+        stats_row = cur.fetchone()
+        stats = dict(zip([d[0] for d in cur.description], stats_row)) if stats_row else {}
+        conn.close()
+
+        adherence_rate = 0
+        if stats.get('total', 0) > 0:
+            adherence_rate = round(stats['taken'] / stats['total'] * 100, 1)
+
+        return {"log": log, "stats": stats, "adherence_rate": adherence_rate}
+    except Exception as e:
+        logger.error(f"Get adherence failed: {e}")
+        raise HTTPException(500, f"Failed: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     
