@@ -16,6 +16,9 @@ import 'providers/lab_provider.dart';
 import 'providers/adherence_provider.dart';
 import 'providers/patient_profile_provider.dart';
 import 'providers/preferences_provider.dart';
+import 'providers/triage_provider.dart';
+import 'providers/referral_provider.dart';
+import 'providers/provider_patient_provider.dart';
 import 'utils/theme.dart';
 import 'utils/router.dart';
 import 'config/supabase_config.dart';
@@ -71,6 +74,9 @@ class AfiCareApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdherenceProvider()),
         ChangeNotifierProvider(create: (_) => PatientProfileProvider()),
         ChangeNotifierProvider(create: (_) => PreferencesProvider()),
+        ChangeNotifierProvider(create: (_) => TriageProvider()),
+        ChangeNotifierProvider(create: (_) => ReferralProvider()),
+        ChangeNotifierProvider(create: (_) => ProviderPatientProvider()),
       ],
       child: MaterialApp.router(
         title: 'AfiCare MediLink',
