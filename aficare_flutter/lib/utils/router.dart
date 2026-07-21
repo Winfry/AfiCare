@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
+import '../screens/patient/patient_shell.dart';
 import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/health_summary.dart';
 import '../screens/patient/share_records.dart';
@@ -38,11 +39,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const FacilityRegistrationScreen(),
     ),
 
-    // Patient Routes
+    // Patient Routes — new bottom-nav shell
     GoRoute(
       path: '/patient',
-      builder: (context, state) => const PatientDashboard(),
+      builder: (context, state) => const PatientShell(),
       routes: [
+        // Legacy full dashboard (top-tab experience) still reachable.
+        GoRoute(
+          path: 'full',
+          builder: (context, state) => const PatientDashboard(),
+        ),
         GoRoute(
           path: 'health',
           builder: (context, state) => const HealthSummary(),
