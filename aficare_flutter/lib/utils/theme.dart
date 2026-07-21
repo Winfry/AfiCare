@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AfiCareTheme {
-  // Brand Colors - Warm Orange Theme
-  static const Color primaryGreen = Color(0xFFE85D04);  // Warm Orange (keeping variable name for compatibility)
-  static const Color primaryGreenLight = Color(0xFFFF8C42);  // Light Orange
-  static const Color primaryGreenDark = Color(0xFFD62828);  // Deep Red-Orange
-  static const Color secondaryGreen = Color(0xFFF77F00);  // Amber Orange
-  static const Color accentGreen = Color(0xFFFFAA5C);  // Soft Orange
+  // Brand Colors - Navy Blue Theme (matches Figma designs)
+  // NOTE: variable names kept as *Green for backward compatibility across the app.
+  static const Color primaryGreen = Color(0xFF1D3557);  // Navy Blue (primary brand)
+  static const Color primaryGreenLight = Color(0xFF457B9D);  // Steel Blue
+  static const Color primaryGreenDark = Color(0xFF152A45);  // Deep Navy
+  static const Color secondaryGreen = Color(0xFF457B9D);  // Steel Blue
+  static const Color accentGreen = Color(0xFF64B5F6);  // Light Blue accent
 
   // Role Colors
-  static const Color patientColor = Color(0xFFE85D04);  // Orange for patients
+  static const Color patientColor = Color(0xFF1D3557);  // Navy Blue for patients
   static const Color doctorColor = Color(0xFF1D3557);  // Navy Blue for doctors
   static const Color primaryBlue = Color(0xFF1D3557);  // Navy Blue
   static const Color nurseColor = Color(0xFF457B9D);  // Steel Blue for nurses
