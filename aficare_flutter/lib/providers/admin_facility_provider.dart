@@ -127,18 +127,22 @@ class AdminFacilityProvider with ChangeNotifier {
   }
 
   Future<Map<String, int>> getFacilityStats(String facilityId) async {
-    final providerCount = await _supabase
-        .from('users')
-        .select('id', const FetchOptions(count: ExactCount.exact))
-        .eq('facility_id', facilityId)
-        .neq('role', 'patient');
-    final deptCount = await _supabase
-        .from('departments')
-        .select('id', const FetchOptions(count: ExactCount.exact))
-        .eq('facility_id', facilityId);
-    return {
-      'providers': (providerCount.count ?? 0),
-      'departments': (deptCount.count ?? 0),
-    };
+    try {
+      final providers = await _supabase
+          .from('users')
+          .select('id')
+          .eq('facility_id', facilityId)
+          .neq('role', 'patient');
+      final depts = await _supabase
+          .from('departments')
+          .select('id')
+          .eq('facility_id', facilityId);
+      return {
+        'providers': (providers as List).length,
+        'departments': (depts as List).length,
+      };
+    } catch (e) {
+      return {'providers': 0, 'departments': 0};
+    }
   }
 }
