@@ -163,7 +163,6 @@ class _ReferralTrackerScreenState extends State<ReferralTrackerScreen> {
     final reason = r['reason'] as String? ?? '';
     final toFacility = r['to_facility'] as String? ?? '';
     final toDepartment = r['to_department'] as String? ?? '';
-    final toSpecialist = r['to_specialist'] as String? ?? '';
     final createdAt = DateTime.parse(r['created_at'] as String);
     final respondedAt = r['responded_at'] != null
         ? DateTime.parse(r['responded_at'] as String)
@@ -281,6 +280,7 @@ class _ReferralTrackerScreenState extends State<ReferralTrackerScreen> {
     final toDepartment = r['to_department'] as String? ?? '';
     final clinicalNotes = r['clinical_notes'] as String? ?? '';
     final responseNotes = r['response_notes'] as String? ?? '';
+    final toSpecialist = r['to_specialist'] as String? ?? '';
 
     final steps = ['Sent', 'Accepted', 'Completed'];
     final currentStepIndex = status == 'pending'
