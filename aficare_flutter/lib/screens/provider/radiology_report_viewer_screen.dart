@@ -264,9 +264,8 @@ class _RadiologyReportViewerScreenState
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AfiCareTheme.primaryBlue.withOpacity(0.06),
-              border: Border(
-                left: BorderSide(
-                    color: AfiCareTheme.primaryBlue, width: 3),
+              border: const Border(
+                left: BorderSide(color: AfiCareTheme.primaryBlue, width: 3),
               ),
               borderRadius: BorderRadius.circular(4),
             ),

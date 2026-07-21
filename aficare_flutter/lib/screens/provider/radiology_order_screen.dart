@@ -218,7 +218,7 @@ class _RadiologyOrderScreenState extends State<RadiologyOrderScreen> {
                 decoration: const InputDecoration(
                   hintText: 'e.g. Persistent cough 3 weeks, rule out pneumonia',
                   border: OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.note_add),
+                  prefixIcon: Icon(Icons.note_add),
                 ),
                 maxLines: 4,
                 validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
