@@ -103,6 +103,7 @@ class AuthProvider with ChangeNotifier {
         'created_at': DateTime.now().toIso8601String(),
       };
       if (facilityId != null) {
+        userRecord['hospital_id'] = facilityId;
         userRecord['facility_id'] = facilityId;
       }
 

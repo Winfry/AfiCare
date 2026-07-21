@@ -752,3 +752,111 @@ GRANT SELECT, INSERT, UPDATE ON patients TO authenticated;
 GRANT SELECT, INSERT ON consultations TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON access_codes TO authenticated;
 GRANT INSERT ON audit_log TO authenticated;
+
+-- ============================================
+-- MIGRATION: Schema Fixes (v2)
+-- ============================================
+
+-- 1. Add status column to users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'invited'));
+
+-- 2. Add facility_id column (next to hospital_id for backward compat; migrate to facility_id going forward)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS facility_id UUID REFERENCES facilities(id) ON DELETE SET NULL;
+
+-- 3. Add license_no and status to facilities
+ALTER TABLE facilities ADD COLUMN IF NOT EXISTS license_no TEXT;
+ALTER TABLE facilities ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('verified', 'pending', 'inactive'));
+
+-- 4. Departments table
+CREATE TABLE IF NOT EXISTS departments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    head_provider_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view departments"
+    ON departments FOR SELECT USING (TRUE);
+CREATE POLICY "Admins can manage departments"
+    ON departments FOR ALL USING (auth.role() IN ('admin'));
+GRANT SELECT, INSERT, UPDATE, DELETE ON departments TO authenticated;
+
+-- 5. System settings table
+CREATE TABLE IF NOT EXISTS system_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value JSONB NOT NULL DEFAULT '{}'::jsonb,
+    description TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES users(id),
+    UNIQUE(category, key)
+);
+ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage system settings"
+    ON system_settings FOR ALL USING (auth.role() IN ('admin'));
+CREATE POLICY "Anyone can view system settings"
+    ON system_settings FOR SELECT USING (TRUE);
+GRANT SELECT, INSERT, UPDATE, DELETE ON system_settings TO authenticated;
+
+-- 6. Audit log SELECT for admins
+CREATE POLICY "Admins can view audit logs"
+    ON audit_log FOR SELECT
+    USING (auth.role() IN ('admin'));
+
+-- 7. Facilities UPDATE/DELETE for admins
+CREATE POLICY "Anyone can view facilities"
+    ON facilities FOR SELECT USING (TRUE);
+DROP POLICY IF EXISTS "Authenticated users can register facilities" ON facilities;
+CREATE POLICY "Authenticated users can register facilities"
+    ON facilities FOR INSERT
+    WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can update facilities"
+    ON facilities FOR UPDATE
+    USING (auth.role() IN ('admin'));
+CREATE POLICY "Admins can delete facilities"
+    ON facilities FOR DELETE
+    USING (auth.role() IN ('admin'));
+
+-- 8. Referrals UPDATE for receiving providers
+CREATE POLICY "Receiving providers can update referrals"
+    ON referrals FOR UPDATE
+    USING (to_provider_id = auth.uid() OR auth.role() IN ('admin'));
+
+-- 9. Triage assessments table (matches Dart TriageAssessment model)
+CREATE TABLE IF NOT EXISTS triage_assessments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES users(id),
+    consultation_id UUID REFERENCES consultations(id) ON DELETE SET NULL,
+    assessed_at TIMESTAMPTZ DEFAULT NOW(),
+    chief_complaint TEXT NOT NULL,
+    symptoms TEXT[] NOT NULL DEFAULT '{}',
+    triage_level TEXT NOT NULL CHECK (triage_level IN ('emergency', 'urgent', 'less_urgent', 'non_urgent')),
+    temperature DECIMAL(5,2),
+    systolic_bp INT,
+    diastolic_bp INT,
+    heart_rate INT,
+    respiratory_rate INT,
+    oxygen_saturation DECIMAL(4,1),
+    weight DECIMAL(5,1),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ta_patient ON triage_assessments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_ta_provider ON triage_assessments(provider_id);
+ALTER TABLE triage_assessments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Patients can view own triage"
+    ON triage_assessments FOR SELECT
+    USING (patient_id = auth.uid());
+CREATE POLICY "Providers can manage triage"
+    ON triage_assessments FOR ALL
+    USING (provider_id = auth.uid());
+GRANT SELECT, INSERT, UPDATE ON triage_assessments TO authenticated;
+
+-- 10. Grant SELECT on audit_log for authenticated (needed for admin policy)
+GRANT SELECT ON audit_log TO authenticated;
+-- Fix facilities grants
+GRANT UPDATE, DELETE ON facilities TO authenticated;

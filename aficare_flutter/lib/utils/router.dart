@@ -22,6 +22,13 @@ import '../screens/provider/radiology_order_screen.dart';
 import '../screens/provider/radiology_report_viewer_screen.dart';
 import '../screens/provider/referral_tracker_screen.dart';
 import '../screens/admin/admin_dashboard.dart';
+import '../screens/admin/admin_user_management_screen.dart';
+import '../screens/admin/admin_facility_management_screen.dart';
+import '../screens/admin/system_settings_screen.dart';
+import '../screens/admin/audit_log_screen.dart';
+import '../screens/admin/reports_analytics_screen.dart';
+import '../screens/web/provider_web_dashboard_screen.dart';
+import '../screens/web/referral_receiving_portal_screen.dart';
 import '../screens/facility_registration_screen.dart';
 
 final appRouter = GoRouter(
@@ -162,6 +169,41 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminDashboard(),
+      routes: [
+        GoRoute(
+          path: 'users',
+          builder: (context, state) => const AdminUserManagementScreen(),
+        ),
+        GoRoute(
+          path: 'facilities',
+          builder: (context, state) => const AdminFacilityManagementScreen(),
+        ),
+        GoRoute(
+          path: 'settings',
+          builder: (context, state) => const SystemSettingsScreen(),
+        ),
+        GoRoute(
+          path: 'audit-log',
+          builder: (context, state) => const AuditLogScreen(),
+        ),
+        GoRoute(
+          path: 'reports',
+          builder: (context, state) => const ReportsAnalyticsScreen(),
+        ),
+      ],
+    ),
+
+    // Web Routes
+    GoRoute(
+      path: '/web/provider-dashboard',
+      builder: (context, state) => const ProviderWebDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/web/referral/:referralId',
+      builder: (context, state) {
+        final referralId = state.pathParameters['referralId']!;
+        return ReferralReceivingPortalScreen(referralId: referralId);
+      },
     ),
   ],
 );
