@@ -1,0 +1,797 @@
+{
+  "source": "Kenya Essential Medicines List (KEML) 2023, WHO Guidelines",
+  "last_updated": "2024-01-15",
+  "dosage_guidelines": [
+    {
+      "medication": "Artemether-Lumefantrine",
+      "indication": "uncomplicated_malaria",
+      "age_groups": [
+        {"group": "adults_and_children_over_35kg", "dosage": "4 tablets (80/480 mg) twice daily for 3 days", "max_daily": "8 tablets"},
+        {"group": "children_25-34kg", "dosage": "3 tablets (60/360 mg) twice daily for 3 days", "max_daily": "6 tablets"},
+        {"group": "children_15-24kg", "dosage": "2 tablets (40/240 mg) twice daily for 3 days", "max_daily": "4 tablets"},
+        {"group": "children_5-14kg", "dosage": "1 tablet (20/120 mg) twice daily for 3 days", "max_daily": "2 tablets"}
+      ],
+      "special_populations": {
+        "pregnancy": "Safe in 2nd and 3rd trimester, use in 1st trimester only if benefit outweighs risk",
+        "renal_impairment": "No dose adjustment needed",
+        "hepatic_impairment": "Caution in severe hepatic impairment"
+      },
+      "duration": "3 days",
+      "route": "oral",
+      "notes": "Take with fatty food to enhance absorption. Do not use as monotherapy."
+    },
+    {
+      "medication": "Artesunate",
+      "indication": "severe_malaria",
+      "age_groups": [
+        {"group": "adults_and_children", "dosage": "2.4 mg/kg IV/IM at 0, 12, 24, and 48 hours", "max_daily": null}
+      ],
+      "special_populations": {
+        "pregnancy": "Safe in all trimesters - drug of choice for severe malaria in pregnancy",
+        "renal_impairment": "No adjustment needed"
+      },
+      "duration": "Minimum 24 hours, then switch to oral ACT when tolerating orally",
+      "route": "intravenous_or_intramuscular",
+      "notes": "Used for severe malaria only. Complete treatment with oral ACT after parenteral artesunate."
+    },
+    {
+      "medication": "Amoxicillin",
+      "indication": "respiratory_tract_infection",
+      "age_groups": [
+        {"group": "adults", "dosage": "500 mg three times daily", "max_daily": "1.5 g"},
+        {"group": "children_2-12_years", "dosage": "125-250 mg three times daily", "max_daily": "750 mg"},
+        {"group": "children_under_2_years", "dosage": "20-40 mg/kg/day in 3 divided doses", "max_daily": null}
+      ],
+      "special_populations": {
+        "pregnancy": "Safe - category B",
+        "renal_impairment": "Extend interval if CrCl < 30 mL/min"
+      },
+      "duration": "5-7 days",
+      "route": "oral",
+      "notes": "Take with or without food. Complete full course even if symptoms improve."
+    },
+    {
+      "medication": "Amoxicillin",
+      "indication": "otitis_media",
+      "age_groups": [
+        {"group": "adults", "dosage": "500 mg three times daily", "max_daily": "1.5 g"},
+        {"group": "children", "dosage": "20-40 mg/kg/day in 3 divided doses", "max_daily": null}
+      ],
+      "duration": "5-7 days",
+      "route": "oral"
+    },
+    {
+      "medication": "Amoxicillin-Clavulanic Acid",
+      "indication": "community_acquired_pneumonia",
+      "age_groups": [
+        {"group": "adults", "dosage": "875/125 mg twice daily", "max_daily": "2 g/250 mg"},
+        {"group": "children", "dosage": "45/6.4 mg/kg/day in 2 divided doses", "max_daily": null}
+      ],
+      "duration": "5-7 days",
+      "route": "oral"
+    },
+    {
+      "medication": "Ceftriaxone",
+      "indication": "sepsis",
+      "age_groups": [
+        {"group": "adults", "dosage": "2 g IV once daily", "max_daily": "4 g"},
+        {"group": "children", "dosage": "50-80 mg/kg IV once daily", "max_daily": "2 g"},
+        {"group": "neonates", "dosage": "50 mg/kg IV once daily", "max_daily": null}
+      ],
+      "special_populations": {
+        "pregnancy": "Safe - category B",
+        "renal_impairment": "No adjustment needed"
+      },
+      "duration": "7-14 days depending on severity",
+      "route": "intravenous_or_intramuscular"
+    },
+    {
+      "medication": "Ceftriaxone",
+      "indication": "meningitis",
+      "age_groups": [
+        {"group": "adults", "dosage": "2 g IV twice daily", "max_daily": "4 g"},
+        {"group": "children", "dosage": "100 mg/kg/day IV in 1-2 doses", "max_daily": "4 g"}
+      ],
+      "duration": "10-14 days",
+      "route": "intravenous"
+    },
+    {
+      "medication": "Azithromycin",
+      "indication": "respiratory_tract_infection",
+      "age_groups": [
+        {"group": "adults", "dosage": "500 mg on day 1, then 250 mg once daily on days 2-5", "max_daily": "500 mg"},
+        {"group": "children", "dosage": "10 mg/kg on day 1, then 5 mg/kg once daily on days 2-5", "max_daily": null}
+      ],
+      "duration": "5 days",
+      "route": "oral",
+      "notes": "Take at least 1 hour before or 2 hours after meals."
+    },
+    {
+      "medication": "Azithromycin",
+      "indication": "sexually_transmitted_infection",
+      "age_groups": [
+        {"group": "adults", "dosage": "1 g single dose", "max_daily": "1 g"}
+      ],
+      "duration": "Single dose",
+      "route": "oral"
+    },
+    {
+      "medication": "Metronidazole",
+      "indication": "anaerobic_infection",
+      "age_groups": [
+        {"group": "adults", "dosage": "400 mg three times daily", "max_daily": "1.2 g"},
+        {"group": "children", "dosage": "7.5 mg/kg three times daily", "max_daily": null}
+      ],
+      "duration": "5-7 days",
+      "route": "oral",
+      "notes": "Avoid alcohol during treatment and for 48 hours after. Take with food."
+    },
+    {
+      "medication": "Metronidazole",
+      "indication": "bacterial_vaginosis",
+      "age_groups": [
+        {"group": "adults", "dosage": "400 mg twice daily for 7 days", "max_daily": "800 mg"},
+        {"group": "adults", "dosage": "2 g single dose alternative", "max_daily": "2 g"}
+      ],
+      "duration": "7 days or single dose",
+      "route": "oral"
+    },
+    {
+      "medication": "Ciprofloxacin",
+      "indication": "uti",
+      "age_groups": [
+        {"group": "adults", "dosage": "250-500 mg twice daily", "max_daily": "1 g"},
+        {"group": "children", "dosage": "Not recommended (avoid in <18 years)", "max_daily": null}
+      ],
+      "duration": "3-7 days",
+      "route": "oral",
+      "notes": "Take with plenty of water. Avoid antacids within 2 hours."
+    },
+    {
+      "medication": "Ciprofloxacin",
+      "indication": "typhoid_fever",
+      "age_groups": [
+        {"group": "adults", "dosage": "500 mg twice daily for 14 days", "max_daily": "1 g"}
+      ],
+      "duration": "14 days",
+      "route": "oral"
+    },
+    {
+      "medication": "Doxycycline",
+      "indication": "acne",
+      "age_groups": [
+        {"group": "adults", "dosage": "100 mg once daily", "max_daily": "100 mg"}
+      ],
+      "duration": "8-12 weeks",
+      "route": "oral",
+      "notes": "Avoid sun exposure. Take with full glass of water, avoid lying down for 30 min."
+    },
+    {
+      "medication": "Doxycycline",
+      "indication": "malaria_prophylaxis",
+      "age_groups": [
+        {"group": "adults", "dosage": "100 mg once daily starting 2 days before travel and continuing 4 weeks after", "max_daily": "100 mg"},
+        {"group": "children_over_8", "dosage": "2 mg/kg once daily", "max_daily": "100 mg"}
+      ],
+      "duration": "Entire travel period plus 4 weeks",
+      "route": "oral"
+    },
+    {
+      "medication": "Paracetamol",
+      "indication": "fever_and_pain",
+      "age_groups": [
+        {"group": "adults_and_children_over_12", "dosage": "500-1000 mg every 4-6 hours PRN", "max_daily": "4 g"},
+        {"group": "children_6-12_years", "dosage": "250-500 mg every 4-6 hours PRN", "max_daily": "60 mg/kg"},
+        {"group": "children_2-5_years", "dosage": "120-250 mg every 4-6 hours PRN", "max_daily": "60 mg/kg"},
+        {"group": "infants_3-23_months", "dosage": "10-15 mg/kg every 4-6 hours PRN", "max_daily": "60 mg/kg"},
+        {"group": "neonates", "dosage": "5-10 mg/kg every 6-8 hours PRN", "max_daily": "30 mg/kg"}
+      ],
+      "duration": "PRN not exceeding 5 days without medical review",
+      "route": "oral",
+      "notes": "Avoid in severe hepatic impairment. Use lowest effective dose."
+    },
+    {
+      "medication": "Ibuprofen",
+      "indication": "pain_and_inflammation",
+      "age_groups": [
+        {"group": "adults", "dosage": "200-400 mg every 6-8 hours PRN", "max_daily": "1.2 g (OTC), 2.4 g (prescription)"},
+        {"group": "children_6_months-12_years", "dosage": "5-10 mg/kg every 6-8 hours PRN", "max_daily": "30 mg/kg"}
+      ],
+      "duration": "PRN not exceeding 10 days without medical review",
+      "route": "oral",
+      "notes": "Take with food to reduce GI side effects. Avoid if history of peptic ulcer."
+    },
+    {
+      "medication": "Diclofenac",
+      "indication": "musculoskeletal_pain",
+      "age_groups": [
+        {"group": "adults", "dosage": "50 mg three times daily or 75 mg twice daily", "max_daily": "150 mg"}
+      ],
+      "duration": "Short term, review by 7 days",
+      "route": "oral_or_im",
+      "notes": "Higher cardiovascular risk vs other NSAIDs. Use lowest effective dose."
+    },
+    {
+      "medication": "Omeprazole",
+      "indication": "gerd_peptic_ulcer",
+      "age_groups": [
+        {"group": "adults", "dosage": "20-40 mg once daily", "max_daily": "40 mg"},
+        {"group": "children", "dosage": "1-2 mg/kg once daily", "max_daily": "40 mg"}
+      ],
+      "duration": "4-8 weeks for initial healing, maintenance at lowest effective dose",
+      "route": "oral",
+      "notes": "Take before breakfast. Reassess need for long-term use."
+    },
+    {
+      "medication": "Omeprazole",
+      "indication": "h_pylori_eradication",
+      "age_groups": [
+        {"group": "adults", "dosage": "20 mg twice daily as part of triple therapy", "max_daily": "40 mg"}
+      ],
+      "duration": "7-14 days",
+      "route": "oral"
+    },
+    {
+      "medication": "Metformin",
+      "indication": "type_2_diabetes",
+      "age_groups": [
+        {"group": "adults", "dosage": "500 mg once daily initially, increase by 500 mg weekly to max", "max_daily": "2 g"},
+        {"group": "adults_sr", "dosage": "500 mg once daily initially, increase to max 2 g once daily", "max_daily": "2 g"}
+      ],
+      "special_populations": {
+        "renal_impairment": "Reduce dose if eGFR < 45, avoid if eGFR < 30",
+        "hepatic_impairment": "Avoid in severe hepatic impairment"
+      },
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Take with meals to reduce GI side effects. Hold for 48h before contrast imaging."
+    },
+    {
+      "medication": "Glibenclamide",
+      "indication": "type_2_diabetes",
+      "age_groups": [
+        {"group": "adults", "dosage": "2.5-5 mg once daily initially, increase by 2.5 mg every 1-2 weeks", "max_daily": "15 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Take before breakfast. Risk of hypoglycemia especially in elderly and renal impairment."
+    },
+    {
+      "medication": "Insulin Human (Soluble)",
+      "indication": "hyperglycemia",
+      "age_groups": [
+        {"group": "adults", "dosage": "Individualized, typically 0.3-1.0 IU/kg/day in divided doses", "max_daily": "Individualized"},
+        {"group": "children", "dosage": "Individualized per endocrinologist guidance", "max_daily": "Individualized"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "subcutaneous_or_iv",
+      "notes": "Administer 30 min before meals. Must monitor blood glucose."
+    },
+    {
+      "medication": "Enalapril",
+      "indication": "hypertension",
+      "age_groups": [
+        {"group": "adults", "dosage": "5-10 mg once daily initially, increase as tolerated", "max_daily": "40 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Monitor renal function and potassium before and after initiation."
+    },
+    {
+      "medication": "Enalapril",
+      "indication": "heart_failure",
+      "age_groups": [
+        {"group": "adults", "dosage": "2.5 mg once daily initially, titrate upward", "max_daily": "20 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral"
+    },
+    {
+      "medication": "Losartan",
+      "indication": "hypertension",
+      "age_groups": [
+        {"group": "adults", "dosage": "25-50 mg once daily initially", "max_daily": "100 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "May be used as alternative if ACE inhibitor cough."
+    },
+    {
+      "medication": "Amlodipine",
+      "indication": "hypertension",
+      "age_groups": [
+        {"group": "adults", "dosage": "5 mg once daily initially, increase to 10 mg if needed", "max_daily": "10 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral"
+    },
+    {
+      "medication": "Hydrochlorothiazide",
+      "indication": "hypertension",
+      "age_groups": [
+        {"group": "adults", "dosage": "12.5-25 mg once daily", "max_daily": "50 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Monitor electrolytes. Risk of gout exacerbation."
+    },
+    {
+      "medication": "Furosemide",
+      "indication": "heart_failure_edema",
+      "age_groups": [
+        {"group": "adults", "dosage": "20-40 mg once or twice daily initially, titrate to response", "max_daily": "600 mg"},
+        {"group": "children", "dosage": "1-4 mg/kg/day in 1-3 divided doses", "max_daily": null}
+      ],
+      "duration": "As needed for fluid management",
+      "route": "oral_or_iv",
+      "notes": "Monitor electrolytes, renal function, and fluid balance."
+    },
+    {
+      "medication": "Atorvastatin",
+      "indication": "hyperlipidemia",
+      "age_groups": [
+        {"group": "adults", "dosage": "10-20 mg once daily initially, titrate to LDL targets", "max_daily": "80 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Take at same time each day. Monitor LFTs at baseline and as needed."
+    },
+    {
+      "medication": "Simvastatin",
+      "indication": "hyperlipidemia",
+      "age_groups": [
+        {"group": "adults", "dosage": "10-20 mg once daily in the evening", "max_daily": "40 mg (80 mg caution)"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Take in evening. Avoid grapefruit juice. Max 40 mg if on amlodipine."
+    },
+    {
+      "medication": "Aspirin",
+      "indication": "cardiovascular_prevention",
+      "age_groups": [
+        {"group": "adults", "dosage": "75-100 mg once daily", "max_daily": "100 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Use lowest effective dose for secondary prevention. Risk of GI bleeding."
+    },
+    {
+      "medication": "Warfarin",
+      "indication": "anticoagulation",
+      "age_groups": [
+        {"group": "adults", "dosage": "5 mg once daily initially, adjust based on INR", "max_daily": "Individualized"}
+      ],
+      "duration": "As per indication (3 months to lifelong)",
+      "route": "oral",
+      "notes": "Monitor INR regularly (target 2.0-3.0 typically). Many drug and food interactions."
+    },
+    {
+      "medication": "Salbutamol",
+      "indication": "asthma_acute",
+      "age_groups": [
+        {"group": "adults", "dosage": "100-200 mcg (1-2 puffs) via inhaler PRN", "max_daily": "8-12 puffs"},
+        {"group": "children", "dosage": "100 mcg (1 puff) via inhaler PRN with spacer", "max_daily": "8-10 puffs"},
+        {"group": "acute_severe_adults", "dosage": "5 mg via nebulizer every 20 min for 3 doses then as needed", "max_daily": null},
+        {"group": "acute_severe_children", "dosage": "2.5-5 mg via nebulizer every 20 min for 3 doses", "max_daily": null}
+      ],
+      "duration": "PRN for symptom relief",
+      "route": "inhalation",
+      "notes": "If requiring more than 3 times per week, assess need for preventer therapy."
+    },
+    {
+      "medication": "Beclometasone",
+      "indication": "asthma_prevention",
+      "age_groups": [
+        {"group": "adults", "dosage": "100-400 mcg twice daily", "max_daily": "800 mcg"},
+        {"group": "children", "dosage": "50-100 mcg twice daily", "max_daily": "400 mcg"}
+      ],
+      "duration": "Long-term maintenance therapy",
+      "route": "inhalation",
+      "notes": "Rinse mouth after use to prevent oral thrush. Not for acute attack."
+    },
+    {
+      "medication": "Prednisolone",
+      "indication": "severe_asthma_exacerbation",
+      "age_groups": [
+        {"group": "adults", "dosage": "40-50 mg once daily for 5-7 days", "max_daily": "50 mg"},
+        {"group": "children", "dosage": "1-2 mg/kg once daily for 3-5 days", "max_daily": "40 mg"}
+      ],
+      "duration": "5-7 days, no taper needed for short course",
+      "route": "oral"
+    },
+    {
+      "medication": "Sulfamethoxazole-Trimethoprim",
+      "indication": "uti",
+      "age_groups": [
+        {"group": "adults", "dosage": "800/160 mg twice daily", "max_daily": "1600/320 mg"},
+        {"group": "children", "dosage": "8/40 mg/kg/day in 2 divided doses", "max_daily": null}
+      ],
+      "duration": "3-7 days",
+      "route": "oral"
+    },
+    {
+      "medication": "Gentamicin",
+      "indication": "sepsis",
+      "age_groups": [
+        {"group": "adults", "dosage": "5-7 mg/kg IV once daily", "max_daily": null},
+        {"group": "children", "dosage": "6-7.5 mg/kg IV once daily", "max_daily": null},
+        {"group": "neonates", "dosage": "4-5 mg/kg IV every 24-48 hours", "max_daily": null}
+      ],
+      "duration": "Typically 5-7 days. Monitor peaks and troughs.",
+      "route": "intravenous_or_intramuscular",
+      "notes": "Monitor renal function and drug levels. Avoid prolonged courses."
+    },
+    {
+      "medication": "Mebendazole",
+      "indication": "soil_transmitted_helminths",
+      "age_groups": [
+        {"group": "adults_and_children_over_2", "dosage": "100 mg twice daily for 3 days OR 500 mg single dose", "max_daily": "500 mg"}
+      ],
+      "duration": "Single dose or 3 days",
+      "route": "oral",
+      "notes": "Chewable tablet. Can be crushed and mixed with food."
+    },
+    {
+      "medication": "Albendazole",
+      "indication": "soil_transmitted_helminths",
+      "age_groups": [
+        {"group": "adults_and_children_over_2", "dosage": "400 mg single dose", "max_daily": "400 mg"},
+        {"group": "children_12-23_months", "dosage": "200 mg single dose", "max_daily": "200 mg"}
+      ],
+      "duration": "Single dose, repeat in 6 months",
+      "route": "oral"
+    },
+    {
+      "medication": "Oral Rehydration Salts",
+      "indication": "mild_moderate_dehydration",
+      "age_groups": [
+        {"group": "adults", "dosage": "200-400 mL after each loose stool", "max_daily": "Unlimited"},
+        {"group": "children", "dosage": "50-100 mL/kg over 4 hours plus 10 mL/kg per loose stool", "max_daily": null}
+      ],
+      "duration": "Until diarrhea resolves",
+      "route": "oral",
+      "notes": "Prepare with clean water. Discard unused solution after 24 hours."
+    },
+    {
+      "medication": "Zinc Sulfate",
+      "indication": "diarrhea_adjunct",
+      "age_groups": [
+        {"group": "children_under_6_months", "dosage": "10 mg once daily for 14 days", "max_daily": "10 mg"},
+        {"group": "children_over_6_months", "dosage": "20 mg once daily for 14 days", "max_daily": "20 mg"}
+      ],
+      "duration": "14 days",
+      "route": "oral",
+      "notes": "Given as adjunct to ORS for diarrhea management."
+    },
+    {
+      "medication": "Vitamin A",
+      "indication": "vitamin_a_deficiency_prophylaxis",
+      "age_groups": [
+        {"group": "infants_6-11_months", "dosage": "100000 IU single dose", "max_daily": "100000 IU"},
+        {"group": "children_12-59_months", "dosage": "200000 IU every 6 months", "max_daily": "200000 IU"},
+        {"group": "postpartum_women", "dosage": "200000 IU single dose within 6 weeks of delivery", "max_daily": "200000 IU"}
+      ],
+      "duration": "Single dose every 6 months",
+      "route": "oral"
+    },
+    {
+      "medication": "Iron and Folic Acid",
+      "indication": "pregnancy_supplementation",
+      "age_groups": [
+        {"group": "pregnant_women", "dosage": "60 mg iron + 400 mcg folic acid once daily", "max_daily": null},
+        {"group": "lactating_women", "dosage": "60 mg iron + 400 mcg folic acid once daily for 3 months postpartum", "max_daily": null}
+      ],
+      "duration": "Throughout pregnancy and 3 months postpartum",
+      "route": "oral",
+      "notes": "Take on empty stomach for best absorption. May cause constipation."
+    },
+    {
+      "medication": "Fluconazole",
+      "indication": "vaginal_candidiasis",
+      "age_groups": [
+        {"group": "adults", "dosage": "150 mg single dose", "max_daily": "150 mg"}
+      ],
+      "duration": "Single dose",
+      "route": "oral"
+    },
+    {
+      "medication": "Fluconazole",
+      "indication": "cryptococcal_meningitis",
+      "age_groups": [
+        {"group": "adults", "dosage": "400-800 mg once daily for 8 weeks, then 200 mg daily maintenance", "max_daily": "800 mg"},
+        {"group": "children", "dosage": "6-12 mg/kg once daily", "max_daily": null}
+      ],
+      "duration": "Induction 8 weeks, maintenance until immune reconstitution",
+      "route": "oral_or_iv"
+    },
+    {
+      "medication": "Clotrimazole",
+      "indication": "tinea_infection",
+      "age_groups": [
+        {"group": "adults_and_children", "dosage": "Apply thin layer to affected area twice daily", "max_daily": null}
+      ],
+      "duration": "2-4 weeks",
+      "route": "topical"
+    },
+    {
+      "medication": "Acyclovir",
+      "indication": "herpes_zoster",
+      "age_groups": [
+        {"group": "adults", "dosage": "800 mg five times daily for 7 days", "max_daily": "4 g"}
+      ],
+      "duration": "7 days",
+      "route": "oral",
+      "notes": "Start within 72 hours of rash onset. Ensure adequate hydration."
+    },
+    {
+      "medication": "Acyclovir",
+      "indication": "genital_herpes_first_episode",
+      "age_groups": [
+        {"group": "adults", "dosage": "400 mg three times daily for 7-10 days", "max_daily": "1.2 g"}
+      ],
+      "duration": "7-10 days",
+      "route": "oral"
+    },
+    {
+      "medication": "Tenofovir Disoproxil Fumarate",
+      "indication": "hiv_treatment",
+      "age_groups": [
+        {"group": "adults_and_children_over_35kg", "dosage": "300 mg once daily (as part of combination ART)", "max_daily": "300 mg"},
+        {"group": "children_17-35kg", "dosage": "n/a use pediatric formulation", "max_daily": null}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Monitor renal function. Part of TLD first-line regimen."
+    },
+    {
+      "medication": "Dolutegravir",
+      "indication": "hiv_treatment",
+      "age_groups": [
+        {"group": "adults_and_children_over_40kg", "dosage": "50 mg once daily", "max_daily": "50 mg"},
+        {"group": "children_20-40kg", "dosage": "35 mg once daily (scored tablet)", "max_daily": "35 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral"
+    },
+    {
+      "medication": "Isoniazid",
+      "indication": "tb_treatment",
+      "age_groups": [
+        {"group": "adults", "dosage": "300 mg once daily", "max_daily": "300 mg"},
+        {"group": "children", "dosage": "10-15 mg/kg once daily", "max_daily": "300 mg"}
+      ],
+      "duration": "6 months (part of 6-month regimen)",
+      "route": "oral",
+      "notes": "Always give with pyridoxine (Vitamin B6) 25 mg daily to prevent peripheral neuropathy."
+    },
+    {
+      "medication": "Rifampicin",
+      "indication": "tb_treatment",
+      "age_groups": [
+        {"group": "adults", "dosage": "600 mg once daily (on empty stomach)", "max_daily": "600 mg"},
+        {"group": "children", "dosage": "15-20 mg/kg once daily", "max_daily": "600 mg"}
+      ],
+      "duration": "6 months (part of 6-month regimen)",
+      "route": "oral",
+      "notes": "Take on empty stomach 1 hour before meals. Causes orange-red discoloration of urine."
+    },
+    {
+      "medication": "Magnesium Sulfate",
+      "indication": "severe_pre_eclampsia_eclampsia",
+      "age_groups": [
+        {"group": "adults", "dosage": "4 g IV loading over 5-10 min, then 1 g/hour IV maintenance for 24 hours", "max_daily": null}
+      ],
+      "duration": "24 hours maintenance",
+      "route": "intravenous",
+      "notes": "Monitor deep tendon reflexes, respiratory rate, urine output hourly."
+    },
+    {
+      "medication": "Oxytocin",
+      "indication": "postpartum_hemorrhage_prevention",
+      "age_groups": [
+        {"group": "adults", "dosage": "10 IU IM/IV after delivery of anterior shoulder", "max_daily": "10 IU"}
+      ],
+      "duration": "Single dose",
+      "route": "intramuscular_or_iv"
+    },
+    {
+      "medication": "Methylergometrine",
+      "indication": "postpartum_hemorrhage",
+      "age_groups": [
+        {"group": "adults", "dosage": "0.2 mg IM/IV every 2-4 hours PRN", "max_daily": "0.6 mg"}
+      ],
+      "duration": "PRN up to 24 hours",
+      "route": "intramuscular_or_iv",
+      "notes": "Contraindicated in hypertensive patients."
+    },
+    {
+      "medication": "Benzathine Penicillin",
+      "indication": "rheumatic_fever_prophylaxis",
+      "age_groups": [
+        {"group": "adults", "dosage": "1.2 million IU IM every 3-4 weeks", "max_daily": "2.4 million IU"},
+        {"group": "children_under_30kg", "dosage": "600000 IU IM every 3-4 weeks", "max_daily": null}
+      ],
+      "duration": "Minimum 5 years or until age 21 (whichever longer)",
+      "route": "intramuscular_deep",
+      "notes": "Deep IM injection. Rotate injection sites."
+    },
+    {
+      "medication": "Benzathine Penicillin",
+      "indication": "syphilis",
+      "age_groups": [
+        {"group": "adults_early_syphilis", "dosage": "2.4 million IU IM single dose", "max_daily": "2.4 million IU"},
+        {"group": "adults_late_latent", "dosage": "2.4 million IU IM weekly for 3 doses", "max_daily": null}
+      ],
+      "duration": "Single dose to 3 weeks",
+      "route": "intramuscular"
+    },
+    {
+      "medication": "Carbamazepine",
+      "indication": "epilepsy",
+      "age_groups": [
+        {"group": "adults", "dosage": "200-400 mg twice daily", "max_daily": "1.2 g"},
+        {"group": "children", "dosage": "5-20 mg/kg/day in 2 divided doses", "max_daily": null}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Titrate slowly due to auto-induction. Monitor LFTs and FBC."
+    },
+    {
+      "medication": "Phenobarbital",
+      "indication": "epilepsy",
+      "age_groups": [
+        {"group": "adults", "dosage": "30-120 mg once daily at bedtime", "max_daily": "300 mg"},
+        {"group": "children", "dosage": "3-6 mg/kg once daily", "max_daily": "100 mg"}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Sedative effect. Avoid abrupt withdrawal."
+    },
+    {
+      "medication": "Diazepam",
+      "indication": "status_epilepticus",
+      "age_groups": [
+        {"group": "adults", "dosage": "10-20 mg IV/PR initially, repeat after 10 min if needed", "max_daily": "40 mg"},
+        {"group": "children", "dosage": "0.3-0.5 mg/kg IV/PR", "max_daily": null}
+      ],
+      "duration": "Acute emergency use",
+      "route": "intravenous_or_rectal"
+    },
+    {
+      "medication": "Haloperidol",
+      "indication": "acute_psychosis",
+      "age_groups": [
+        {"group": "adults", "dosage": "2-10 mg IM initially, then 5-10 mg orally daily", "max_daily": "20 mg"}
+      ],
+      "duration": "Short-term for acute episode",
+      "route": "oral_or_im",
+      "notes": "Monitor for extrapyramidal symptoms. Use lowest effective dose."
+    },
+    {
+      "medication": "Amitriptyline",
+      "indication": "depression",
+      "age_groups": [
+        {"group": "adults", "dosage": "25-50 mg at bedtime initially, titrate to 150 mg", "max_daily": "150 mg"},
+        {"group": "elderly", "dosage": "10-25 mg at bedtime initially", "max_daily": "100 mg"}
+      ],
+      "duration": "6-12 months minimum after remission",
+      "route": "oral",
+      "notes": "Take at bedtime due to sedation. Anticholinergic side effects common."
+    },
+    {
+      "medication": "Sodium Valproate",
+      "indication": "epilepsy",
+      "age_groups": [
+        {"group": "adults", "dosage": "500-1500 mg daily in 1-2 divided doses", "max_daily": "2.5 g"},
+        {"group": "children", "dosage": "20-30 mg/kg/day in 2 divided doses", "max_daily": null}
+      ],
+      "duration": "Long-term chronic therapy",
+      "route": "oral",
+      "notes": "Contraindicated in pregnancy due to teratogenicity. Monitor LFTs."
+    },
+    {
+      "medication": "Chlorpromazine",
+      "indication": "acute_psychosis",
+      "age_groups": [
+        {"group": "adults", "dosage": "25-100 mg three times daily", "max_daily": "800 mg"},
+        {"group": "elderly", "dosage": "12.5-50 mg three times daily", "max_daily": null}
+      ],
+      "duration": "Short-term for acute episode",
+      "route": "oral_or_im",
+      "notes": "Photosensitivity risk. Monitor for extrapyramidal symptoms."
+    },
+    {
+      "medication": "Hydrocortisone",
+      "indication": "severe_allergic_reaction",
+      "age_groups": [
+        {"group": "adults", "dosage": "200 mg IV stat", "max_daily": "200 mg"},
+        {"group": "children", "dosage": "5-10 mg/kg IV stat", "max_daily": null}
+      ],
+      "duration": "Single dose for acute reaction",
+      "route": "intravenous"
+    },
+    {
+      "medication": "Adrenaline (Epinephrine)",
+      "indication": "anaphylaxis",
+      "age_groups": [
+        {"group": "adults", "dosage": "0.3-0.5 mg IM (0.3-0.5 mL of 1:1000) every 5-15 min PRN", "max_daily": null},
+        {"group": "children", "dosage": "0.01 mg/kg IM (0.01 mL/kg of 1:1000) every 5-15 min PRN", "max_daily": "0.3 mg"}
+      ],
+      "duration": "Acute emergency use",
+      "route": "intramuscular_anterolateral_thigh",
+      "notes": "IM into mid-anterolateral thigh. Auto-injector preferred for community use."
+    },
+    {
+      "medication": "Dexamethasone",
+      "indication": "cerebral_edema",
+      "age_groups": [
+        {"group": "adults", "dosage": "10 mg IV loading, then 4 mg IV every 6 hours", "max_daily": "16 mg"}
+      ],
+      "duration": "Taper over 7-10 days",
+      "route": "intravenous_or_oral"
+    },
+    {
+      "medication": "Naloxone",
+      "indication": "opioid_overdose",
+      "age_groups": [
+        {"group": "adults", "dosage": "0.4-2 mg IV/IM/IN every 2-3 min PRN up to 10 mg", "max_daily": null},
+        {"group": "neonates", "dosage": "0.1 mg/kg IV/IM", "max_daily": null}
+      ],
+      "duration": "Acute emergency use",
+      "route": "intravenous_intramuscular_intranasal"
+    },
+    {
+      "medication": "Morphine",
+      "indication": "severe_pain",
+      "age_groups": [
+        {"group": "adults", "dosage": "5-10 mg IM/SC/IV every 4 hours PRN", "max_daily": "Individualized"},
+        {"group": "opioid_naive", "dosage": "2.5-5 mg every 4 hours initially", "max_daily": "Individualized"}
+      ],
+      "duration": "As needed for pain",
+      "route": "oral_im_sc_iv",
+      "notes": "Resuscitation equipment must be available. Monitor respiratory rate."
+    },
+    {
+      "medication": "Tranexamic Acid",
+      "indication": "postpartum_hemorrhage",
+      "age_groups": [
+        {"group": "adults", "dosage": "1 g IV over 10 min, repeat after 30 min if bleeding continues", "max_daily": "2 g"}
+      ],
+      "duration": "Acute use",
+      "route": "intravenous"
+    },
+    {
+      "medication": "Ondansetron",
+      "indication": "nausea_vomiting",
+      "age_groups": [
+        {"group": "adults", "dosage": "4-8 mg IV/oral every 8 hours PRN", "max_daily": "24 mg"},
+        {"group": "children", "dosage": "0.15 mg/kg IV every 8 hours PRN", "max_daily": null}
+      ],
+      "duration": "Short term PRN",
+      "route": "oral_or_iv"
+    },
+    {
+      "medication": "Tetanus Toxoid Vaccine",
+      "indication": "tetanus_prophylaxis",
+      "age_groups": [
+        {"group": "infants", "dosage": "0.5 mL IM at 6, 10, 14 weeks with DPT", "max_daily": null},
+        {"group": "adults", "dosage": "0.5 mL IM booster every 10 years", "max_daily": null},
+        {"group": "pregnancy", "dosage": "0.5 mL IM at first contact, second dose after 4 weeks", "max_daily": null}
+      ],
+      "duration": "As per immunization schedule",
+      "route": "intramuscular"
+    },
+    {
+      "medication": "Tramadol",
+      "indication": "moderate_to_severe_pain",
+      "age_groups": [
+        {"group": "adults", "dosage": "50-100 mg every 4-6 hours PRN", "max_daily": "400 mg"},
+        {"group": "elderly", "dosage": "50 mg every 6-8 hours", "max_daily": "300 mg"}
+      ],
+      "duration": "Short term (max 7 days)",
+      "route": "oral",
+      "notes": "Lower seizure threshold. Avoid in epilepsy."
+    }
+  ]
+}

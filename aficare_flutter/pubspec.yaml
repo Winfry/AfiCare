@@ -82,6 +82,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/logos/
+    - assets/knowledge_base/
 
   # Using google_fonts package instead of custom fonts
   # fonts:
