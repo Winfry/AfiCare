@@ -10,9 +10,14 @@ import '../screens/patient/share_records.dart';
 import '../screens/patient/qr_scanner.dart';
 import '../screens/patient/appointments_screen.dart';
 import '../screens/patient/expenses_screen.dart';
+import '../screens/provider/provider_shell.dart';
 import '../screens/provider/provider_dashboard.dart';
 import '../screens/provider/consultation_screen.dart';
 import '../screens/provider/patient_access.dart';
+import '../screens/provider/patient_search_screen.dart';
+import '../screens/provider/patient_detail_screen.dart';
+import '../screens/provider/reports_screen.dart';
+import '../screens/provider/resource_dashboard_screen.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/facility_registration_screen.dart';
 
@@ -44,7 +49,6 @@ final appRouter = GoRouter(
       path: '/patient',
       builder: (context, state) => const PatientShell(),
       routes: [
-        // Legacy full dashboard (top-tab experience) still reachable.
         GoRoute(
           path: 'full',
           builder: (context, state) => const PatientDashboard(),
@@ -72,7 +76,7 @@ final appRouter = GoRouter(
       ],
     ),
 
-    // Doctor and Nurse redirect to provider dashboard
+    // Doctor and Nurse redirect to provider shell
     GoRoute(
       path: '/doctor',
       redirect: (context, state) => '/provider',
@@ -82,11 +86,19 @@ final appRouter = GoRouter(
       redirect: (context, state) => '/provider',
     ),
 
-    // Healthcare Provider Routes
+    // Healthcare Provider Routes — new bottom-nav shell
     GoRoute(
       path: '/provider',
-      builder: (context, state) => const ProviderDashboard(),
+      builder: (context, state) => const ProviderShell(),
       routes: [
+        GoRoute(
+          path: 'full',
+          builder: (context, state) => const ProviderDashboard(),
+        ),
+        GoRoute(
+          path: 'search',
+          builder: (context, state) => const PatientSearchScreen(),
+        ),
         GoRoute(
           path: 'consultation',
           builder: (context, state) => const ConsultationScreen(),
@@ -94,6 +106,21 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'access',
           builder: (context, state) => const PatientAccess(),
+        ),
+        GoRoute(
+          path: 'patient-detail/:patientId',
+          builder: (context, state) {
+            final patientId = state.pathParameters['patientId']!;
+            return PatientDetailScreen(patientId: patientId);
+          },
+        ),
+        GoRoute(
+          path: 'reports',
+          builder: (context, state) => const ReportsScreen(),
+        ),
+        GoRoute(
+          path: 'resources',
+          builder: (context, state) => const ResourceDashboardScreen(),
         ),
       ],
     ),
