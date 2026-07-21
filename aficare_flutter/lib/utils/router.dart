@@ -18,6 +18,9 @@ import '../screens/provider/patient_search_screen.dart';
 import '../screens/provider/patient_detail_screen.dart';
 import '../screens/provider/reports_screen.dart';
 import '../screens/provider/resource_dashboard_screen.dart';
+import '../screens/provider/radiology_order_screen.dart';
+import '../screens/provider/radiology_report_viewer_screen.dart';
+import '../screens/provider/referral_tracker_screen.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/facility_registration_screen.dart';
 
@@ -121,6 +124,36 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'resources',
           builder: (context, state) => const ResourceDashboardScreen(),
+        ),
+        GoRoute(
+          path: 'radiology-order/:patientId',
+          builder: (context, state) {
+            final patientId = state.pathParameters['patientId']!;
+            final extra = state.extra as Map<String, String>? ?? {};
+            return RadiologyOrderScreen(
+              patientId: patientId,
+              patientName: extra['name'] ?? 'Patient',
+              medilinkId: extra['medilinkId'],
+              age: extra['age'],
+              gender: extra['gender'],
+              bloodType: extra['bloodType'],
+            );
+          },
+        ),
+        GoRoute(
+          path: 'radiology-reports/:patientId/:patientName',
+          builder: (context, state) {
+            final patientId = state.pathParameters['patientId']!;
+            final patientName = state.pathParameters['patientName']!;
+            return RadiologyReportViewerScreen(
+              patientId: patientId,
+              patientName: patientName,
+            );
+          },
+        ),
+        GoRoute(
+          path: 'referral-tracker',
+          builder: (context, state) => const ReferralTrackerScreen(),
         ),
       ],
     ),
