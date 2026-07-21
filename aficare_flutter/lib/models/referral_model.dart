@@ -1,7 +1,7 @@
 import 'dart:ui' show Color;
 
 enum ReferralUrgency { routine, urgent, emergency }
-enum ReferralStatus { pending, accepted, completed, declined }
+enum ReferralStatus { pending, accepted, completed, declined, closed }
 
 class ReferralModel {
   final String id;
@@ -96,6 +96,7 @@ class ReferralModel {
       case ReferralStatus.completed:
         return const Color(0xFF43A047);
       case ReferralStatus.declined:
+      case ReferralStatus.closed:
         return const Color(0xFFE53935);
     }
   }
@@ -129,7 +130,10 @@ class ReferralModel {
       case 'completed':
         return ReferralStatus.completed;
       case 'declined':
+      case 'rejected':
         return ReferralStatus.declined;
+      case 'closed':
+        return ReferralStatus.closed;
       default:
         return ReferralStatus.pending;
     }
@@ -142,7 +146,9 @@ class ReferralModel {
       case ReferralStatus.completed:
         return 'completed';
       case ReferralStatus.declined:
-        return 'declined';
+        return 'rejected';
+      case ReferralStatus.closed:
+        return 'closed';
       case ReferralStatus.pending:
         return 'pending';
     }

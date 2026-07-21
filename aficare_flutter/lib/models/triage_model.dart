@@ -47,7 +47,9 @@ class TriageAssessment {
       consultationId: json['consultation_id'] as String?,
       assessedAt: DateTime.parse(json['assessed_at'] as String),
       chiefComplaint: json['chief_complaint'] as String,
-      symptoms: List<String>.from(json['symptoms'] as List),
+      symptoms: json['symptoms'] != null
+          ? List<String>.from(json['symptoms'] as List)
+          : [],
       triageLevel: _triageFromString(json['triage_level'] as String),
       temperature: (json['temperature'] as num?)?.toDouble(),
       systolicBP: json['systolic_bp'] as int?,

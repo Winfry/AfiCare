@@ -7,6 +7,8 @@ class FacilityModel {
   final String? address;
   final String? phone;
   final String? email;
+  final String? licenseNo;
+  final String status;
   final DateTime createdAt;
 
   FacilityModel({
@@ -18,6 +20,8 @@ class FacilityModel {
     this.address,
     this.phone,
     this.email,
+    this.licenseNo,
+    this.status = 'pending',
     required this.createdAt,
   });
 
@@ -31,6 +35,8 @@ class FacilityModel {
       address: json['address'] as String?,
       phone: json['phone'] as String?,
       email: json['email'] as String?,
+      licenseNo: json['license_no'] as String?,
+      status: json['status'] as String? ?? 'pending',
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -45,6 +51,8 @@ class FacilityModel {
       'address': address,
       'phone': phone,
       'email': email,
+      'license_no': licenseNo,
+      'status': status,
       'created_at': createdAt.toIso8601String(),
     };
   }
