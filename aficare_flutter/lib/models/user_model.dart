@@ -1,4 +1,5 @@
 enum UserRole { patient, doctor, nurse, admin }
+enum UserStatus { active, suspended, invited }
 
 class UserModel {
   final String id;
@@ -7,9 +8,10 @@ class UserModel {
   final UserRole role;
   final String? phone;
   final String? medilinkId;
-  final String? hospitalId;
+  final String? facilityId;
   final String? department;
   final String? gender;
+  final UserStatus status;
   final DateTime createdAt;
   final Map<String, dynamic>? metadata;
 
@@ -20,9 +22,10 @@ class UserModel {
     required this.role,
     this.phone,
     this.medilinkId,
-    this.hospitalId,
+    this.facilityId,
     this.department,
     this.gender,
+    this.status = UserStatus.active,
     required this.createdAt,
     this.metadata,
   });
@@ -38,9 +41,10 @@ class UserModel {
       ),
       phone: json['phone'] as String?,
       medilinkId: json['medilink_id'] as String?,
-      hospitalId: json['hospital_id'] as String?,
+      facilityId: json['facility_id'] as String? ?? json['hospital_id'] as String?,
       department: json['department'] as String?,
       gender: json['gender'] as String?,
+      status: _statusFromString(json['status'] as String? ?? 'active'),
       createdAt: DateTime.parse(json['created_at'] as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
@@ -54,15 +58,23 @@ class UserModel {
       'role': role.name,
       'phone': phone,
       'medilink_id': medilinkId,
-      'hospital_id': hospitalId,
+      'facility_id': facilityId,
       'department': department,
       'gender': gender,
+      'status': _statusToString(status),
       'created_at': createdAt.toIso8601String(),
       'metadata': metadata,
     };
   }
 
-  // Generate MediLink ID
+  static String _statusToString(UserStatus s) => s.name;
+  static UserStatus _statusFromString(String s) {
+    return UserStatus.values.firstWhere(
+      (e) => e.name == s,
+      orElse: () => UserStatus.active,
+    );
+  }
+
   static String generateMedilinkId() {
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     final uniquePart = timestamp.substring(timestamp.length - 6);
