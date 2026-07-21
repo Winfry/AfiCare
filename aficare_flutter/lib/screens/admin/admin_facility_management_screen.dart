@@ -166,7 +166,7 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                 ),
               ),
               Expanded(
-                flex: 1.5,
+                flex: 1,
                 child: Text(facility.licenseNo ?? '-', style: const TextStyle(fontSize: 13)),
               ),
               Expanded(

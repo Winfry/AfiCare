@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/referral_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../models/referral_model.dart';
 import '../../utils/theme.dart';
 
@@ -43,7 +42,7 @@ class _ReferralReceivingPortalScreenState extends State<ReferralReceivingPortalS
       final response = await supabase
           .from('referrals')
           .select('*, users!referrals_patient_id_fkey(full_name, medilink_id)')
-          .eq('id', widget.referralId)
+          .eq('id', widget.referralId!)
           .single();
       setState(() {
         _referral = Map<String, dynamic>.from(response);
