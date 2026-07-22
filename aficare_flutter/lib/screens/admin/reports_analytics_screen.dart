@@ -1,5 +1,5 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/analytics_provider.dart';
 import '../../utils/theme.dart';
@@ -232,7 +232,6 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     final data = provider.roleDistribution;
     if (data.isEmpty) return _buildChartContainer('User Roles', const Center(child: Text('No data')));
 
-    final total = data.fold<int>(0, (sum, d) => sum + (d['count'] as int));
     final colors = [Colors.blue, Colors.green, Colors.purple, Colors.orange];
     return _buildChartContainer('User Roles', Column(
       children: [
@@ -251,7 +250,6 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: List.generate(data.length, (i) {
-                    final pct = total > 0 ? ((data[i]['count'] as int) / total * 100).toStringAsFixed(1) : '0';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
@@ -339,7 +337,6 @@ class _BarChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty || maxValue == 0) return;
     final paint = Paint()..color = barColor;
-    final labelPaint = Paint()..color = Colors.grey;
     final barWidth = (size.width - 20) / data.length;
 
     for (int i = 0; i < data.length; i++) {
@@ -355,13 +352,13 @@ class _BarChartPainter extends CustomPainter {
 
       final tb = TextPainter(
         text: TextSpan(text: '$value', style: TextStyle(color: Colors.grey[700], fontSize: 10)),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       tb.paint(canvas, Offset(x + (barWidth - tb.width) / 2, y - tb.height - 2));
 
       final lb = TextPainter(
         text: TextSpan(text: '${data[i][labelKey]}'.length > 6 ? '${data[i][labelKey]}'.substring(0, 6) : '${data[i][labelKey]}', style: TextStyle(color: Colors.grey[600], fontSize: 8)),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       lb.paint(canvas, Offset(x + (barWidth - lb.width) / 2, size.height - 16));
     }

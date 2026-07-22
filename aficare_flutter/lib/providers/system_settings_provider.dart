@@ -105,10 +105,8 @@ class SystemSettingsProvider with ChangeNotifier {
 
   Future<bool> initDefaults(String userId) async {
     try {
-      final count = await _supabase
-          .from('system_settings')
-          .select('id', const FetchOptions(count: ExactCount.exact));
-      if ((count.count ?? 0) > 0) return true;
+      final existing = await _supabase.from('system_settings').select('id');
+      if ((existing as List).isNotEmpty) return true;
 
       final defaults = [
         {'category': 'general', 'key': 'app_name', 'value': 'AfiCare MediLink', 'description': 'Application display name', 'updated_by': userId},
