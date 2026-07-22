@@ -11,7 +11,6 @@ import '../../providers/consultation_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/appointment_model.dart';
-import '../../models/consultation_model.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
 import '../common/notifications_screen.dart';
