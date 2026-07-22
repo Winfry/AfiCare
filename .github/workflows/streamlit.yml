@@ -44,7 +44,7 @@ jobs:
           python -c "import streamlit; print('Streamlit OK')"
           python -c "from src.core.agent import AfiCareAgent; print('Agent OK')" || echo "Agent import skipped"
 
-  deploy-railway:
+  deploy-render:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -52,11 +52,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Railway
-        if: env.RAILWAY_TOKEN != ''
+      - name: Deploy to Render
+        if: env.RENDER_API_KEY != ''
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
-          npm install -g @railway/cli
-          cd aficare-agent
-          railway up --service aficare-backend || echo "Railway deployment skipped - no token"
+          curl -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            || echo "Render deployment skipped - no API key configured"
