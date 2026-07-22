@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/admin_user_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
 
@@ -222,7 +221,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
 
   Widget _headerCell(String label, double flex) {
     return Expanded(
-      flex: flex.round(),
+      flex: flex.toInt(),
       child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
     );
   }
@@ -259,9 +258,9 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
           Expanded(flex: 2, child: Text(user.email, overflow: TextOverflow.ellipsis)),
           Expanded(flex: 1, child: _roleChip(user.role)),
           Expanded(flex: 1, child: _statusChip(user.status)),
-          Expanded(flex: 1.5, child: Text(user.facilityId ?? '-', overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 1, child: Text(user.facilityId ?? '-', overflow: TextOverflow.ellipsis)),
           Expanded(
-            flex: 1.5,
+            flex: 1,
             child: Row(
               children: [
                 IconButton(

@@ -9,7 +9,6 @@ class AnalyticsProvider with ChangeNotifier {
   String _periodFilter = 'this_month';
   String _facilityFilter = 'all';
 
-  // KPIs
   int _totalUsers = 0;
   int _activeProviders = 0;
   int _referralsThisMonth = 0;
@@ -17,7 +16,6 @@ class AnalyticsProvider with ChangeNotifier {
   int _totalConsultations = 0;
   int _totalFacilities = 0;
 
-  // Chart data
   List<Map<String, dynamic>> _usersOverTime = [];
   List<Map<String, dynamic>> _referralsByFacility = [];
   List<Map<String, dynamic>> _roleDistribution = [];
@@ -70,42 +68,36 @@ class AnalyticsProvider with ChangeNotifier {
 
   Future<void> _loadCounts() async {
     try {
-      _totalUsers = (await _supabase
-          .from('users')
-          .select('id', const FetchOptions(count: ExactCount.exact))
-      ).count ?? 0;
+      final allUsers = await _supabase.from('users').select('id');
+      _totalUsers = (allUsers as List).length;
 
-      _activeProviders = (await _supabase
+      final activeProv = await _supabase
           .from('users')
-          .select('id', const FetchOptions(count: ExactCount.exact))
+          .select('id')
           .neq('role', 'patient')
-          .eq('status', 'active')
-      ).count ?? 0;
+          .eq('status', 'active');
+      _activeProviders = (activeProv as List).length;
 
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month, 1).toIso8601String();
 
-      _referralsThisMonth = (await _supabase
+      final referrals = await _supabase
           .from('referrals')
-          .select('id', const FetchOptions(count: ExactCount.exact))
-          .gte('created_at', monthStart)
-      ).count ?? 0;
+          .select('id')
+          .gte('created_at', monthStart);
+      _referralsThisMonth = (referrals as List).length;
 
-      _missedAppointments = (await _supabase
+      final cancelled = await _supabase
           .from('appointments')
-          .select('id', const FetchOptions(count: ExactCount.exact))
-          .eq('status', 'cancelled')
-      ).count ?? 0;
+          .select('id')
+          .eq('status', 'cancelled');
+      _missedAppointments = (cancelled as List).length;
 
-      _totalConsultations = (await _supabase
-          .from('consultations')
-          .select('id', const FetchOptions(count: ExactCount.exact))
-      ).count ?? 0;
+      final consultations = await _supabase.from('consultations').select('id');
+      _totalConsultations = (consultations as List).length;
 
-      _totalFacilities = (await _supabase
-          .from('facilities')
-          .select('id', const FetchOptions(count: ExactCount.exact))
-      ).count ?? 0;
+      final facilities = await _supabase.from('facilities').select('id');
+      _totalFacilities = (facilities as List).length;
     } catch (e) {
       debugPrint('Counts error: $e');
     }
@@ -152,9 +144,7 @@ class AnalyticsProvider with ChangeNotifier {
 
   Future<void> _loadRoleDistribution() async {
     try {
-      final response = await _supabase
-          .from('users')
-          .select('role');
+      final response = await _supabase.from('users').select('role');
       final counts = <String, int>{};
       for (final r in response as List) {
         final role = r['role'] as String;

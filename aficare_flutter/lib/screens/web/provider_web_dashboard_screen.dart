@@ -33,7 +33,6 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 1100;
     final isTablet = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
@@ -112,7 +111,6 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -135,58 +133,8 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
             ],
           ),
           const SizedBox(height: 24),
-
-          // Quick stats
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisAmount(
-              crossAxisCount: MediaQuery.of(context).size.width > 800 ? 4 : 2,
-              mainAxisExtent: 100,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: 4,
-            itemBuilder: (ctx, i) {
-              final cards = [
-                {'title': 'Total Patients', 'value': '${analytics.totalUsers}', 'icon': Icons.people, 'color': Colors.blue},
-                {'title': 'Consultations', 'value': '${analytics.totalConsultations}', 'icon': Icons.assignment, 'color': Colors.green},
-                {'title': 'Active Referrals', 'value': '${analytics.referralsThisMonth}', 'icon': Icons.swap_horiz, 'color': Colors.orange},
-                {'title': 'Appointments', 'value': '${analytics.totalConsultations}', 'icon': Icons.calendar_today, 'color': Colors.purple},
-              ];
-              final card = cards[i];
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: (card['color'] as Color).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(card['icon'] as IconData, color: card['color'] as Color, size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(card['title'] as String, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                          const SizedBox(height: 4),
-                          Text(card['value'] as String, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+          _buildQuickStats(analytics),
           const SizedBox(height: 24),
-
-          // Activity feed + Upcoming appointments
           MediaQuery.of(context).size.width > 800
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,6 +153,31 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
                 ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickStats(AnalyticsProvider analytics) {
+    final isWide = MediaQuery.of(context).size.width > 800;
+    final cards = [
+      _StatCard(title: 'Total Patients', value: '${analytics.totalUsers}', icon: Icons.people, color: Colors.blue),
+      _StatCard(title: 'Consultations', value: '${analytics.totalConsultations}', icon: Icons.assignment, color: Colors.green),
+      _StatCard(title: 'Active Referrals', value: '${analytics.referralsThisMonth}', icon: Icons.swap_horiz, color: Colors.orange),
+      _StatCard(title: 'Appointments', value: '${analytics.totalConsultations}', icon: Icons.calendar_today, color: Colors.purple),
+    ];
+
+    if (isWide) {
+      return Row(
+        children: cards.map((c) => Expanded(child: Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: c,
+        ))).toList(),
+      );
+    }
+    return Column(
+      children: cards.map((c) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: c,
+      )).toList(),
     );
   }
 
@@ -313,34 +286,42 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
   }
 }
 
-class SliverGridDelegateWithFixedCrossAxisAmount extends SliverGridDelegate {
-  final int crossAxisCount;
-  final double mainAxisExtent;
-  final double crossAxisSpacing;
-  final double mainAxisSpacing;
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
 
-  const SliverGridDelegateWithFixedCrossAxisAmount({
-    required this.crossAxisCount,
-    this.mainAxisExtent = 100,
-    this.crossAxisSpacing = 0,
-    this.mainAxisSpacing = 0,
-  });
+  const _StatCard({required this.title, required this.value, required this.icon, required this.color});
 
   @override
-  SliverGridLayout getLayout(SliverConstraints constraints) {
-    final crossAxisExtent = (constraints.crossAxisExtent - crossAxisSpacing * (crossAxisCount - 1)) / crossAxisCount;
-    return SliverGridRegularTileLayout(
-      crossAxisCount: crossAxisCount,
-      mainAxisStride: mainAxisExtent + mainAxisSpacing,
-      crossAxisStride: crossAxisExtent + crossAxisSpacing,
-      childMainAxisExtent: mainAxisExtent,
-      childCrossAxisExtent: crossAxisExtent,
-      reverseCrossAxis: false,
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
-  }
-
-  @override
-  bool shouldRelayout(SliverGridDelegateWithFixedCrossAxisAmount oldDelegate) {
-    return oldDelegate.crossAxisCount != crossAxisCount || oldDelegate.mainAxisExtent != mainAxisExtent;
   }
 }
