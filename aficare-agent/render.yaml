@@ -3,7 +3,13 @@ services:
     name: aficare-medilink
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run medilink_simple.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: STREAMLIT_SERVER_PORT
-        value: $PORT
+      - key: PYTHONPATH
+        value: /app
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
