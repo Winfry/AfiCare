@@ -116,6 +116,15 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AuthException catch (e) {
+      if (e.statusCode == 422 || e.message.contains('already registered')) {
+        _error = 'An account with this email already exists. Please log in instead.';
+      } else {
+        _error = e.message;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;

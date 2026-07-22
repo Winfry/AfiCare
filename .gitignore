@@ -59,6 +59,8 @@ ENV/
 *.sqlite3
 *.key
 encryption.key
+*.jks
+keystore_base64.txt
 
 # ─── Logs ──────────────────────────────────────────────────
 *.log
