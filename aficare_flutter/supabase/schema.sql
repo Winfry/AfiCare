@@ -777,8 +777,10 @@ CREATE TABLE IF NOT EXISTS departments (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view departments" ON departments;
 CREATE POLICY "Anyone can view departments"
     ON departments FOR SELECT USING (TRUE);
+DROP POLICY IF EXISTS "Admins can manage departments" ON departments;
 CREATE POLICY "Admins can manage departments"
     ON departments FOR ALL USING (auth.role() IN ('admin'));
 GRANT SELECT, INSERT, UPDATE, DELETE ON departments TO authenticated;
@@ -795,32 +797,39 @@ CREATE TABLE IF NOT EXISTS system_settings (
     UNIQUE(category, key)
 );
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can manage system settings" ON system_settings;
 CREATE POLICY "Admins can manage system settings"
     ON system_settings FOR ALL USING (auth.role() IN ('admin'));
+DROP POLICY IF EXISTS "Anyone can view system settings" ON system_settings;
 CREATE POLICY "Anyone can view system settings"
     ON system_settings FOR SELECT USING (TRUE);
 GRANT SELECT, INSERT, UPDATE, DELETE ON system_settings TO authenticated;
 
 -- 6. Audit log SELECT for admins
+DROP POLICY IF EXISTS "Admins can view audit logs" ON audit_log;
 CREATE POLICY "Admins can view audit logs"
     ON audit_log FOR SELECT
     USING (auth.role() IN ('admin'));
 
 -- 7. Facilities UPDATE/DELETE for admins
+DROP POLICY IF EXISTS "Anyone can view facilities" ON facilities;
 CREATE POLICY "Anyone can view facilities"
     ON facilities FOR SELECT USING (TRUE);
 DROP POLICY IF EXISTS "Authenticated users can register facilities" ON facilities;
 CREATE POLICY "Authenticated users can register facilities"
     ON facilities FOR INSERT
     WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Admins can update facilities" ON facilities;
 CREATE POLICY "Admins can update facilities"
     ON facilities FOR UPDATE
     USING (auth.role() IN ('admin'));
+DROP POLICY IF EXISTS "Admins can delete facilities" ON facilities;
 CREATE POLICY "Admins can delete facilities"
     ON facilities FOR DELETE
     USING (auth.role() IN ('admin'));
 
 -- 8. Referrals UPDATE for receiving providers
+DROP POLICY IF EXISTS "Receiving providers can update referrals" ON referrals;
 CREATE POLICY "Receiving providers can update referrals"
     ON referrals FOR UPDATE
     USING (to_provider_id = auth.uid() OR auth.role() IN ('admin'));
@@ -848,9 +857,11 @@ CREATE TABLE IF NOT EXISTS triage_assessments (
 CREATE INDEX IF NOT EXISTS idx_ta_patient ON triage_assessments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_ta_provider ON triage_assessments(provider_id);
 ALTER TABLE triage_assessments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Patients can view own triage" ON triage_assessments;
 CREATE POLICY "Patients can view own triage"
     ON triage_assessments FOR SELECT
     USING (patient_id = auth.uid());
+DROP POLICY IF EXISTS "Providers can manage triage" ON triage_assessments;
 CREATE POLICY "Providers can manage triage"
     ON triage_assessments FOR ALL
     USING (provider_id = auth.uid());
