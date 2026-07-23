@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import '../../widgets/greeting_header.dart';
+import '../../widgets/medi_card.dart';
+import '../../widgets/section_head.dart';
+import '../../widgets/action_card.dart';
+import '../../widgets/activity_row.dart';
 import 'health_summary.dart';
 import 'share_records.dart';
 import 'expenses_screen.dart';
@@ -10,7 +16,6 @@ import 'lab_results_screen.dart';
 import 'medication_tracker_screen.dart';
 import 'prescriptions_list_screen.dart';
 
-/// Dashboard (Home) tab of the patient bottom-nav shell.
 class PatientHomeScreen extends StatelessWidget {
   const PatientHomeScreen({super.key});
 
@@ -20,122 +25,144 @@ class PatientHomeScreen extends StatelessWidget {
     final user = auth.currentUser;
     final firstName = (user?.fullName ?? 'there').split(' ').first;
 
-    final actions = <_Action>[
-      _Action('Prescriptions', Icons.medication,
-          () => _push(context, const PrescriptionsListScreen())),
-      _Action('Medications', Icons.check_circle_outline,
-          () => _push(context, const MedicationTrackerScreen())),
-      _Action('Lab Results', Icons.science_outlined,
-          () => _push(context, const LabResultsScreen())),
-      _Action('Health Summary', Icons.favorite_border,
-          () => _push(context, const HealthSummary())),
-      _Action('Share Records', Icons.qr_code,
-          () => _push(context, const ShareRecords())),
-      _Action('Expenses', Icons.receipt_long,
-          () => _push(context, const ExpensesScreen())),
-    ];
+    final now = DateTime.now();
+    final dateStr = '${now.day}/${now.month}/${now.year}';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('AfiCare'),
-        leading: const Icon(Icons.menu),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Hello, $firstName 👋',
-              style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('Welcome back to your health dashboard',
-              style: TextStyle(color: Colors.grey[600])),
-          const SizedBox(height: 20),
-          _medilinkCard(user?.medilinkId ?? '—', user?.fullName ?? ''),
-          const SizedBox(height: 24),
-          const Text('Quick Actions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.95,
-            children: actions.map((a) => _actionCard(a)).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _medilinkCard(String medilinkId, String name) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AfiCareTheme.primaryGreen,
-            AfiCareTheme.primaryGreenLight,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.health_and_safety, color: Colors.white),
-              SizedBox(width: 8),
-              Text('MediLink ID',
-                  style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w600)),
-            ],
+          // Greeting
+          GreetingHeader(
+            name: firstName,
+            subtitle: '$dateStr · 1 appointment today',
           ),
-          const SizedBox(height: 12),
-          Text(medilinkId,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2)),
-          const SizedBox(height: 4),
-          Text(name, style: const TextStyle(color: Colors.white70)),
-        ],
-      ),
-    );
-  }
 
-  Widget _actionCard(_Action a) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: a.onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AfiCareTheme.primaryGreen.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: AfiCareTheme.primaryGreen.withOpacity(0.12)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(a.icon, color: AfiCareTheme.primaryGreen, size: 30),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(a.label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 20),
+
+          // MediLink Card
+          MediCard(
+            patientName: user?.fullName ?? 'Patient',
+            mediLinkId: user?.medilinkId ?? 'ML-XXX-XXXX',
+            dateOfBirth: user?.metadata?['date_of_birth']?.toString().substring(0, 10),
+            bloodType: user?.metadata?['blood_type'] as String?,
+          ),
+
+          const SizedBox(height: 28),
+
+          // Quick actions
+          SectionHead(title: 'Quick actions'),
+
+          const SizedBox(height: 12),
+
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossCount = constraints.maxWidth > 600 ? 3 : (constraints.maxWidth > 380 ? 2 : 2);
+              return GridView.count(
+                crossAxisCount: crossCount,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 1.6,
+                children: [
+                  ActionCard(
+                    title: 'Prescriptions',
+                    icon: Icons.medication_outlined,
+                    iconColor: AfiCareTheme.canopy,
+                    iconBgColor: AfiCareTheme.canopy.withValues(alpha: 0.08),
+                    onTap: () => _push(context, const PrescriptionsListScreen()),
+                  ),
+                  ActionCard(
+                    title: 'Medications',
+                    icon: Icons.check_circle_outline,
+                    iconColor: AfiCareTheme.sage,
+                    iconBgColor: AfiCareTheme.sage.withValues(alpha: 0.1),
+                    onTap: () => _push(context, const MedicationTrackerScreen()),
+                  ),
+                  ActionCard(
+                    title: 'Lab results',
+                    subtitle: '1 new',
+                    icon: Icons.science_outlined,
+                    iconColor: const Color(0xFF3E7CA6),
+                    iconBgColor: const Color(0xFFEFF6FA),
+                    onTap: () => _push(context, const LabResultsScreen()),
+                  ),
+                  ActionCard(
+                    title: 'Health summary',
+                    icon: Icons.favorite_border,
+                    iconColor: const Color(0xFF7C5CB4),
+                    iconBgColor: const Color(0xFFF4EEFA),
+                    onTap: () => _push(context, const HealthSummary()),
+                  ),
+                  ActionCard(
+                    title: 'Share records',
+                    icon: Icons.qr_code,
+                    iconColor: AfiCareTheme.clay,
+                    iconBgColor: AfiCareTheme.clay.withValues(alpha: 0.08),
+                    onTap: () => _push(context, const ShareRecords()),
+                  ),
+                  ActionCard(
+                    title: 'Expenses',
+                    icon: Icons.receipt_long_outlined,
+                    iconColor: AfiCareTheme.marigold,
+                    iconBgColor: AfiCareTheme.marigold.withValues(alpha: 0.1),
+                    onTap: () => _push(context, const ExpensesScreen()),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          const SizedBox(height: 28),
+
+          // Recent activity
+          SectionHead(
+            title: 'Recent activity',
+            actionText: 'See all',
+            onAction: () {},
+          ),
+
+          const SizedBox(height: 8),
+
+          // Activity list card
+          Container(
+            decoration: BoxDecoration(
+              color: AfiCareTheme.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AfiCareTheme.line),
             ),
-          ],
-        ),
+            child: Column(
+              children: [
+                ActivityRow(
+                  icon: Icons.science_outlined,
+                  iconColor: const Color(0xFF3E7CA6),
+                  title: 'Lab results received',
+                  subtitle: 'Complete blood count — Nairobi Hospital',
+                  time: '2h ago',
+                ),
+                const Divider(height: 1, indent: 66),
+                ActivityRow(
+                  icon: Icons.medication_outlined,
+                  iconColor: AfiCareTheme.canopy,
+                  title: 'Prescription updated',
+                  subtitle: 'Metformin 500mg — Dr. Otieno',
+                  time: '1d ago',
+                ),
+                const Divider(height: 1, indent: 66),
+                ActivityRow(
+                  icon: Icons.reorder_outlined,
+                  iconColor: AfiCareTheme.marigold,
+                  title: 'Referral sent',
+                  subtitle: 'To Kenyatta National Hospital',
+                  time: '3d ago',
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
@@ -143,11 +170,4 @@ class PatientHomeScreen extends StatelessWidget {
   static void _push(BuildContext context, Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
-}
-
-class _Action {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  _Action(this.label, this.icon, this.onTap);
 }
