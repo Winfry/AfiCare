@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: Colors.white.withOpacity( 0.15),
                           borderRadius: BorderRadius.circular(9),
                         ),
                         child: Center(
@@ -130,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: GoogleFonts.ibmPlexMono(
                               fontSize: 9,
                               fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.7),
+                              color: Colors.white.withOpacity( 0.7),
                               letterSpacing: 1.2,
                             ),
                           ),
@@ -156,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Access your complete medical history from any provider in Kenya. Secure, portable, and always yours.',
                     style: GoogleFonts.ibmPlexSans(
                       fontSize: 15,
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: Colors.white.withOpacity( 0.8),
                       height: 1.6,
                     ),
                   ),
@@ -167,14 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: Colors.white.withOpacity( 0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
                       '"AfiCare changed how I manage my diabetes. Every lab result, every prescription — all in one place." — Mary N.',
                       style: GoogleFonts.ibmPlexSans(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Colors.white.withOpacity( 0.9),
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -457,9 +457,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AfiCareTheme.marigold.withValues(alpha: 0.08),
+                    color: AfiCareTheme.marigold.withOpacity( 0.08),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AfiCareTheme.marigold.withValues(alpha: 0.3)),
+                    border: Border.all(color: AfiCareTheme.marigold.withOpacity( 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

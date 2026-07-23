@@ -44,7 +44,7 @@ class TimelineItem extends StatelessWidget {
                     color: dotColor,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: dotColor.withValues(alpha: 0.3),
+                      color: dotColor.withOpacity( 0.3),
                       width: 2,
                     ),
                   ),

@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../providers/auth_provider.dart';
-import '../../utils/theme.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/app_sidebar.dart';
 import '../../widgets/bottom_nav.dart';

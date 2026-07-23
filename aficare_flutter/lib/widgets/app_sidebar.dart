@@ -38,7 +38,7 @@ class AppSidebar extends StatelessWidget {
     final subtextColor = isDark ? AfiCareTheme.darkTextSecondary : AfiCareTheme.slate;
     final activeColor = isDark ? const Color(0xFF64B5F6) : AfiCareTheme.canopy;
     final hoverColor = isDark
-        ? const Color(0xFF1E3A5F).withValues(alpha: 0.5)
+        ? const Color(0xFF1E3A5F).withOpacity( 0.5)
         : AfiCareTheme.mist;
     final borderColor = isDark ? AfiCareTheme.darkBorder : AfiCareTheme.line;
 
@@ -133,7 +133,7 @@ class AppSidebar extends StatelessWidget {
                   widgets.add(Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Material(
-                      color: isActive ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
+                      color: isActive ? activeColor.withOpacity( 0.08) : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
@@ -190,7 +190,7 @@ class AppSidebar extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: activeColor.withValues(alpha: 0.1),
+                  backgroundColor: activeColor.withOpacity( 0.1),
                   child: Text(
                     role.isNotEmpty ? role[0].toUpperCase() : 'U',
                     style: GoogleFonts.ibmPlexSans(

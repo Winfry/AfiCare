@@ -216,7 +216,7 @@ class AfiCareTheme {
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       hintStyle: GoogleFonts.ibmPlexSans(
-        fontSize: 14, color: slate.withValues(alpha: 0.6),
+        fontSize: 14, color: slate.withOpacity( 0.6),
       ),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(

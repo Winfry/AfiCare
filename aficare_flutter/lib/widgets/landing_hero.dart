@@ -63,7 +63,7 @@ class LandingHero extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AfiCareTheme.canopy.withValues(alpha: 0.06),
+            color: AfiCareTheme.canopy.withOpacity( 0.06),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
@@ -127,7 +127,7 @@ class LandingHero extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AfiCareTheme.marigold.withValues(alpha: 0.1),
+                color: AfiCareTheme.marigold.withOpacity( 0.1),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Row(
@@ -175,7 +175,7 @@ class LandingHero extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: AfiCareTheme.canopy.withValues(alpha: 0.3),
+            color: AfiCareTheme.canopy.withOpacity( 0.3),
             blurRadius: 30,
             offset: const Offset(0, 12),
           ),
@@ -213,7 +213,7 @@ class LandingHero extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: Colors.white.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
@@ -221,7 +221,7 @@ class LandingHero extends StatelessWidget {
               'No papers lost." — Grace W.',
               style: GoogleFonts.ibmPlexSans(
                 fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.9),
+                color: Colors.white.withOpacity( 0.9),
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -245,10 +245,10 @@ class _PathNode extends StatelessWidget {
           width: 14,
           height: 14,
           decoration: BoxDecoration(
-            color: isActive ? AfiCareTheme.marigold : Colors.white.withValues(alpha: 0.3),
+            color: isActive ? AfiCareTheme.marigold : Colors.white.withOpacity( 0.3),
             shape: BoxShape.circle,
             boxShadow: isActive
-                ? [BoxShadow(color: AfiCareTheme.marigold.withValues(alpha: 0.4), blurRadius: 8)]
+                ? [BoxShadow(color: AfiCareTheme.marigold.withOpacity( 0.4), blurRadius: 8)]
                 : null,
           ),
         ),
@@ -258,7 +258,7 @@ class _PathNode extends StatelessWidget {
           style: GoogleFonts.ibmPlexSans(
             fontSize: 11,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: Colors.white.withOpacity( 0.8),
           ),
         ),
       ],
@@ -285,7 +285,7 @@ class _DashedLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.3)
+      ..color = Colors.white.withOpacity( 0.3)
       ..strokeWidth = 1;
 
     const dashWidth = 4.0;

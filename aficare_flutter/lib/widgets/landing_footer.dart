@@ -49,7 +49,7 @@ class LandingFooter extends StatelessWidget {
           // Divider
           Container(
             height: 1,
-            color: Colors.white.withValues(alpha: 0.15),
+            color: Colors.white.withOpacity( 0.15),
           ),
 
           const SizedBox(height: 20),
@@ -61,7 +61,7 @@ class LandingFooter extends StatelessWidget {
                 '© 2025 AfiCare Health Technologies',
                 style: GoogleFonts.ibmPlexSans(
                   fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: Colors.white.withOpacity( 0.5),
                 ),
               ),
               const Spacer(),
@@ -69,7 +69,7 @@ class LandingFooter extends StatelessWidget {
                 'Nairobi, Kenya',
                 style: GoogleFonts.ibmPlexSans(
                   fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: Colors.white.withOpacity( 0.5),
                 ),
               ),
             ],
@@ -89,7 +89,7 @@ class LandingFooter extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: Colors.white.withOpacity( 0.15),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: Center(
@@ -119,7 +119,7 @@ class LandingFooter extends StatelessWidget {
           'Patient-owned healthcare records for Africa.',
           style: GoogleFonts.ibmPlexSans(
             fontSize: 14,
-            color: Colors.white.withValues(alpha: 0.6),
+            color: Colors.white.withOpacity( 0.6),
             height: 1.6,
           ),
         ),
@@ -175,7 +175,7 @@ class _FooterColumn extends StatelessWidget {
             item,
             style: GoogleFonts.ibmPlexSans(
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withOpacity( 0.6),
             ),
           ),
         )),

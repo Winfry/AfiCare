@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:aficare_flutter/utils/theme.dart';
 import 'package:aficare_flutter/widgets/landing_nav.dart';
 import 'package:aficare_flutter/widgets/landing_hero.dart';

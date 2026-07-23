@@ -45,7 +45,7 @@ class AppTopbar extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: isDark
-                    ? AfiCareTheme.darkShell.withValues(alpha: 0.5)
+                    ? AfiCareTheme.darkShell.withOpacity( 0.5)
                     : AfiCareTheme.mist,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(color: borderColor),
@@ -156,7 +156,7 @@ class AppTopbar extends StatelessWidget {
           // Avatar
           CircleAvatar(
             radius: 18,
-            backgroundColor: activeColor.withValues(alpha: 0.1),
+            backgroundColor: activeColor.withOpacity( 0.1),
             child: Text(
               avatarLabel ?? 'U',
               style: GoogleFonts.ibmPlexSans(
