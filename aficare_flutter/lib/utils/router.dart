@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
 
-import '../screens/splash_screen.dart';
+import '../screens/landing_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/patient/patient_shell.dart';
@@ -34,10 +34,10 @@ import '../screens/facility_registration_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    // Splash Screen
+    // Landing Screen
     GoRoute(
       path: '/',
-      builder: (context, state) => const SplashScreen(),
+      builder: (context, state) => const LandingScreen(),
     ),
 
     // Authentication
@@ -54,7 +54,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const FacilityRegistrationScreen(),
     ),
 
-    // Patient Routes — new bottom-nav shell
+    // Patient Routes — bottom-nav shell
     GoRoute(
       path: '/patient',
       builder: (context, state) => const PatientShell(),
@@ -83,6 +83,18 @@ final appRouter = GoRouter(
           path: 'expenses',
           builder: (context, state) => const ExpensesScreen(),
         ),
+        GoRoute(
+          path: 'messages',
+          builder: (context, state) => const AppointmentsScreen(),
+        ),
+        GoRoute(
+          path: 'records',
+          builder: (context, state) => const HealthSummary(),
+        ),
+        GoRoute(
+          path: 'profile',
+          builder: (context, state) => const PatientDashboard(),
+        ),
       ],
     ),
 
@@ -96,7 +108,7 @@ final appRouter = GoRouter(
       redirect: (context, state) => '/provider',
     ),
 
-    // Healthcare Provider Routes — new bottom-nav shell
+    // Healthcare Provider Routes — bottom-nav shell
     GoRoute(
       path: '/provider',
       builder: (context, state) => const ProviderShell(),
@@ -160,6 +172,18 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: 'referral-tracker',
+          builder: (context, state) => const ReferralTrackerScreen(),
+        ),
+        GoRoute(
+          path: 'inbox',
+          builder: (context, state) => const ProviderShell(),
+        ),
+        GoRoute(
+          path: 'settings',
+          builder: (context, state) => const ProviderShell(),
+        ),
+        GoRoute(
+          path: 'referrals',
           builder: (context, state) => const ReferralTrackerScreen(),
         ),
       ],
