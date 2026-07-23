@@ -30,13 +30,13 @@ class MediCard extends StatelessWidget {
           colors: [
             AfiCareTheme.canopy,
             AfiCareTheme.canopy2,
-            AfiCareTheme.canopy.withValues(alpha: 0.9),
+            AfiCareTheme.canopy.withOpacity( 0.9),
           ],
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: AfiCareTheme.canopy.withValues(alpha: 0.3),
+            color: AfiCareTheme.canopy.withOpacity( 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -51,7 +51,7 @@ class MediCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withOpacity( 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -64,7 +64,7 @@ class MediCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withOpacity( 0.15),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -94,7 +94,7 @@ class MediCard extends StatelessWidget {
             style: GoogleFonts.ibmPlexMono(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withOpacity( 0.8),
               letterSpacing: 1,
             ),
           ),
@@ -120,13 +120,13 @@ class MediCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: Colors.white.withOpacity( 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.8)),
+          Icon(icon, size: 14, color: Colors.white.withOpacity( 0.8)),
           const SizedBox(width: 6),
           Text(
             label,

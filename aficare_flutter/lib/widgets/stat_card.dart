@@ -31,11 +31,11 @@ class StatCard extends StatelessWidget {
         ? Colors.white
         : (isDark ? AfiCareTheme.darkTextPrimary : AfiCareTheme.ink);
     final subtextColor = isHero
-        ? Colors.white.withValues(alpha: 0.8)
+        ? Colors.white.withOpacity( 0.8)
         : (isDark ? AfiCareTheme.darkTextSecondary : AfiCareTheme.slate);
     final iconBg = isHero
-        ? Colors.white.withValues(alpha: 0.15)
-        : iconColor.withValues(alpha: 0.1);
+        ? Colors.white.withOpacity( 0.15)
+        : iconColor.withOpacity( 0.1);
     final borderColor = isDark ? AfiCareTheme.darkBorder : AfiCareTheme.line;
 
     return Container(
@@ -75,8 +75,8 @@ class StatCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isHero
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : AfiCareTheme.sage.withValues(alpha: 0.1),
+                        ? Colors.white.withOpacity( 0.15)
+                        : AfiCareTheme.sage.withOpacity( 0.1),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

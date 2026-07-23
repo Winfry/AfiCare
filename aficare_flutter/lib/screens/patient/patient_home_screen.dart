@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import '../../widgets/greeting_header.dart';
@@ -70,14 +68,14 @@ class PatientHomeScreen extends StatelessWidget {
                     title: 'Prescriptions',
                     icon: Icons.medication_outlined,
                     iconColor: AfiCareTheme.canopy,
-                    iconBgColor: AfiCareTheme.canopy.withValues(alpha: 0.08),
+                    iconBgColor: AfiCareTheme.canopy.withOpacity( 0.08),
                     onTap: () => _push(context, const PrescriptionsListScreen()),
                   ),
                   ActionCard(
                     title: 'Medications',
                     icon: Icons.check_circle_outline,
                     iconColor: AfiCareTheme.sage,
-                    iconBgColor: AfiCareTheme.sage.withValues(alpha: 0.1),
+                    iconBgColor: AfiCareTheme.sage.withOpacity( 0.1),
                     onTap: () => _push(context, const MedicationTrackerScreen()),
                   ),
                   ActionCard(
@@ -99,14 +97,14 @@ class PatientHomeScreen extends StatelessWidget {
                     title: 'Share records',
                     icon: Icons.qr_code,
                     iconColor: AfiCareTheme.clay,
-                    iconBgColor: AfiCareTheme.clay.withValues(alpha: 0.08),
+                    iconBgColor: AfiCareTheme.clay.withOpacity( 0.08),
                     onTap: () => _push(context, const ShareRecords()),
                   ),
                   ActionCard(
                     title: 'Expenses',
                     icon: Icons.receipt_long_outlined,
                     iconColor: AfiCareTheme.marigold,
-                    iconBgColor: AfiCareTheme.marigold.withValues(alpha: 0.1),
+                    iconBgColor: AfiCareTheme.marigold.withOpacity( 0.1),
                     onTap: () => _push(context, const ExpensesScreen()),
                   ),
                 ],

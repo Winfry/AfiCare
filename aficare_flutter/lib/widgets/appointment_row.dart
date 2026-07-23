@@ -31,7 +31,7 @@ class AppointmentRow extends StatelessWidget {
             width: 52,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: AfiCareTheme.canopy.withValues(alpha: 0.06),
+              color: AfiCareTheme.canopy.withOpacity( 0.06),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,8 +9,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../providers/appointment_provider.dart';
-import '../../models/user_model.dart';
-import '../../models/appointment_model.dart';
 import '../../utils/theme.dart';
 import '../../widgets/greeting_header.dart';
 import '../../widgets/stat_card.dart';
@@ -19,7 +16,6 @@ import '../../widgets/section_head.dart';
 import '../../widgets/timeline_item.dart';
 import '../../widgets/appointment_row.dart';
 import 'consultation_screen.dart';
-import '../common/notifications_screen.dart';
 
 class ProviderDashboard extends StatefulWidget {
   const ProviderDashboard({super.key});
@@ -35,7 +31,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
 
   bool _isLoadingPatient = false;
   Map<String, dynamic>? _loadedPatient;
-  List<Map<String, dynamic>> _patientConsultations = [];
+
   String? _patientLookupError;
 
   List<Map<String, dynamic>> _myPatients = [];
@@ -94,7 +90,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   }
 
   Future<void> _lookupPatient(String medilinkId) async {
-    setState(() { _isLoadingPatient = true; _patientLookupError = null; _loadedPatient = null; _patientConsultations = []; });
+    setState(() { _isLoadingPatient = true; _patientLookupError = null; _loadedPatient = null; });
     try {
       final supabase = Supabase.instance.client;
       final userRows = await supabase
@@ -118,17 +114,10 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         patient.addAll(profile);
       } catch (_) {}
 
-      final consultRows = await supabase
-          .from('consultations')
-          .select('id, timestamp, chief_complaint, triage_level, diagnoses, recommendations, vital_signs')
-          .eq('patient_id', patient['id'])
-          .order('timestamp', ascending: false)
-          .limit(10);
-
       if (mounted) {
         setState(() {
           _loadedPatient = patient;
-          _patientConsultations = List<Map<String, dynamic>>.from(consultRows as List);
+
           _isLoadingPatient = false;
         });
         _showPatientRecords(medilinkId, null);
@@ -538,11 +527,11 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           ),
           child: Row(
             children: [
-              CircleAvatar(radius: 28, backgroundColor: Colors.white.withValues(alpha: 0.2), child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
+              CircleAvatar(radius: 28, backgroundColor: Colors.white.withOpacity( 0.2), child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(name, style: GoogleFonts.fraunces(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
-                Text(mlId, style: GoogleFonts.ibmPlexMono(fontSize: 13, color: Colors.white.withValues(alpha: 0.8))),
+                Text(mlId, style: GoogleFonts.ibmPlexMono(fontSize: 13, color: Colors.white.withOpacity( 0.8))),
               ])),
             ],
           ),
@@ -575,7 +564,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         final name = p['full_name'] ?? 'Unknown';
         final mlId = p['medilink_id'] ?? '';
         return Card(child: ListTile(
-          leading: CircleAvatar(backgroundColor: AfiCareTheme.canopy.withValues(alpha: 0.1), child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: GoogleFonts.ibmPlexSans(color: AfiCareTheme.canopy, fontWeight: FontWeight.w600))),
+          leading: CircleAvatar(backgroundColor: AfiCareTheme.canopy.withOpacity( 0.1), child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: GoogleFonts.ibmPlexSans(color: AfiCareTheme.canopy, fontWeight: FontWeight.w600))),
           title: Text(name, style: GoogleFonts.ibmPlexSans(fontWeight: FontWeight.w600)),
           subtitle: Text(mlId, style: GoogleFonts.ibmPlexMono(fontSize: 12, color: AfiCareTheme.slate)),
           onTap: () => _lookupPatient(mlId),
@@ -621,13 +610,13 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             ),
             child: Row(
               children: [
-                Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.smart_toy, color: Colors.white)),
+                Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white.withOpacity( 0.15), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.smart_toy, color: Colors.white)),
                 const SizedBox(width: 16),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('AI Agent Active', style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
-                  Text('3 plugins · Rule engine active', style: GoogleFonts.ibmPlexSans(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
+                  Text('3 plugins · Rule engine active', style: GoogleFonts.ibmPlexSans(fontSize: 12, color: Colors.white.withOpacity( 0.7))),
                 ])),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: AfiCareTheme.sage.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(999)), child: Text('ONLINE', style: GoogleFonts.ibmPlexSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white))),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: AfiCareTheme.sage.withOpacity( 0.3), borderRadius: BorderRadius.circular(999)), child: Text('ONLINE', style: GoogleFonts.ibmPlexSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white))),
               ],
             ),
           ),

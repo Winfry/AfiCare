@@ -33,7 +33,7 @@ class ActivityRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
+              color: iconColor.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(icon, size: 18, color: iconColor),

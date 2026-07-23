@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/app_sidebar.dart';
@@ -39,9 +37,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.currentUser;
-
     return AppShell(
       sidebarItems: _sidebarItems,
       bottomNavItems: _bottomNavItems,
@@ -136,35 +131,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: [
                     _buildMgmtCard(
                       icon: Icons.people_outline,
-                      iconBg: AfiCareTheme.canopy.withValues(alpha: 0.08),
+                      iconBg: AfiCareTheme.canopy.withOpacity( 0.08),
                       iconColor: AfiCareTheme.canopy,
                       title: 'User Management',
                       onTap: () => context.push('/admin/users'),
                     ),
                     _buildMgmtCard(
                       icon: Icons.local_hospital_outlined,
-                      iconBg: AfiCareTheme.canopy2.withValues(alpha: 0.08),
+                      iconBg: AfiCareTheme.canopy2.withOpacity( 0.08),
                       iconColor: AfiCareTheme.canopy2,
                       title: 'Facility Management',
                       onTap: () => context.push('/admin/facilities'),
                     ),
                     _buildMgmtCard(
                       icon: Icons.settings_outlined,
-                      iconBg: AfiCareTheme.slate.withValues(alpha: 0.1),
+                      iconBg: AfiCareTheme.slate.withOpacity( 0.1),
                       iconColor: AfiCareTheme.slate,
                       title: 'System Settings',
                       onTap: () => context.push('/admin/settings'),
                     ),
                     _buildMgmtCard(
                       icon: Icons.analytics_outlined,
-                      iconBg: AfiCareTheme.marigold.withValues(alpha: 0.1),
+                      iconBg: AfiCareTheme.marigold.withOpacity( 0.1),
                       iconColor: AfiCareTheme.marigold,
                       title: 'Analytics',
                       onTap: () => context.push('/admin/reports'),
                     ),
                     _buildMgmtCard(
                       icon: Icons.history,
-                      iconBg: AfiCareTheme.clay.withValues(alpha: 0.1),
+                      iconBg: AfiCareTheme.clay.withOpacity( 0.1),
                       iconColor: AfiCareTheme.clay,
                       title: 'Audit Log',
                       onTap: () => context.push('/admin/audit-log'),
