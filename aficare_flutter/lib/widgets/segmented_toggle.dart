@@ -1,0 +1,158 @@
+import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import '../theme/app_colors.dart';
+
+/// Animated pill toggle that lets the user switch between two modes
+/// (e.g. Email ↔ MediLink ID).  Works with any enum or string [T].
+class SegmentedToggle<T> extends StatefulWidget {
+  const SegmentedToggle({
+    super.key,
+    required this.segments,
+    required this.selectedIndex,
+    required this.onChanged,
+    this.height = 44,
+    this.padding = 6,
+    this.labelBuilder,
+  });
+
+  final List<Segment<T>> segments;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+  final double height;
+  final double padding;
+  final String Function(T)? labelBuilder;
+
+  @override
+  State<SegmentedToggle<T>> createState() => _SegmentedToggleState<T>();
+}
+
+class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _anim;
+  int _prev = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _prev = widget.selectedIndex;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _anim = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _controller.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant SegmentedToggle<T> old) {
+    super.didUpdateWidget(old);
+    if (old.selectedIndex != widget.selectedIndex) {
+      _prev = old.selectedIndex;
+      _controller
+        ..reset()
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _label(T value) =>
+      widget.labelBuilder?.call(value) ?? value.toString();
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.segments.length;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = widget.height;
+        final pad = widget.padding;
+        final segmentW = (w - pad * 2) / n;
+
+        return GestureDetector(
+          onTapDown: (details) {
+            final idx = (details.localPosition.dx / segmentW).floor().clamp(0, n - 1);
+            if (idx != widget.selectedIndex) widget.onChanged(idx);
+          },
+          child: AnimatedBuilder(
+            animation: _anim,
+            builder: (context, _) {
+              final t = _anim.value;
+              final lerp = _prev + (widget.selectedIndex - _prev) * t;
+              final pillX = pad + lerp * segmentW;
+
+              return Container(
+                height: h,
+                decoration: BoxDecoration(
+                  color: AppColors.mistBackground,
+                  borderRadius: BorderRadius.circular(h / 2),
+                ),
+                padding: EdgeInsets.all(pad),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // ── Sliding pill ──────────────────────────────────
+                    Positioned(
+                      left: pillX - pad,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: segmentW,
+                        decoration: BoxDecoration(
+                          color: AppColors.canopy,
+                          borderRadius: BorderRadius.circular(h / 2 - pad),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.canopy.withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // ── Labels ───────────────────────────────────────
+                    Row(
+                      children: List.generate(n, (i) {
+                        final selected = i == widget.selectedIndex;
+                        return Expanded(
+                          child: Center(
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: selected
+                                    ? Colors.white
+                                    : AppColors.textMuted,
+                              ),
+                              child: Text(_label(widget.segments[i].value)),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A single segment in the toggle.
+class Segment<T> {
+  const Segment(this.value);
+  final T value;
+}
