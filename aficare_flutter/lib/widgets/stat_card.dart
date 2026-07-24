@@ -1,113 +1,94 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:aficare_flutter/utils/theme.dart';
+import '../theme/app_colors.dart';
 
 class StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String? subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final bool isHero;
-  final bool isDark;
-
   const StatCard({
     super.key,
-    required this.title,
-    required this.value,
-    this.subtitle,
     required this.icon,
-    this.iconColor = AfiCareTheme.canopy,
-    this.isHero = false,
+    required this.value,
+    required this.label,
+    this.iconBackground,
+    this.iconColor,
+    this.deltaLabel,
+    this.deltaBackground,
+    this.deltaColor,
+    this.hero = false,
     this.isDark = false,
   });
 
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color? iconBackground;
+  final Color? iconColor;
+  final String? deltaLabel;
+  final Color? deltaBackground;
+  final Color? deltaColor;
+  final bool hero;
+  final bool isDark;
+
   @override
   Widget build(BuildContext context) {
-    final bgColor = isHero
-        ? AfiCareTheme.canopy
-        : (isDark ? AfiCareTheme.darkSurface : AfiCareTheme.white);
-    final textColor = isHero
-        ? Colors.white
-        : (isDark ? AfiCareTheme.darkTextPrimary : AfiCareTheme.ink);
-    final subtextColor = isHero
-        ? Colors.white.withOpacity( 0.8)
-        : (isDark ? AfiCareTheme.darkTextSecondary : AfiCareTheme.slate);
-    final iconBg = isHero
-        ? Colors.white.withOpacity( 0.15)
-        : iconColor.withOpacity( 0.1);
-    final borderColor = isDark ? AfiCareTheme.darkBorder : AfiCareTheme.line;
+    final onHeroText = Colors.white;
+    final surfaceColor = isDark ? AppColors.darkSurface : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
+    final labelColor = hero
+        ? onHeroText.withOpacity(.75)
+        : (isDark ? const Color(0xFF93A0AB) : AppColors.textMuted);
+    final valueColor = hero ? onHeroText : (isDark ? Colors.white : AppColors.deepNavy);
 
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(22),
-        border: isHero ? null : Border.all(color: borderColor),
-        gradient: isHero
-            ? LinearGradient(
+        borderRadius: BorderRadius.circular(16),
+        gradient: hero
+            ? const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  AfiCareTheme.canopy,
-                  AfiCareTheme.canopy2,
-                ],
+                colors: [AppColors.primaryNavy, AppColors.navyGradientMid],
               )
             : null,
+        color: hero ? null : surfaceColor,
+        border: hero ? null : Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(10),
+                  color: hero ? Colors.white.withOpacity(.15) : (iconBackground ?? AppColors.tintNavyBg),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, size: 20, color: isHero ? Colors.white : iconColor),
+                child: Icon(icon, size: 16, color: hero ? Colors.white : (iconColor ?? AppColors.primaryNavy)),
               ),
-              const Spacer(),
-              if (subtitle != null)
+              if (deltaLabel != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isHero
-                        ? Colors.white.withOpacity( 0.15)
-                        : AfiCareTheme.sage.withOpacity( 0.1),
+                    color: hero ? Colors.white.withOpacity(.18) : (deltaBackground ?? AppColors.tintSuccessBg),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    subtitle!,
-                    style: GoogleFonts.ibmPlexSans(
+                    deltaLabel!,
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isHero ? Colors.white : AfiCareTheme.sage,
+                      color: hero ? Colors.white : (deltaColor ?? AppColors.nonUrgent),
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: GoogleFonts.fraunces(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: subtextColor,
-            ),
-          ),
+          const SizedBox(height: 14),
+          Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: valueColor)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: labelColor)),
         ],
       ),
     );
