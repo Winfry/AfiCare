@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -92,7 +94,6 @@ class _PathPainter extends CustomPainter {
 
     // ── Node circles + labels ──────────────────────────────────────
     final bgPaint = Paint()..color = AppColors.canopyPale;
-    final fgPaint = Paint()..color = AppColors.canopy;
 
     for (var i = 0; i < positions.length; i++) {
       canvas.drawCircle(positions[i], nodeRadius, bgPaint);
