@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../theme/app_colors.dart';
 
 /// Animated pill toggle that lets the user switch between two modes
@@ -7,20 +6,20 @@ import '../theme/app_colors.dart';
 class SegmentedToggle<T> extends StatefulWidget {
   const SegmentedToggle({
     super.key,
-    required this.segments,
-    required this.selectedIndex,
+    required this.values,
+    required this.labels,
+    required this.selected,
     required this.onChanged,
     this.height = 44,
     this.padding = 6,
-    this.labelBuilder,
   });
 
-  final List<Segment<T>> segments;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
+  final List<T> values;
+  final List<String> labels;
+  final T selected;
+  final ValueChanged<T> onChanged;
   final double height;
   final double padding;
-  final String Function(T)? labelBuilder;
 
   @override
   State<SegmentedToggle<T>> createState() => _SegmentedToggleState<T>();
@@ -30,12 +29,17 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _anim;
-  int _prev = 0;
+  int _prevIndex = 0;
+
+  int get _selectedIndex {
+    final idx = widget.values.indexOf(widget.selected);
+    return idx < 0 ? 0 : idx;
+  }
 
   @override
   void initState() {
     super.initState();
-    _prev = widget.selectedIndex;
+    _prevIndex = _selectedIndex;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
@@ -47,8 +51,8 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
   @override
   void didUpdateWidget(covariant SegmentedToggle<T> old) {
     super.didUpdateWidget(old);
-    if (old.selectedIndex != widget.selectedIndex) {
-      _prev = old.selectedIndex;
+    if (old.selected != widget.selected) {
+      _prevIndex = old._selectedIndex;
       _controller
         ..reset()
         ..forward();
@@ -61,12 +65,9 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
     super.dispose();
   }
 
-  String _label(T value) =>
-      widget.labelBuilder?.call(value) ?? value.toString();
-
   @override
   Widget build(BuildContext context) {
-    final n = widget.segments.length;
+    final n = widget.values.length;
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -77,13 +78,13 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
         return GestureDetector(
           onTapDown: (details) {
             final idx = (details.localPosition.dx / segmentW).floor().clamp(0, n - 1);
-            if (idx != widget.selectedIndex) widget.onChanged(idx);
+            if (idx != _selectedIndex) widget.onChanged(widget.values[idx]);
           },
           child: AnimatedBuilder(
             animation: _anim,
             builder: (context, _) {
               final t = _anim.value;
-              final lerp = _prev + (widget.selectedIndex - _prev) * t;
+              final lerp = _prevIndex + (_selectedIndex - _prevIndex) * t;
               final pillX = pad + lerp * segmentW;
 
               return Container(
@@ -96,7 +97,6 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // ── Sliding pill ──────────────────────────────────
                     Positioned(
                       left: pillX - pad,
                       top: 0,
@@ -116,25 +116,19 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
                         ),
                       ),
                     ),
-
-                    // ── Labels ───────────────────────────────────────
                     Row(
                       children: List.generate(n, (i) {
-                        final selected = i == widget.selectedIndex;
+                        final sel = i == _selectedIndex;
                         return Expanded(
                           child: Center(
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 200),
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: selected
-                                    ? Colors.white
-                                    : AppColors.textMuted,
+                                fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                                color: sel ? Colors.white : AppColors.textMuted,
                               ),
-                              child: Text(_label(widget.segments[i].value)),
+                              child: Text(widget.labels[i]),
                             ),
                           ),
                         );
@@ -149,10 +143,4 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
       },
     );
   }
-}
-
-/// A single segment in the toggle.
-class Segment<T> {
-  const Segment(this.value);
-  final T value;
 }

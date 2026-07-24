@@ -7,8 +7,10 @@ class AppColors {
 
   // ── Deep navy (primary dark) ────────────────────────────────────────
   static const deepNavy   = Color(0xFF15243D);
+  static const primaryNavy= Color(0xFF1A3355);
   static const navyMid    = Color(0xFF1D3355);
   static const navyLight  = Color(0xFF2B4468);
+  static const lightBlue  = Color(0xFF8CB4D5);
 
   // ── Canopy (primary teal) ───────────────────────────────────────────
   static const canopyDark = Color(0xFF194D43);
