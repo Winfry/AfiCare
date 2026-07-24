@@ -36,6 +36,7 @@ class AppShell extends StatelessWidget {
     this.showNotificationDot = true,
     this.trailingActions = const [],
     this.onLogout,
+    this.isDark = false,
   });
 
   final List<SidebarEntry> sidebarEntries;
@@ -52,6 +53,7 @@ class AppShell extends StatelessWidget {
   final bool showNotificationDot;
   final List<Widget> trailingActions;
   final VoidCallback? onLogout;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +62,7 @@ class AppShell extends StatelessWidget {
         final isWide = constraints.maxWidth >= AppBreakpoints.sidebarCollapse;
 
         return Scaffold(
-          backgroundColor: AppColors.mistBackground,
+          backgroundColor: isDark ? AppColors.darkScaffold : AppColors.mistBackground,
           body: Row(
             children: [
               if (isWide)
@@ -69,6 +71,7 @@ class AppShell extends StatelessWidget {
                   selectedIndex: selectedIndex,
                   onSelect: onSelect,
                   onLogout: onLogout,
+                  isDark: isDark,
                 ),
               Expanded(
                 child: Column(
@@ -80,6 +83,7 @@ class AppShell extends StatelessWidget {
                       showNotificationDot: showNotificationDot,
                       trailingActions: trailingActions,
                       isWide: isWide,
+                      isDark: isDark,
                     ),
                     Expanded(
                       child: SingleChildScrollView(
@@ -121,22 +125,26 @@ class _Sidebar extends StatelessWidget {
     required this.selectedIndex,
     this.onSelect,
     this.onLogout,
+    this.isDark = false,
   });
 
   final List<SidebarEntry> entries;
   final int selectedIndex;
   final ValueChanged<int>? onSelect;
   final VoidCallback? onLogout;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     var navIndex = -1;
+    final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
+    final mutedColor = isDark ? const Color(0xFFB7C2CC) : AppColors.textMuted;
 
     return Container(
       width: 236,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(right: BorderSide(color: AppColors.borderSubtle)),
+        color: isDark ? AppColors.darkAppBar : Colors.white,
+        border: Border(right: BorderSide(color: borderColor)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
       child: Column(
@@ -155,11 +163,11 @@ class _Sidebar extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
                       child: Text(
                         entry.label.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
                           letterSpacing: .8,
-                          color: AppColors.textMuted,
+                          color: mutedColor,
                         ),
                       ),
                     )
@@ -169,13 +177,14 @@ class _Sidebar extends StatelessWidget {
                       label: entry.label,
                       selected: (++navIndex) == selectedIndex,
                       onTap: () => onSelect?.call(navIndex),
+                      isDark: isDark,
                     ),
               ],
             ),
           ),
           Container(
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+              border: Border(top: BorderSide(color: borderColor)),
             ),
             padding: const EdgeInsets.only(top: 10),
             child: _SidebarTile(
@@ -183,6 +192,7 @@ class _Sidebar extends StatelessWidget {
               label: 'Log out',
               selected: false,
               onTap: onLogout ?? () {},
+              isDark: isDark,
             ),
           ),
         ],
@@ -197,16 +207,19 @@ class _SidebarTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.isDark = false,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     final activeColor = Theme.of(context).colorScheme.primary;
+    final mutedColor = isDark ? const Color(0xFFB7C2CC) : AppColors.textMuted;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -236,14 +249,14 @@ class _SidebarTile extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(icon, size: 18, color: selected ? Colors.white : AppColors.textMuted),
+                    Icon(icon, size: 18, color: selected ? Colors.white : mutedColor),
                     const SizedBox(width: 11),
                     Text(
                       label,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                        color: selected ? Colors.white : AppColors.textMuted,
+                        color: selected ? Colors.white : mutedColor,
                       ),
                     ),
                   ],
@@ -297,6 +310,7 @@ class _TopBar extends StatelessWidget {
     required this.trailingActions,
     required this.isWide,
     this.avatarColor,
+    this.isDark = false,
   });
 
   final String searchHint;
@@ -305,15 +319,20 @@ class _TopBar extends StatelessWidget {
   final bool showNotificationDot;
   final List<Widget> trailingActions;
   final bool isWide;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
+    final chipBg = isDark ? Colors.white.withOpacity(.07) : AppColors.mistBackground;
+    final mutedColor = isDark ? const Color(0xFFC7D2DC) : AppColors.textMuted;
+
     return Container(
       height: 66,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+        color: isDark ? AppColors.darkAppBar : Colors.white,
+        border: Border(bottom: BorderSide(color: borderColor)),
       ),
       child: Row(
         children: [
@@ -322,18 +341,18 @@ class _TopBar extends StatelessWidget {
               height: 38,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: AppColors.mistBackground,
+                color: chipBg,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search, size: 17, color: AppColors.textMuted),
+                  Icon(Icons.search, size: 17, color: mutedColor),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       searchHint,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13.5, color: AppColors.textMuted),
+                      style: TextStyle(fontSize: 13.5, color: mutedColor),
                     ),
                   ),
                 ],
@@ -349,8 +368,8 @@ class _TopBar extends StatelessWidget {
                 onPressed: () {},
                 icon: const Icon(Icons.notifications_none_rounded),
                 style: IconButton.styleFrom(
-                  backgroundColor: AppColors.mistBackground,
-                  foregroundColor: AppColors.textMuted,
+                  backgroundColor: chipBg,
+                  foregroundColor: mutedColor,
                 ),
               ),
               if (showNotificationDot)
@@ -363,7 +382,7 @@ class _TopBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.emergency,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: isDark ? AppColors.darkAppBar : Colors.white, width: 1.5),
                     ),
                   ),
                 ),
