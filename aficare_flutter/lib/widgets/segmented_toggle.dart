@@ -52,7 +52,8 @@ class _SegmentedToggleState<T> extends State<SegmentedToggle<T>>
   void didUpdateWidget(covariant SegmentedToggle<T> old) {
     super.didUpdateWidget(old);
     if (old.selected != widget.selected) {
-      _prevIndex = old._selectedIndex;
+      final oldIdx = old.values.indexOf(old.selected);
+      _prevIndex = oldIdx < 0 ? 0 : oldIdx;
       _controller
         ..reset()
         ..forward();

@@ -1,5 +1,4 @@
-import 'dart:ui';
-
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aficare_flutter/theme/app_colors.dart';
@@ -173,7 +172,7 @@ class _BrandPanel extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          const ConstrainedBox(
+          ConstrainedBox(
             constraints: BoxConstraints(maxWidth: 420),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,7 +195,7 @@ class _BrandPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 36),
-          const ReferralPathPreview(),
+          ReferralPathPreview(),
           const SizedBox(height: 36),
           Container(
             padding: const EdgeInsets.only(top: 20),
