@@ -12,6 +12,7 @@ class StatCard extends StatelessWidget {
     this.deltaLabel,
     this.deltaBackground,
     this.deltaColor,
+    this.trailing,
     this.hero = false,
     this.isDark = false,
   });
@@ -24,6 +25,7 @@ class StatCard extends StatelessWidget {
   final String? deltaLabel;
   final Color? deltaBackground;
   final Color? deltaColor;
+  final Widget? trailing;
   final bool hero;
   final bool isDark;
 
@@ -67,6 +69,7 @@ class StatCard extends StatelessWidget {
                 ),
                 child: Icon(icon, size: 16, color: hero ? Colors.white : (iconColor ?? AppColors.primaryNavy)),
               ),
+              if (trailing != null) trailing!,
               if (deltaLabel != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
