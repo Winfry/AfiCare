@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../screens/landing_screen.dart';
 import '../screens/login_screen.dart';
-import '../screens/register_screen.dart';
+import '../presentation/auth/register/role_selection/register_role_screen.dart';
 import '../screens/patient/patient_shell.dart';
 import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/health_summary.dart';
@@ -47,7 +47,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) => const RegisterScreen(),
+      builder: (context, state) => const RegisterRoleScreen(),
     ),
     GoRoute(
       path: '/register-facility',
