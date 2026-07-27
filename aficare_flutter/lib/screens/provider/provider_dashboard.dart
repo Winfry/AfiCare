@@ -132,11 +132,10 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     return Consumer2<AuthProvider, ConsultationProvider>(
       builder: (context, authProvider, consultationProvider, child) {
         final user = authProvider.currentUser;
-        if (user == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final dept = user.metadata?['department'] as String? ?? 'Internal Medicine';
+        final isDemo = user == null;
+        final name = isDemo ? 'Doctor' : user.fullName.split(' ').last;
+        final dept = isDemo ? 'Internal Medicine' : (user.metadata?['department'] as String? ?? 'Internal Medicine');
+        final facility = isDemo ? 'AfiCare Demo' : (user.facilityId ?? 'AfiCare');
 
         return SingleChildScrollView(
           child: Column(
@@ -144,8 +143,8 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             children: [
               // Greeting
               GreetingHeader(
-                name: user.fullName.split(' ').last,
-                subtitle: '${user.facilityId ?? 'AfiCare'} · $dept',
+                name: name,
+                subtitle: '$facility \u00B7 $dept',
               ),
 
               const SizedBox(height: 24),
