@@ -168,7 +168,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // Facility picker for healthcare providers
                 if (_selectedRole == UserRole.doctor ||
-                    _selectedRole == UserRole.nurse) ...[
+                    _selectedRole == UserRole.nurse ||
+                    _selectedRole == UserRole.radiologist) ...[
                   const SizedBox(height: 16),
                   if (_loadingFacilities)
                     const Center(child: CircularProgressIndicator())
@@ -426,6 +427,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return AfiCareTheme.doctorColor;
       case UserRole.nurse:
         return AfiCareTheme.nurseColor;
+      case UserRole.radiologist:
+        return const Color(0xFF457B9D);
       case UserRole.admin:
         return AfiCareTheme.adminColor;
     }

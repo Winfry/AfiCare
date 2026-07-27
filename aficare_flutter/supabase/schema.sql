@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT UNIQUE NOT NULL,
     full_name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('patient', 'doctor', 'nurse', 'admin')),
+    role TEXT NOT NULL CHECK (role IN ('patient', 'doctor', 'nurse', 'radiologist', 'admin')),
     phone TEXT,
     medilink_id TEXT UNIQUE,
     hospital_id TEXT,
@@ -875,3 +875,7 @@ GRANT SELECT, INSERT, UPDATE ON triage_assessments TO authenticated;
 GRANT SELECT ON audit_log TO authenticated;
 -- Fix facilities grants
 GRANT UPDATE, DELETE ON facilities TO authenticated;
+
+-- 11. Add radiologist role to users table constraint (run in Supabase SQL Editor)
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('patient', 'doctor', 'nurse', 'radiologist', 'admin'));

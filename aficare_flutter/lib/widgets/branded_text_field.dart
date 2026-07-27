@@ -57,9 +57,12 @@ class _BrandedTextFieldState extends State<BrandedTextField> {
           validator: widget.validator,
           textInputAction: widget.textInputAction,
           onFieldSubmitted: widget.onFieldSubmitted,
-          style: const TextStyle(fontSize: 14.5, color: AppColors.deepNavy),
+          style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
           decoration: InputDecoration(
             hintText: widget.hint,
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+            filled: true,
+            fillColor: Colors.white,
             prefixIcon: Icon(widget.icon, size: 19, color: AppColors.textMuted),
             suffixIcon: widget.isPassword
                 ? IconButton(
