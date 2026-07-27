@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_breakpoints.dart';
 
-sealed class SidebarEntry {}
+sealed class SidebarEntry {
+  const SidebarEntry();
+}
 
 class SidebarGroupLabel extends SidebarEntry {
-  SidebarGroupLabel(this.label);
+  const SidebarGroupLabel(this.label);
   final String label;
 }
 
 class SidebarNavItem extends SidebarEntry {
-  SidebarNavItem({required this.icon, required this.label});
+  const SidebarNavItem({required this.icon, required this.label});
   final IconData icon;
   final String label;
 }

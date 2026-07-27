@@ -19,6 +19,7 @@ class AppColors {
   /// Middle stop for navy gradients (hero cards, brand panels) — sits
   /// between [primaryNavy] and [deepNavy].
   static const Color navyGradientMid = Color(0xFF24456B);
+  static const Color canopy2         = Color(0xFF264A73);
 
   // ── Role colors ─────────────────────────────────────────────────────
   static const Color patientColor = primaryNavy;
