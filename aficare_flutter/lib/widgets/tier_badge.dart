@@ -1,34 +1,68 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
+enum TierBadgeStyle { outline, filled, accent }
+
 class TierBadge extends StatelessWidget {
   const TierBadge({
     super.key,
-    required this.label,
+    this.label,
+    this.icon,
+    this.style = TierBadgeStyle.outline,
+    this.size = 22,
     this.color,
-  });
+  }) : assert(label != null || icon != null, 'Provide a label or an icon');
 
-  final String label;
+  final String? label;
+  final IconData? icon;
+  final TierBadgeStyle style;
+  final double size;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.steelBlue;
+    Color bg;
+    Color fg;
+    Color? border;
+
+    if (color != null) {
+      bg = color!;
+      fg = Colors.white;
+    } else {
+      switch (style) {
+        case TierBadgeStyle.outline:
+          bg = Colors.white;
+          fg = AppColors.primaryNavy;
+          border = AppColors.primaryNavy;
+        case TierBadgeStyle.filled:
+          bg = AppColors.primaryNavy;
+          fg = Colors.white;
+        case TierBadgeStyle.accent:
+          bg = AppColors.lightBlue;
+          fg = AppColors.deepNavy;
+      }
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      width: size,
+      height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: c.withOpacity(.12),
-        borderRadius: BorderRadius.circular(6),
+        color: bg,
+        shape: BoxShape.circle,
+        border: border != null ? Border.all(color: border, width: 1.5) : null,
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: c,
-          fontFamily: 'monospace',
-        ),
-      ),
+      child: icon != null
+          ? Icon(icon, size: size * 0.55, color: fg)
+          : Text(
+              label!,
+              style: TextStyle(
+                fontSize: size * 0.42,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'monospace',
+                color: fg,
+              ),
+            ),
     );
   }
 }
