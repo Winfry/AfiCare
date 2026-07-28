@@ -20,13 +20,11 @@ class AuthProvider with ChangeNotifier {
 
   void _initAuth() {
     try {
-      // Check if user is already logged in
       final session = _supabase.auth.currentSession;
       if (session != null) {
         _loadUserProfile(session.user.id);
       }
 
-      // Listen to auth state changes
       _supabase.auth.onAuthStateChange.listen((data) {
         final AuthChangeEvent event = data.event;
         final Session? session = data.session;
@@ -62,7 +60,91 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Sign Up
+  // ── Patient phone-OTP registration ─────────────────────────────────
+
+  /// Sends an OTP via SMS to [phone] (must be in E.164 format).
+  /// Stores [fullName] locally so it can be used after OTP verification.
+  Future<bool> signUpPatient({
+    required String phone,
+    required String fullName,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _supabase.auth.signInWithOtp(
+        phone: phone,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Verifies the OTP sent to [phone]. On success, creates a patient
+  /// record in the users table and sets [currentUser].
+  Future<bool> verifyPatientOtp({
+    required String phone,
+    required String otp,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _supabase.auth.verifyOTP(
+        phone: phone,
+        token: otp,
+        type: OtpType.sms,
+      );
+
+      if (response.user == null) {
+        throw Exception('Verification failed. Please try again.');
+      }
+
+      final userId = response.user!.id;
+      final placeholderEmail = '${phone.replaceAll('+', '')}@patient.aficare';
+
+      final existing = await _supabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (existing == null) {
+        await _supabase.from('users').insert({
+          'id': userId,
+          'email': placeholderEmail,
+          'full_name': '',
+          'role': 'patient',
+          'phone': phone,
+          'medilink_id': UserModel.generateMedilinkId(),
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      await _loadUserProfile(userId);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── Email/password sign up (providers) ──────────────────────────────
+
   Future<bool> signUp({
     required String email,
     required String password,
@@ -76,7 +158,6 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Create auth user
       final authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
@@ -86,13 +167,11 @@ class AuthProvider with ChangeNotifier {
         throw Exception('Failed to create account');
       }
 
-      // Generate MediLink ID for patients
       String? medilinkId;
       if (role == UserRole.patient) {
         medilinkId = UserModel.generateMedilinkId();
       }
 
-      // Build user profile record
       final userRecord = <String, dynamic>{
         'id': authResponse.user!.id,
         'email': email,
@@ -107,17 +186,14 @@ class AuthProvider with ChangeNotifier {
         userRecord['facility_id'] = facilityId;
       }
 
-      // Create user profile
       await _supabase.from('users').insert(userRecord);
-
-      // Load the user profile so currentUser is available before navigating
       await _loadUserProfile(authResponse.user!.id);
 
       _isLoading = false;
       notifyListeners();
       return true;
     } on AuthException catch (e) {
-      if (e.statusCode == 422 || e.message.contains('already registered')) {
+      if (e.statusCode == '422' || e.message.contains('already registered')) {
         _error = 'An account with this email already exists. Please log in instead.';
       } else {
         _error = e.message;
@@ -133,7 +209,8 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Sign In
+  // ── Sign In ─────────────────────────────────────────────────────────
+
   Future<bool> signIn({
     required String email,
     required String password,
@@ -148,7 +225,6 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      // Wait for the user profile to load before navigating
       if (response.user != null) {
         await _loadUserProfile(response.user!.id);
       }
@@ -164,7 +240,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Sign In with MediLink ID
   Future<bool> signInWithMedilinkId({
     required String medilinkId,
     required String password,
@@ -174,7 +249,6 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Find user by MediLink ID
       final response = await _supabase
           .from('users')
           .select('email')
@@ -182,8 +256,6 @@ class AuthProvider with ChangeNotifier {
           .single();
 
       final email = response['email'] as String;
-
-      // Sign in with email
       return await signIn(email: email, password: password);
     } catch (e) {
       _error = 'Invalid MediLink ID or password';
@@ -193,14 +265,16 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Sign Out
+  // ── Sign Out ────────────────────────────────────────────────────────
+
   Future<void> signOut() async {
     await _supabase.auth.signOut();
     _currentUser = null;
     notifyListeners();
   }
 
-  // Update profile (name, phone, metadata — e.g. blood type, prefs)
+  // ── Update profile ──────────────────────────────────────────────────
+
   Future<bool> updateProfile({
     String? fullName,
     String? phone,
@@ -221,7 +295,8 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Reset Password
+  // ── Reset Password ──────────────────────────────────────────────────
+
   Future<bool> resetPassword(String email) async {
     try {
       await _supabase.auth.resetPasswordForEmail(email);
