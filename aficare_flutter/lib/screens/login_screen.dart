@@ -85,6 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthSplitLayout(
+      brandPhotoUrl: 'assets/images/LoginScreen.jpg',
       child: _buildForm(),
     );
   }
