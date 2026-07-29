@@ -12,6 +12,7 @@ class AuthSplitLayout extends StatelessWidget {
     this.brandHeadline = "One ID. Every facility you've ever visited.",
     this.brandSubtitle =
         'Secure. Connected. Available whenever you need your healthcare records.',
+    this.brandPhotoUrl,
   });
 
   final Widget child;
@@ -21,6 +22,7 @@ class AuthSplitLayout extends StatelessWidget {
   final String brandTitle;
   final String brandHeadline;
   final String brandSubtitle;
+  final String? brandPhotoUrl;
 
   static const desktopBreakpoint = 860.0;
 
