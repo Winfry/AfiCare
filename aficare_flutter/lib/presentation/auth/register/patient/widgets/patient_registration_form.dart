@@ -30,6 +30,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
   bool _verifying = false;
   bool _showSuccess = false;
   String? _error;
+  String _otpCode = '';
 
   String _formattedPhone = '';
 
@@ -76,7 +77,8 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
     }
   }
 
-  Future<bool> _verifyOtp(String code) async {
+  Future<void> _verifyOtp() async {
+    if (_otpCode.length != 6) return;
     setState(() {
       _verifying = true;
       _error = null;
@@ -85,20 +87,18 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final success = await auth.verifyPatientOtp(
       phone: _formattedPhone,
-      otp: code,
+      otp: _otpCode,
     );
 
-    if (!mounted) return false;
+    if (!mounted) return;
 
     if (success) {
       setState(() => _showSuccess = true);
-      return true;
     } else {
       setState(() {
         _verifying = false;
         _error = auth.error ?? 'Incorrect verification code. Try again.';
       });
-      return false;
     }
   }
 
@@ -106,8 +106,6 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
     if (!mounted) return;
     context.go('/patient');
   }
-
-  void _onResend() => _sendOtp();
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +187,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
           ),
           const SizedBox(height: 20),
           OtpDigitField(
-            onChanged: (_) {},
+            onChanged: (code) => _otpCode = code,
             onCompleted: () {},
           ),
           const SizedBox(height: 20),
