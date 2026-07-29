@@ -59,8 +59,10 @@ class BrandPanel extends StatelessWidget {
       return Stack(
         children: [
           SizedBox.expand(
-            child: Image.network(
-              photoUrl!,
+            child: Image(
+              image: photoUrl!.startsWith('http')
+                  ? NetworkImage(photoUrl!)
+                  : AssetImage(photoUrl!) as ImageProvider,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),

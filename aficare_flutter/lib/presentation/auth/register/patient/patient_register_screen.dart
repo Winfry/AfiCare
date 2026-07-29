@@ -13,6 +13,7 @@ class PatientRegisterScreen extends StatelessWidget {
     return const AuthSplitLayout(
       brandHeadline: 'Your health records.\nAnywhere. Anytime.',
       brandSubtitle: 'Create your MediLink ID in just a few seconds.',
+      brandPhotoUrl: 'assets/images/PatientRegisterScreen.jpg',
       child: AuthFormContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
