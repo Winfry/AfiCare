@@ -26,73 +26,85 @@ class _RoleCardState extends State<RoleCard> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedScale(
-        scale: _hovered ? 1.02 : 1,
-        duration: const Duration(milliseconds: 220),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          transform: Matrix4.translationValues(0, _hovered ? -4 : 0, 0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(_hovered ? 0.12 : 0.06),
-                blurRadius: _hovered ? 18 : 8,
-                offset: Offset(0, _hovered ? 8 : 3),
-              ),
-            ],
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        transform: Matrix4.translationValues(0, _hovered ? -3 : 0, 0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _hovered ? Colors.transparent : const Color(0xFFDCE3EA),
+            width: 1,
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: widget.onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: widget.role.color.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        widget.role.icon,
-                        color: widget.role.color,
-                      ),
+          boxShadow: [
+            if (_hovered)
+              const BoxShadow(
+                color: Color(0x1A152A45),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              )
+            else
+              const BoxShadow(
+                color: Color(0x0F152A45),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: widget.onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: widget.role.iconCircleColor,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      widget.role.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+                    child: Icon(
+                      widget.role.icon,
+                      color: Colors.white,
+                      size: 19,
                     ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Text(
-                        widget.role.description,
-                        style: const TextStyle(
-                          height: 1.45,
-                          color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.role.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: widget.role.titleColor,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.role.description,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.45,
+                            color: Color(0xFF55708A),
+                          ),
+                        ),
+                      ],
                     ),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        color: widget.role.color,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textMuted.withOpacity(0.6),
+                    size: 20,
+                  ),
+                ],
               ),
             ),
           ),

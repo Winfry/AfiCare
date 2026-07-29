@@ -11,8 +11,8 @@ class PatientRegisterScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AuthSplitLayout(
-      brandHeadline: 'Create your MediLink ID',
-      brandSubtitle: 'Just your name and phone number.',
+      brandHeadline: 'Your health records.\nAnywhere. Anytime.',
+      brandSubtitle: 'Create your MediLink ID in just a few seconds.',
       child: AuthFormContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

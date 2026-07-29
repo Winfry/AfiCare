@@ -4,6 +4,8 @@ import '../screens/landing_screen.dart';
 import '../screens/login_screen.dart';
 import '../presentation/auth/register/role_selection/register_role_screen.dart';
 import '../presentation/auth/register/patient/patient_register_screen.dart';
+import '../presentation/auth/register/clinician/clinician_register_screen.dart';
+import '../presentation/auth/register/admin/admin_register_screen.dart';
 import '../screens/patient/patient_shell.dart';
 import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/health_summary.dart';
@@ -53,6 +55,22 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'patient',
           builder: (context, state) => const PatientRegisterScreen(),
+        ),
+        GoRoute(
+          path: 'doctor',
+          builder: (context, state) => const ClinicianRegisterScreen(initialRole: 'doctor'),
+        ),
+        GoRoute(
+          path: 'nurse',
+          builder: (context, state) => const ClinicianRegisterScreen(initialRole: 'nurse'),
+        ),
+        GoRoute(
+          path: 'radiologist',
+          builder: (context, state) => const ClinicianRegisterScreen(initialRole: 'radiologist'),
+        ),
+        GoRoute(
+          path: 'admin',
+          builder: (context, state) => const AdminRegisterScreen(),
         ),
       ],
     ),
