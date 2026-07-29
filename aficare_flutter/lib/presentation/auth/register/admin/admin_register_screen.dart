@@ -79,6 +79,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
     return AuthSplitLayout(
       brandHeadline: 'Set up your organization account.',
       brandSubtitle: 'Manage facilities, staff, and system-wide settings from one place.',
+      brandPhotoUrl: 'assets/images/AdminRegisterScreen.webp',
       child: AuthFormContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

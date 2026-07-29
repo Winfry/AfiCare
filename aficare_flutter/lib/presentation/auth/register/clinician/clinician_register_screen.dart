@@ -128,6 +128,7 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
     return AuthSplitLayout(
       brandHeadline: 'Join AfiCare as a healthcare professional.',
       brandSubtitle: 'Manage patients, coordinate referrals, and keep every record connected across facilities.',
+      brandPhotoUrl: 'assets/images/ClinicianRegisterScreen.jpg',
       child: AuthFormContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

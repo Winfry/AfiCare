@@ -26,6 +26,9 @@ class AuthSplitLayout extends StatelessWidget {
 
   static const desktopBreakpoint = 860.0;
 
+  ImageProvider<Object> _resolveImage(String path) =>
+      (path.startsWith('http') ? NetworkImage(path) : AssetImage(path)) as ImageProvider<Object>;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,15 +40,66 @@ class AuthSplitLayout extends StatelessWidget {
                 constraints.maxWidth >= desktopBreakpoint;
 
             if (!isDesktop) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Center(
+              final bool usePhoto =
+                  brandPhotoUrl != null && showBrandPanel;
+
+              final Widget formContent = Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 420),
-                    child: child,
+                    child: usePhoto
+                        ? Card(
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(16),
+                            ),
+                            color: Colors.white,
+                            margin: EdgeInsets.zero,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: child,
+                            ),
+                          )
+                        : child,
                   ),
                 ),
               );
+
+              if (usePhoto) {
+                return Stack(
+                  children: [
+                    SizedBox.expand(
+                      child: Image(
+                        image: _resolveImage(brandPhotoUrl!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const SizedBox.shrink(),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x591D3557),
+                              Color(0x8C1D3557),
+                              Color(0xEB152A45),
+                            ],
+                            stops: [0.0, 0.55, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                    formContent,
+                  ],
+                );
+              }
+
+              return formContent;
             }
 
             return Row(
@@ -57,6 +111,7 @@ class AuthSplitLayout extends StatelessWidget {
                       title: brandTitle,
                       headline: brandHeadline,
                       subtitle: brandSubtitle,
+                      photoUrl: brandPhotoUrl,
                     ),
                   ),
                 Expanded(
