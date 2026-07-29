@@ -51,14 +51,6 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
     }
   }
 
-  String get _roleTitle {
-    switch (_role) {
-      case 'nurse': return "I'm a Nurse";
-      case 'radiologist': return "I'm a Radiologist";
-      default: return "I'm a Doctor";
-    }
-  }
-
   String get _departmentLabel {
     if (_role == 'radiologist') return 'Specialty';
     return 'Department / Specialty';

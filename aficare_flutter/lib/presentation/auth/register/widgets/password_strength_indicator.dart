@@ -42,7 +42,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
           children: List.generate(4, (i) => Expanded(
             child: Container(
               height: 3,
-              margin: const EdgeInsets.only(right: i < 3 ? 4 : 0),
+              margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
               decoration: BoxDecoration(
                 color: _color(i),
                 borderRadius: BorderRadius.circular(2),
