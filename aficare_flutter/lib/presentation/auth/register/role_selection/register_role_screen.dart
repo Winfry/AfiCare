@@ -59,6 +59,7 @@ class RegisterRoleScreen extends StatelessWidget {
     return AuthSplitLayout(
       brandHeadline: 'Secure. Private. Always you.',
       brandSubtitle: 'Your health, your data, your control.',
+      brandPhotoUrl: 'assets/images/RegisterRole.jpg',
       child: AuthFormContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
