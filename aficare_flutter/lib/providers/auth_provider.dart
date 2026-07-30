@@ -60,11 +60,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Patient phone-OTP registration ─────────────────────────────────
+  // ── Patient direct registration (phone-only, no OTP) ────────────────
 
-  /// Sends an OTP via SMS to [phone] (must be in E.164 format).
-  /// Stores [fullName] locally so it can be used after OTP verification.
-  Future<bool> signUpPatient({
+  /// Creates a patient account using [phone] + random password behind the
+  /// scenes. No SMS / OTP needed — patients are auto-logged in on success.
+  Future<bool> signUpPatientDirect({
     required String phone,
     required String fullName,
   }) async {
@@ -73,62 +73,34 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _supabase.auth.signInWithOtp(
-        phone: phone,
-      );
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Verifies the OTP sent to [phone]. On success, creates a patient
-  /// record in the users table and sets [currentUser].
-  Future<bool> verifyPatientOtp({
-    required String phone,
-    required String otp,
-  }) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final response = await _supabase.auth.verifyOTP(
-        phone: phone,
-        token: otp,
-        type: OtpType.sms,
-      );
-
-      if (response.user == null) {
-        throw Exception('Verification failed. Please try again.');
-      }
-
-      final userId = response.user!.id;
       final placeholderEmail = '${phone.replaceAll('+', '')}@patient.aficare';
+      final tempPassword = UserModel.generateMedilinkId();
 
-      final existing = await _supabase
-          .from('users')
-          .select('id')
-          .eq('id', userId)
-          .maybeSingle();
+      final authResponse = await _supabase.auth.signUp(
+        email: placeholderEmail,
+        password: tempPassword,
+      );
 
-      if (existing == null) {
-        await _supabase.from('users').insert({
-          'id': userId,
-          'email': placeholderEmail,
-          'full_name': '',
-          'role': 'patient',
-          'phone': phone,
-          'medilink_id': UserModel.generateMedilinkId(),
-          'created_at': DateTime.now().toIso8601String(),
-        });
+      if (authResponse.user == null) {
+        throw Exception('Failed to create account. Please try again.');
       }
+
+      final userId = authResponse.user!.id;
+
+      await _supabase.from('users').insert({
+        'id': userId,
+        'email': placeholderEmail,
+        'full_name': fullName,
+        'role': 'patient',
+        'phone': phone,
+        'medilink_id': UserModel.generateMedilinkId(),
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      await _supabase.auth.signInWithPassword(
+        email: placeholderEmail,
+        password: tempPassword,
+      );
 
       await _loadUserProfile(userId);
 

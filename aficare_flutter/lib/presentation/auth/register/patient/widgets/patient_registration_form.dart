@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../theme/app_colors.dart';
 import '../../../../../providers/auth_provider.dart';
 import '../../../widgets/inline_error.dart';
 import '../../../widgets/loading_button.dart';
 import '../utils/phone_formatter.dart';
-import 'otp_digit_field.dart';
 import 'patient_success_animation.dart';
 import 'phone_prefix_field.dart';
 import 'terms_text.dart';
@@ -25,14 +23,9 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
 
-  bool _sendingOtp = false;
-  bool _otpVisible = false;
-  bool _verifying = false;
+  bool _loading = false;
   bool _showSuccess = false;
   String? _error;
-  String _otpCode = '';
-
-  String _formattedPhone = '';
 
   @override
   void dispose() {
@@ -41,7 +34,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
+  Future<void> _createAccount() async {
     if (!_formKey.currentState!.validate()) return;
 
     final formatted = PhoneFormatter.format('254${_phoneController.text}');
@@ -51,43 +44,14 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
     }
 
     setState(() {
-      _sendingOtp = true;
+      _loading = true;
       _error = null;
-      _formattedPhone = formatted;
     });
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.signUpPatient(
+    final success = await auth.signUpPatientDirect(
       phone: formatted,
       fullName: _nameController.text.trim(),
-    );
-
-    if (!mounted) return;
-
-    if (success) {
-      setState(() {
-        _sendingOtp = false;
-        _otpVisible = true;
-      });
-    } else {
-      setState(() {
-        _sendingOtp = false;
-        _error = auth.error ?? 'Failed to send verification code. Try again.';
-      });
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_otpCode.length != 6) return;
-    setState(() {
-      _verifying = true;
-      _error = null;
-    });
-
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.verifyPatientOtp(
-      phone: _formattedPhone,
-      otp: _otpCode,
     );
 
     if (!mounted) return;
@@ -96,8 +60,8 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
       setState(() => _showSuccess = true);
     } else {
       setState(() {
-        _verifying = false;
-        _error = auth.error ?? 'Incorrect verification code. Try again.';
+        _loading = false;
+        _error = auth.error ?? 'Failed to create account. Try again.';
       });
     }
   }
@@ -137,21 +101,11 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
           ),
           const SizedBox(height: 24),
           LoadingButton(
-            label: _sendingOtp ? 'Code sent' : 'Send verification code',
-            loading: _sendingOtp,
-            onPressed: _sendOtp,
+            label: 'Create account',
+            loading: _loading,
+            onPressed: _createAccount,
           ),
           const TermsText(),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutCubic,
-            child: _otpVisible
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: _buildOtpPanel(),
-                  )
-                : const SizedBox.shrink(),
-          ),
           const SizedBox(height: 16),
           Center(
             child: GestureDetector(
@@ -171,68 +125,6 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildOtpPanel() {
-    return _OtpSlideIn(
-      child: Column(
-        children: [
-          _buildDivider(),
-          const SizedBox(height: 20),
-          const Text(
-            'Enter Verification Code',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF152A45)),
-          ),
-          const SizedBox(height: 20),
-          OtpDigitField(
-            onChanged: (code) => _otpCode = code,
-            onCompleted: () {},
-          ),
-          const SizedBox(height: 20),
-          LoadingButton(
-            label: _verifying ? 'Verifying...' : 'Verify & create account',
-            loading: _verifying,
-            onPressed: _verifyOtp,
-          ),
-          const SizedBox(height: 14),
-          _buildResendRow(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: Color(0xFFDCE3EA))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text(
-            'OTP verification',
-            style: TextStyle(
-              fontSize: 10.5,
-              letterSpacing: 1,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: Color(0xFFDCE3EA))),
-      ],
-    );
-  }
-
-  Widget _buildResendRow() {
-    return const Center(
-      child: Text(
-        'Resend code in 30s',
-        style: TextStyle(
-          fontSize: 13,
-          color: Color(0xFF55708A),
-          fontWeight: FontWeight.w500,
-        ),
       ),
     );
   }
@@ -271,49 +163,6 @@ class _FieldLabel extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF55708A)),
-      ),
-    );
-  }
-}
-
-class _OtpSlideIn extends StatefulWidget {
-  const _OtpSlideIn({required this.child});
-  final Widget child;
-  @override
-  State<_OtpSlideIn> createState() => _OtpSlideInState();
-}
-
-class _OtpSlideInState extends State<_OtpSlideIn> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slideAnim;
-  late final Animation<double> _fadeAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 350), vsync: this);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-    _fadeAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeAnim,
-      child: SlideTransition(
-        position: _slideAnim,
-        child: widget.child,
       ),
     );
   }
