@@ -273,7 +273,7 @@ class _VitalsCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (assessment != null)
-            _buildVitals(assessment!)
+            _buildVitals(context, assessment!)
           else
             Text(AppStrings.noVitals(lang), style: const TextStyle(fontSize: 14, color: Color(0xFF55708A))),
         ],
@@ -281,7 +281,7 @@ class _VitalsCard extends StatelessWidget {
     );
   }
 
-  Widget _buildVitals(TriageAssessment v) {
+  Widget _buildVitals(BuildContext context, TriageAssessment v) {
     final tileWidth = (MediaQuery.of(context).size.width.clamp(0, 600) - 84) / 2;
     return Wrap(
       spacing: 12,
@@ -347,9 +347,9 @@ class _VitalsCard extends StatelessWidget {
 }
 
 class _MedicationCard extends StatelessWidget {
-  const _MedicationCard({required this.mediations, required this.lang});
+  const _MedicationCard({required this.medications, required this.lang});
 
-  final List<AdherenceLogModel> mediations;
+  final List<AdherenceLogModel> medications;
   final String lang;
 
   @override
@@ -362,12 +362,12 @@ class _MedicationCard extends StatelessWidget {
             children: [
               _iconBg(Icons.medication_outlined, const Color(0xFF206B5D), const Color(0xFFC7EDE4)),
               const SizedBox(width: 12),
-              Text(AppStrings.mediationsTitle(lang), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF152A45))),
+              Text(AppStrings.medicationsTitle(lang), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF152A45))),
             ],
           ),
           const SizedBox(height: 16),
-          if (mediations.isNotEmpty)
-            ...mediations.map((m) => _MedRow(med: m, lang: lang))
+          if (medications.isNotEmpty)
+            ...medications.map((m) => _MedRow(med: m, lang: lang))
           else
             Text(AppStrings.noMedications(lang), style: const TextStyle(fontSize: 14, color: Color(0xFF55708A))),
         ],
@@ -550,7 +550,7 @@ class _RecentActivityCard extends StatelessWidget {
 
     if (items.isEmpty) {
       items.addAll([
-        _ActivityItem(icon: Icons.info_outline, iconColor: const Color(0xFF55708A), title: 'No recent activity', subtitle: ''),
+        const _ActivityItem(icon: Icons.info_outline, iconColor: Color(0xFF55708A), title: 'No recent activity', subtitle: ''),
       ]);
     }
 
@@ -608,7 +608,7 @@ class AfiCareCard extends StatelessWidget {
   }
 }
 
-Icon _iconBg(IconData icon, Color iconColor, Color bgColor) {
+Container _iconBg(IconData icon, Color iconColor, Color bgColor) {
   return Container(
     width: 36,
     height: 36,
