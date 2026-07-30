@@ -88,7 +88,7 @@ class AppShell extends StatelessWidget {
                       isDark: isDark,
                     ),
                     Expanded(
-                      child: SingleChildScrollView(
+                      child: Padding(
                         padding: EdgeInsets.fromLTRB(
                           isWide ? 28 : 16,
                           isWide ? 30 : 20,
