@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
@@ -65,17 +66,32 @@ class _PatientShellState extends State<PatientShell> {
 
     dep.setOwnId(id);
 
-    await Future.wait([
-      dep.loadDependents(id),
-      Provider.of<AppointmentProvider>(context, listen: false).loadAppointments(id),
-      Provider.of<TriageProvider>(context, listen: false).loadAssessments(id),
-      Provider.of<AdherenceProvider>(context, listen: false).loadToday(id),
-      Provider.of<AdherenceProvider>(context, listen: false).loadHistory(id, days: 7),
-      Provider.of<PatientProfileProvider>(context, listen: false).loadProfile(id),
-      Provider.of<PatientProvider>(context, listen: false).loadConsultations(id),
-      Provider.of<LabProvider>(context, listen: false).loadOrders(id),
-      Provider.of<PreferencesProvider>(context, listen: false).loadPreferences(id),
-    ]);
+    try {
+      await Future.wait([
+        dep.loadDependents(id),
+        Provider.of<AppointmentProvider>(context, listen: false).loadAppointments(id),
+        Provider.of<TriageProvider>(context, listen: false).loadAssessments(id),
+        Provider.of<AdherenceProvider>(context, listen: false).loadToday(id),
+        Provider.of<AdherenceProvider>(context, listen: false).loadHistory(id, days: 7),
+        Provider.of<PatientProfileProvider>(context, listen: false).loadProfile(id),
+        Provider.of<PatientProvider>(context, listen: false).loadConsultations(id),
+        Provider.of<LabProvider>(context, listen: false).loadOrders(id),
+        Provider.of<PreferencesProvider>(context, listen: false).loadPreferences(id),
+      ]);
+    } catch (_) {
+      // Data loading errors are non-fatal; UI shows empty states
+    }
+  }
+
+  void _onSidebarSelect(int navIndex) {
+    // Tab items switch the IndexedStack; nav items push a full-page route.
+    if (navIndex <= 2) {
+      setState(() => _index = navIndex);
+    } else if (navIndex == 3) {
+      context.go('/patient/records');
+    } else if (navIndex == 4) {
+      context.go('/patient/expenses');
+    }
   }
 
   @override
@@ -84,7 +100,7 @@ class _PatientShellState extends State<PatientShell> {
       sidebarEntries: _sidebarEntries,
       bottomNavItems: _bottomNavItems,
       selectedIndex: _index,
-      onSelect: (i) => setState(() => _index = i),
+      onSelect: _onSidebarSelect,
       onBottomNavSelect: (i) => setState(() => _index = i),
       searchHint: 'Search patients, records...',
       avatarLabel: 'P',
