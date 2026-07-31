@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import '../provider/patient_search_screen.dart';
+import '../provider/provider_inbox_screen.dart';
+import '../provider/referral_tracker_screen.dart';
+import '../provider/reports_screen.dart';
+import '../provider/provider_settings_screen.dart';
 
 class ProviderWebDashboardScreen extends StatefulWidget {
   const ProviderWebDashboardScreen({super.key});
@@ -13,6 +19,9 @@ class ProviderWebDashboardScreen extends StatefulWidget {
 
 class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen> {
   String _selectedNav = 'dashboard';
+  List<Map<String, dynamic>> _activity = [];
+  List<Map<String, dynamic>> _appointments = [];
+  bool _isLoadingData = true;
 
   final _navItems = [
     {'id': 'dashboard', 'icon': Icons.dashboard, 'label': 'Dashboard'},
@@ -28,7 +37,110 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AnalyticsProvider>().loadAll();
+      _loadActivity();
+      _loadAppointments();
     });
+  }
+
+  Future<void> _loadActivity() async {
+    final supabase = Supabase.instance.client;
+    final items = <Map<String, dynamic>>[];
+
+    try {
+      final consults = await supabase
+          .from('consultations')
+          .select('id, chief_complaint, timestamp')
+          .order('timestamp', ascending: false)
+          .limit(3);
+      for (final c in consults as List) {
+        items.add({
+          'icon': Icons.assignment,
+          'title': 'Consultation completed',
+          'subtitle': (c['chief_complaint'] ?? 'Patient visit').toString(),
+          'timestamp': DateTime.tryParse(c['timestamp'] as String),
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final referrals = await supabase
+          .from('referrals')
+          .select('id, reason, created_at')
+          .order('created_at', ascending: false)
+          .limit(3);
+      for (final r in referrals as List) {
+        items.add({
+          'icon': Icons.swap_horiz,
+          'title': 'Referral created',
+          'subtitle': (r['reason'] ?? 'Patient referral').toString(),
+          'timestamp': DateTime.tryParse(r['created_at'] as String),
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final results = await supabase
+          .from('lab_results')
+          .select('id, lab_orders(test_name), resulted_at')
+          .order('resulted_at', ascending: false)
+          .limit(3);
+      for (final lr in results as List) {
+        final order = lr['lab_orders'] as Map?;
+        items.add({
+          'icon': Icons.science,
+          'title': 'Lab results available',
+          'subtitle': (order?['test_name'] ?? 'Lab test').toString(),
+          'timestamp': DateTime.tryParse(lr['resulted_at'] as String),
+        });
+      }
+    } catch (_) {}
+
+    items.sort((a, b) {
+      final ta = a['timestamp'] as DateTime?;
+      final tb = b['timestamp'] as DateTime?;
+      return (tb ?? DateTime(0)).compareTo(ta ?? DateTime(0));
+    });
+    if (mounted) {
+      setState(() {
+        _activity = items.take(6).toList();
+        _isLoadingData = false;
+      });
+    }
+  }
+
+  Future<void> _loadAppointments() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    try {
+      final response = await Supabase.instance.client
+          .from('appointments')
+          .select('id, scheduled_at, status, chief_complaint, type, users(full_name)')
+          .eq('provider_id', user.id)
+          .order('scheduled_at', ascending: true)
+          .limit(20);
+
+      final now = DateTime.now();
+      final upcoming = <Map<String, dynamic>>[];
+      for (final a in response as List) {
+        final map = Map<String, dynamic>.from(a as Map);
+        final when = DateTime.tryParse(map['scheduled_at'] as String);
+        if (when != null && when.isAfter(now)) {
+          final patient = map['users'] as Map<String, dynamic>?;
+          upcoming.add({
+            'name': patient?['full_name'] ?? 'Patient',
+            'time': '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}',
+            'type': map['chief_complaint'] ?? (map['type'] == 'telehealth' ? 'Telehealth' : 'Consultation'),
+            'status': map['status'] ?? 'pending',
+            'when': when,
+          });
+        }
+      }
+      upcoming.sort((a, b) => (a['when'] as DateTime).compareTo(b['when'] as DateTime));
+      if (mounted) {
+        setState(() => _appointments = upcoming.take(5).toList());
+      }
+    } catch (_) {}
   }
 
   @override
@@ -102,6 +214,22 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
   }
 
   Widget _buildContent(BuildContext context) {
+    switch (_selectedNav) {
+      case 'search':
+        return const PatientSearchScreen();
+      case 'inbox':
+        return const ProviderInboxScreen();
+      case 'referrals':
+        return const ReferralTrackerScreen();
+      case 'reports':
+        return const ReportsScreen();
+      case 'settings':
+        return const ProviderSettingsScreen();
+    }
+    return _buildDashboard(context);
+  }
+
+  Widget _buildDashboard(BuildContext context) {
     final analytics = context.watch<AnalyticsProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
@@ -158,11 +286,15 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
 
   Widget _buildQuickStats(AnalyticsProvider analytics) {
     final isWide = MediaQuery.of(context).size.width > 800;
+    final totalAppointments = analytics.appointmentTrend.fold<int>(
+      0,
+      (sum, e) => sum + ((e['count'] as num?)?.toInt() ?? 0),
+    );
     final cards = [
       _StatCard(title: 'Total Patients', value: '${analytics.totalUsers}', icon: Icons.people, color: Colors.blue),
       _StatCard(title: 'Consultations', value: '${analytics.totalConsultations}', icon: Icons.assignment, color: Colors.green),
       _StatCard(title: 'Active Referrals', value: '${analytics.referralsThisMonth}', icon: Icons.swap_horiz, color: Colors.orange),
-      _StatCard(title: 'Appointments', value: '${analytics.totalConsultations}', icon: Icons.calendar_today, color: Colors.purple),
+      _StatCard(title: 'Appointments', value: '$totalAppointments', icon: Icons.calendar_today, color: Colors.purple),
     ];
 
     if (isWide) {
@@ -190,18 +322,41 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           children: [
             const Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _activityItem(Icons.person_add, 'New patient registered', '2 min ago'),
-            _activityItem(Icons.assignment, 'Consultation completed', '15 min ago'),
-            _activityItem(Icons.swap_horiz, 'Referral accepted', '1 hour ago'),
-            _activityItem(Icons.science, 'Lab results available', '3 hours ago'),
-            _activityItem(Icons.medication, 'Prescription refilled', '1 day ago'),
+            if (_isLoadingData)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_activity.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text('No recent activity', style: TextStyle(color: Colors.grey[500])),
+              )
+            else
+              for (final item in _activity)
+                _activityItem(
+                  item['icon'] as IconData,
+                  item['title'] as String,
+                  '${item['subtitle']}',
+                  _relativeTime(item['timestamp'] as DateTime?),
+                ),
           ],
         ),
       ),
     );
   }
 
-  Widget _activityItem(IconData icon, String title, String time) {
+  String _relativeTime(DateTime? dt) {
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} h ago';
+    if (diff.inDays < 7) return '${diff.inDays} d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  Widget _activityItem(IconData icon, String title, String subtitle, String time) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -220,7 +375,8 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                Text(time, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12), overflow: TextOverflow.ellipsis),
+                Text(time, style: TextStyle(color: Colors.grey[400], fontSize: 11)),
               ],
             ),
           ),
@@ -238,21 +394,27 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           children: [
             const Text('Upcoming Appointments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _apptItem('Sarah Johnson', '10:00 AM', 'Check-up'),
-            _apptItem('Michael Kiprono', '11:30 AM', 'Follow-up'),
-            _apptItem('Grace Akinyi', '2:00 PM', 'Consultation'),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {},
-              child: const Text('View Full Schedule'),
-            ),
+            if (_appointments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text('No upcoming appointments', style: TextStyle(color: Colors.grey[500])),
+              )
+            else
+              for (final a in _appointments)
+                _apptItem(
+                  a['name'] as String,
+                  a['time'] as String,
+                  a['type'] as String,
+                  a['status'] as String,
+                ),
           ],
         ),
       ),
     );
   }
 
-  Widget _apptItem(String name, String time, String type) {
+  Widget _apptItem(String name, String time, String type, String status) {
+    final confirmed = status == 'confirmed';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -260,7 +422,7 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           CircleAvatar(
             radius: 16,
             backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
-            child: Text(name[0], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -275,10 +437,17 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: (confirmed ? Colors.green : Colors.orange).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Confirmed', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w600)),
+            child: Text(
+              confirmed ? 'Confirmed' : 'Pending',
+              style: TextStyle(
+                color: confirmed ? Colors.green : Colors.orange,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

@@ -59,6 +59,24 @@ class _PatientDashboardState extends State<PatientDashboard>
   bool _appointmentReminders = true;
   bool _healthAlerts = true;
 
+  // Maternal & Women's health (persisted to user.metadata['maternal_health'])
+  bool _maternalInitialized = false;
+  String _pregnancyStatus = 'not_pregnant';
+  final Map<String, bool> _preconceptionChecklist = {
+    'folic_acid': false,
+    'healthy_weight': true,
+    'exercise': true,
+    'nutrition': false,
+    'no_smoking': true,
+    'vaccinations': false,
+  };
+  double _menstrualPain = 1;
+  int _cycleLength = 28;
+  int _periodDuration = 5;
+  DateTime? _lastPapSmear;
+  DateTime? _lastMammogram;
+  DateTime? _nextPeriod;
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +136,66 @@ class _PatientDashboardState extends State<PatientDashboard>
         content: Text(ok ? 'Settings saved' : 'Could not save — try again'),
         backgroundColor: ok ? Colors.green : Colors.red,
       ));
+    }
+  }
+
+  // ── Maternal & Women's health ─────────────────────────────
+
+  void _initMaternalHealth(UserModel user) {
+    if (_maternalInitialized) return;
+    _maternalInitialized = true;
+    final meta = user.metadata ?? {};
+    final mh = (meta['maternal_health'] as Map<String, dynamic>?) ?? {};
+    _pregnancyStatus = mh['pregnancy_status'] as String? ?? 'not_pregnant';
+    final checklist = (mh['checklist'] as Map<String, dynamic>?) ?? {};
+    _preconceptionChecklist.forEach((key, value) {
+      _preconceptionChecklist[key] = checklist[key] as bool? ?? value;
+    });
+    _menstrualPain = (mh['menstrual_pain'] as num?)?.toDouble() ?? 1;
+    _cycleLength = (mh['cycle_length'] as num?)?.toInt() ?? 28;
+    _periodDuration = (mh['period_duration'] as num?)?.toInt() ?? 5;
+    if (mh['last_pap_smear'] != null) {
+      _lastPapSmear = DateTime.tryParse(mh['last_pap_smear'] as String);
+    }
+    if (mh['last_mammogram'] != null) {
+      _lastMammogram = DateTime.tryParse(mh['last_mammogram'] as String);
+    }
+    if (mh['next_period'] != null) {
+      _nextPeriod = DateTime.tryParse(mh['next_period'] as String);
+    }
+  }
+
+  Future<void> _saveMaternalHealth(UserModel user) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final meta = Map<String, dynamic>.from(user.metadata ?? {});
+    meta['maternal_health'] = {
+      'pregnancy_status': _pregnancyStatus,
+      'checklist': Map<String, bool>.from(_preconceptionChecklist),
+      'menstrual_pain': _menstrualPain,
+      'cycle_length': _cycleLength,
+      'period_duration': _periodDuration,
+      'last_pap_smear': _lastPapSmear?.toIso8601String(),
+      'last_mammogram': _lastMammogram?.toIso8601String(),
+      'next_period': _nextPeriod?.toIso8601String(),
+    };
+    final ok = await authProvider.updateProfile(metadata: meta);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok ? 'Saved' : 'Could not save — try again'),
+        backgroundColor: ok ? Colors.green : Colors.red,
+      ));
+    }
+  }
+
+  Future<void> _pickDate(DateTime? current, ValueChanged<DateTime> onPicked) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+    );
+    if (picked != null) {
+      setState(() => onPicked(picked));
     }
   }
 
@@ -386,8 +464,8 @@ class _PatientDashboardState extends State<PatientDashboard>
                     _buildHealthSummaryTab(patientProvider),
                     _buildVisitHistoryTab(patientProvider),
                     if (isActiveWoman) ...[
-                      _buildMaternalHealthTab(patientProvider),
-                      _buildWomensHealthTab(patientProvider),
+                      _buildMaternalHealthTab(user),
+                      _buildWomensHealthTab(user),
                     ],
                     PrescriptionsTab(patientId: activeId),
                     PwdTab(patientId: activeId),
