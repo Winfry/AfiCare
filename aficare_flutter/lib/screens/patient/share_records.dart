@@ -1,10 +1,10 @@
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
@@ -24,31 +24,17 @@ class _ShareRecordsState extends State<ShareRecords>
   String? _generatedCode;
   DateTime? _codeExpiry;
   bool _isGenerating = false;
+  bool _isLoadingSessions = false;
   int _selectedDuration = 24; // hours
   final List<String> _selectedPermissions = ['basic_info', 'vital_signs'];
 
-  // Mock active sessions
-  final List<Map<String, dynamic>> _activeSessions = [
-    {
-      'provider': 'Dr. Sarah Mwangi',
-      'hospital': 'Nairobi General Hospital',
-      'grantedAt': DateTime.now().subtract(const Duration(hours: 2)),
-      'expiresAt': DateTime.now().add(const Duration(hours: 22)),
-      'permissions': ['basic_info', 'vital_signs', 'medical_history'],
-    },
-    {
-      'provider': 'Kenyatta National Hospital',
-      'hospital': 'Emergency Dept',
-      'grantedAt': DateTime.now().subtract(const Duration(days: 1)),
-      'expiresAt': DateTime.now().add(const Duration(hours: 8)),
-      'permissions': ['basic_info', 'vital_signs'],
-    },
-  ];
+  List<Map<String, dynamic>> _activeSessions = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadActiveSessions());
   }
 
   @override
@@ -566,6 +552,10 @@ class _ShareRecordsState extends State<ShareRecords>
   }
 
   Widget _buildActiveSessionsTab() {
+    if (_isLoadingSessions) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (_activeSessions.isEmpty) {
       return Center(
         child: Column(
@@ -802,44 +792,91 @@ class _ShareRecordsState extends State<ShareRecords>
     return _getShareUrl();
   }
 
+  Future<void> _loadActiveSessions() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoadingSessions = true);
+
+    try {
+      final response = await Supabase.instance.client
+          .from('access_codes')
+          .select('id, code, expires_at, permissions, is_used, used_by, created_at, users(full_name, department)')
+          .eq('patient_id', user.id)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      final now = DateTime.now();
+      final sessions = <Map<String, dynamic>>[];
+      for (final row in response as List) {
+        final map = Map<String, dynamic>.from(row as Map);
+        final expiresAt = DateTime.parse(map['expires_at'] as String);
+        if (expiresAt.isBefore(now)) continue;
+
+        final usedBy = map['users'] as Map<String, dynamic>?;
+        final permissions = map['permissions'] is List
+            ? (map['permissions'] as List).cast<String>()
+            : <String>['view_records'];
+
+        sessions.add({
+          'id': map['id'],
+          'code': map['code'],
+          'provider': usedBy != null
+              ? (usedBy['full_name'] ?? 'Healthcare provider')
+              : 'Awaiting provider access',
+          'hospital': usedBy?['department'] ?? '',
+          'grantedAt': DateTime.parse(map['created_at'] as String),
+          'expiresAt': expiresAt,
+          'permissions': permissions,
+          'used': (map['is_used'] as bool?) ?? false,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _activeSessions = sessions;
+          _isLoadingSessions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingSessions = false);
+    }
+  }
+
   void _generateAccessCode(UserModel? user) async {
     setState(() {
       _isGenerating = true;
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('${MedicalAIService.backendUrl}/api/access-codes'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'medilink_id': user?.medilinkId ?? '',
-          'duration_hours': _selectedDuration,
-          'permissions': {
-            for (final p in _selectedPermissions)
-              p: true,
-          },
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final code = _generateSecureCode();
+      await Supabase.instance.client.from('access_codes').insert({
+        'patient_id': user?.id,
+        'code': code,
+        'expires_at': DateTime.now().add(Duration(hours: _selectedDuration)).toIso8601String(),
+        'permissions': _selectedPermissions,
+        'created_at': DateTime.now().toIso8601String(),
+        'is_used': false,
+      });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _generatedCode = data['access_code'] as String;
-          _codeExpiry = DateTime.now().add(Duration(hours: _selectedDuration));
-          _isGenerating = false;
-        });
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } catch (e) {
-      // Offline fallback: generate code locally
-      debugPrint('Backend unavailable, using local code: $e');
-      final fallbackCode = _generateLocalCode(user);
       setState(() {
-        _generatedCode = fallbackCode;
+        _generatedCode = code;
         _codeExpiry = DateTime.now().add(Duration(hours: _selectedDuration));
         _isGenerating = false;
       });
+      _loadActiveSessions();
+    } catch (e) {
+      debugPrint('Failed to create access code: $e');
+      if (mounted) {
+        setState(() => _isGenerating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not create access code. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
     }
 
     if (mounted) {
@@ -852,11 +889,10 @@ class _ShareRecordsState extends State<ShareRecords>
     }
   }
 
-  String _generateLocalCode(UserModel? user) {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    final id = user?.medilinkId ?? 'ML';
-    final hash = id.hashCode.abs().toString().padLeft(4, '0');
-    return '${hash.substring(0, 4)}${ts.toString().substring(ts.toString().length - 4)}';
+  String _generateSecureCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rng = Random.secure();
+    return List.generate(8, (_) => chars[rng.nextInt(chars.length)]).join();
   }
 
   void _copyCode() {
@@ -900,12 +936,13 @@ class _ShareRecordsState extends State<ShareRecords>
   }
 
   void _viewAccessLog(Map<String, dynamic> session) {
+    final patientId = context.read<AuthProvider>().currentUser?.id;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
+      builder: (sheetContext) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -919,26 +956,76 @@ class _ShareRecordsState extends State<ShareRecords>
               ),
             ),
             const SizedBox(height: 16),
-            _buildLogItem(
-              'Viewed basic info',
-              '2 hours ago',
-              Icons.visibility,
-            ),
-            _buildLogItem(
-              'Viewed vital signs',
-              '2 hours ago',
-              Icons.favorite,
-            ),
-            _buildLogItem(
-              'Viewed medical history',
-              '1 hour ago',
-              Icons.history,
-            ),
+            if (patientId == null)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text('No access history available'),
+              )
+            else
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _loadAccessLog(patientId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final logs = snapshot.data ?? [];
+                  if (logs.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('No access history available'),
+                    );
+                  }
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final log in logs)
+                        _buildLogItem(
+                          log['action'] == 'patient_record_accessed'
+                              ? 'Viewed your records'
+                              : '${log['action']}',
+                          _formatLogTime(log['timestamp']),
+                          Icons.visibility,
+                        ),
+                    ],
+                  );
+                },
+              ),
             const SizedBox(height: 16),
           ],
         ),
       ),
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadAccessLog(String patientId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('audit_log')
+          .select('action, timestamp')
+          .eq('patient_id', patientId)
+          .order('timestamp', ascending: false)
+          .limit(10);
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  String _formatLogTime(dynamic timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp as String);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+      if (diff.inHours < 24) return '${diff.inHours} h ago';
+      if (diff.inDays < 7) return '${diff.inDays} d ago';
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
   }
 
   Widget _buildLogItem(String action, String time, IconData icon) {
@@ -962,30 +1049,44 @@ class _ShareRecordsState extends State<ShareRecords>
   }
 
   void _revokeAccess(int index) {
+    final session = _activeSessions[index];
+    final sessionId = session['id'] as String?;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Revoke Access?'),
         content: Text(
-          'Are you sure you want to revoke access for ${_activeSessions[index]['provider']}? They will no longer be able to view your records.',
+          'Are you sure you want to revoke access for ${session['provider']}? They will no longer be able to view your records.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _activeSessions.removeAt(index);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Access revoked successfully'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
+            onPressed: () async {
+              if (sessionId != null) {
+                try {
+                  await Supabase.instance.client
+                      .from('access_codes')
+                      .update({
+                        'is_used': true,
+                        'used_at': DateTime.now().toIso8601String(),
+                      })
+                      .eq('id', sessionId);
+                } catch (_) {}
+              }
+              if (mounted) {
+                setState(() => _activeSessions.removeAt(index));
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Access revoked successfully'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
