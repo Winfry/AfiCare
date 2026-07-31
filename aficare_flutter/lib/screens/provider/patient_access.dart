@@ -1088,7 +1088,7 @@ class _PatientAccessState extends State<PatientAccess>
       if (consults.isNotEmpty) {
         final triageLevel = consults.first['triage_level'] as String?;
         if (triageLevel == 'emergency' || triageLevel == 'urgent') {
-          alerts.add('Last triage level: ${triageLevel.toUpperCase()}');
+          alerts.add('Last triage level: ${triageLevel!.toUpperCase()}');
         }
       }
 
