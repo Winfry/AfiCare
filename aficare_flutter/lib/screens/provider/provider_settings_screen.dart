@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import '../common/notifications_screen.dart';
+import 'patient_access.dart';
 
 class ProviderSettingsScreen extends StatefulWidget {
   const ProviderSettingsScreen({super.key});
@@ -80,13 +82,50 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
           Card(
             child: Column(
               children: [
-                _settingTile(Icons.notifications, 'Notifications', 'Manage alerts and reminders',
-                    () {}),
+                _settingTile(
+                  Icons.notifications,
+                  'Notifications',
+                  'Manage alerts and reminders',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(userRole: 'provider'),
+                    ),
+                  ),
+                ),
                 const Divider(height: 1),
-                _settingTile(Icons.security, 'Privacy & Security', 'Access codes and permissions',
-                    () {}),
+                _settingTile(
+                  Icons.security,
+                  'Privacy & Security',
+                  'Access codes and permissions',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PatientAccess()),
+                  ),
+                ),
                 const Divider(height: 1),
-                _settingTile(Icons.language, 'Language', 'English (default)', () {}),
+                _settingTile(Icons.language, 'Language', 'English (default)', () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => SimpleDialog(
+                      title: const Text('Language'),
+                      children: [
+                        SimpleDialogOption(
+                          onPressed: () { Navigator.pop(ctx); },
+                          child: const Text('English (default)'),
+                        ),
+                        SimpleDialogOption(
+                          onPressed: () { Navigator.pop(ctx); },
+                          child: const Text('Swahili'),
+                        ),
+                        SimpleDialogOption(
+                          onPressed: () { Navigator.pop(ctx); },
+                          child: const Text('French'),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
                 const Divider(height: 1),
                 _settingTile(Icons.dark_mode, 'Theme', 'System default', () {
                   showDialog(
@@ -119,11 +158,32 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
           Card(
             child: Column(
               children: [
-                _settingTile(Icons.info_outline, 'About AfiCare MediLink', 'Version 1.0.0', () {}),
+                _settingTile(Icons.info_outline, 'About AfiCare MediLink', 'Version 1.0.0', () {
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'AfiCare MediLink',
+                    applicationVersion: '1.0.0',
+                    applicationLegalese: 'Secure digital health records for Africa.',
+                  );
+                }),
                 const Divider(height: 1),
-                _settingTile(Icons.description_outlined, 'Terms of Service', '', () {}),
+                _settingTile(Icons.description_outlined, 'Terms of Service', '', () {
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'Terms of Service',
+                    applicationLegalese: 'Your health data belongs to you. '
+                        'Access is always consent-based and fully audited.',
+                  );
+                }),
                 const Divider(height: 1),
-                _settingTile(Icons.privacy_tip_outlined, 'Privacy Policy', '', () {}),
+                _settingTile(Icons.privacy_tip_outlined, 'Privacy Policy', '', () {
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'Privacy Policy',
+                    applicationLegalese: 'AfiCare stores encrypted medical records and '
+                        'never shares them without your explicit consent.',
+                  );
+                }),
               ],
             ),
           ),
