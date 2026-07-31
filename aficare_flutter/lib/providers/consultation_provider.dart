@@ -10,13 +10,33 @@ class ConsultationProvider with ChangeNotifier {
 
   ConsultationModel? _currentConsultation;
   List<Diagnosis> _diagnoses = [];
+  List<ConsultationModel> _consultations = [];
   String _triageLevel = 'non_urgent';
   bool _isAnalyzing = false;
 
   ConsultationModel? get currentConsultation => _currentConsultation;
   List<Diagnosis> get diagnoses => _diagnoses;
+  List<ConsultationModel> get consultations => _consultations;
   String get triageLevel => _triageLevel;
   bool get isAnalyzing => _isAnalyzing;
+
+  // Load consultations recorded by a provider, most recent first.
+  Future<void> loadConsultationsForProvider(String providerId) async {
+    try {
+      final data = await _supabase
+          .from('consultations')
+          .select()
+          .eq('provider_id', providerId)
+          .order('timestamp', ascending: false)
+          .limit(50);
+      _consultations = (data as List)
+          .map((json) => ConsultationModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading consultations: $e');
+    }
+  }
 
   // Analyze symptoms using rule-based AI
   Future<void> analyzeSymptoms({

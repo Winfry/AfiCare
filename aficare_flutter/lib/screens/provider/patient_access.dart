@@ -1,8 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import 'consultation_screen.dart';
 
 class PatientAccess extends StatefulWidget {
   const PatientAccess({super.key});
@@ -503,7 +509,7 @@ class _PatientAccessState extends State<PatientAccess>
                   children: [
                     _buildPatientInfoChip(
                       Icons.cake,
-                      '${patient['age']} years',
+                      '${patient['age'] ?? '—'} years',
                     ),
                     const SizedBox(width: 16),
                     _buildPatientInfoChip(
@@ -916,87 +922,230 @@ class _PatientAccessState extends State<PatientAccess>
   }
 
   void _processQRCode(String qrData) {
-    // Parse QR data and load patient
-    _loadMockPatientData('ML-NBO-847291');
+    String? medilinkId;
+    String? accessCode;
+    try {
+      final decoded = jsonDecode(qrData);
+      if (decoded is Map<String, dynamic>) {
+        medilinkId = decoded['medilink_id'] ?? decoded['medilinkId'];
+        accessCode = decoded['access_code'];
+      }
+    } catch (_) {
+      if (qrData.trim().isNotEmpty) medilinkId = qrData.trim();
+    }
+
+    if (accessCode != null && accessCode.isNotEmpty) {
+      _verifyAccessCode(accessCode);
+    } else if (medilinkId != null && medilinkId.isNotEmpty) {
+      _lookupByMedilinkId(medilinkId);
+    } else {
+      _showError('Could not read patient QR code');
+    }
   }
 
-  void _verifyAccessCode(String code) {
+  Future<void> _verifyAccessCode(String code) async {
     if (code.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid 6-character code'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      _showError('Please enter a valid 6-character code');
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 1), () {
-      _loadMockPatientData('ML-NBO-847291');
-    });
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('access_codes')
+          .select('id, patient_id')
+          .eq('code', code)
+          .eq('is_used', false)
+          .gte('expires_at', DateTime.now().toIso8601String())
+          .single();
+
+      final codeId = response['id'] as String;
+      final patientId = response['patient_id'] as String;
+
+      try {
+        await supabase.from('access_codes').update({
+          'is_used': true,
+          'used_by': context.read<AuthProvider>().currentUser?.id,
+          'used_at': DateTime.now().toIso8601String(),
+        }).eq('id', codeId);
+      } catch (_) {}
+
+      await _logAudit(patientId, 'access_code');
+      await _loadPatientData(patientId);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError('Invalid or expired access code');
+      }
+    }
   }
 
-  void _searchMedilinkId(String id) {
-    if (id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a MediLink ID'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+  Future<void> _searchMedilinkId(String id) async {
+    if (id.trim().isEmpty) {
+      _showError('Please enter a MediLink ID');
       return;
     }
-
     setState(() => _isLoading = true);
-
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 1), () {
-      _loadMockPatientData(id);
-    });
+    await _lookupByMedilinkId(id.trim());
   }
 
-  void _loadMockPatientData(String medilinkId) {
-    setState(() {
-      _isLoading = false;
-      _patientData = {
-        'name': 'Jane Wanjiku Kamau',
-        'medilinkId': medilinkId,
-        'age': 34,
-        'gender': 'Female',
-        'phone': '+254 712 345 678',
-        'alerts': [
-          'High blood pressure - last reading 150/95 (Jan 28)',
-          'Pending lab results from Jan 25',
-        ],
-        'allergies': ['Penicillin', 'Sulfa drugs'],
-        'medications': [
-          'Metformin 500mg - Twice daily',
-          'Lisinopril 10mg - Once daily',
-          'Vitamin D3 1000IU - Once daily',
-        ],
-        'conditions': [
-          'Type 2 Diabetes (diagnosed 2022)',
-          'Hypertension (diagnosed 2023)',
-          'History of gestational diabetes (2020)',
-        ],
-        'vitals': {
-          'date': 'Jan 28, 2026',
-          'temperature': '36.8°C',
-          'bloodPressure': '150/95',
-          'heartRate': '78 bpm',
-          'spo2': '97%',
-        },
+  Future<void> _lookupByMedilinkId(String id) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('id')
+          .eq('medilink_id', id)
+          .eq('role', 'patient')
+          .maybeSingle();
+
+      if (response == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          _showError('No patient found with MediLink ID $id');
+        }
+        return;
+      }
+
+      final patientId = response['id'] as String;
+      await _logAudit(patientId, 'medilink_id');
+      await _loadPatientData(patientId);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError('Search failed. Please try again.');
+      }
+    }
+  }
+
+  Future<void> _logAudit(String patientId, String method) async {
+    try {
+      await Supabase.instance.client.from('audit_log').insert({
+        'action': 'patient_record_accessed',
+        'user_id': context.read<AuthProvider>().currentUser?.id,
+        'patient_id': patientId,
+        'details': {'method': method},
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadPatientData(String patientId) async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      final userResp = await supabase
+          .from('users')
+          .select('full_name, medilink_id, phone, email, gender')
+          .eq('id', patientId)
+          .single();
+
+      Map<String, dynamic>? patientExtras;
+      try {
+        patientExtras = Map<String, dynamic>.from(await supabase
+            .from('patients')
+            .select('date_of_birth, allergies, chronic_conditions')
+            .eq('id', patientId)
+            .single());
+      } catch (_) {}
+
+      List<Map<String, dynamic>> consults = [];
+      try {
+        consults = List<Map<String, dynamic>>.from(await supabase
+            .from('consultations')
+            .select('vital_signs, triage_level, timestamp')
+            .eq('patient_id', patientId)
+            .order('timestamp', ascending: false)
+            .limit(1));
+      } catch (_) {}
+
+      List<Map<String, dynamic>> rx = [];
+      try {
+        rx = List<Map<String, dynamic>>.from(await supabase
+            .from('prescriptions')
+            .select('medication_name, dosage, frequency')
+            .eq('patient_id', patientId)
+            .eq('status', 'active')
+            .limit(20));
+      } catch (_) {}
+
+      final dobRaw = patientExtras?['date_of_birth'];
+      final age = dobRaw != null ? _calcAge(DateTime.parse(dobRaw as String)) : null;
+
+      final vitalJson = consults.isNotEmpty
+          ? (consults.first['vital_signs'] as Map<String, dynamic>?) ?? <String, dynamic>{}
+          : <String, dynamic>{};
+      final vitals = <String, dynamic>{
+        'date': consults.isNotEmpty ? _shortDate(DateTime.parse(consults.first['timestamp'] as String)) : 'No record',
+        'temperature': vitalJson['temperature'] != null ? '${vitalJson['temperature']}°C' : '—',
+        'bloodPressure': vitalJson['systolic_bp'] != null ? '${vitalJson['systolic_bp']}/${vitalJson['diastolic_bp']}' : '—',
+        'heartRate': vitalJson['pulse_rate'] != null ? '${vitalJson['pulse_rate']} bpm' : '—',
+        'spo2': vitalJson['oxygen_saturation'] != null ? '${vitalJson['oxygen_saturation']}%' : '—',
       };
-    });
 
+      final alerts = <String>[];
+      if (consults.isNotEmpty) {
+        final triageLevel = consults.first['triage_level'] as String?;
+        if (triageLevel == 'emergency' || triageLevel == 'urgent') {
+          alerts.add('Last triage level: ${triageLevel.toUpperCase()}');
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _patientData = {
+          'id': patientId,
+          'name': userResp['full_name'] ?? 'Patient',
+          'medilinkId': userResp['medilink_id'] ?? patientId,
+          'age': age,
+          'gender': userResp['gender'] != null
+              ? _capitalize(userResp['gender'] as String)
+              : '—',
+          'phone': userResp['phone'] ?? '',
+          'alerts': alerts,
+          'allergies': List<String>.from(patientExtras?['allergies'] ?? []),
+          'medications': [
+            for (final p in rx)
+              '${p['medication_name']} ${p['dosage']} - ${p['frequency']}',
+          ],
+          'conditions': List<String>.from(patientExtras?['chronic_conditions'] ?? []),
+          'vitals': vitals,
+        };
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Patient records loaded successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError('Could not load patient records');
+      }
+    }
+  }
+
+  int _calcAge(DateTime dob) {
+    final now = DateTime.now();
+    var age = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) age--;
+    return age;
+  }
+
+  String _shortDate(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
+  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Patient records loaded successfully'),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -1009,10 +1158,12 @@ class _PatientAccessState extends State<PatientAccess>
   }
 
   void _startConsultation() {
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Starting new consultation...'),
+    final patient = _patientData;
+    if (patient == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConsultationScreen(patientId: patient['id'] as String?),
       ),
     );
   }
