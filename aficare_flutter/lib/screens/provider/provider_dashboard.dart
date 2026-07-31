@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../models/appointment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../providers/appointment_provider.dart';
@@ -37,6 +38,9 @@ class _ProviderDashboardState extends State<ProviderDashboard>
   List<Map<String, dynamic>> _myPatients = [];
   bool _isLoadingMyPatients = false;
 
+  int _consultationsCount = 0;
+  int _referralsCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -48,11 +52,29 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     if (!mounted) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final aptProvider = Provider.of<AppointmentProvider>(context, listen: false);
+    final consultProvider = Provider.of<ConsultationProvider>(context, listen: false);
     final uid = auth.currentUser?.id;
     if (uid != null) {
       aptProvider.loadProviderAppointments(uid);
+      consultProvider.loadConsultationsForProvider(uid);
       _loadMyPatients(uid);
+      _loadCounts(uid);
     }
+  }
+
+  Future<void> _loadCounts(String providerId) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final results = await Future.wait([
+        supabase.from('consultations').select('id').eq('provider_id', providerId),
+        supabase.from('referrals').select('id').eq('from_provider_id', providerId),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _consultationsCount = (results[0] as List).length;
+        _referralsCount = (results[1] as List).length;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadMyPatients(String providerId) async {
@@ -137,6 +159,18 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         final dept = isDemo ? 'Internal Medicine' : (user.metadata?['department'] as String? ?? 'Internal Medicine');
         final facility = isDemo ? 'AfiCare Demo' : (user.facilityId ?? 'AfiCare');
 
+        final appointments = Provider.of<AppointmentProvider>(context).appointments;
+        final now = DateTime.now();
+        final todayAppts = appointments
+            .where((a) =>
+                a.scheduledAt.year == now.year &&
+                a.scheduledAt.month == now.month &&
+                a.scheduledAt.day == now.day &&
+                a.status != AppointmentStatus.cancelled &&
+                a.status != AppointmentStatus.completed)
+            .toList()
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
         return SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,30 +195,27 @@ class _ProviderDashboardState extends State<ProviderDashboard>
                     crossAxisSpacing: 16,
                     childAspectRatio: 2.0,
                     children: [
-                      const StatCard(
+                      StatCard(
                         label: 'Patients under care',
-                        value: '128',
-                        deltaLabel: '+12%',
+                        value: _myPatients.length.toString(),
                         icon: Icons.people_outline,
                         hero: true,
                       ),
-                      const StatCard(
+                      StatCard(
                         label: 'Consultations',
-                        value: '34',
-                        deltaLabel: 'this week',
+                        value: _consultationsCount.toString(),
                         icon: Icons.assignment_outlined,
                         iconColor: AfiCareTheme.canopy2,
                       ),
-                      const StatCard(
+                      StatCard(
                         label: 'Referrals',
-                        value: '8',
+                        value: _referralsCount.toString(),
                         icon: Icons.reorder_outlined,
                         iconColor: AfiCareTheme.marigold,
                       ),
-                      const StatCard(
-                        label: 'Appointments',
-                        value: '6',
-                        deltaLabel: 'today',
+                      StatCard(
+                        label: 'Appointments today',
+                        value: todayAppts.length.toString(),
                         icon: Icons.calendar_today_outlined,
                         iconColor: AfiCareTheme.sage,
                       ),
@@ -202,17 +233,17 @@ class _ProviderDashboardState extends State<ProviderDashboard>
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 58, child: _buildActivityTimeline()),
+                        Expanded(flex: 58, child: _buildActivityTimeline(consultationProvider)),
                         const SizedBox(width: 22),
-                        Expanded(flex: 42, child: _buildUpcomingAppointments()),
+                        Expanded(flex: 42, child: _buildUpcomingAppointments(todayAppts)),
                       ],
                     );
                   }
                   return Column(
                     children: [
-                      _buildActivityTimeline(),
+                      _buildActivityTimeline(consultationProvider),
                       const SizedBox(height: 22),
-                      _buildUpcomingAppointments(),
+                      _buildUpcomingAppointments(todayAppts),
                     ],
                   );
                 },
@@ -229,7 +260,8 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     );
   }
 
-  Widget _buildActivityTimeline() {
+  Widget _buildActivityTimeline(ConsultationProvider consultationProvider) {
+    final consultations = consultationProvider.consultations.take(4).toList();
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -242,38 +274,40 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         children: [
           SectionHead(title: 'Recent activity'),
           const SizedBox(height: 12),
-          const TimelineItem(
-            title: 'Lab result flagged',
-            subtitle: 'Abnormal glucose — Wanjiru Kamau',
-            time: '25 min ago',
-            dotColor: AfiCareTheme.clay,
-            isFirst: true,
-          ),
-          const TimelineItem(
-            title: 'Referral sent',
-            subtitle: 'To KNH — John Ochieng',
-            time: '1 h ago',
-            dotColor: AfiCareTheme.marigold,
-          ),
-          const TimelineItem(
-            title: 'Consultation completed',
-            subtitle: 'Follow-up — Amina Hassan',
-            time: '2 h ago',
-            dotColor: AfiCareTheme.canopy,
-          ),
-          const TimelineItem(
-            title: 'Prescription written',
-            subtitle: 'Amoxicillin — Peter Mwangi',
-            time: '3 h ago',
-            dotColor: AfiCareTheme.sage,
-            isLast: true,
-          ),
+          if (consultations.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text('No recent consultations', style: TextStyle(color: AfiCareTheme.slate)),
+              ),
+            )
+          else
+            ...consultations.indexed.map((entry) {
+              final (i, c) = entry;
+              return TimelineItem(
+                title: 'Consultation recorded',
+                subtitle: c.chiefComplaint.isNotEmpty ? c.chiefComplaint : 'Patient visit',
+                time: _relativeTime(c.timestamp),
+                dotColor: AfiCareTheme.canopy,
+                isFirst: i == 0,
+                isLast: i == consultations.length - 1,
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildUpcomingAppointments() {
+  String _relativeTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} h ago';
+    if (diff.inDays < 7) return '${diff.inDays} d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  Widget _buildUpcomingAppointments(List todayAppts) {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -286,13 +320,23 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         children: [
           SectionHead(title: 'Upcoming appointments'),
           const SizedBox(height: 8),
-          const AppointmentRow(time: '09:00', patientName: 'Wanjiru Kamau', type: 'Follow-up', room: 'Room 3'),
-          const Divider(height: 1),
-          const AppointmentRow(time: '10:30', patientName: 'John Ochieng', type: 'Consultation', room: 'Room 1'),
-          const Divider(height: 1),
-          const AppointmentRow(time: '11:00', patientName: 'Amina Hassan', type: 'Lab review', room: 'Room 5'),
-          const Divider(height: 1),
-          const AppointmentRow(time: '14:00', patientName: 'Peter Mwangi', type: 'New patient', room: 'Room 2'),
+          if (todayAppts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text('No appointments today', style: TextStyle(color: AfiCareTheme.slate)),
+              ),
+            )
+          else
+            for (final (i, a) in todayAppts.indexed) ...[
+              if (i > 0) const Divider(height: 1),
+              AppointmentRow(
+                time: '${a.scheduledAt.hour.toString().padLeft(2, '0')}:${a.scheduledAt.minute.toString().padLeft(2, '0')}',
+                patientName: a.chiefComplaint?.isNotEmpty == true ? a.chiefComplaint! : 'Appointment',
+                type: a.type == AppointmentType.telehealth ? 'Telehealth' : 'In-person',
+                room: a.status == AppointmentStatus.pending ? 'Pending' : 'Confirmed',
+              ),
+            ],
         ],
       ),
     );

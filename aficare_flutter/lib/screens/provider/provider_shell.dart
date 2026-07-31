@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../widgets/app_shell.dart';
 import 'provider_dashboard.dart';
 import 'patient_search_screen.dart';
 import 'provider_inbox_screen.dart';
-import 'provider_settings_screen.dart';
+import 'referral_tracker_screen.dart';
 
 class ProviderShell extends StatefulWidget {
   const ProviderShell({super.key});
@@ -20,7 +21,7 @@ class _ProviderShellState extends State<ProviderShell> {
     ProviderDashboard(),
     PatientSearchScreen(),
     ProviderInboxScreen(),
-    ProviderSettingsScreen(),
+    ReferralTrackerScreen(),
   ];
 
   static const _sidebarEntries = [
@@ -41,13 +42,30 @@ class _ProviderShellState extends State<ProviderShell> {
     BottomNavItem(icon: Icons.reorder_outlined, label: 'Referrals'),
   ];
 
+  void _onSidebarSelect(int navIndex) {
+    switch (navIndex) {
+      case 0: // Dashboard
+        setState(() => _currentIndex = 0);
+      case 1: // Patient Search
+        setState(() => _currentIndex = 1);
+      case 2: // Referrals
+        setState(() => _currentIndex = 3);
+      case 3: // Reports (full page)
+        context.go('/provider/reports');
+      case 4: // Inbox
+        setState(() => _currentIndex = 2);
+      case 5: // Settings (full page)
+        context.go('/provider/settings');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppShell(
       sidebarEntries: _sidebarEntries,
       bottomNavItems: _bottomNavItems,
       selectedIndex: _currentIndex,
-      onSelect: (i) => setState(() => _currentIndex = i),
+      onSelect: _onSidebarSelect,
       onBottomNavSelect: (i) => setState(() => _currentIndex = i),
       searchHint: 'Search patients, records...',
       avatarLabel: 'DR',

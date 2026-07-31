@@ -8,6 +8,8 @@ import '../presentation/auth/register/clinician/clinician_register_screen.dart';
 import '../presentation/auth/register/admin/admin_register_screen.dart';
 import '../screens/patient/patient_shell.dart';
 import '../screens/patient/patient_dashboard.dart';
+import '../screens/patient/patient_profile_screen.dart';
+import '../screens/patient/messages_screen.dart';
 import '../screens/patient/health_summary.dart';
 import '../screens/patient/share_records.dart';
 import '../screens/patient/qr_scanner.dart';
@@ -24,6 +26,8 @@ import '../screens/provider/resource_dashboard_screen.dart';
 import '../screens/provider/radiology_order_screen.dart';
 import '../screens/provider/radiology_report_viewer_screen.dart';
 import '../screens/provider/referral_tracker_screen.dart';
+import '../screens/provider/provider_inbox_screen.dart';
+import '../screens/provider/provider_settings_screen.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/admin/admin_user_management_screen.dart';
 import '../screens/admin/admin_facility_management_screen.dart';
@@ -110,7 +114,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: 'messages',
-          builder: (context, state) => const AppointmentsScreen(),
+          builder: (context, state) => const MessagesScreen(),
         ),
         GoRoute(
           path: 'records',
@@ -118,7 +122,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: 'profile',
-          builder: (context, state) => const PatientDashboard(),
+          builder: (context, state) => const PatientProfileScreen(),
         ),
       ],
     ),
@@ -201,11 +205,11 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: 'inbox',
-          builder: (context, state) => const ProviderShell(),
+          builder: (context, state) => const ProviderInboxScreen(),
         ),
         GoRoute(
           path: 'settings',
-          builder: (context, state) => const ProviderShell(),
+          builder: (context, state) => const ProviderSettingsScreen(),
         ),
         GoRoute(
           path: 'referrals',

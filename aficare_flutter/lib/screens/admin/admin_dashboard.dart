@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/analytics_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/section_head.dart';
@@ -36,71 +38,119 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _bottomIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Provider.of<AnalyticsProvider>(context, listen: false).loadAll();
+    });
+  }
+
+  void _onSidebarSelect(int navIndex) {
+    switch (navIndex) {
+      case 0: // Dashboard
+        setState(() => _bottomIndex = 0);
+      case 1: // User Management
+        context.push('/admin/users');
+      case 2: // Facility Management
+        context.push('/admin/facilities');
+      case 3: // System Settings
+        context.push('/admin/settings');
+      case 4: // Analytics
+        context.push('/admin/reports');
+      case 5: // Audit Log
+        context.push('/admin/audit-log');
+    }
+  }
+
+  void _onBottomNavSelect(int i) {
+    switch (i) {
+      case 0: // Dashboard
+        setState(() => _bottomIndex = 0);
+      case 1: // Users
+        context.push('/admin/users');
+      case 2: // Facilities
+        context.push('/admin/facilities');
+      case 3: // Analytics
+        context.push('/admin/reports');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AppShell(
       sidebarEntries: _sidebarEntries,
       bottomNavItems: _bottomNavItems,
       selectedIndex: _bottomIndex,
-      onSelect: (i) => setState(() => _bottomIndex = i),
-      onBottomNavSelect: (i) => setState(() => _bottomIndex = i),
+      onSelect: _onSidebarSelect,
+      onBottomNavSelect: _onBottomNavSelect,
       searchHint: 'Search facilities, users...',
       avatarLabel: 'AD',
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'System overview',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.deepNavy),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Managing AfiCare MediLink across Kenya',
-              style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-            ),
+      body: Consumer<AnalyticsProvider>(
+        builder: (context, analytics, _) {
+          final patientCount = analytics.roleDistribution
+              .where((r) => r['role'] == 'patient')
+              .fold<int>(0, (sum, r) => sum + (r['count'] as int));
+          final patientsStr = _formatCount(patientCount);
+          final providersStr = _formatCount(analytics.activeProviders);
+          final facilitiesStr = _formatCount(analytics.totalFacilities);
+          final flagsStr = _formatCount(analytics.missedAppointments);
 
-            const SizedBox(height: 24),
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'System overview',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.deepNavy),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Managing AfiCare MediLink across Kenya',
+                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                ),
 
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final crossCount = constraints.maxWidth > 800 ? 4 : (constraints.maxWidth > 500 ? 2 : 1);
-                return GridView.count(
-                  crossAxisCount: crossCount,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 2.0,
-                  children: const [
-                    StatCard(
-                      label: 'Registered Patients',
-                      value: '1,234',
-                      icon: Icons.people_outline,
-                      iconColor: AppColors.canopy,
-                    ),
-                    StatCard(
-                      label: 'Active Providers',
-                      value: '56',
-                      deltaLabel: '+12%',
-                      icon: Icons.medical_services_outlined,
-                      iconColor: AppColors.canopy2,
-                    ),
-                    StatCard(
-                      label: 'Linked Facilities',
-                      value: '28',
-                      icon: Icons.local_hospital_outlined,
-                      iconColor: Color(0xFF457B9D),
-                    ),
-                    StatCard(
-                      label: 'Flags Needing Review',
-                      value: '3',
-                      icon: Icons.flag_outlined,
-                      iconColor: AppColors.clay,
-                    ),
-                  ],
-                );
-              },
-            ),
+                const SizedBox(height: 24),
+
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossCount = constraints.maxWidth > 800 ? 4 : (constraints.maxWidth > 500 ? 2 : 1);
+                    return GridView.count(
+                      crossAxisCount: crossCount,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 2.0,
+                      children: [
+                        StatCard(
+                          label: 'Registered Patients',
+                          value: patientsStr,
+                          icon: Icons.people_outline,
+                          iconColor: AppColors.canopy,
+                        ),
+                        StatCard(
+                          label: 'Active Providers',
+                          value: providersStr,
+                          icon: Icons.medical_services_outlined,
+                          iconColor: AppColors.canopy2,
+                        ),
+                        StatCard(
+                          label: 'Linked Facilities',
+                          value: facilitiesStr,
+                          icon: Icons.local_hospital_outlined,
+                          iconColor: const Color(0xFF457B9D),
+                        ),
+                        StatCard(
+                          label: 'Cancelled Appointments',
+                          value: flagsStr,
+                          icon: Icons.flag_outlined,
+                          iconColor: AppColors.clay,
+                        ),
+                      ],
+                    );
+                  },
+                ),
 
             const SizedBox(height: 32),
 
@@ -163,9 +213,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-          ],
-        ),
+                ],
+              ),
+            );
+          },
       ),
     );
+  }
+
+  static String _formatCount(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return value.toString();
   }
 }
