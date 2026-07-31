@@ -1520,7 +1520,8 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildMaternalHealthTab(PatientProvider patientProvider) {
+  Widget _buildMaternalHealthTab(UserModel user) {
+    _initMaternalHealth(user);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1531,15 +1532,15 @@ class _PatientDashboardState extends State<PatientDashboard>
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-          _buildPregnancyStatusCard(),
+          _buildPregnancyStatusCard(user),
           const SizedBox(height: 20),
-          _buildPreconceptionCare(),
+          _buildPreconceptionCare(user),
         ],
       ),
     );
   }
 
-  Widget _buildPregnancyStatusCard() {
+  Widget _buildPregnancyStatusCard(UserModel user) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1556,6 +1557,7 @@ class _PatientDashboardState extends State<PatientDashboard>
                 labelText: 'Pregnancy Status',
                 border: OutlineInputBorder(),
               ),
+              value: _pregnancyStatus,
               items: const [
                 DropdownMenuItem(value: 'not_pregnant', child: Text('Not Pregnant')),
                 DropdownMenuItem(value: 'trying', child: Text('Trying to Conceive')),
@@ -1564,7 +1566,10 @@ class _PatientDashboardState extends State<PatientDashboard>
                 DropdownMenuItem(value: 'breastfeeding', child: Text('Breastfeeding')),
               ],
               onChanged: (value) {
-                // Handle status change
+                if (value != null) {
+                  setState(() => _pregnancyStatus = value);
+                  _saveMaternalHealth(user);
+                }
               },
             ),
           ],
@@ -1573,7 +1578,18 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildPreconceptionCare() {
+  Widget _buildPreconceptionCare(UserModel user) {
+    final items = [
+      ('folic_acid', 'Taking folic acid 400mcg daily'),
+      ('healthy_weight', 'Maintaining healthy weight (BMI 18.5-24.9)'),
+      ('exercise', 'Regular exercise routine'),
+      ('nutrition', 'Balanced nutrition'),
+      ('no_smoking', 'No smoking or alcohol'),
+      ('vaccinations', 'Up-to-date vaccinations'),
+    ];
+    final completed = items.where((e) => _preconceptionChecklist[e.$1] ?? false).length;
+    final pct = items.isEmpty ? 0.0 : completed / items.length;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1585,22 +1601,18 @@ class _PatientDashboardState extends State<PatientDashboard>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildChecklistItem('Taking folic acid 400mcg daily', false),
-            _buildChecklistItem('Maintaining healthy weight (BMI 18.5-24.9)', true),
-            _buildChecklistItem('Regular exercise routine', true),
-            _buildChecklistItem('Balanced nutrition', false),
-            _buildChecklistItem('No smoking or alcohol', true),
-            _buildChecklistItem('Up-to-date vaccinations', false),
+            for (final (key, label) in items)
+              _buildChecklistItem(key, label, user),
             const SizedBox(height: 16),
             LinearProgressIndicator(
-              value: 0.6,
+              value: pct,
               backgroundColor: Colors.grey[300],
               valueColor: const AlwaysStoppedAnimation<Color>(AfiCareTheme.primaryGreen),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Progress: 3/6 items completed (60%)',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+            Text(
+              'Progress: $completed/${items.length} items completed (${(pct * 100).round()}%)',
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
         ),
@@ -1608,7 +1620,8 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildChecklistItem(String title, bool isCompleted) {
+  Widget _buildChecklistItem(String key, String title, UserModel user) {
+    final isCompleted = _preconceptionChecklist[key] ?? false;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1616,7 +1629,8 @@ class _PatientDashboardState extends State<PatientDashboard>
           Checkbox(
             value: isCompleted,
             onChanged: (value) {
-              // Handle checkbox change
+              setState(() => _preconceptionChecklist[key] = value ?? false);
+              _saveMaternalHealth(user);
             },
             activeColor: AfiCareTheme.primaryGreen,
           ),
@@ -1634,7 +1648,8 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildWomensHealthTab(PatientProvider patientProvider) {
+  Widget _buildWomensHealthTab(UserModel user) {
+    _initMaternalHealth(user);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1645,17 +1660,26 @@ class _PatientDashboardState extends State<PatientDashboard>
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-          _buildScreeningOverview(),
+          _buildScreeningOverview(user),
           const SizedBox(height: 20),
           _buildReproductiveHealthConditions(),
           const SizedBox(height: 20),
-          _buildMenstrualHealthTracking(),
+          _buildMenstrualHealthTracking(user),
         ],
       ),
     );
   }
 
-  Widget _buildScreeningOverview() {
+  Widget _buildScreeningOverview(UserModel user) {
+    String screeningStatus(DateTime? last, int intervalMonths) {
+      if (last == null) return 'Not recorded';
+      final monthsSince = DateTime.now().difference(last).inDays ~/ 30;
+      if (monthsSince <= intervalMonths) {
+        return 'Due in ${intervalMonths - monthsSince} months';
+      }
+      return 'Overdue';
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1670,30 +1694,58 @@ class _PatientDashboardState extends State<PatientDashboard>
             Row(
               children: [
                 Expanded(
-                  child: _buildMetricCard(
-                    'Last Pap Smear',
-                    '8 months ago',
-                    'Due in 4 months',
-                    Icons.medical_services,
-                    Colors.blue,
+                  child: InkWell(
+                    onTap: () => _pickDate(_lastPapSmear, (d) {
+                      _lastPapSmear = d;
+                      _saveMaternalHealth(user);
+                    }),
+                    child: _buildMetricCard(
+                      'Last Pap Smear',
+                      _lastPapSmear != null
+                          ? '${_monthsAgo(_lastPapSmear!)}'
+                          : 'Not recorded',
+                      screeningStatus(_lastPapSmear, 36),
+                      Icons.medical_services,
+                      Colors.blue,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildMetricCard(
-                    'Last Mammogram',
-                    '14 months ago',
-                    'Overdue',
-                    Icons.favorite,
-                    Colors.red,
+                  child: InkWell(
+                    onTap: () => _pickDate(_lastMammogram, (d) {
+                      _lastMammogram = d;
+                      _saveMaternalHealth(user);
+                    }),
+                    child: _buildMetricCard(
+                      'Last Mammogram',
+                      _lastMammogram != null
+                          ? '${_monthsAgo(_lastMammogram!)}'
+                          : 'Not recorded',
+                      screeningStatus(_lastMammogram, 24),
+                      Icons.favorite,
+                      Colors.red,
+                    ),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap a card to update the date',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _monthsAgo(DateTime d) {
+    final months = DateTime.now().difference(d).inDays ~/ 30;
+    if (months <= 0) return 'Less than a month ago';
+    if (months == 1) return '1 month ago';
+    return '$months months ago';
   }
 
   Widget _buildReproductiveHealthConditions() {
@@ -1708,23 +1760,29 @@ class _PatientDashboardState extends State<PatientDashboard>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            const ExpansionTile(
-              title: Text('PCOS Management'),
-              leading: Icon(Icons.medical_information),
+            ExpansionTile(
+              title: const Text('PCOS Management'),
+              leading: const Icon(Icons.medical_information),
               children: [
                 Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Current Symptoms:'),
-                      SizedBox(height: 8),
-                      Wrap(
+                      const Text('Common PCOS symptoms:'),
+                      const SizedBox(height: 8),
+                      const Wrap(
                         spacing: 8,
                         children: [
                           Chip(label: Text('Irregular periods')),
                           Chip(label: Text('Weight gain')),
+                          Chip(label: Text('Acne')),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Discuss these with your provider — no data is shown here yet.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -1747,20 +1805,21 @@ class _PatientDashboardState extends State<PatientDashboard>
                           const Text('Menstrual pain: '),
                           Expanded(
                             child: Slider(
-                              value: 6,
+                              value: _menstrualPain,
                               min: 1,
                               max: 10,
                               divisions: 9,
-                              label: '6',
-                              semanticFormatterCallback: (v) => '${v.toInt()} out of 10',
-                              onChanged: (value) {},
+                              label: '${_menstrualPain.round()}',
+                              semanticFormatterCallback: (v) => '${v.round()} out of 10',
+                              onChanged: (value) =>
+                                  setState(() => _menstrualPain = value),
+                              onChangeEnd: (_) => _saveMaternalHealth(context.read<AuthProvider>().currentUser!),
                             ),
                           ),
-                          // Text alternative for motor-impaired users
-                          const SizedBox(
+                          SizedBox(
                             width: 48,
                             child: Text(
-                              '6/10',
+                              '${_menstrualPain.round()}/10',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: AfiCareTheme.primaryGreen,
@@ -1781,7 +1840,7 @@ class _PatientDashboardState extends State<PatientDashboard>
     );
   }
 
-  Widget _buildMenstrualHealthTracking() {
+  Widget _buildMenstrualHealthTracking(UserModel user) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1801,8 +1860,15 @@ class _PatientDashboardState extends State<PatientDashboard>
                       labelText: 'Cycle Length (days)',
                       border: OutlineInputBorder(),
                     ),
-                    initialValue: '28',
+                    initialValue: '$_cycleLength',
                     keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 0) {
+                        _cycleLength = parsed;
+                      }
+                    },
+                    onFieldSubmitted: (_) => _saveMaternalHealth(user),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1812,14 +1878,40 @@ class _PatientDashboardState extends State<PatientDashboard>
                       labelText: 'Period Duration (days)',
                       border: OutlineInputBorder(),
                     ),
-                    initialValue: '5',
+                    initialValue: '$_periodDuration',
                     keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 0) {
+                        _periodDuration = parsed;
+                      }
+                    },
+                    onFieldSubmitted: (_) => _saveMaternalHealth(user),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Text('Next expected period: February 15, 2024'),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Next expected period:'),
+                ),
+                Text(
+                  _nextPeriod != null
+                      ? '${_nextPeriod!.day}/${_nextPeriod!.month}/${_nextPeriod!.year}'
+                      : 'Not set',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                TextButton(
+                  onPressed: () => _pickDate(_nextPeriod, (d) {
+                    _nextPeriod = d;
+                    _saveMaternalHealth(user);
+                  }),
+                  child: const Text('Set date'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
