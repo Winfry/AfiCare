@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -13,6 +16,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final List<NotificationItem> _notifications = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -20,42 +24,214 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _loadNotifications();
   }
 
-  void _loadNotifications() {
-    // Mock notifications based on user role
-    if (widget.userRole == 'patient') {
-      _notifications.addAll([
-        NotificationItem(
-          id: '1',
-          type: NotificationType.system,
-          title: 'Welcome to AfiCare',
-          message: 'Your MediLink account is set up. Start by visiting a healthcare provider to build your medical profile.',
-          timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-          isRead: false,
-        ),
-      ]);
-    } else if (widget.userRole == 'provider') {
-      _notifications.addAll([
-        NotificationItem(
-          id: '1',
-          type: NotificationType.system,
-          title: 'Welcome to AfiCare Provider',
-          message: 'Use the "Access Patient" tab to scan QR codes or enter access codes to view patient records.',
-          timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-          isRead: false,
-        ),
-      ]);
-    } else {
-      _notifications.addAll([
-        NotificationItem(
-          id: '1',
-          type: NotificationType.system,
-          title: 'Welcome to AfiCare Admin',
-          message: 'System dashboard is ready. Monitor users, consultations, and system health from here.',
-          timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-          isRead: false,
-        ),
-      ]);
+  Future<void> _loadNotifications() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
     }
+
+    final supabase = Supabase.instance.client;
+    final items = <NotificationItem>[];
+    final now = DateTime.now();
+
+    if (widget.userRole == 'patient') {
+      try {
+        final res = await supabase
+            .from('appointments')
+            .select('id, scheduled_at, status, chief_complaint')
+            .eq('patient_id', user.id)
+            .order('scheduled_at', ascending: true)
+            .limit(20);
+        for (final a in res as List) {
+          final when = DateTime.tryParse(a['scheduled_at'] as String);
+          if (when != null &&
+              when.isAfter(now) &&
+              (a['status'] == 'pending' || a['status'] == 'confirmed')) {
+            items.add(NotificationItem(
+              id: 'appt-${a['id']}',
+              type: NotificationType.appointment,
+              title: 'Upcoming appointment',
+              message: '${a['status'] == 'confirmed' ? 'Confirmed' : 'Pending'} '
+                  'appointment on ${_fmtDateTime(when)}.',
+              timestamp: when,
+            ));
+          }
+        }
+      } catch (_) {}
+
+      try {
+        final res = await supabase
+            .from('lab_orders')
+            .select('id, test_name, ordered_at, lab_results(result_flag)')
+            .eq('patient_id', user.id)
+            .eq('status', 'completed')
+            .order('ordered_at', ascending: false)
+            .limit(10);
+        for (final l in res as List) {
+          final results = l['lab_results'] as List? ?? [];
+          final flag = results.isNotEmpty
+              ? (results.first as Map)['result_flag']
+              : 'normal';
+          items.add(NotificationItem(
+            id: 'lab-${l['id']}',
+            type: NotificationType.labResult,
+            title: 'Lab results ready',
+            message: 'Results for ${l['test_name']} are available'
+                '${flag == 'abnormal' || flag == 'critical' ? ' — flagged as $flag' : ''}.',
+            timestamp: DateTime.tryParse(l['ordered_at'] as String) ?? now,
+          ));
+        }
+      } catch (_) {}
+
+      try {
+        final res = await supabase
+            .from('consultations')
+            .select('id, chief_complaint, follow_up_date')
+            .eq('patient_id', user.id)
+            .eq('follow_up_required', true)
+            .not('follow_up_date', 'is', null)
+            .order('follow_up_date', ascending: true)
+            .limit(10);
+        for (final c in res as List) {
+          final followUp = DateTime.tryParse(c['follow_up_date'] as String);
+          if (followUp != null && followUp.isAfter(now)) {
+            items.add(NotificationItem(
+              id: 'fu-${c['id']}',
+              type: NotificationType.followUp,
+              title: 'Follow-up scheduled',
+              message: 'Follow-up for "${c['chief_complaint'] ?? 'your visit'}" '
+                  'is due on ${_fmtDateTime(followUp)}.',
+              timestamp: followUp,
+            ));
+          }
+        }
+      } catch (_) {}
+
+      try {
+        final res = await supabase
+            .from('access_codes')
+            .select('id, created_at, used_at')
+            .eq('patient_id', user.id)
+            .not('used_by', 'is', null)
+            .order('used_at', ascending: false)
+            .limit(10);
+        for (final a in res as List) {
+          final usedAt = DateTime.tryParse(a['used_at'] as String);
+          items.add(NotificationItem(
+            id: 'acc-${a['id']}',
+            type: NotificationType.access,
+            title: 'Record access granted',
+            message: 'A healthcare provider accessed your medical records.',
+            timestamp: usedAt ?? now,
+          ));
+        }
+      } catch (_) {}
+    } else if (widget.userRole == 'provider') {
+      try {
+        final res = await supabase
+            .from('triage_queue')
+            .select('id, chief_complaint, triage_level, check_in_time')
+            .eq('status', 'waiting')
+            .order('priority_score', ascending: false)
+            .limit(10);
+        for (final t in res as List) {
+          final level = t['triage_level'] ?? 'non_urgent';
+          items.add(NotificationItem(
+            id: 'tri-${t['id']}',
+            type: NotificationType.emergency,
+            title: 'Patient in triage queue',
+            message: '${t['chief_complaint'] ?? 'A patient'} is waiting'
+                ' (${(level as String).replaceAll('_', ' ')}).',
+            timestamp: DateTime.tryParse(t['check_in_time'] as String) ?? now,
+          ));
+        }
+      } catch (_) {}
+
+      try {
+        final res = await supabase
+            .from('messages')
+            .select('id, content, created_at')
+            .eq('receiver_id', user.id)
+            .eq('read', false)
+            .order('created_at', ascending: false)
+            .limit(10);
+        for (final m in res as List) {
+          items.add(NotificationItem(
+            id: 'msg-${m['id']}',
+            type: NotificationType.consultation,
+            title: 'New message',
+            message: m['content'] ?? 'You have a new message.',
+            timestamp: DateTime.tryParse(m['created_at'] as String) ?? now,
+          ));
+        }
+      } catch (_) {}
+
+      try {
+        final res = await supabase
+            .from('appointments')
+            .select('id, scheduled_at, status, chief_complaint')
+            .eq('provider_id', user.id)
+            .order('scheduled_at', ascending: true)
+            .limit(20);
+        for (final a in res as List) {
+          final when = DateTime.tryParse(a['scheduled_at'] as String);
+          final isToday = when != null &&
+              when.year == now.year &&
+              when.month == now.month &&
+              when.day == now.day &&
+              when.isAfter(now);
+          if (isToday) {
+            items.add(NotificationItem(
+              id: 'pappt-${a['id']}',
+              type: NotificationType.appointment,
+              title: 'Appointment today',
+              message: '${a['chief_complaint'] ?? 'Appointment'} at '
+                  '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}.',
+              timestamp: when,
+            ));
+          }
+        }
+      } catch (_) {}
+    } else {
+      try {
+        final res = await supabase
+            .from('audit_log')
+            .select('id, action, timestamp')
+            .order('timestamp', ascending: false)
+            .limit(10);
+        for (final l in res as List) {
+          items.add(NotificationItem(
+            id: 'log-${l['id']}',
+            type: NotificationType.system,
+            title: 'System activity',
+            message: (l['action'] as String).replaceAll('_', ' '),
+            timestamp: DateTime.tryParse(l['timestamp'] as String) ?? now,
+          ));
+        }
+      } catch (_) {}
+    }
+
+    items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    if (mounted) {
+      setState(() {
+        _notifications
+          ..clear()
+          ..addAll(items.take(30));
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _fmtDateTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min';
+    if (diff.inHours < 24 && diff.inHours >= 0) {
+      return 'today at ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
@@ -85,9 +261,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
         ],
       ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
               itemCount: _notifications.length,
               itemBuilder: (context, index) {
                 return _buildNotificationItem(_notifications[index], roleColor);

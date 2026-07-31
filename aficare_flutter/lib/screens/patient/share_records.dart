@@ -918,23 +918,6 @@ class _ShareRecordsState extends State<ShareRecords>
     }
   }
 
-  void _shareQRCode(UserModel? user) {
-    final url = _getShareUrl();
-    Share.share(
-      'Access my AfiCare MediLink records: $url',
-      subject: 'AfiCare MediLink Access',
-    );
-  }
-
-  void _downloadQRCode(UserModel? user) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('QR code saved to gallery'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
   void _viewAccessLog(Map<String, dynamic> session) {
     final patientId = context.read<AuthProvider>().currentUser?.id;
     showModalBottomSheet(
@@ -1080,7 +1063,7 @@ class _ShareRecordsState extends State<ShareRecords>
               if (mounted) {
                 setState(() => _activeSessions.removeAt(index));
                 Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(
                     content: Text('Access revoked successfully'),
                     backgroundColor: Colors.orange,
