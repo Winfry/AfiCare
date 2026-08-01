@@ -138,7 +138,6 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var navIndex = -1;
     final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
     final mutedColor = isDark ? const Color(0xFFB7C2CC) : AppColors.textMuted;
 
@@ -158,30 +157,7 @@ class _Sidebar extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              children: [
-                for (final entry in entries)
-                  if (entry is SidebarGroupLabel)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
-                      child: Text(
-                        entry.label.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: .8,
-                          color: mutedColor,
-                        ),
-                      ),
-                    )
-                  else if (entry is SidebarNavItem)
-                    _SidebarTile(
-                      icon: entry.icon,
-                      label: entry.label,
-                      selected: (++navIndex) == selectedIndex,
-                      onTap: () => onSelect?.call(navIndex),
-                      isDark: isDark,
-                    ),
-              ],
+              children: _buildNavTiles(mutedColor),
             ),
           ),
           Container(
@@ -200,6 +176,36 @@ class _Sidebar extends StatelessWidget {
         ],
       ),
     );
+  }
+  List<Widget> _buildNavTiles(Color mutedColor) {
+    final tiles = <Widget>[];
+    var navIndex = -1;
+    for (final entry in entries) {
+      if (entry is SidebarGroupLabel) {
+        tiles.add(Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
+          child: Text(
+            entry.label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: .8,
+              color: mutedColor,
+            ),
+          ),
+        ));
+      } else if (entry is SidebarNavItem) {
+        final idx = ++navIndex;
+        tiles.add(_SidebarTile(
+          icon: entry.icon,
+          label: entry.label,
+          selected: idx == selectedIndex,
+          onTap: () => onSelect?.call(idx),
+          isDark: isDark,
+        ));
+      }
+    }
+    return tiles;
   }
 }
 

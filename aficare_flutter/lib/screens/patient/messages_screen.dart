@@ -17,6 +17,9 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   bool _isLoading = true;
   String _search = '';
+  ConversationSummary? _selected;
+
+  static const double _wideBreakpoint = 820;
 
   @override
   void initState() {
@@ -46,46 +49,119 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         .toLowerCase()
                         .contains(_search.toLowerCase()))
                     .toList();
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: TextField(
-                        onChanged: (v) => setState(() => _search = v),
-                        decoration: InputDecoration(
-                          hintText: 'Search messages…',
-                          prefixIcon: const Icon(Icons.search),
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: convos.isEmpty
-                          ? _empty()
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              child: ListView.separated(
-                                itemCount: convos.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 1, indent: 80),
-                                itemBuilder: (_, i) => _row(convos[i]),
-                              ),
-                            ),
-                    ),
-                  ],
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= _wideBreakpoint;
+                    return isWide
+                        ? _buildWide(convos)
+                        : _buildNarrow(convos);
+                  },
                 );
               },
             ),
     );
   }
 
-  Widget _row(ConversationSummary c) {
+  Widget _buildNarrow(List<ConversationSummary> convos) {
+    return Column(
+      children: [
+        _searchField(),
+        Expanded(
+          child: convos.isEmpty
+              ? _empty()
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.separated(
+                    itemCount: convos.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, indent: 80),
+                    itemBuilder: (_, i) => _row(convos[i], isWide: false),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWide(List<ConversationSummary> convos) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 340,
+          child: Column(
+            children: [
+              _searchField(),
+              Expanded(
+                child: convos.isEmpty
+                    ? _empty()
+                    : ListView.separated(
+                        itemCount: convos.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, indent: 80),
+                        itemBuilder: (_, i) =>
+                            _row(convos[i], isWide: true),
+                      ),
+              ),
+            ],
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: _selected == null
+              ? _selectPlaceholder()
+              : ChatScreen(
+                  key: ValueKey(_selected!.counterpartId),
+                  embedded: true,
+                  counterpartId: _selected!.counterpartId,
+                  counterpartName: _selected!.counterpartName,
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _searchField() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        onChanged: (v) => setState(() => _search = v),
+        decoration: InputDecoration(
+          hintText: 'Search messages…',
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _selectPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.forum_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text('Select a conversation',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(ConversationSummary c, {required bool isWide}) {
+    final selected = isWide && _selected?.counterpartId == c.counterpartId;
     return ListTile(
+      selected: selected,
+      selectedTileColor: AfiCareTheme.primaryGreen.withOpacity(0.08),
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
@@ -135,16 +211,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
         ],
       ),
       onTap: () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              counterpartId: c.counterpartId,
-              counterpartName: c.counterpartName,
+        if (isWide) {
+          setState(() => _selected = c);
+        } else {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                counterpartId: c.counterpartId,
+                counterpartName: c.counterpartName,
+              ),
             ),
-          ),
-        );
-        _load();
+          );
+          _load();
+        }
       },
     );
   }
@@ -192,10 +272,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
 class ChatScreen extends StatefulWidget {
   final String counterpartId;
   final String counterpartName;
+
+  /// When true, renders without its own Scaffold/AppBar so it can be
+  /// embedded inside a split-pane layout.
+  final bool embedded;
+
   const ChatScreen({
     super.key,
     required this.counterpartId,
     required this.counterpartName,
+    this.embedded = false,
   });
 
   @override
@@ -262,6 +348,18 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final myId = auth.currentUser?.id;
+
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _paneHeader(),
+          const Divider(height: 1),
+          Expanded(child: _chatBody(myId)),
+        ],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -288,34 +386,68 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(icon: const Icon(Icons.call), onPressed: () {}),
         ],
       ),
-      body: Column(
+      body: _chatBody(myId),
+    );
+  }
+
+  Widget _paneHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: Colors.white,
+      child: Row(
         children: [
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Consumer<MessageProvider>(
-                    builder: (context, mp, _) {
-                      if (mp.thread.isEmpty) {
-                        return Center(
-                          child: Text('Start the conversation',
-                              style: TextStyle(color: Colors.grey[600])),
-                        );
-                      }
-                      return ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: mp.thread.length,
-                        itemBuilder: (_, i) {
-                          final m = mp.thread[i];
-                          return _bubble(m, m.senderId == myId);
-                        },
-                      );
-                    },
-                  ),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
+            child: Text(
+              widget.counterpartName.isNotEmpty
+                  ? widget.counterpartName[0].toUpperCase()
+                  : '?',
+              style: TextStyle(
+                  color: AfiCareTheme.primaryGreen,
+                  fontWeight: FontWeight.bold),
+            ),
           ),
-          _inputBar(),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(widget.counterpartName,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          ),
+          IconButton(icon: const Icon(Icons.videocam_outlined), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.call_outlined), onPressed: () {}),
         ],
       ),
+    );
+  }
+
+  Widget _chatBody(String? myId) {
+    return Column(
+      children: [
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Consumer<MessageProvider>(
+                  builder: (context, mp, _) {
+                    if (mp.thread.isEmpty) {
+                      return Center(
+                        child: Text('Start the conversation',
+                            style: TextStyle(color: Colors.grey[600])),
+                      );
+                    }
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: mp.thread.length,
+                      itemBuilder: (_, i) {
+                        final m = mp.thread[i];
+                        return _bubble(m, m.senderId == myId);
+                      },
+                    );
+                  },
+                ),
+        ),
+        _inputBar(),
+      ],
     );
   }
 

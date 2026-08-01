@@ -9,12 +9,14 @@ import '../../providers/adherence_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
+import '../../providers/prescription_provider.dart';
 import '../../models/appointment_model.dart';
 import '../../models/adherence_model.dart';
 import '../../models/triage_model.dart';
 import '../../widgets/section_head.dart';
 import '../../widgets/action_card.dart';
 import '../../widgets/activity_row.dart';
+import '../../widgets/stat_card.dart';
 import '../../utils/theme.dart';
 import '../../utils/app_strings.dart';
 import 'health_summary.dart';
@@ -27,6 +29,8 @@ import 'prescriptions_list_screen.dart';
 class PatientHomeScreen extends StatelessWidget {
   const PatientHomeScreen({super.key});
 
+  static const double _desktopBreakpoint = 760;
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -34,6 +38,8 @@ class PatientHomeScreen extends StatelessWidget {
     final triage = Provider.of<TriageProvider>(context);
     final adherence = Provider.of<AdherenceProvider>(context);
     final prefs = Provider.of<PreferencesProvider>(context);
+    final prescriptions = Provider.of<PrescriptionProvider>(context);
+    final labs = Provider.of<LabProvider>(context);
 
     final user = auth.currentUser;
     final lang = prefs.prefs?.language ?? 'en';
@@ -42,41 +48,182 @@ class PatientHomeScreen extends StatelessWidget {
     final dateStr = DateFormat('EEEE, d MMMM yyyy', lang == 'sw' ? 'sw' : 'en').format(now);
 
     final nextAppt = _nextAppointment(appointments.appointments);
+    final upcoming = _upcomingAppointments(appointments.appointments);
     final vitals = triage.getLatestAssessment(user?.id ?? '');
     final todayMeds = adherence.todayDoses;
+    final activeRx = prescriptions.getActivePrescriptions().length;
+    final pendingLabs = labs.orders.where((o) => o.isPending).length;
+    final takenToday = todayMeds.where((m) => m.status == AdherenceStatus.taken).length;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _GreetingRow(
-            name: firstName,
-            date: dateStr,
-            lang: lang,
-            onToggleLanguage: () => _toggleLanguage(context, prefs),
-          ),
-          const SizedBox(height: 20),
-          _AppointmentCard(appointment: nextAppt, lang: lang, userId: user?.id ?? ''),
-          const SizedBox(height: 20),
-          _VitalsCard(assessment: vitals, lang: lang),
-          const SizedBox(height: 20),
-          _MedicationCard(medications: todayMeds, lang: lang),
-          const SizedBox(height: 24),
-          SectionHead(title: AppStrings.quickActions(lang)),
-          const SizedBox(height: 12),
-          _QuickActionsGrid(),
-          const SizedBox(height: 24),
-          SectionHead(
-            title: AppStrings.recentActivity(lang),
-            actionText: AppStrings.seeAll(lang),
-            onAction: () {},
-          ),
-          const SizedBox(height: 8),
-          _RecentActivityCard(),
-          const SizedBox(height: 24),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= _desktopBreakpoint;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 4),
+          child: isDesktop
+              ? _buildDesktop(
+                  firstName: firstName,
+                  dateStr: dateStr,
+                  lang: lang,
+                  nextAppt: nextAppt,
+                  upcoming: upcoming,
+                  vitals: vitals,
+                  todayMeds: todayMeds,
+                  activeRx: activeRx,
+                  pendingLabs: pendingLabs,
+                  takenToday: takenToday,
+                  onToggleLanguage: () => _toggleLanguage(context, prefs),
+                )
+              : _buildMobile(
+                  firstName: firstName,
+                  dateStr: dateStr,
+                  lang: lang,
+                  userId: user?.id ?? '',
+                  nextAppt: nextAppt,
+                  vitals: vitals,
+                  todayMeds: todayMeds,
+                  onToggleLanguage: () => _toggleLanguage(context, prefs),
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobile({
+    required String firstName,
+    required String dateStr,
+    required String lang,
+    required String userId,
+    required AppointmentModel? nextAppt,
+    required TriageAssessment? vitals,
+    required List<AdherenceLogModel> todayMeds,
+    required VoidCallback onToggleLanguage,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _GreetingRow(name: firstName, date: dateStr, lang: lang, onToggleLanguage: onToggleLanguage),
+        const SizedBox(height: 20),
+        _AppointmentCard(appointment: nextAppt, lang: lang, userId: userId),
+        const SizedBox(height: 20),
+        _VitalsCard(assessment: vitals, lang: lang),
+        const SizedBox(height: 20),
+        _MedicationCard(medications: todayMeds, lang: lang),
+        const SizedBox(height: 24),
+        SectionHead(title: AppStrings.quickActions(lang)),
+        const SizedBox(height: 12),
+        _QuickActionsGrid(),
+        const SizedBox(height: 24),
+        SectionHead(
+          title: AppStrings.recentActivity(lang),
+          actionText: AppStrings.seeAll(lang),
+          onAction: () {},
+        ),
+        const SizedBox(height: 8),
+        const _RecentActivityCard(),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildDesktop({
+    required String firstName,
+    required String dateStr,
+    required String lang,
+    required AppointmentModel? nextAppt,
+    required List<AppointmentModel> upcoming,
+    required TriageAssessment? vitals,
+    required List<AdherenceLogModel> todayMeds,
+    required int activeRx,
+    required int pendingLabs,
+    required int takenToday,
+    required VoidCallback onToggleLanguage,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _GreetingRow(name: firstName, date: dateStr, lang: lang, onToggleLanguage: onToggleLanguage),
+        const SizedBox(height: 24),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: StatCard(
+                icon: Icons.calendar_today_rounded,
+                value: '${upcoming.length}',
+                label: 'Upcoming Appointments',
+                iconBackground: const Color(0xFFC7EDE4),
+                iconColor: const Color(0xFF206B5D),
+                deltaLabel: nextAppt != null ? DateFormat('MMM d').format(nextAppt.scheduledAt) : null,
+                deltaBackground: const Color(0xFFC7EDE4),
+                deltaColor: const Color(0xFF206B5D),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: StatCard(
+                icon: Icons.medication_outlined,
+                value: '$activeRx',
+                label: 'Active Prescriptions',
+                iconBackground: const Color(0xFFC7EDE4),
+                iconColor: const Color(0xFF206B5D),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: StatCard(
+                icon: Icons.science_outlined,
+                value: '$pendingLabs',
+                label: 'Pending Lab Results',
+                iconBackground: const Color(0xFFEFF6FA),
+                iconColor: const Color(0xFF3E7CA6),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: StatCard(
+                icon: Icons.check_circle_outline,
+                value: todayMeds.isEmpty ? '—' : '$takenToday/${todayMeds.length}',
+                label: 'Medications Today',
+                iconBackground: const Color(0xFFE4F3EA),
+                iconColor: const Color(0xFF2E7D32),
+                deltaLabel: todayMeds.isEmpty ? null : '${(takenToday / todayMeds.length * 100).round()}%',
+                deltaBackground: const Color(0xFFE4F3EA),
+                deltaColor: const Color(0xFF2E7D32),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: _UpcomingAppointmentsCard(upcoming: upcoming, lang: lang),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: _Panel(title: AppStrings.recentActivity(lang), child: const _ActivityList()),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _VitalsCard(assessment: vitals, lang: lang)),
+            const SizedBox(width: 16),
+            Expanded(child: _MedicationCard(medications: todayMeds, lang: lang)),
+          ],
+        ),
+        const SizedBox(height: 24),
+        SectionHead(title: AppStrings.quickActions(lang)),
+        const SizedBox(height: 12),
+        _QuickActionsGrid(),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -90,12 +237,142 @@ class PatientHomeScreen extends StatelessWidget {
   }
 
   AppointmentModel? _nextAppointment(List<AppointmentModel> all) {
+    final upcoming = _upcomingAppointments(all);
+    return upcoming.isNotEmpty ? upcoming.first : null;
+  }
+
+  List<AppointmentModel> _upcomingAppointments(List<AppointmentModel> all) {
     final upcoming = all.where((a) =>
         a.scheduledAt.isAfter(DateTime.now()) &&
         a.status != AppointmentStatus.cancelled &&
         a.status != AppointmentStatus.completed).toList();
     upcoming.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-    return upcoming.isNotEmpty ? upcoming.first : null;
+    return upcoming;
+  }
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.title, required this.child, this.trailing});
+
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFDCE3EA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF152A45))),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingAppointmentsCard extends StatelessWidget {
+  const _UpcomingAppointmentsCard({required this.upcoming, required this.lang});
+
+  final List<AppointmentModel> upcoming;
+  final String lang;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      title: 'Upcoming Appointments',
+      child: upcoming.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                AppStrings.noAppointments(lang),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF55708A)),
+              ),
+            )
+          : Column(
+              children: [for (final a in upcoming.take(5)) _apptRow(a)],
+            ),
+    );
+  }
+
+  Widget _apptRow(AppointmentModel a) {
+    final typeLabel = a.type == AppointmentType.telehealth ? 'Telehealth' : 'In-person';
+    final confirmed = a.status == AppointmentStatus.confirmed;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9FB),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFC7EDE4),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('MMM').format(a.scheduledAt).toUpperCase(),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF206B5D)),
+                ),
+                Text('${a.scheduledAt.day}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF152A45))),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(DateFormat('h:mm a').format(a.scheduledAt), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF152A45))),
+                const SizedBox(height: 2),
+                Text(
+                  typeLabel + (a.chiefComplaint != null ? ' · ${a.chiefComplaint}' : ''),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF55708A)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: (confirmed ? const Color(0xFF2E7D32) : const Color(0xFFE65100)).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              confirmed ? 'Confirmed' : 'Pending',
+              style: TextStyle(
+                color: confirmed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -522,6 +799,24 @@ class _QuickActionsGrid extends StatelessWidget {
 }
 
 class _RecentActivityCard extends StatelessWidget {
+  const _RecentActivityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AfiCareTheme.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AfiCareTheme.line),
+      ),
+      child: const _ActivityList(),
+    );
+  }
+}
+
+class _ActivityList extends StatelessWidget {
+  const _ActivityList();
+
   @override
   Widget build(BuildContext context) {
     final consultations = Provider.of<PatientProvider>(context).consultations;
@@ -554,28 +849,21 @@ class _RecentActivityCard extends StatelessWidget {
       ]);
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AfiCareTheme.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AfiCareTheme.line),
-      ),
-      child: Column(
-        children: List.generate(items.length, (i) {
-          return Column(
-            children: [
-              if (i > 0) const Divider(height: 1, indent: 66),
-              ActivityRow(
-                icon: items[i].icon,
-                iconColor: items[i].iconColor,
-                title: items[i].title,
-                subtitle: items[i].subtitle,
-                time: '',
-              ),
-            ],
-          );
-        }),
-      ),
+    return Column(
+      children: List.generate(items.length, (i) {
+        return Column(
+          children: [
+            if (i > 0) const Divider(height: 1, indent: 66),
+            ActivityRow(
+              icon: items[i].icon,
+              iconColor: items[i].iconColor,
+              title: items[i].title,
+              subtitle: items[i].subtitle,
+              time: '',
+            ),
+          ],
+        );
+      }),
     );
   }
 }
