@@ -11,6 +11,7 @@ import '../../providers/patient_profile_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
+import '../../providers/prescription_provider.dart';
 import '../../widgets/app_shell.dart';
 import 'patient_home_screen.dart';
 import 'appointments_screen.dart';
@@ -76,6 +77,7 @@ class _PatientShellState extends State<PatientShell> {
         Provider.of<PatientProfileProvider>(context, listen: false).loadProfile(id),
         Provider.of<PatientProvider>(context, listen: false).loadConsultations(id),
         Provider.of<LabProvider>(context, listen: false).loadOrders(id),
+        Provider.of<PrescriptionProvider>(context, listen: false).loadPrescriptions(id),
         Provider.of<PreferencesProvider>(context, listen: false).loadPreferences(id),
       ]);
     } catch (_) {
