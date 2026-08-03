@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
@@ -83,6 +84,25 @@ class _PatientShellState extends State<PatientShell> {
     } catch (_) {
       // Data loading errors are non-fatal; UI shows empty states
     }
+
+    _maybeRouteToOnboarding(id);
+  }
+
+  Future<void> _maybeRouteToOnboarding(String userId) async {
+    final profileProvider =
+        Provider.of<PatientProfileProvider>(context, listen: false);
+    final profile = profileProvider.profile;
+    final incomplete = profile == null ||
+        (profile.dateOfBirth == null &&
+            profile.emergencyContactName == null &&
+            (profile.allergies.isEmpty) &&
+            profile.bloodType == null);
+    if (!incomplete) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final skipped = prefs.getBool('onboarding_skip_$userId') ?? false;
+    if (!mounted || skipped) return;
+    context.go('/onboarding');
   }
 
   void _onSidebarSelect(int navIndex) {

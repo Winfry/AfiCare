@@ -68,7 +68,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
 
   void _onSuccessComplete() {
     if (!mounted) return;
-    context.go('/patient');
+    context.go('/onboarding');
   }
 
   @override
