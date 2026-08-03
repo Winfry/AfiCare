@@ -34,6 +34,7 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   String? _bloodType;
   final _allergies = <String>[];
   final _allergyController = TextEditingController();
+  final _dobController = TextEditingController();
   final _emergencyNameController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
 
@@ -59,6 +60,7 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   @override
   void dispose() {
     _allergyController.dispose();
+    _dobController.dispose();
     _emergencyNameController.dispose();
     _emergencyPhoneController.dispose();
     _depController.dispose();
@@ -140,8 +142,21 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   void _goTo(int step) => setState(() => _step = step);
 
   Future<void> _continueFromProfile() async {
-    if (_dob == null) {
-      _showSnack('Please select your date of birth');
+    var dob = _dob;
+    final typed = _dobController.text.trim();
+    if (dob == null && typed.isNotEmpty) {
+      dob = _tryParseDob(typed);
+      if (dob != null) {
+        _dob = dob;
+        _dobController.text = DateFormat('dd/MM/yyyy').format(dob);
+      }
+    }
+    if (dob == null) {
+      _showSnack(
+        typed.isEmpty
+            ? 'Please select your date of birth'
+            : 'Please enter a valid date of birth (DD/MM/YYYY)',
+      );
       return;
     }
     if (_emergencyNameController.text.trim().isEmpty) {
@@ -159,6 +174,25 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
       _saving = false;
       _step = 2;
     });
+  }
+
+  DateTime? _tryParseDob(String text) {
+    final formats = [
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('d/M/yyyy'),
+      DateFormat('dd-MM-yyyy'),
+      DateFormat('yyyy-MM-dd'),
+    ];
+    for (final format in formats) {
+      try {
+        final parsed = format.parseStrict(text);
+        final now = DateTime.now();
+        if (parsed.isAfter(now)) return null;
+        if (parsed.isBefore(DateTime(now.year - 120))) return null;
+        return parsed;
+      } catch (_) {}
+    }
+    return null;
   }
 
   Future<void> _continueFromCare() async {
@@ -189,39 +223,44 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AfiCareTheme.mist,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Column(
-              children: [
-                _WizardTopBar(
-                  step: _step,
-                  canGoBack: _step > 0,
-                  onBack: () => _goTo(_step - 1),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 60),
-                    child: switch (_step) {
-                      0 => _WelcomeStep(
-                        firstName: _firstName,
-                        onNext: () => _goTo(1),
-                        onSkip: _skipFromWelcome,
-                      ),
-                      1 => _ProfileStep(
-                        dob: _dob,
-                        gender: _gender,
-                        bloodType: _bloodType,
-                        allergies: _allergies,
-                        allergyController: _allergyController,
-                        emergencyNameController: _emergencyNameController,
-                        emergencyPhoneController: _emergencyPhoneController,
-                        onPickDob: _pickDob,
-                        onGenderChanged: (v) => setState(() => _gender = v),
-                        onBloodTypeChanged: (v) => setState(() => _bloodType = v),
+    // The onboarding is a self-contained light experience. Wrapping it in a
+    // light Theme keeps all inherited text colors dark even when the device
+    // is in dark mode (the app follows the system theme by default).
+    return Theme(
+      data: AfiCareTheme.lightTheme,
+      child: Scaffold(
+        backgroundColor: AfiCareTheme.mist,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                children: [
+                  _WizardTopBar(
+                    step: _step,
+                    canGoBack: _step > 0,
+                    onBack: () => _goTo(_step - 1),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 60),
+                      child: switch (_step) {
+                        0 => _WelcomeStep(
+                          firstName: _firstName,
+                          onNext: () => _goTo(1),
+                          onSkip: _skipFromWelcome,
+                        ),
+                        1 => _ProfileStep(
+                          dobController: _dobController,
+                          gender: _gender,
+                          bloodType: _bloodType,
+                          allergies: _allergies,
+                          allergyController: _allergyController,
+                          emergencyNameController: _emergencyNameController,
+                          emergencyPhoneController: _emergencyPhoneController,
+                          onPickDob: _pickDob,
+                          onGenderChanged: (v) => setState(() => _gender = v),
+                          onBloodTypeChanged: (v) => setState(() => _bloodType = v),
                         onAddAllergy: _addAllergy,
                         onRemoveAllergy: (a) => setState(() => _allergies.remove(a)),
                         saving: _saving,
@@ -252,16 +291,20 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
   Future<void> _pickDob() async {
     final now = DateTime.now();
+    final initial = _dob ?? _tryParseDob(_dobController.text.trim()) ??
+        DateTime(now.year - 25, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dob ?? DateTime(now.year - 25, now.month, now.day),
+      initialDate: initial,
       firstDate: DateTime(now.year - 120),
       lastDate: now,
+      helpText: 'Date of birth',
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: Theme.of(context).colorScheme.copyWith(
@@ -271,7 +314,12 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _dob = picked);
+    if (picked != null) {
+      setState(() {
+        _dob = picked;
+        _dobController.text = DateFormat('dd/MM/yyyy').format(picked);
+      });
+    }
   }
 
   void _addAllergy() {
@@ -644,7 +692,7 @@ class _PromiseRow extends StatelessWidget {
 
 class _ProfileStep extends StatelessWidget {
   const _ProfileStep({
-    required this.dob,
+    required this.dobController,
     required this.gender,
     required this.bloodType,
     required this.allergies,
@@ -660,7 +708,7 @@ class _ProfileStep extends StatelessWidget {
     required this.onContinue,
   });
 
-  final DateTime? dob;
+  final TextEditingController dobController;
   final String? gender;
   final String? bloodType;
   final List<String> allergies;
@@ -688,30 +736,32 @@ class _ProfileStep extends StatelessWidget {
           leftAlign: true,
         ),
         const _FieldLabel(label: 'Date of birth', required: true),
-        InkWell(
-          borderRadius: BorderRadius.circular(14),
+        TextField(
+          controller: dobController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.next,
+          style: const TextStyle(fontSize: 14, color: AfiCareTheme.ink),
           onTap: onPickDob,
-          child: InputDecorator(
-            isEmpty: dob == null,
-            decoration: InputDecoration(
-              hintText: 'Select date of birth',
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-              prefixIcon: const Icon(Icons.cake_outlined, size: 18, color: AfiCareTheme.slate),
-              filled: true,
-              fillColor: AfiCareTheme.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-              ),
+          decoration: InputDecoration(
+            hintText: 'DD/MM/YYYY',
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+            prefixIcon: const Icon(Icons.cake_outlined, size: 18, color: AfiCareTheme.slate),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.calendar_today_outlined,
+                  size: 18, color: AfiCareTheme.canopy),
+              tooltip: 'Open date picker',
+              onPressed: onPickDob,
             ),
-            child: Text(
-              dob == null ? '' : DateFormat('dd/MM/yyyy').format(dob!),
-              style: const TextStyle(fontSize: 14, color: AfiCareTheme.ink),
+            filled: true,
+            fillColor: AfiCareTheme.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
             ),
           ),
         ),
