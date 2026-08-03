@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -10,6 +12,7 @@ import '../../providers/patient_provider.dart';
 import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
+import '../../providers/patient_profile_provider.dart';
 import '../../models/appointment_model.dart';
 import '../../models/adherence_model.dart';
 import '../../models/triage_model.dart';
@@ -25,6 +28,7 @@ import 'expenses_screen.dart';
 import 'lab_results_screen.dart';
 import 'medication_tracker_screen.dart';
 import 'prescriptions_list_screen.dart';
+import 'appointments_screen.dart';
 
 class PatientHomeScreen extends StatelessWidget {
   const PatientHomeScreen({super.key});
@@ -40,12 +44,24 @@ class PatientHomeScreen extends StatelessWidget {
     final prefs = Provider.of<PreferencesProvider>(context);
     final prescriptions = Provider.of<PrescriptionProvider>(context);
     final labs = Provider.of<LabProvider>(context);
+    final profile = Provider.of<PatientProfileProvider>(context).profile;
 
     final user = auth.currentUser;
     final lang = prefs.prefs?.language ?? 'en';
     final firstName = (user?.fullName ?? 'there').split(' ').first;
+    final fullName = user?.fullName ?? 'Patient';
+    final medilinkId = (user?.medilinkId?.isNotEmpty ?? false)
+        ? user!.medilinkId!
+        : 'ML-XXX-XXXX';
+    final allergies = profile?.allergies ?? const <String>[];
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE, d MMMM yyyy', lang == 'sw' ? 'sw' : 'en').format(now);
+
+    final needsOnboarding = profile == null ||
+        (profile.dateOfBirth == null &&
+            profile.emergencyContactName == null &&
+            profile.bloodType == null &&
+            allergies.isEmpty);
 
     final nextAppt = _nextAppointment(appointments.appointments);
     final upcoming = _upcomingAppointments(appointments.appointments);
@@ -60,32 +76,91 @@ class PatientHomeScreen extends StatelessWidget {
         final isDesktop = constraints.maxWidth >= _desktopBreakpoint;
         return SingleChildScrollView(
           padding: const EdgeInsets.only(top: 4),
-          child: isDesktop
-              ? _buildDesktop(
+          child: needsOnboarding
+              ? _buildFirstRun(
                   firstName: firstName,
                   dateStr: dateStr,
                   lang: lang,
-                  nextAppt: nextAppt,
-                  upcoming: upcoming,
-                  vitals: vitals,
-                  todayMeds: todayMeds,
-                  activeRx: activeRx,
-                  pendingLabs: pendingLabs,
-                  takenToday: takenToday,
+                  allergies: allergies,
+                  fullName: fullName,
+                  medilinkId: medilinkId,
+                  hasAppointments: appointments.appointments.isNotEmpty,
+                  hasMedications: todayMeds.isNotEmpty || activeRx > 0,
                   onToggleLanguage: () => _toggleLanguage(context, prefs),
                 )
-              : _buildMobile(
-                  firstName: firstName,
-                  dateStr: dateStr,
-                  lang: lang,
-                  userId: user?.id ?? '',
-                  nextAppt: nextAppt,
-                  vitals: vitals,
-                  todayMeds: todayMeds,
-                  onToggleLanguage: () => _toggleLanguage(context, prefs),
-                ),
+              : isDesktop
+                  ? _buildDesktop(
+                      firstName: firstName,
+                      dateStr: dateStr,
+                      lang: lang,
+                      allergies: allergies,
+                      fullName: fullName,
+                      medilinkId: medilinkId,
+                      nextAppt: nextAppt,
+                      upcoming: upcoming,
+                      vitals: vitals,
+                      todayMeds: todayMeds,
+                      activeRx: activeRx,
+                      pendingLabs: pendingLabs,
+                      takenToday: takenToday,
+                      onToggleLanguage: () => _toggleLanguage(context, prefs),
+                    )
+                  : _buildMobile(
+                      firstName: firstName,
+                      dateStr: dateStr,
+                      lang: lang,
+                      allergies: allergies,
+                      fullName: fullName,
+                      medilinkId: medilinkId,
+                      userId: user?.id ?? '',
+                      nextAppt: nextAppt,
+                      vitals: vitals,
+                      todayMeds: todayMeds,
+                      onToggleLanguage: () => _toggleLanguage(context, prefs),
+                    ),
         );
       },
+    );
+  }
+
+  /// First-run dashboard — shown until the patient completes onboarding.
+  Widget _buildFirstRun({
+    required String firstName,
+    required String dateStr,
+    required String lang,
+    required List<String> allergies,
+    required String fullName,
+    required String medilinkId,
+    required bool hasAppointments,
+    required bool hasMedications,
+    required VoidCallback onToggleLanguage,
+  }) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _GreetingRow(name: firstName, date: dateStr, lang: lang, onToggleLanguage: onToggleLanguage),
+            const SizedBox(height: 18),
+            if (allergies.isNotEmpty) ...[
+              _AllergyBanner(allergies: allergies),
+              const SizedBox(height: 18),
+            ],
+            _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
+            const SizedBox(height: 28),
+            SectionHead(title: AppStrings.quickActions(lang)),
+            const SizedBox(height: 12),
+            _QuickActionsGrid(),
+            const SizedBox(height: 28),
+            _OnboardingChecklist(
+              hasAppointments: hasAppointments,
+              hasMedications: hasMedications,
+            ),
+            const SizedBox(height: 28),
+          ],
+        ),
+      ),
     );
   }
 
@@ -93,6 +168,9 @@ class PatientHomeScreen extends StatelessWidget {
     required String firstName,
     required String dateStr,
     required String lang,
+    required List<String> allergies,
+    required String fullName,
+    required String medilinkId,
     required String userId,
     required AppointmentModel? nextAppt,
     required TriageAssessment? vitals,
@@ -103,6 +181,12 @@ class PatientHomeScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _GreetingRow(name: firstName, date: dateStr, lang: lang, onToggleLanguage: onToggleLanguage),
+        const SizedBox(height: 18),
+        if (allergies.isNotEmpty) ...[
+          _AllergyBanner(allergies: allergies),
+          const SizedBox(height: 18),
+        ],
+        _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
         const SizedBox(height: 20),
         _AppointmentCard(appointment: nextAppt, lang: lang, userId: userId),
         const SizedBox(height: 20),
@@ -130,6 +214,9 @@ class PatientHomeScreen extends StatelessWidget {
     required String firstName,
     required String dateStr,
     required String lang,
+    required List<String> allergies,
+    required String fullName,
+    required String medilinkId,
     required AppointmentModel? nextAppt,
     required List<AppointmentModel> upcoming,
     required TriageAssessment? vitals,
@@ -143,6 +230,12 @@ class PatientHomeScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _GreetingRow(name: firstName, date: dateStr, lang: lang, onToggleLanguage: onToggleLanguage),
+        const SizedBox(height: 18),
+        if (allergies.isNotEmpty) ...[
+          _AllergyBanner(allergies: allergies),
+          const SizedBox(height: 18),
+        ],
+        _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
         const SizedBox(height: 24),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,11 +345,10 @@ class PatientHomeScreen extends StatelessWidget {
 }
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.title, required this.child, this.trailing});
+  const _Panel({required this.title, required this.child});
 
   final String title;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -270,13 +362,7 @@ class _Panel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF152A45))),
-              if (trailing != null) trailing!,
-            ],
-          ),
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF152A45))),
           const SizedBox(height: 12),
           child,
         ],
@@ -874,6 +960,327 @@ class _ActivityItem {
   final String title;
   final String subtitle;
   const _ActivityItem({required this.icon, required this.iconColor, required this.title, required this.subtitle});
+}
+
+/// Allergy warning banner shown when the patient has recorded allergies.
+class _AllergyBanner extends StatelessWidget {
+  const _AllergyBanner({required this.allergies});
+  final List<String> allergies;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final a in allergies)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AfiCareTheme.emergencyRed.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: AfiCareTheme.emergencyRed.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    size: 13, color: AfiCareTheme.emergencyRed),
+                const SizedBox(width: 6),
+                Text(
+                  'Allergy: $a',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AfiCareTheme.emergencyRed,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Patient's MediLink ID card — the digital identity shown at the top of
+/// the dashboard.
+class _MediLinkCard extends StatelessWidget {
+  const _MediLinkCard({required this.fullName, required this.medilinkId});
+
+  final String fullName;
+  final String medilinkId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AfiCareTheme.canopy,
+            AfiCareTheme.canopy2,
+            Color(0xFF14335A),
+          ],
+          stops: [0, 0.55, 1],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -40,
+            top: -40,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Color(0x4864B5F6),
+                    Colors.transparent,
+                  ],
+                  stops: [0, 0.65],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'MEDILINK ID',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            letterSpacing: 1.2,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          fullName,
+                          style: GoogleFonts.fraunces(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          medilinkId,
+                          style: GoogleFonts.ibmPlexMono(
+                            fontSize: 12.5,
+                            color: Colors.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AfiCareTheme.accentGreen,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text(
+                      'P',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AfiCareTheme.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  _mediChip('Records owned by you'),
+                  const SizedBox(width: 8),
+                  _mediChip('Any facility'),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mediChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// First-run checklist that nudges the patient toward a complete setup.
+class _OnboardingChecklist extends StatelessWidget {
+  const _OnboardingChecklist({
+    required this.hasAppointments,
+    required this.hasMedications,
+  });
+
+  final bool hasAppointments;
+  final bool hasMedications;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = [false, hasAppointments, hasMedications, false];
+    final doneCount = done.where((d) => d).length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AfiCareTheme.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Let's get you started",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                '$doneCount of 4',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AfiCareTheme.slate,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: doneCount / 4,
+              minHeight: 5,
+              backgroundColor: AfiCareTheme.line,
+              valueColor: const AlwaysStoppedAnimation<Color>(AfiCareTheme.sage),
+            ),
+          ),
+          const SizedBox(height: 6),
+          _ChecklistRow(
+            label: 'Complete your health profile',
+            done: done[0],
+            onTap: () => context.go('/onboarding'),
+          ),
+          _ChecklistRow(
+            label: 'Book your first appointment',
+            done: done[1],
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+            ),
+          ),
+          _ChecklistRow(
+            label: 'Add a medication',
+            done: done[2],
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MedicationTrackerScreen()),
+            ),
+          ),
+          _ChecklistRow(
+            label: 'Set up sharing (QR code)',
+            done: done[3],
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ShareRecords()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChecklistRow extends StatelessWidget {
+  const _ChecklistRow({
+    required this.label,
+    required this.done,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool done;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? AfiCareTheme.sage : Colors.transparent,
+                border: Border.all(
+                  color: done ? AfiCareTheme.sage : AfiCareTheme.line,
+                  width: 1.5,
+                ),
+              ),
+              child: done
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                  color: done ? AfiCareTheme.slate : AfiCareTheme.ink,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 16, color: AfiCareTheme.slate),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Reusable card container with consistent styling.

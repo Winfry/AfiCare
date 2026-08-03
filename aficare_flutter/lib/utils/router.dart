@@ -7,6 +7,7 @@ import '../presentation/auth/register/patient/patient_register_screen.dart';
 import '../presentation/auth/register/clinician/clinician_register_screen.dart';
 import '../presentation/auth/register/admin/admin_register_screen.dart';
 import '../screens/patient/patient_shell.dart';
+import '../screens/patient/patient_onboarding_screen.dart';
 import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/patient_profile_screen.dart';
 import '../screens/patient/messages_screen.dart';
@@ -81,6 +82,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/register-facility',
       builder: (context, state) => const FacilityRegistrationScreen(),
+    ),
+
+    // First-run onboarding wizard (new patients)
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const PatientOnboardingScreen(),
     ),
 
     // Patient Routes — bottom-nav shell
