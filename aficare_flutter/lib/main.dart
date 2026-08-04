@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/patient_provider.dart';
@@ -48,6 +49,15 @@ void main() async {
   } catch (e) {
     initError = 'Network init failed: $e';
     debugPrint(initError);
+  }
+
+  // Required before DateFormat can be used with an explicit locale
+  // (the patient dashboard formats dates in 'en' and 'sw').
+  try {
+    await initializeDateFormatting('en');
+    await initializeDateFormatting('sw');
+  } catch (e) {
+    debugPrint('DateFormat init failed: $e');
   }
 
   // Catch any uncaught Flutter framework errors
