@@ -25,6 +25,7 @@ import 'providers/admin_facility_provider.dart';
 import 'providers/audit_log_provider.dart';
 import 'providers/system_settings_provider.dart';
 import 'providers/analytics_provider.dart';
+import 'models/user_preferences_model.dart';
 import 'utils/theme.dart';
 import 'utils/router.dart';
 import 'config/supabase_config.dart';
@@ -98,15 +99,67 @@ class AfiCareApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SystemSettingsProvider()),
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
       ],
-      child: MaterialApp.router(
-        title: 'AfiCare MediLink',
-        debugShowCheckedModeBanner: false,
-        theme: AfiCareTheme.lightTheme,
-        darkTheme: AfiCareTheme.darkTheme,
-        highContrastTheme: AfiCareTheme.highContrastTheme,
-        themeMode: ThemeMode.system,
-        routerConfig: appRouter,
-      ),
+      child: const _RootApp(),
+    );
+  }
+}
+
+/// App root. Rebuilds on preference changes so the active theme,
+/// text scaling and reduced-motion setting apply app-wide immediately.
+class _RootApp extends StatefulWidget {
+  const _RootApp();
+
+  @override
+  State<_RootApp> createState() => _RootAppState();
+}
+
+class _RootAppState extends State<_RootApp> {
+  String? _loadedUserId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context);
+    final pp = Provider.of<PreferencesProvider>(context);
+    final id = auth.currentUser?.id;
+    if (id != null && id != _loadedUserId) {
+      _loadedUserId = id;
+      pp.loadPreferences(id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = Provider.of<PreferencesProvider>(context).prefs;
+    final themePref = prefs?.theme ?? AppThemePreference.light;
+    final textScale = prefs?.textScale ?? 1.0;
+    final reduceMotion = prefs?.reduceMotion ?? false;
+
+    final ThemeData theme = switch (themePref) {
+      AppThemePreference.light => AfiCareTheme.lightTheme,
+      AppThemePreference.dark => AfiCareTheme.darkTheme,
+      AppThemePreference.highContrast => AfiCareTheme.highContrastTheme,
+    };
+
+    return MaterialApp.router(
+      title: 'AfiCare MediLink',
+      debugShowCheckedModeBanner: false,
+      theme: theme,
+      darkTheme: AfiCareTheme.darkTheme,
+      themeMode: themePref == AppThemePreference.dark
+          ? ThemeMode.dark
+          : ThemeMode.light,
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: TextScaler.linear(textScale),
+            disableAnimations: reduceMotion,
+          ),
+          child: child!,
+        );
+      },
+      routerConfig: appRouter,
     );
   }
 }

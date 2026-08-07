@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/user_preferences_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/preferences_provider.dart';
+import '../../services/tts_service.dart';
 import '../../utils/theme.dart';
 
 /// B20 — Settings (Patient)
@@ -90,6 +91,91 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
                             subtitle: Text(_languageLabel(prefs.language)),
                             trailing: const Icon(Icons.expand_more),
                             onTap: () => _pickLanguage(prefs),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _sectionLabel('ACCESSIBILITY'),
+                    _card(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.format_size,
+                                        color: AfiCareTheme.primaryGreen),
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Text('Text size',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600)),
+                                    ),
+                                    Text(
+                                      '${(prefs.textScale * 100).round()}%',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                Slider(
+                                  value: prefs.textScale.clamp(0.85, 1.6),
+                                  min: 0.85,
+                                  max: 1.6,
+                                  divisions: 15,
+                                  activeColor: AfiCareTheme.primaryGreen,
+                                  onChanged: (v) => _save(
+                                      prefs.copyWith(textScale: v)),
+                                ),
+                                Text(
+                                  'Live preview — Habari, Amina 👋',
+                                  style: TextStyle(
+                                      fontSize: 14 * prefs.textScale,
+                                      fontWeight: FontWeight.w600,
+                                      color: AfiCareTheme.primaryGreen),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          SwitchListTile(
+                            secondary: Icon(Icons.motion_photos_off,
+                                color: AfiCareTheme.primaryGreen),
+                            title: const Text('Reduce motion'),
+                            subtitle: const Text(
+                                'Minimise animations and transitions'),
+                            value: prefs.reduceMotion,
+                            onChanged: (v) => _save(
+                                prefs.copyWith(reduceMotion: v)),
+                          ),
+                          const Divider(height: 1),
+                          SwitchListTile(
+                            secondary: Icon(Icons.record_voice_over,
+                                color: AfiCareTheme.primaryGreen),
+                            title: const Text('Text-to-speech'),
+                            subtitle: const Text(
+                                'Read dashboard content out loud'),
+                            value: prefs.textToSpeech,
+                            onChanged: (v) =>
+                                _save(prefs.copyWith(textToSpeech: v)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () => _testVoice(),
+                                icon: const Icon(Icons.volume_up),
+                                label: const Text('Test voice'),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -225,6 +311,17 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
       default:
         return 'English (US)';
     }
+  }
+
+  void _testVoice() {
+    final ok = tts.speak('Hello. This is AfiCare. Welcome back.');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(tts.isSupported
+          ? (ok ? 'Speaking now...' : 'Voice unavailable in this browser.')
+          : 'Text-to-speech is not supported on this device.'),
+      backgroundColor: ok ? Colors.green : Colors.orange.shade800,
+    ));
   }
 
   void _pickLanguage(UserPreferencesModel prefs) {

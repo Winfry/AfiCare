@@ -8,6 +8,15 @@ class UserPreferencesModel {
   final bool emailNotifications;
   final bool smsNotifications;
 
+  /// Accessibility: text size multiplier (1.0 = normal).
+  final double textScale;
+
+  /// Accessibility: reduce/disable animations and transitions.
+  final bool reduceMotion;
+
+  /// Accessibility: allow text-to-speech for dashboard content.
+  final bool textToSpeech;
+
   UserPreferencesModel({
     required this.userId,
     this.theme = AppThemePreference.light,
@@ -15,6 +24,9 @@ class UserPreferencesModel {
     this.notificationsEnabled = true,
     this.emailNotifications = true,
     this.smsNotifications = false,
+    this.textScale = 1.0,
+    this.reduceMotion = false,
+    this.textToSpeech = false,
   });
 
   factory UserPreferencesModel.fromJson(Map<String, dynamic> json) {
@@ -25,6 +37,9 @@ class UserPreferencesModel {
       notificationsEnabled: (json['notifications_enabled'] as bool?) ?? true,
       emailNotifications: (json['email_notifications'] as bool?) ?? true,
       smsNotifications: (json['sms_notifications'] as bool?) ?? false,
+      textScale: (json['text_scale'] as num?)?.toDouble() ?? 1.0,
+      reduceMotion: (json['reduce_motion'] as bool?) ?? false,
+      textToSpeech: (json['text_to_speech'] as bool?) ?? false,
     );
   }
 
@@ -36,6 +51,9 @@ class UserPreferencesModel {
       'notifications_enabled': notificationsEnabled,
       'email_notifications': emailNotifications,
       'sms_notifications': smsNotifications,
+      'text_scale': textScale,
+      'reduce_motion': reduceMotion,
+      'text_to_speech': textToSpeech,
     };
   }
 
@@ -45,6 +63,9 @@ class UserPreferencesModel {
     bool? notificationsEnabled,
     bool? emailNotifications,
     bool? smsNotifications,
+    double? textScale,
+    bool? reduceMotion,
+    bool? textToSpeech,
   }) {
     return UserPreferencesModel(
       userId: userId,
@@ -53,6 +74,9 @@ class UserPreferencesModel {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       emailNotifications: emailNotifications ?? this.emailNotifications,
       smsNotifications: smsNotifications ?? this.smsNotifications,
+      textScale: textScale ?? this.textScale,
+      reduceMotion: reduceMotion ?? this.reduceMotion,
+      textToSpeech: textToSpeech ?? this.textToSpeech,
     );
   }
 

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfiCare MediLink — Warm Patient Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152A45; --navy:#1D3557; --navy-2:#24456B; --steel:#457B9D; --lightblue:#64B5F6;
+    --slate:#55708A; --line:#DCE3EA; --mist:#EEF2F7; --paper:#F8FAFC;
+    --danger:#B71C1C; --danger-light:#FBEAEA; --admin:#6D597A; --admin-light:#EFEAF2;
+    --success:#2E7D32; --success-light:#EAF6EE; --steel-light:#E9F1F5; --navy-light:#E8EDF3;
+    --lightblue-deep:#1565C0; --lightblue-light:#E5F2FD;
+    --r-md:14px; --r-lg:16px; --r-xl:22px;
+    --shadow-md:0 8px 24px -8px rgba(21,42,69,.16);
+    --display:'Fraunces',serif; --body:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+  body{font-family:var(--body); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased;}
+  button{font-family:var(--body); cursor:pointer;}
+
+  .proto-bar{position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:6px; background:var(--ink); padding:10px 16px; overflow-x:auto; font-family:var(--mono); font-size:12px;}
+  .proto-bar .proto-label{color:#9AA9B8; margin-right:8px; white-space:nowrap;}
+  .proto-tab{background:transparent; border:1px solid rgba(255,255,255,.18); color:#D7DEE6; padding:7px 14px; border-radius:999px; font-size:12.5px; white-space:nowrap;}
+  .proto-tab.active{background:var(--navy); border-color:var(--navy); color:#fff; font-weight:600;}
+  .screen{display:none;} .screen.active{display:block;}
+
+  .note-banner{background:var(--ink); color:#B9C6D4; padding:16px 24px; font-size:13px; line-height:1.6; max-width:1100px; margin:20px auto 0;}
+  .note-banner b{color:#fff;}
+
+  .legend{max-width:1100px; margin:20px auto 0; padding:20px 24px; background:var(--ink); border-radius:0;}
+  .legend h3{color:#fff; font-size:14.5px; margin:0 0 14px;}
+  .legend-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px 24px;}
+  @media (max-width:700px){.legend-grid{grid-template-columns:1fr;}}
+  .legend-item{display:flex; gap:12px; align-items:flex-start;}
+  .legend-num{background:var(--lightblue); color:var(--ink); font-family:var(--mono); font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:999px; flex-shrink:0; white-space:nowrap;}
+  .legend-item b{display:block; color:#fff; font-size:13px; margin-bottom:2px;}
+  .legend-item span{display:block; color:#9AA9B8; font-size:11.5px; font-family:var(--mono); line-height:1.5;}
+  .legend-note{color:#9AA9B8; font-size:12px; line-height:1.6; margin:16px 0 0; padding-top:14px; border-top:1px solid rgba(255,255,255,.12);}
+  .legend-note code{background:rgba(255,255,255,.1); padding:1px 5px; border-radius:4px; font-family:var(--mono); color:#fff;}
+
+  /* ---- App shell ---- */
+  .app-shell{display:flex; min-height:100vh;}
+  .sidebar{width:230px; background:var(--ink); padding:22px 16px; display:flex; flex-direction:column; flex-shrink:0;}
+  .sb-logo{display:flex; align-items:center; gap:10px; padding:6px 8px 20px;}
+  .sb-logo .mark{width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-2)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;}
+  .sb-logo .name{color:#fff; font-weight:700; font-size:15px;}
+  .sb-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; color:#AFC0CF; font-size:13.5px; font-weight:500; margin-bottom:2px;}
+  .sb-item .ic{width:18px; text-align:center;}
+  .sb-item.active{background:rgba(255,255,255,.1); color:#fff; font-weight:600;}
+  .sb-illustration{margin-top:auto; padding-top:20px;}
+  .sb-illustration p{color:#fff; font-size:13px; font-weight:600; line-height:1.5; margin:0 0 12px;}
+  .sb-illustration .img{height:120px; border-radius:14px; background:url('https://picsum.photos/seed/aficare-care-illustration/300/240') center/cover;}
+
+  .main{flex:1; min-width:0;}
+  .hero{
+    position:relative; height:220px; background:url('https://picsum.photos/seed/aficare-family-warm/1400/500') center/cover;
+    display:flex; align-items:flex-end; padding:26px 32px;
+  }
+  .hero::after{content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(21,42,69,0) 30%, rgba(21,42,69,.55) 100%);}
+  .hero-tag{position:relative; z-index:2; color:#fff;}
+  .hero-tag .eyebrow{font-family:var(--display); font-style:italic; color:var(--lightblue); font-size:15px; margin-bottom:4px;}
+  .hero-tag h1{font-family:var(--display); font-size:22px; font-weight:700; margin:0;}
+  .photo-tag{position:absolute; top:14px; right:14px; z-index:3; background:rgba(0,0,0,.5); color:#fff; font-family:var(--mono); font-size:9.5px; padding:4px 9px; border-radius:999px; display:flex; align-items:center; gap:5px;}
+  .slot-num{background:#fff; color:var(--ink); border-radius:50%; width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:700;}
+  .slot-tag{position:absolute; top:8px; right:8px; z-index:3; background:rgba(0,0,0,.5); color:#fff; font-family:var(--mono); font-size:8.5px; padding:3px 7px; border-radius:999px; display:flex; align-items:center; gap:4px;}
+
+  .content{padding:26px 32px 60px; max-width:900px;}
+  .top-row{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;}
+  .greet{font-family:var(--display); font-size:24px; font-weight:700; margin:0 0 2px;}
+  .greet-sub{color:var(--slate); font-size:13.5px; margin:0;}
+  .top-actions{display:flex; align-items:center; gap:14px;}
+  .bell{width:38px; height:38px; border-radius:50%; background:var(--mist); display:flex; align-items:center; justify-content:center; font-size:15px;}
+  .avatar-photo{width:38px; height:38px; border-radius:50%; background:url('https://picsum.photos/seed/aficare-amina/100/100') center/cover; border:2px solid #fff; box-shadow:var(--shadow-md);}
+
+  .allergy-strip{background:var(--danger-light); border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px; margin:18px 0; flex-wrap:wrap;}
+  .allergy-strip .lbl{font-size:12.5px; font-weight:700; color:var(--danger);}
+  .allergy-strip .tag{background:#fff; color:var(--danger); font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; display:flex; align-items:center; gap:4px;}
+  .allergy-strip .view-all{margin-left:auto; font-size:12px; font-weight:600; color:var(--slate);}
+
+  .medi-card{background:linear-gradient(120deg,var(--navy),var(--navy-2) 60%,#14335A); border-radius:20px; padding:22px; color:#fff; position:relative; overflow:hidden; margin-bottom:24px;}
+  .medi-card::after{content:''; position:absolute; right:-40px; top:-50px; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle, rgba(100,181,246,.25), transparent 65%);}
+  .medi-row{display:flex; align-items:flex-start; gap:14px; position:relative;}
+  .medi-photo-lg{width:56px; height:56px; border-radius:14px; background:url('https://picsum.photos/seed/aficare-amina/200/200') center/cover; border:2px solid rgba(255,255,255,.3); flex-shrink:0;}
+  .medi-info{flex:1;}
+  .medi-info .lbl{font-size:10.5px; letter-spacing:.08em; opacity:.7;}
+  .medi-name{font-family:var(--display); font-size:18px; font-weight:700; margin:4px 0 2px;}
+  .medi-id{font-family:var(--mono); font-size:12.5px; opacity:.85;}
+  .qr-icon{width:44px; height:44px; background:#fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;}
+  .medi-badges{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; position:relative;}
+  .medi-badge{background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:5px 11px; font-size:11px;}
+  .medi-standard{background:var(--navy); color:#fff; border-radius:999px; padding:4px 10px; font-size:10.5px; font-weight:700; display:inline-block; margin-top:10px;}
+
+  .section-title{font-size:14.5px; font-weight:700; margin:0 0 14px;}
+  .qa-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px;}
+  @media (max-width:640px){.qa-grid{grid-template-columns:repeat(2,1fr);}}
+  .qa-card{border-radius:14px; padding:16px 12px; text-align:left;}
+  .qa-card .ic{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; margin-bottom:22px; background:rgba(255,255,255,.6);}
+  .qa-card span{font-size:12.5px; font-weight:600;}
+  .qa-card.navy{background:var(--navy-light); color:var(--navy);}
+  .qa-card.steel{background:var(--steel-light); color:var(--steel);}
+  .qa-card.lightblue{background:var(--lightblue-light); color:var(--lightblue-deep);}
+  .qa-card.success{background:var(--success-light); color:var(--success);}
+  .qa-card span{color:var(--ink);}
+
+  .checklist-wrap{background:#fff; border:1px solid var(--line); border-radius:18px; padding:24px; display:flex; gap:22px; align-items:stretch; margin-bottom:24px;}
+  @media (max-width:640px){.checklist-wrap{flex-direction:column;}}
+  .checklist-main{flex:1;}
+  .checklist-main h3{font-family:var(--display); font-size:18px; margin:0 0 4px;}
+  .checklist-main .sub{font-size:13px; color:var(--slate); margin:0 0 16px;}
+  .cl-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
+  .cl-bar{flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden;}
+  .cl-bar div{height:100%; width:50%; background:var(--navy);}
+  .cl-bar-row span{font-size:12px; color:var(--slate); font-weight:600; white-space:nowrap;}
+  .cl-item{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .cl-item:last-child{border:none;}
+  .cl-check{width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; flex-shrink:0;}
+  .cl-check.done{background:var(--navy); border-color:var(--navy);}
+  .cl-text{flex:1;}
+  .cl-text b{display:block; font-size:13.5px;}
+  .cl-text small{font-size:11.5px; color:var(--slate);}
+  .cl-item.done .cl-text b{color:var(--slate); text-decoration:line-through;}
+  .cl-btn{background:var(--mist); border:none; border-radius:999px; padding:7px 14px; font-size:12px; font-weight:600; color:var(--ink); white-space:nowrap;}
+  .checklist-photo{width:180px; border-radius:14px; background:url('https://picsum.photos/seed/aficare-checklist/400/500') center/cover; flex-shrink:0; position:relative;}
+  @media (max-width:640px){.checklist-photo{width:100%; height:140px;}}
+
+  .trust-banner{background:var(--mist); border-radius:18px; padding:20px; display:flex; align-items:center; gap:20px; margin-bottom:10px;}
+  @media (max-width:560px){.trust-banner{flex-direction:column; align-items:flex-start;}}
+  .trust-photo{width:140px; height:100px; border-radius:12px; background:url('https://picsum.photos/seed/aficare-trust/400/300') center/cover; flex-shrink:0;}
+  .trust-text h4{font-family:var(--display); font-size:16px; margin:0 0 4px;}
+  .trust-text p{font-size:12.5px; color:var(--slate); margin:0 0 12px; line-height:1.5;}
+  .trust-text button{background:#fff; border:1px solid var(--line); border-radius:999px; padding:9px 16px; font-size:12.5px; font-weight:600;}
+
+  /* ---- Illustrated empty states showcase ---- */
+  .empty-showcase{max-width:1100px; margin:30px auto 60px; padding:0 24px;}
+  .empty-showcase h2{font-size:14px; letter-spacing:.06em; text-transform:uppercase; color:var(--slate); margin-bottom:16px;}
+  .empty-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:16px;}
+  @media (max-width:900px){.empty-grid{grid-template-columns:repeat(2,1fr);}}
+  .empty-card{background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden;}
+  .empty-card .art{height:110px; display:flex; align-items:center; justify-content:center; font-size:34px; position:relative;}
+  .empty-num{position:absolute; top:8px; left:8px; background:rgba(21,42,69,.6); color:#fff; font-family:var(--mono); font-size:9px; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;}
+  .empty-card .txt{padding:14px;}
+  .empty-card b{display:block; font-size:13px; margin-bottom:4px;}
+  .empty-card p{font-size:11.5px; color:var(--slate); margin:0; line-height:1.4;}
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <span class="proto-label">◎ WARM PATIENT DASHBOARD — comparison direction</span>
+  <button class="proto-tab active" data-screen="dashboard">First-run dashboard</button>
+</div>
+
+<div class="legend">
+  <h3>Where your images go — 11 slots total</h3>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="legend-num">1</span><div><b>Hero banner</b><span>.hero — lifestyle/family photo, wide, ~1400×500</span></div></div>
+    <div class="legend-item"><span class="legend-num">2</span><div><b>Sidebar illustration</b><span>.sb-illustration .img — flat illustration, ~300×240</span></div></div>
+    <div class="legend-item"><span class="legend-num">3</span><div><b>Checklist companion photo</b><span>.checklist-photo — lifestyle photo, portrait ~360×450</span></div></div>
+    <div class="legend-item"><span class="legend-num">4</span><div><b>Trust banner photo</b><span>.trust-photo — care moment, ~280×200</span></div></div>
+    <div class="legend-item"><span class="legend-num">5–9</span><div><b>Empty-state illustrations ×5</b><span>.empty-card .art — flat illustration, square ~220×220 each</span></div></div>
+    <div class="legend-item"><span class="legend-num">10</span><div><b>Topbar avatar</b><span>.avatar-photo — patient headshot, circle ~76×76 (too small to tag on-canvas)</span></div></div>
+    <div class="legend-item"><span class="legend-num">11</span><div><b>MediLink ID card photo</b><span>.medi-photo-lg — patient headshot, square ~112×112</span></div></div>
+  </div>
+  <p class="legend-note">To swap one in: find that CSS class in the file, replace the <code>url('...')</code> inside <code>background:</code> with your own image's path. Slots 2 and 5–9 are illustrations (flat, friendly, on-brand) — 1, 3, 4, 10, 11 are real photos.</p>
+</div>
+
+<section id="dashboard" class="screen active">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sb-logo"><div class="mark">✚</div><div class="name">AfiCare</div></div>
+      <div class="sb-item active"><span class="ic">⌂</span>Home</div>
+      <div class="sb-item"><span class="ic">📅</span>Appointments</div>
+      <div class="sb-item"><span class="ic">℞</span>Prescriptions</div>
+      <div class="sb-item"><span class="ic">💊</span>Medications</div>
+      <div class="sb-item"><span class="ic">🧪</span>Lab results</div>
+      <div class="sb-item"><span class="ic">📄</span>Records</div>
+      <div class="sb-item"><span class="ic">🔗</span>Share records</div>
+      <div class="sb-item"><span class="ic">💳</span>Expenses</div>
+      <div class="sb-item"><span class="ic">💬</span>Messages</div>
+      <div class="sb-item"><span class="ic">⚙</span>Settings</div>
+      <div class="sb-illustration">
+        <p>We're here for you.<br>Better care, together.</p>
+        <div class="img" style="position:relative;"><span class="slot-tag"><span class="slot-num">2</span> ILLUSTRATION</span></div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="hero">
+        <span class="photo-tag"><span class="slot-num">1</span> HERO PHOTO</span>
+        <div class="hero-tag">
+          <div class="eyebrow">Warm. Human. Reassuring.</div>
+          <h1>Every element speaks to the user, builds trust, and helps them take the next step.</h1>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="top-row">
+          <div>
+            <h2 class="greet">Habari, Amina 👋</h2>
+            <p class="greet-sub">Jumapili, 4 Mei 2025</p>
+          </div>
+          <div class="top-actions">
+            <div class="bell">🔔</div>
+            <div class="avatar-photo"></div>
+          </div>
+        </div>
+
+        <div class="allergy-strip">
+          <span class="lbl">⚠ Allergies on file</span>
+          <span class="tag">Penicillin</span>
+          <span class="tag">Peanuts</span>
+          <span class="view-all">View all</span>
+        </div>
+
+        <div class="medi-card">
+          <div class="medi-row">
+            <div class="medi-photo-lg"></div>
+            <div class="medi-info">
+              <div class="lbl">MEDILINK ID</div>
+              <div class="medi-name">Amina Njoroge</div>
+              <div class="medi-id">MLK-9F4A-3B7C</div>
+              <div class="medi-standard">Standard</div>
+            </div>
+            <div class="qr-icon">▦</div>
+          </div>
+          <div class="medi-badges">
+            <span class="medi-badge">✓ Registered</span>
+            <span class="medi-badge">✓ NHIF / SHA linked</span>
+          </div>
+        </div>
+
+        <p class="section-title">What would you like to do?</p>
+        <div class="qa-grid">
+          <div class="qa-card navy"><div class="ic">℞</div><span>Prescriptions</span></div>
+          <div class="qa-card steel"><div class="ic">💊</div><span>Medications</span></div>
+          <div class="qa-card steel"><div class="ic">🧪</div><span>Lab results</span></div>
+          <div class="qa-card lightblue"><div class="ic">📋</div><span>Health summary</span></div>
+          <div class="qa-card navy"><div class="ic">🔗</div><span>Share records</span></div>
+          <div class="qa-card success"><div class="ic">💳</div><span>Expenses</span></div>
+        </div>
+
+        <div class="checklist-wrap">
+          <div class="checklist-main">
+            <h3>Let's get you started</h3>
+            <p class="sub">Complete these simple steps to personalise your health journey.</p>
+            <div class="cl-bar-row"><div class="cl-bar"><div></div></div><span>2 of 4 completed</span></div>
+
+            <div class="cl-item done">
+              <div class="cl-check done">✓</div>
+              <div class="cl-text"><b>Complete your health profile</b><small>Tell us a bit about you</small></div>
+            </div>
+            <div class="cl-item done">
+              <div class="cl-check done">✓</div>
+              <div class="cl-text"><b>Book your first appointment</b><small>Find a doctor and book</small></div>
+            </div>
+            <div class="cl-item">
+              <div class="cl-check"></div>
+              <div class="cl-text"><b>Add a medication</b><small>Keep track of your medicines</small></div>
+              <button class="cl-btn">Add now</button>
+            </div>
+            <div class="cl-item">
+              <div class="cl-check"></div>
+              <div class="cl-text"><b>Set up sharing (QR code)</b><small>Share your records securely</small></div>
+              <button class="cl-btn">Set up</button>
+            </div>
+          </div>
+          <div class="checklist-photo"><span class="slot-tag"><span class="slot-num">3</span> LIFESTYLE PHOTO</span></div>
+        </div>
+
+        <div class="trust-banner">
+          <div class="trust-photo" style="position:relative;"><span class="slot-tag"><span class="slot-num">4</span> CARE MOMENT</span></div>
+          <div class="trust-text">
+            <h4>You're in good hands</h4>
+            <p>Your health information is private, secure, and only shared by you.</p>
+            <button>Learn how we protect you</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="empty-showcase">
+  <h2>Empty / first-run states — human, not robotic</h2>
+  <div class="empty-grid">
+    <div class="empty-card"><div class="art" style="background:var(--lightblue-light);"><span class="empty-num">5</span>🪴</div><div class="txt"><b>No appointments yet</b><p>Let's get you booked. Your health, your time.</p></div></div>
+    <div class="empty-card"><div class="art" style="background:var(--steel-light);"><span class="empty-num">6</span>💊</div><div class="txt"><b>No medications yet</b><p>Add your medicines so we can help you stay on track.</p></div></div>
+    <div class="empty-card"><div class="art" style="background:var(--navy-light);"><span class="empty-num">7</span>🧪</div><div class="txt"><b>No lab results yet</b><p>Results will appear here once your tests are done.</p></div></div>
+    <div class="empty-card"><div class="art" style="background:var(--admin-light);"><span class="empty-num">8</span>📁</div><div class="txt"><b>No records shared</b><p>Share your records securely with the right people.</p></div></div>
+    <div class="empty-card"><div class="art" style="background:var(--success-light);"><span class="empty-num">9</span>🏞️</div><div class="txt"><b>No data yet</b><p>Check back soon. You're building a healthier you.</p></div></div>
+  </div>
+</div>
+
+</body>
+</html>
