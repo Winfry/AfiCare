@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfiCare MediLink — Images Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152A45; --canopy:#1D3557; --canopy-2:#24456B; --marigold:#64B5F6; --marigold-2:#457B9D;
+    --clay:#E65100; --sage:#2E7D32; --mist:#EEF2F7; --paper:#F8FAFC; --slate:#55708A; --line:#DCE3EA;
+    --admin:#6D597A; --danger:#B71C1C; --white:#ffffff;
+    --r-md:14px; --r-lg:16px; --r-xl:22px;
+    --shadow-md:0 6px 20px -6px rgba(21,42,69,.16);
+    --display:'Fraunces',serif; --body:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+  body{font-family:var(--body); color:var(--ink); background:var(--mist); -webkit-font-smoothing:antialiased;}
+  button{font-family:var(--body); cursor:pointer;}
+
+  .proto-bar{position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:6px; background:var(--ink); padding:10px 16px; overflow-x:auto; font-family:var(--mono); font-size:12px;}
+  .proto-bar .proto-label{color:#9AA9B8; margin-right:8px; white-space:nowrap;}
+  .proto-tab{background:transparent; border:1px solid rgba(255,255,255,.18); color:#D7DEE6; padding:7px 14px; border-radius:999px; font-size:12.5px; white-space:nowrap;}
+  .proto-tab.active{background:var(--marigold); border-color:var(--marigold); color:var(--ink); font-weight:600;}
+  .screen{display:none;} .screen.active{display:block;}
+  .hint{max-width:520px; margin:14px auto 0; padding:0 24px; color:var(--slate); font-size:12.5px; line-height:1.5; text-align:center;}
+  .hint b{color:var(--ink);}
+
+  /* ---- Onboarding shell ---- */
+  .wiz-shell{min-height:100vh; display:flex; flex-direction:column; align-items:center;}
+  .wiz-topbar{width:100%; max-width:520px; display:flex; align-items:center; padding:20px 24px 8px; gap:8px;}
+  .wiz-back{width:36px; height:36px; border-radius:50%; background:var(--white); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--slate); flex-shrink:0;}
+  .wiz-back.hidden{visibility:hidden;}
+  .dots{flex:1; display:flex; justify-content:center; gap:6px;}
+  .dots span{height:7px; border-radius:4px; background:var(--line); width:7px; transition:.2s;}
+  .dots span.active{width:20px; background:var(--canopy);}
+  .dots span.done{background:var(--canopy);}
+  .wiz-spacer{width:36px; flex-shrink:0;}
+
+  .wiz-body{width:100%; max-width:420px; padding:8px 24px 60px; text-align:center;}
+  .wiz-body.left{text-align:left;}
+
+  .wiz-icon{width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,var(--canopy),var(--ink)); display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 24px;}
+  .wiz-body h2{font-family:var(--display); font-size:24px; font-weight:700; margin:0 0 8px;}
+  .wiz-body .sub{color:var(--slate); font-size:14px; line-height:1.55; margin:0 0 32px;}
+
+  /* ---- PHOTO: welcome hero ---- */
+  .photo-hero{position:relative; border-radius:var(--r-xl); overflow:hidden; height:210px; margin-bottom:24px; box-shadow:var(--shadow-md);}
+  .photo-hero img{width:100%; height:100%; object-fit:cover; display:block;}
+  .photo-hero .overlay{position:absolute; inset:0; background:linear-gradient(180deg, rgba(21,42,69,0) 30%, rgba(21,42,69,.62));}
+  .photo-hero .cap{position:absolute; left:16px; bottom:14px; color:#fff; font-size:12.5px; font-weight:500; letter-spacing:.02em;}
+
+  .promise{display:flex; align-items:center; gap:14px; text-align:left; margin-bottom:14px;}
+  .promise .ic{width:36px; height:36px; border-radius:10px; background:#E8EDF3; color:var(--canopy); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;}
+  .promise span{font-size:14px; font-weight:500;}
+
+  .field{margin-bottom:16px; text-align:left;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--slate); margin-bottom:6px;}
+  .field .input-wrap{position:relative; display:flex; align-items:center;}
+  .field .ic{position:absolute; left:14px; font-size:15px; color:var(--slate);}
+  .field input, .field select{width:100%; padding:13px 14px 13px 40px; border:1.5px solid var(--line); border-radius:var(--r-md); font-size:14px; font-family:var(--body); background:var(--white); color:var(--ink); appearance:none;}
+  .field select{cursor:pointer;}
+  .field .chevron{position:absolute; right:14px; font-size:12px; color:var(--slate); pointer-events:none;}
+  .field input:focus, .field select:focus{border-color:var(--canopy); outline:none;}
+  .add-row{display:flex; gap:8px; margin-bottom:10px;}
+  .add-row input{flex:1;}
+  .add-btn{width:44px; border-radius:var(--r-md); border:none; background:var(--canopy); color:#fff; font-size:18px;}
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+  .chip{background:#FDEEE3; color:var(--clay); font-size:12px; font-weight:600; padding:6px 10px; border-radius:999px; display:flex; align-items:center; gap:6px;}
+  .chip button{background:none; border:none; color:var(--clay); font-size:13px; padding:0;}
+  .dep-item{display:flex; align-items:center; gap:10px; background:var(--white); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:8px; text-align:left; font-size:13.5px;}
+  .dep-item span{flex:1;}
+
+  /* ---- PHOTO: profile avatar ---- */
+  .avatar-wrap{display:flex; justify-content:center; margin-bottom:22px;}
+  .avatar{position:relative; width:104px; height:104px; border-radius:50%; padding:4px; background:linear-gradient(135deg,var(--marigold),var(--canopy-2));}
+  .avatar img{width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; border:3px solid #fff;}
+  .avatar .cam{position:absolute; right:0; bottom:2px; width:32px; height:32px; border-radius:50%; background:var(--canopy); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; border:2.5px solid #fff;}
+
+  .btn{border:none; border-radius:999px; padding:14px 24px; font-size:14.5px; font-weight:600; width:100%; background:var(--canopy); color:#fff;}
+  .btn.secondary{background:transparent; color:var(--canopy); padding:8px;}
+  .skip-link{text-align:center; margin-top:12px; font-size:13.5px; font-weight:600; color:var(--slate); cursor:pointer;}
+
+  .qr-box{width:190px; height:190px; margin:0 auto 16px; border-radius:12px; border:1px solid var(--line); padding:10px; background:#fff; display:grid; grid-template-columns:repeat(11,1fr); gap:2px;}
+  .qr-box div{background:var(--ink); border-radius:1px;}
+  .qr-box div.off{background:transparent;}
+  .qr-id{font-family:var(--mono); font-size:12px; color:var(--slate); margin-bottom:28px; display:block;}
+
+  /* ---- PHOTO: QR side card ---- */
+  .qr-duo{display:flex; gap:14px; align-items:center; margin-bottom:20px;}
+  .qr-side{flex:1; border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow-md); position:relative;}
+  .qr-side img{width:100%; height:200px; object-fit:cover; display:block;}
+  .qr-side .cap{position:absolute; left:10px; bottom:10px; color:#fff; font-size:11px; font-weight:600; letter-spacing:.03em; background:rgba(21,42,69,.55); padding:4px 10px; border-radius:999px;}
+
+  /* ---- Dashboard ---- */
+  .dash-shell{max-width:900px; margin:0 auto; padding:30px 24px 60px;}
+  .greet-row{display:flex; align-items:center; gap:14px; margin-bottom:4px;}
+  .greet-avatar{width:48px; height:48px; border-radius:50%; overflow:hidden; border:2px solid var(--white); box-shadow:var(--shadow-md); flex-shrink:0;}
+  .greet-avatar img{width:100%; height:100%; object-fit:cover;}
+  .greet{font-family:var(--display); font-size:24px; font-weight:700; margin:0;}
+  .greet-sub{color:var(--slate); font-size:14px; margin:0 0 16px;}
+  .allergy-row{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+  .allergy{background:rgba(183,28,28,.07); border:1px solid rgba(183,28,28,.3); color:var(--danger); font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px;}
+
+  .medi-card{background:linear-gradient(120deg,var(--canopy),var(--canopy-2) 55%,#14335A); border-radius:20px; padding:24px; color:#fff; margin-bottom:28px; position:relative; overflow:hidden;}
+  .medi-card::after{content:''; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle, rgba(100,181,246,.28), transparent 65%);}
+  .medi-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .medi-top .lbl{font-size:10.5px; letter-spacing:.1em; opacity:.7;}
+  .medi-name{font-family:var(--display); font-size:19px; font-weight:700; margin:6px 0 2px;}
+  .medi-id{font-family:var(--mono); font-size:12.5px; opacity:.85;}
+  .medi-photo{width:46px; height:46px; border-radius:12px; overflow:hidden; border:2px solid rgba(255,255,255,.35); flex-shrink:0;}
+  .medi-photo img{width:100%; height:100%; object-fit:cover;}
+  .tier{width:24px; height:24px; border-radius:50%; background:var(--marigold); color:var(--ink); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; font-family:var(--mono);}
+  .medi-bottom{margin-top:20px; display:flex; gap:8px; flex-wrap:wrap;}
+  .medi-chip{background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:5px 12px; font-size:11px;}
+
+  .sec-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .sec-head h3{font-size:15px; font-weight:600; margin:0;}
+  .sec-head span{font-size:12px; color:var(--canopy); font-weight:600;}
+  .qa-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:30px;}
+  @media (max-width:760px){.qa-grid{grid-template-columns:repeat(3,1fr);}}
+  .qa-card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 12px; text-align:center;}
+  .qa-card .ic{width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; margin:0 auto 10px;}
+  .qa-card span{font-size:12.5px; font-weight:600;}
+
+  .checklist{background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px;}
+  .cl-head{display:flex; justify-content:space-between; margin-bottom:8px;}
+  .cl-head h3{font-size:15px; font-weight:600; margin:0;}
+  .cl-head span{font-size:12px; color:var(--slate); font-weight:600;}
+  .cl-bar{height:5px; background:var(--line); border-radius:3px; overflow:hidden; margin-bottom:14px;}
+  .cl-bar div{height:100%; background:var(--sage); width:50%;}
+  .cl-row{display:flex; align-items:center; gap:12px; padding:10px 4px; border-radius:10px;}
+  .cl-row:hover{background:var(--mist);}
+  .cl-dot{width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff;}
+  .cl-dot.done{background:var(--sage); border-color:var(--sage);}
+  .cl-row span.lbl{flex:1; font-size:13.5px; font-weight:500;}
+  .cl-row.done span.lbl{color:var(--slate); text-decoration:line-through;}
+  .cl-row .arrow{color:var(--slate); font-size:11px;}
+
+  .tag{display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--clay); background:#FDEEE3; border-radius:999px; padding:4px 10px; margin-bottom:14px;}
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <span class="proto-label">◎ IMAGES PREVIEW — ONBOARDING &amp; DASHBOARD</span>
+  <button class="proto-tab active" data-screen="welcome">1 · Welcome</button>
+  <button class="proto-tab" data-screen="profile">2 · Profile</button>
+  <button class="proto-tab" data-screen="qr">3 · QR</button>
+  <button class="proto-tab" data-screen="dash">Dashboard</button>
+</div>
+
+<!-- STEP 1 -->
+<section id="welcome" class="screen active">
+  <div class="wiz-shell">
+    <div class="wiz-topbar">
+      <div class="wiz-back hidden">←</div>
+      <div class="dots"><span class="active"></span><span></span><span></span><span></span></div>
+      <div class="wiz-spacer"></div>
+    </div>
+    <div class="wiz-body">
+      <span class="tag">PROPOSED · PHOTO HERO</span>
+      <div class="photo-hero">
+        <img src="https://picsum.photos/seed/aficare-welcome/820/420" alt="Doctor welcoming a patient">
+        <div class="overlay"></div>
+        <div class="cap">Your care team at Kenyatta National Hospital</div>
+      </div>
+      <h2>Welcome to AfiCare, Wanjiru</h2>
+      <p class="sub">You've got a MediLink ID now — here's what that gets you.</p>
+      <div class="promise"><div class="ic">📁</div><span>Own your records — see them from any facility</span></div>
+      <div class="promise"><div class="ic">📅</div><span>Book visits without calling the clinic</span></div>
+      <div class="promise"><div class="ic">💬</div><span>Message your providers directly</span></div>
+      <div style="height:22px;"></div>
+      <button class="btn" onclick="showScreen('profile')">Let's go</button>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 2 -->
+<section id="profile" class="screen">
+  <div class="wiz-shell">
+    <div class="wiz-topbar">
+      <div class="wiz-back" onclick="showScreen('welcome')">←</div>
+      <div class="dots"><span class="done"></span><span class="active"></span><span></span><span></span></div>
+      <div class="wiz-spacer"></div>
+    </div>
+    <div class="wiz-body left">
+      <span class="tag">PROPOSED · PROFILE PHOTO</span>
+      <div class="avatar-wrap">
+        <div class="avatar">
+          <img src="https://picsum.photos/seed/wanjiru/160/160" alt="Profile photo">
+          <div class="cam">📷</div>
+        </div>
+      </div>
+      <div style="text-align:center; margin-bottom:22px;">
+        <h2>Complete your profile</h2>
+        <p class="sub">Add a photo so providers recognize you at the facility.</p>
+      </div>
+
+      <div class="field"><label>Date of birth <span style="color:var(--danger);">*</span></label>
+        <div class="input-wrap"><span class="ic">🎂</span><input type="text" placeholder="Select date of birth" onclick="this.value='14/05/1998'"></div>
+      </div>
+      <div class="field"><label>Gender</label>
+        <div class="input-wrap"><span class="ic">⚧</span><select><option>Select gender</option><option>Female</option><option>Male</option><option>Other</option></select><span class="chevron">▾</span></div>
+      </div>
+      <div class="field"><label>Blood type</label>
+        <div class="input-wrap"><span class="ic">🩸</span><select><option>Select blood type</option><option>O+</option><option>A+</option><option>B+</option><option>AB+</option></select><span class="chevron">▾</span></div>
+      </div>
+
+      <div class="field"><label>Allergies (optional)</label>
+        <div class="add-row">
+          <div class="input-wrap" style="flex:1;"><span class="ic">⚠️</span><input id="allergyInput" type="text" placeholder="e.g. Penicillin"></div>
+          <button class="add-btn" onclick="addAllergy()">+</button>
+        </div>
+        <div class="chip-row" id="allergyChips">
+          <span class="chip">Penicillin <button onclick="this.parentElement.remove()">✕</button></span>
+        </div>
+      </div>
+
+      <div class="field"><label>Emergency contact name <span style="color:var(--danger);">*</span></label>
+        <div class="input-wrap"><span class="ic">👤</span><input type="text" placeholder="Full name"></div>
+      </div>
+      <div class="field"><label>Emergency contact phone <span style="color:var(--danger);">*</span></label>
+        <div class="input-wrap"><span class="ic">📱</span><input type="text" placeholder="712 345 678"></div>
+      </div>
+
+      <button class="btn" onclick="showScreen('qr')">Continue</button>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 3 -->
+<section id="qr" class="screen">
+  <div class="wiz-shell">
+    <div class="wiz-topbar">
+      <div class="wiz-back" onclick="showScreen('profile')">←</div>
+      <div class="dots"><span class="done"></span><span class="done"></span><span class="active"></span><span></span></div>
+      <div class="wiz-spacer"></div>
+    </div>
+    <div class="wiz-body">
+      <span class="tag">PROPOSED · PHOTO + QR DUO</span>
+      <h2>This is your MediLink ID</h2>
+      <p class="sub">Show this to any provider to share your records instantly — no forms, no faxes.</p>
+      <div class="qr-duo">
+        <div class="qr-side">
+          <img src="https://picsum.photos/seed/aficare-qr/360/200" alt="Patient with ID card">
+          <div class="cap">Scan · no paperwork</div>
+        </div>
+        <div class="qr-box" id="qrBox"></div>
+      </div>
+      <span class="qr-id">MDL-KE-2291-7740</span>
+      <button class="btn" onclick="showScreen('dash')">Continue to My Health</button>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dash" class="screen">
+  <div class="dash-shell">
+    <span class="tag">PROPOSED · AVATAR + PHOTO ON MEDILINK CARD</span>
+    <div class="greet-row">
+      <div class="greet-avatar"><img src="https://picsum.photos/seed/wanjiru/96/96" alt="Wanjiru"></div>
+      <h2 class="greet">Habari, Wanjiru 👋</h2>
+    </div>
+    <p class="greet-sub">Thursday, 23 July — you have 1 upcoming appointment</p>
+    <div class="allergy-row"><span class="allergy">⚠ Allergy: Penicillin</span></div>
+
+    <div class="medi-card">
+      <div class="medi-top">
+        <div>
+          <div class="lbl">MEDILINK ID</div>
+          <div class="medi-name">Wanjiru Njoroge</div>
+          <div class="medi-id">MDL-KE-2291-7740</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="medi-photo"><img src="https://picsum.photos/seed/wanjiru/92/92" alt="Wanjiru photo"></div>
+          <div class="tier">6</div>
+        </div>
+      </div>
+      <div class="medi-bottom"><span class="medi-chip">Registered · Kiambu County</span><span class="medi-chip">NHIF/SHA linked</span></div>
+    </div>
+
+    <div class="sec-head"><h3>Quick actions</h3></div>
+    <div class="qa-grid">
+      <div class="qa-card"><div class="ic" style="background:#E8EDF3;color:var(--canopy);">℞</div><span>Prescriptions</span></div>
+      <div class="qa-card"><div class="ic" style="background:#E9F1F5;color:var(--marigold-2);">💊</div><span>Medications</span></div>
+      <div class="qa-card"><div class="ic" style="background:#EFF6FA;color:var(--marigold-2);">🧪</div><span>Lab results</span></div>
+      <div class="qa-card"><div class="ic" style="background:#E5F2FD;color:#1565C0;">📋</div><span>Health summary</span></div>
+      <div class="qa-card"><div class="ic" style="background:#E8EDF3;color:var(--canopy);">🔗</div><span>Share records</span></div>
+      <div class="qa-card"><div class="ic" style="background:#EAF6EE;color:var(--sage);">💳</div><span>Expenses</span></div>
+    </div>
+
+    <div class="checklist">
+      <div class="cl-head"><h3>Let's get you started</h3><span>2 of 4</span></div>
+      <div class="cl-bar"><div></div></div>
+      <div class="cl-row done"><div class="cl-dot done">✓</div><span class="lbl">Complete your health profile</span></div>
+      <div class="cl-row"><div class="cl-dot"></div><span class="lbl">Book your first appointment</span><span class="arrow">›</span></div>
+      <div class="cl-row done"><div class="cl-dot done">✓</div><span class="lbl">Add a medication</span></div>
+      <div class="cl-row"><div class="cl-dot"></div><span class="lbl">Set up sharing (QR code)</span><span class="arrow">›</span></div>
+    </div>
+  </div>
+</section>
+
+<p class="hint"><b>Notes:</b> photos here are placeholders (picsum.photos). Swap them for <b>real photos</b> — a real photo of the patient on the profile &amp; MediLink card, and a warm real clinic/team photo on the welcome screen. Real human photos are what remove the "AI-generated" feel.</p>
+
+<script>
+  function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    document.querySelectorAll('.proto-tab').forEach(t=>t.classList.toggle('active', t.dataset.screen===name));
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('.proto-tab').forEach(t=>t.addEventListener('click', ()=>showScreen(t.dataset.screen)));
+
+  function addAllergy(){
+    const input = document.getElementById('allergyInput');
+    if(!input.value.trim()) return;
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = input.value + ' <button onclick="this.parentElement.remove()">✕</button>';
+    document.getElementById('allergyChips').appendChild(chip);
+    input.value = '';
+  }
+
+  const qrBox = document.getElementById('qrBox');
+  for(let i=0;i<121;i++){
+    const cell = document.createElement('div');
+    const row = Math.floor(i/11), col = i%11;
+    const inFinder = (row<3&&col<3)||(row<3&&col>=8)||(row>=8&&col<3);
+    if(!inFinder && Math.random() > 0.52) cell.classList.add('off');
+    qrBox.appendChild(cell);
+  }
+</script>
+</body>
+</html>

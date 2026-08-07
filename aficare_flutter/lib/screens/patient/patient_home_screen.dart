@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/appointment_provider.dart';
@@ -15,6 +16,9 @@ import '../../providers/prescription_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../models/appointment_model.dart';
 import '../../models/triage_model.dart';
+import '../../models/disability_profile.dart';
+import '../../services/pwd_rule_engine.dart';
+import '../../services/tts_service.dart';
 import 'health_summary.dart';
 import 'share_records.dart';
 import 'expenses_screen.dart';
@@ -90,6 +94,13 @@ class PatientHomeScreen extends StatelessWidget {
         .where((a) => a.patientId == (user?.id ?? ''))
         .toList();
 
+    final ttsEnabled = prefs.prefs?.textToSpeech ?? false;
+    final listenText = ttsEnabled
+        ? 'Habari, $firstName. $dateStr. '
+            '${upcoming.isEmpty ? "You have no upcoming appointments." : "You have ${upcoming.length} upcoming appointment${upcoming.length == 1 ? '' : 's'}."}'
+        : null;
+    final patientId = user?.id;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isTwoCol = constraints.maxWidth >= _twoColBreakpoint;
@@ -112,6 +123,8 @@ class PatientHomeScreen extends StatelessWidget {
                         hasAppointments: appointments.appointments.isNotEmpty,
                         hasMedications: todayMeds.isNotEmpty || activeRx.isNotEmpty,
                         isQaWide: isQaWide,
+                        listenText: listenText,
+                        patientId: patientId,
                       )
                     : _ReturningDashboard(
                         firstName: firstName,
@@ -126,6 +139,8 @@ class PatientHomeScreen extends StatelessWidget {
                         consultations: consultations,
                         isTwoCol: isTwoCol,
                         isQaWide: isQaWide,
+                        listenText: listenText,
+                        patientId: patientId,
                       ),
               ),
             ),
@@ -157,6 +172,8 @@ class _FirstRunDashboard extends StatelessWidget {
     required this.hasAppointments,
     required this.hasMedications,
     required this.isQaWide,
+    this.listenText,
+    this.patientId,
   });
 
   final String firstName;
@@ -167,19 +184,25 @@ class _FirstRunDashboard extends StatelessWidget {
   final bool hasAppointments;
   final bool hasMedications;
   final bool isQaWide;
+  final String? listenText;
+  final String? patientId;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Greeting(name: firstName, subtitle: dateStr),
+        _Greeting(name: firstName, subtitle: dateStr, listenText: listenText),
         const SizedBox(height: 16),
         if (allergies.isNotEmpty) ...[
           _AllergyRow(allergies: allergies),
           const SizedBox(height: 18),
         ],
         _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
+        if (patientId != null) ...[
+          const SizedBox(height: 20),
+          _CaregiverAlertsCard(patientId: patientId!),
+        ],
         const SizedBox(height: 28),
         const _SecHead(title: 'Quick actions'),
         const SizedBox(height: 12),
@@ -210,6 +233,8 @@ class _ReturningDashboard extends StatelessWidget {
     required this.consultations,
     required this.isTwoCol,
     required this.isQaWide,
+    this.listenText,
+    this.patientId,
   });
 
   final String firstName;
@@ -224,6 +249,8 @@ class _ReturningDashboard extends StatelessWidget {
   final List<dynamic> consultations;
   final bool isTwoCol;
   final bool isQaWide;
+  final String? listenText;
+  final String? patientId;
 
   @override
   Widget build(BuildContext context) {
@@ -234,13 +261,20 @@ class _ReturningDashboard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Greeting(name: firstName, subtitle: '$dateStr — $apptLine'),
+        _Greeting(
+            name: firstName,
+            subtitle: '$dateStr — $apptLine',
+            listenText: listenText),
         const SizedBox(height: 16),
         if (allergies.isNotEmpty) ...[
           _AllergyRow(allergies: allergies),
           const SizedBox(height: 18),
         ],
         _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
+        if (patientId != null) ...[
+          const SizedBox(height: 20),
+          _CaregiverAlertsCard(patientId: patientId!),
+        ],
         const SizedBox(height: 28),
         const _SecHead(title: 'Quick actions'),
         const SizedBox(height: 12),
@@ -291,26 +325,47 @@ class _ReturningDashboard extends StatelessWidget {
 // ── Shared widgets ─────────────────────────────────────────────────────
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.subtitle});
+  const _Greeting({required this.name, required this.subtitle, this.listenText});
 
   final String name;
   final String subtitle;
+  final String? listenText;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Habari, $name 👋',
-          style: GoogleFonts.fraunces(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: _C.ink,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Habari, $name 👋',
+                style: GoogleFonts.fraunces(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: _C.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style: const TextStyle(fontSize: 14, color: _C.slate)),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(subtitle, style: const TextStyle(fontSize: 14, color: _C.slate)),
+        if (listenText != null)
+          IconButton(
+            onPressed: () => tts.speak(listenText!),
+            tooltip: 'Listen',
+            icon: const Icon(Icons.volume_up_rounded),
+            color: _C.canopy,
+            iconSize: 22,
+            style: IconButton.styleFrom(
+              backgroundColor: _C.mist,
+              minimumSize: const Size(42, 42),
+            ),
+          ),
       ],
     );
   }
@@ -773,6 +828,116 @@ class _ChecklistRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Caregiver alerts card ─────────────────────────────────────────────
+
+class _CaregiverAlertsCard extends StatelessWidget {
+  const _CaregiverAlertsCard({required this.patientId});
+
+  final String patientId;
+
+  @override
+  Widget build(BuildContext context) {
+    final future = Supabase.instance.client
+        .from('disability_profiles')
+        .select()
+        .eq('patient_id', patientId)
+        .maybeSingle();
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: future,
+      builder: (context, snap) {
+        if (!snap.hasData) return const SizedBox.shrink();
+        final data = snap.data;
+        if (data == null) return const SizedBox.shrink();
+
+        DisabilityProfile profile;
+        try {
+          profile = DisabilityProfile.fromMap(data);
+        } catch (_) {
+          return const SizedBox.shrink();
+        }
+        if (!profile.hasCaregiver) return const SizedBox.shrink();
+
+        final caregiver = profile.caregiver!;
+        final alerts = const PwdRuleEngine()
+            .getProviderNotes(profile)
+            .where((r) =>
+                r.category == RecommendationCategory.caregiverAlert)
+            .toList();
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _C.medBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _C.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.people_alt_rounded,
+                      size: 18, color: _C.canopy),
+                  SizedBox(width: 8),
+                  Text(
+                    'Caregiver access active',
+                    style: TextStyle(
+                        fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${caregiver.name} (${caregiver.relationship}) can see: '
+                '${caregiver.permissions.join(', ')}',
+                style: const TextStyle(fontSize: 12.5, color: _C.slate),
+              ),
+              if (alerts.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                for (final alert in alerts.take(2))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _C.sage,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            alert.title,
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                color: _C.ink,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ] else ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Caregiver alerts will appear here as your care plan updates.',
+                  style: TextStyle(fontSize: 12.5, color: _C.slate),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
