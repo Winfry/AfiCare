@@ -525,16 +525,19 @@ class _WizInput extends StatelessWidget {
     required this.controller,
     required this.hint,
     required this.icon,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String hint;
   final IconData icon;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      onChanged: onChanged,
       style: const TextStyle(fontSize: 14, color: AfiCareTheme.ink),
       decoration: InputDecoration(
         hintText: hint,
@@ -854,7 +857,7 @@ class _ProfileStep extends StatelessWidget {
 
 // ── Step 3: Care setup ──────────────────────────────────────────────────
 
-class _CareStep extends StatelessWidget {
+class _CareStep extends StatefulWidget {
   const _CareStep({
     required this.facilities,
     required this.facilityId,
@@ -880,7 +883,27 @@ class _CareStep extends StatelessWidget {
   final VoidCallback onSkip;
 
   @override
+  State<_CareStep> createState() => _CareStepState();
+}
+
+class _CareStepState extends State<_CareStep> {
+  late final TextEditingController _manualFacilityCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _manualFacilityCtrl = TextEditingController(text: widget.facilityId ?? '');
+  }
+
+  @override
+  void dispose() {
+    _manualFacilityCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hasFacilities = widget.facilities.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -891,40 +914,53 @@ class _CareStep extends StatelessWidget {
           leftAlign: true,
         ),
         const _FieldLabel(label: 'Usual facility'),
-        DropdownButtonFormField<String>(
-          value: facilityId,
-          isExpanded: true,
-          hint: Text(
-            facilities.isEmpty ? 'No facilities available' : 'Select your facility',
-            style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-          ),
-          icon: const Icon(Icons.expand_more, size: 20, color: AfiCareTheme.slate),
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.local_hospital_outlined, size: 18, color: AfiCareTheme.slate),
-            filled: true,
-            fillColor: AfiCareTheme.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
+        if (hasFacilities)
+          DropdownButtonFormField<String>(
+            value: widget.facilityId,
+            isExpanded: true,
+            hint: const Text('Select your facility',
+                style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
+            icon: const Icon(Icons.expand_more, size: 20, color: AfiCareTheme.slate),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.local_hospital_outlined,
+                  size: 18, color: AfiCareTheme.slate),
+              filled: true,
+              fillColor: AfiCareTheme.white,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
+              ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-            ),
+            items: widget.facilities
+                .map((f) => DropdownMenuItem(
+                    value: f.id,
+                    child: Text(f.name,
+                        style: const TextStyle(fontSize: 14))))
+                .toList(),
+            onChanged: widget.onFacilityChanged,
+          )
+        else
+          _WizInput(
+            controller: _manualFacilityCtrl,
+            hint: 'e.g. Kenyatta National Hospital',
+            icon: Icons.local_hospital_outlined,
+            onChanged: (_) => widget.onFacilityChanged(_manualFacilityCtrl.text.trim().isEmpty
+                ? null
+                : _manualFacilityCtrl.text.trim()),
           ),
-          items: facilities
-              .map((f) => DropdownMenuItem(value: f.id, child: Text(f.name, style: const TextStyle(fontSize: 14))))
-              .toList(),
-          onChanged: onFacilityChanged,
-        ),
         const SizedBox(height: 16),
         const _FieldLabel(label: 'Family members / dependents'),
         Row(
           children: [
             Expanded(
               child: _WizInput(
-                controller: depController,
+                controller: widget.depController,
                 hint: 'e.g. Baby Amara',
                 icon: Icons.family_restroom_outlined,
               ),
@@ -938,7 +974,7 @@ class _CareStep extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  onTap: onAddDependent,
+                  onTap: widget.onAddDependent,
                   child: const Icon(Icons.add, color: Colors.white, size: 20),
                 ),
               ),
@@ -946,10 +982,10 @@ class _CareStep extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        if (dependents.isNotEmpty)
+        if (widget.dependents.isNotEmpty)
           Column(
             children: [
-              for (final name in dependents)
+              for (final name in widget.dependents)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -966,7 +1002,7 @@ class _CareStep extends StatelessWidget {
                         child: Text(name, style: const TextStyle(fontSize: 13.5)),
                       ),
                       InkWell(
-                        onTap: () => onRemoveDependent(name),
+                        onTap: () => widget.onRemoveDependent(name),
                         child: const Icon(Icons.close, size: 16, color: AfiCareTheme.slate),
                       ),
                     ],
@@ -975,10 +1011,10 @@ class _CareStep extends StatelessWidget {
             ],
           ),
         const SizedBox(height: 24),
-        _PrimaryButton(label: saving ? 'Saving…' : 'Continue', onTap: onContinue, loading: saving),
+        _PrimaryButton(label: widget.saving ? 'Saving…' : 'Continue', onTap: widget.onContinue, loading: widget.saving),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: onSkip,
+          onTap: widget.onSkip,
           child: const Text(
             'Skip for now',
             textAlign: TextAlign.center,
