@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/appointment_model.dart';
+import '../../models/facility_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/admin_facility_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
@@ -416,17 +418,21 @@ class _BookingSheet extends StatefulWidget {
 class _BookingSheetState extends State<_BookingSheet> {
   List<UserModel> _providers = [];
   UserModel? _selectedProvider;
+  List<FacilityModel> _facilities = [];
+  FacilityModel? _selectedFacility;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   AppointmentType _type = AppointmentType.inPerson;
   final _complaintController = TextEditingController();
   bool _isSubmitting = false;
   bool _loadingProviders = true;
+  bool _loadingFacilities = true;
 
   @override
   void initState() {
     super.initState();
     _loadProviders();
+    _loadFacilities();
   }
 
   @override
@@ -470,6 +476,21 @@ class _BookingSheetState extends State<_BookingSheet> {
     }
   }
 
+  Future<void> _loadFacilities() async {
+    try {
+      final provider = Provider.of<AdminFacilityProvider>(context, listen: false);
+      await provider.loadFacilities();
+      if (mounted) {
+        setState(() {
+          _facilities = provider.facilities;
+          _loadingFacilities = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingFacilities = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_selectedProvider == null ||
         _selectedDate == null ||
@@ -504,6 +525,7 @@ class _BookingSheetState extends State<_BookingSheet> {
       id: '',
       patientId: patientId,
       providerId: _selectedProvider!.id,
+      facilityId: _selectedFacility?.id,
       scheduledAt: scheduledAt,
       type: _type,
       status: AppointmentStatus.pending,
@@ -562,6 +584,31 @@ class _BookingSheetState extends State<_BookingSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+
+            // Facility picker
+            const Text('Facility',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            _loadingFacilities
+                ? const Center(child: CircularProgressIndicator())
+                : DropdownButtonFormField<FacilityModel>(
+                    value: _selectedFacility,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Select facility',
+                    ),
+                    items: _facilities
+                        .map((f) => DropdownMenuItem(
+                              value: f,
+                              child: Text(f.name,
+                                  overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedFacility = v),
+                  ),
             const SizedBox(height: 16),
 
             // Provider picker

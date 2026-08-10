@@ -39,6 +39,7 @@ class AppShell extends StatelessWidget {
     this.trailingActions = const [],
     this.onLogout,
     this.isDark = false,
+    this.onSearch,
   });
 
   final List<SidebarEntry> sidebarEntries;
@@ -55,6 +56,7 @@ class AppShell extends StatelessWidget {
   final bool showNotificationDot;
   final List<Widget> trailingActions;
   final VoidCallback? onLogout;
+  final VoidCallback? onSearch;
   final bool isDark;
 
   @override
@@ -86,6 +88,7 @@ class AppShell extends StatelessWidget {
                       trailingActions: trailingActions,
                       isWide: isWide,
                       isDark: isDark,
+                      onSearch: onSearch,
                     ),
                     Expanded(
                       child: Padding(
@@ -319,6 +322,7 @@ class _TopBar extends StatelessWidget {
     required this.isWide,
     this.avatarColor,
     this.isDark = false,
+    this.onSearch,
   });
 
   final String searchHint;
@@ -328,6 +332,7 @@ class _TopBar extends StatelessWidget {
   final List<Widget> trailingActions;
   final bool isWide;
   final bool isDark;
+  final VoidCallback? onSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -345,25 +350,29 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: chipBg,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search, size: 17, color: mutedColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      searchHint,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13.5, color: mutedColor),
-                    ),
+            child: Material(
+              color: chipBg,
+              borderRadius: BorderRadius.circular(999),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onSearch,
+                child: Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, size: 17, color: mutedColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          searchHint,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13.5, color: mutedColor),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

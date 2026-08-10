@@ -82,11 +82,17 @@ class PatientHomeScreen extends StatelessWidget {
     final dateStr =
         DateFormat('EEEE, d MMMM', lang == 'sw' ? 'sw' : 'en').format(now);
 
+    final profileModel = profile;
     final needsOnboarding = profile == null ||
         (profile.dateOfBirth == null &&
             profile.emergencyContactName == null &&
             profile.bloodType == null &&
             allergies.isEmpty);
+
+    final profileHasStarted = profile != null &&
+        (profile.dateOfBirth != null ||
+            profile.bloodType != null ||
+            profile.emergencyContactName != null);
 
     final upcoming = _upcomingAppointments(appointments.appointments);
     final todayMeds = adherence.todayDoses;
@@ -123,6 +129,7 @@ class PatientHomeScreen extends StatelessWidget {
                         medilinkId: medilinkId,
                         hasAppointments: appointments.appointments.isNotEmpty,
                         hasMedications: todayMeds.isNotEmpty || activeRx.isNotEmpty,
+                        profileHasStarted: profileHasStarted,
                         listenText: listenText,
                         patientId: patientId,
                       )
@@ -171,6 +178,7 @@ class _FirstRunDashboard extends StatelessWidget {
     required this.medilinkId,
     required this.hasAppointments,
     required this.hasMedications,
+    required this.profileHasStarted,
     this.listenText,
     this.patientId,
   });
@@ -182,6 +190,7 @@ class _FirstRunDashboard extends StatelessWidget {
   final String medilinkId;
   final bool hasAppointments;
   final bool hasMedications;
+  final bool profileHasStarted;
   final String? listenText;
   final String? patientId;
 
@@ -207,6 +216,7 @@ class _FirstRunDashboard extends StatelessWidget {
         _OnboardingChecklist(
           hasAppointments: hasAppointments,
           hasMedications: hasMedications,
+          profileHasStarted: profileHasStarted,
         ),
         const SizedBox(height: 24),
         const _TrustBanner(),
@@ -393,7 +403,7 @@ class _HeroBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 150),
+      height: 170,
       padding: const EdgeInsets.fromLTRB(24, 30, 24, 22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -404,6 +414,7 @@ class _HeroBanner extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          // Gentle vignette — keeps the photo visible, just darkens edges
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -412,24 +423,31 @@ class _HeroBanner extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
+                    _C.canopy.withOpacity(0.05),
                     Colors.transparent,
-                    _C.canopy.withOpacity(0.55),
+                    Colors.transparent,
+                    _C.canopy.withOpacity(0.35),
                   ],
+                  stops: const [0, 0.2, 0.6, 1],
                 ),
               ),
             ),
           ),
+          // Warm amber glow — soft light from top-right
           Positioned(
-            right: -40,
-            top: -50,
+            right: -30,
+            top: -40,
             child: Container(
-              width: 180,
-              height: 180,
-              decoration: const BoxDecoration(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [Color(0x4764B5F6), Colors.transparent],
-                  stops: [0, 0.65],
+                  colors: [
+                    const Color(0xFF64B5F6).withOpacity(0.15),
+                    Colors.transparent,
+                  ],
+                  stops: const [0, 0.6],
                 ),
               ),
             ),
@@ -439,10 +457,16 @@ class _HeroBanner extends StatelessWidget {
             child: Text(
               'Warm. Human. Reassuring.\nEvery step here is here to help you.',
               style: GoogleFonts.fraunces(
-                fontSize: 19,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
                 height: 1.35,
+                shadows: const [
+                  Shadow(
+                      color: Color(0x66000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 2)),
+                ],
               ),
             ),
           ),
@@ -885,10 +909,12 @@ class _OnboardingChecklist extends StatelessWidget {
   const _OnboardingChecklist({
     required this.hasAppointments,
     required this.hasMedications,
+    required this.profileHasStarted,
   });
 
   final bool hasAppointments;
   final bool hasMedications;
+  final bool profileHasStarted;
 
   @override
   Widget build(BuildContext context) {
@@ -896,7 +922,7 @@ class _OnboardingChecklist extends StatelessWidget {
       _ChecklistData(
         label: 'Complete your health profile',
         sub: 'Tell us a bit about you',
-        done: false,
+        done: profileHasStarted,
         actionText: 'Complete',
         onTap: () => context.go('/onboarding'),
       ),

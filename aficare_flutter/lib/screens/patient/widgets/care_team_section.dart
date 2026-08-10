@@ -432,7 +432,27 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text('Provider',
+
+            // Custom label — type your provider's name/role
+            const Text('Label this provider',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            const Text(
+              'e.g. My Cardiologist, Family Doctor',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _labelController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'e.g. Cardiologist at Moi Hospital',
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Provider picker — select a registered provider to attach the label to
+            const Text('Attach to provider',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             _loading
@@ -444,31 +464,22 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
                       )
                     : DropdownButtonFormField<UserModel>(
                         value: _selected,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          hintText: 'Select provider',
+                          hintText: 'Pick the provider this label refers to',
                         ),
                         items: _providers
                             .map((p) => DropdownMenuItem(
                                   value: p,
                                   child: Text(
-                                      '${p.fullName} (${p.role.name})'),
+                                      '${p.fullName} (${p.role.name})',
+                                      overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
                         onChanged: (v) =>
                             setState(() => _selected = v),
                       ),
-            const SizedBox(height: 16),
-            const Text('Custom Label (Optional)',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _labelController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'e.g. My Cardiologist',
-              ),
-            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,

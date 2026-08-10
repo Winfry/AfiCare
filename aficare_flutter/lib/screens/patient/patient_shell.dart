@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
@@ -124,9 +125,151 @@ class _PatientShellState extends State<PatientShell> {
       selectedIndex: _index,
       onSelect: _onSidebarSelect,
       onBottomNavSelect: (i) => setState(() => _index = i),
+      onSearch: _openSearch,
       searchHint: 'Search patients, records...',
       avatarLabel: 'P',
       body: IndexedStack(index: _index, children: _screens),
+    );
+  }
+
+  void _openSearch() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => const _SearchSheet(),
+    );
+  }
+}
+
+class _SearchSheet extends StatefulWidget {
+  const _SearchSheet();
+
+  @override
+  State<_SearchSheet> createState() => _SearchSheetState();
+}
+
+class _SearchSheetState extends State<_SearchSheet> {
+  final _queryCtrl = TextEditingController();
+  List<Map<String, dynamic>> _results = [];
+  bool _searching = false;
+
+  @override
+  void dispose() {
+    _queryCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final query = _queryCtrl.text.trim();
+    if (query.isEmpty) return;
+    setState(() => _searching = true);
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('id, full_name, role, medilink_id')
+          .ilike('full_name', '%$query%')
+          .limit(15);
+      if (mounted) {
+        setState(() {
+          _results = List<Map<String, dynamic>>.from(response as List);
+          _searching = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _queryCtrl,
+                autofocus: true,
+                onSubmitted: (_) => _search(),
+                decoration: InputDecoration(
+                  hintText: 'Search patients, providers, records...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    icon: _searching
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.arrow_forward),
+                    onPressed: _search,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFEEF2F7),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: _results.isEmpty && !_searching
+                    ? Center(
+                        child: Text(
+                          _queryCtrl.text.trim().isEmpty
+                              ? 'Type a name to search'
+                              : 'No results found',
+                          style: const TextStyle(
+                              color: Color(0xFF94A3B8), fontSize: 14),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: _results.length,
+                        itemBuilder: (context, index) {
+                          final r = _results[index];
+                          final name = r['full_name'] as String? ?? '';
+                          final role = r['role'] as String? ?? '';
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: const Color(0xFF1D3557),
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            title: Text(name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: Text(role.isNotEmpty ? role : 'Patient'),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
