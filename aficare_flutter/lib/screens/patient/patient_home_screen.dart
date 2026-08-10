@@ -49,8 +49,9 @@ class _C {
 }
 
 /// Patient home dashboard — mirrors the "Onboarding & First-Run Dashboard"
-/// prototype: greeting, allergy banner, MediLink ID card, quick actions,
-/// vitals trend, active prescriptions, pending lab orders and clinical notes.
+/// prototype. First run: hero banner, greeting, allergy strip, MediLink ID
+/// card and a single-focus setup checklist (no quick actions — they would
+/// overwhelm a new patient). Returning: the full quick-action + card grid.
 class PatientHomeScreen extends StatelessWidget {
   const PatientHomeScreen({super.key});
 
@@ -122,7 +123,6 @@ class PatientHomeScreen extends StatelessWidget {
                         medilinkId: medilinkId,
                         hasAppointments: appointments.appointments.isNotEmpty,
                         hasMedications: todayMeds.isNotEmpty || activeRx.isNotEmpty,
-                        isQaWide: isQaWide,
                         listenText: listenText,
                         patientId: patientId,
                       )
@@ -171,7 +171,6 @@ class _FirstRunDashboard extends StatelessWidget {
     required this.medilinkId,
     required this.hasAppointments,
     required this.hasMedications,
-    required this.isQaWide,
     this.listenText,
     this.patientId,
   });
@@ -183,7 +182,6 @@ class _FirstRunDashboard extends StatelessWidget {
   final String medilinkId;
   final bool hasAppointments;
   final bool hasMedications;
-  final bool isQaWide;
   final String? listenText;
   final String? patientId;
 
@@ -192,6 +190,8 @@ class _FirstRunDashboard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const _HeroBanner(),
+        const SizedBox(height: 20),
         _Greeting(name: firstName, subtitle: dateStr, listenText: listenText),
         const SizedBox(height: 16),
         if (allergies.isNotEmpty) ...[
@@ -204,14 +204,12 @@ class _FirstRunDashboard extends StatelessWidget {
           _CaregiverAlertsCard(patientId: patientId!),
         ],
         const SizedBox(height: 28),
-        const _SecHead(title: 'Quick actions'),
-        const SizedBox(height: 12),
-        _QuickActionsGrid(isWide: isQaWide),
-        const SizedBox(height: 28),
         _OnboardingChecklist(
           hasAppointments: hasAppointments,
           hasMedications: hasMedications,
         ),
+        const SizedBox(height: 24),
+        const _TrustBanner(),
       ],
     );
   }
@@ -325,11 +323,12 @@ class _ReturningDashboard extends StatelessWidget {
 // ── Shared widgets ─────────────────────────────────────────────────────
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.subtitle, this.listenText});
+  const _Greeting({required this.name, required this.subtitle, this.listenText, this.avatarImage});
 
   final String name;
   final String subtitle;
   final String? listenText;
+  final ImageProvider? avatarImage;
 
   @override
   Widget build(BuildContext context) {
@@ -352,8 +351,24 @@ class _Greeting extends StatelessWidget {
               Text(subtitle,
                   style: const TextStyle(fontSize: 14, color: _C.slate)),
             ],
+            ),
           ),
-        ),
+        if (avatarImage != null)
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              image: DecorationImage(image: avatarImage!, fit: BoxFit.cover),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x29152A45),
+                    blurRadius: 16,
+                    offset: Offset(0, 6)),
+              ],
+            ),
+          ),
         if (listenText != null)
           IconButton(
             onPressed: () => tts.speak(listenText!),
@@ -367,6 +382,166 @@ class _Greeting extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 150),
+      padding: const EdgeInsets.fromLTRB(24, 30, 24, 22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        image: const DecorationImage(
+          image: AssetImage('assets/images/hero.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    _C.canopy.withOpacity(0.55),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -40,
+            top: -50,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Color(0x4764B5F6), Colors.transparent],
+                  stops: [0, 0.65],
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Text(
+              'Warm. Human. Reassuring.\nEvery step here is here to help you.',
+              style: GoogleFonts.fraunces(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrustBanner extends StatelessWidget {
+  const _TrustBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _C.mist,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/Trust.jpeg',
+              width: 80,
+              height: 80,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("You're in good hands",
+                    style: GoogleFonts.fraunces(
+                        fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Your health information is private and secure. '
+                  'Only you decide who sees it.',
+                  style: TextStyle(fontSize: 13.5, color: _C.slate, height: 1.5),
+                ),
+                const SizedBox(height: 12),
+                Material(
+                  color: _C.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                    side: const BorderSide(color: _C.line),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _showPrivacyDialog(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 11),
+                      child: Text(
+                        'Learn how we protect you',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: _C.canopy,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text("You're in good hands"),
+        content: const Text(
+          'AfiCare keeps your health information private and secure.\n\n'
+          '• Your records are encrypted at rest and in transit.\n'
+          '• Sharing is always on your terms — you set the access codes.\n'
+          '• You can revoke access at any time, right from your settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it',
+                style: TextStyle(
+                    color: _C.canopy, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -446,10 +621,11 @@ class _AllergyRow extends StatelessWidget {
 /// MediLink ID card — the digital identity card shown at the top of the
 /// dashboard.
 class _MediLinkCard extends StatelessWidget {
-  const _MediLinkCard({required this.fullName, required this.medilinkId});
+  const _MediLinkCard({required this.fullName, required this.medilinkId, this.photo});
 
   final String fullName;
   final String medilinkId;
+  final ImageProvider? photo;
 
   @override
   Widget build(BuildContext context) {
@@ -520,23 +696,29 @@ class _MediLinkCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: _C.marigold,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      'P',
-                      style: GoogleFonts.ibmPlexMono(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _C.ink,
+                  if (photo != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image(image: photo!, width: 56, height: 56, fit: BoxFit.cover),
+                    )
+                  else
+                    Container(
+                      width: 56,
+                      height: 56,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _C.marigold,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
+                        style: GoogleFonts.ibmPlexMono(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                          color: _C.ink,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -696,7 +878,9 @@ class _QaCard extends StatelessWidget {
   }
 }
 
-/// First-run checklist that nudges the patient toward a complete setup.
+/// First-run checklist — the single focus of the simplified first-run
+/// dashboard. Pending steps get a prominent navy pill button; finished
+/// steps are struck through with a filled check.
 class _OnboardingChecklist extends StatelessWidget {
   const _OnboardingChecklist({
     required this.hasAppointments,
@@ -708,65 +892,124 @@ class _OnboardingChecklist extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = [false, hasAppointments, hasMedications, false];
-    final doneCount = done.where((d) => d).length;
+    final items = [
+      _ChecklistData(
+        label: 'Complete your health profile',
+        sub: 'Tell us a bit about you',
+        done: false,
+        actionText: 'Complete',
+        onTap: () => context.go('/onboarding'),
+      ),
+      _ChecklistData(
+        label: 'Book your first appointment',
+        sub: 'Find a doctor and book',
+        done: hasAppointments,
+        actionText: 'Book now',
+        onTap: () => _push(context, const AppointmentsScreen()),
+      ),
+      _ChecklistData(
+        label: 'Add a medication',
+        sub: 'Keep track of your medicines',
+        done: hasMedications,
+        actionText: 'Add now',
+        onTap: () => _push(context, const MedicationTrackerScreen()),
+      ),
+      _ChecklistData(
+        label: 'Set up sharing (QR code)',
+        sub: 'Share your records securely',
+        done: false,
+        actionText: 'Set up',
+        onTap: () => _push(context, const ShareRecords()),
+      ),
+    ];
+    final doneCount = items.where((i) => i.done).length;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: _C.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: _C.line),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 460;
+          final checklistContent = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Let's get you started",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              Text(
-                '$doneCount of 4',
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _C.slate),
+              Text("Let's get you started",
+                  style: GoogleFonts.fraunces(
+                      fontSize: 21, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              const Text("A few simple steps — take them whenever you're ready.",
+                  style: TextStyle(fontSize: 14.5, color: _C.slate)),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: doneCount / items.length,
+                        minHeight: 8,
+                        backgroundColor: _C.line,
+                        valueColor: const AlwaysStoppedAnimation<Color>(_C.sage),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '$doneCount of ${items.length} done',
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: _C.slate),
+                  ),
+                ],
               ),
+              const SizedBox(height: 10),
+              for (final item in items)
+                _ChecklistRow(
+                  label: item.label,
+                  sub: item.sub,
+                  done: item.done,
+                  actionText: item.done ? null : item.actionText,
+                  onTap: item.onTap,
+                ),
             ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: doneCount / 4,
-              minHeight: 5,
-              backgroundColor: _C.line,
-              valueColor: const AlwaysStoppedAnimation<Color>(_C.sage),
+          );
+
+          final photo = ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset(
+              'assets/images/checklist.png',
+              fit: BoxFit.cover,
             ),
-          ),
-          const SizedBox(height: 6),
-          _ChecklistRow(
-            label: 'Complete your health profile',
-            done: done[0],
-            onTap: () => context.go('/onboarding'),
-          ),
-          _ChecklistRow(
-            label: 'Book your first appointment',
-            done: done[1],
-            onTap: () => _push(context, const AppointmentsScreen()),
-          ),
-          _ChecklistRow(
-            label: 'Add a medication',
-            done: done[2],
-            onTap: () => _push(context, const MedicationTrackerScreen()),
-          ),
-          _ChecklistRow(
-            label: 'Set up sharing (QR code)',
-            done: done[3],
-            onTap: () => _push(context, const ShareRecords()),
-          ),
-        ],
+          );
+
+          if (isNarrow) {
+            return Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 130,
+                  child: photo,
+                ),
+                const SizedBox(height: 18),
+                checklistContent,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: checklistContent),
+              const SizedBox(width: 22),
+              SizedBox(width: 180, child: photo),
+            ],
+          );
+        },
       ),
     );
   }
@@ -776,57 +1019,110 @@ class _OnboardingChecklist extends StatelessWidget {
   }
 }
 
-class _ChecklistRow extends StatelessWidget {
-  const _ChecklistRow({
+class _ChecklistData {
+  const _ChecklistData({
     required this.label,
+    required this.sub,
     required this.done,
+    required this.actionText,
     required this.onTap,
   });
 
   final String label;
+  final String sub;
+  final bool done;
+  final String actionText;
+  final VoidCallback onTap;
+}
+
+class _ChecklistRow extends StatelessWidget {
+  const _ChecklistRow({
+    required this.label,
+    required this.sub,
+    required this.done,
+    required this.onTap,
+    this.actionText,
+  });
+
+  final String label;
+  final String sub;
   final bool done;
   final VoidCallback onTap;
+  final String? actionText;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: done ? _C.sage : Colors.transparent,
-                border: Border.all(
-                  color: done ? _C.sage : _C.line,
-                  width: 1.5,
-                ),
-              ),
-              child: done
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w500,
-                  decoration: done ? TextDecoration.lineThrough : null,
-                  color: done ? _C.slate : _C.ink,
-                ),
-              ),
-            ),
-            const Icon(Icons.chevron_right, size: 16, color: _C.slate),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: _C.line.withOpacity(0.7)),
         ),
+      ),
+      child: Row(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: done ? _C.sage : Colors.transparent,
+              border: Border.all(
+                color: done ? _C.sage : _C.line,
+                width: 2,
+              ),
+            ),
+            child: done
+                ? const Icon(Icons.check, size: 15, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                    decoration: done ? TextDecoration.lineThrough : null,
+                    color: done ? _C.slate : _C.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sub,
+                  style: const TextStyle(fontSize: 13, color: _C.slate),
+                ),
+              ],
+            ),
+          ),
+          if (actionText != null) ...[
+            const SizedBox(width: 10),
+            Material(
+              color: _C.canopy,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999)),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 18, vertical: 11),
+                  child: Text(
+                    actionText!,
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
