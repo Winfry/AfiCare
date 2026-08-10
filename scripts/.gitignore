@@ -1,0 +1,4 @@
+# KMHFL dataset (downloaded, not committed)
+kmhfl.csv
+__pycache__/
+*.pyc
