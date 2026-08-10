@@ -83,21 +83,21 @@ def batch_insert(rows: list[dict]) -> int:
     """Insert a batch of facility rows. Returns count inserted."""
     if not rows:
         return 0
-    result = supabase.table("facilities").upsert(rows, on_conflict="name,county").execute()
+    result = supabase.table("facilities").insert(rows).execute()
     return len(result.data) if result.data else 0
 
 
 def main():
-    csv_path = os.path.join(os.path.dirname(__file__), "kmhfl.csv")
+    csv_path = os.path.join(os.path.dirname(__file__), "healthcare_facilities.csv")
 
     if not os.path.exists(csv_path):
-        print(f"ERROR: kmhfl.csv not found at {csv_path}")
+        print(f"ERROR: healthcare_facilities.csv not found at {csv_path}")
         print("Download it from https://kmhfl.health.go.ke and place it in the scripts/ folder.")
         sys.exit(1)
 
     print(f"Reading {csv_path} …")
 
-    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+    with open(csv_path, newline="", encoding="latin-1") as f:
         # Sniff delimiter — KMHFL exports are sometimes tab-delimited
         sample = f.read(4096)
         f.seek(0)
@@ -112,12 +112,12 @@ def main():
         BATCH_SIZE = 500
         now = datetime.now(timezone.utc).isoformat()
 
-        for row_num, row in enumerate(reader, start=2):  # 1-based, skip header
-            # Normalize column names (strip whitespace, lowercase for matching)
-            norm = {k.strip().lower(): v.strip() if v else "" for k, v in row.items()}
+        for row_num, row in enumerate(reader, start=2):
+            # Normalize column names and strip whitespace from all values
+            norm = {k.strip().lower().replace(" ", "_"): (v or "").strip() for k, v in row.items()}
 
             name = None
-            for possible in ("facility name", "official name", "name", "facility_name"):
+            for possible in ("facility_n", "facility_name", "official_name", "name"):
                 val = norm.get(possible)
                 if val:
                     name = val
@@ -128,11 +128,17 @@ def main():
                 continue
 
             county = norm.get("county", "")
-            sub_county = norm.get("sub county", norm.get("sub_county", ""))
-            raw_type = norm.get("facility type", norm.get("type", ""))
-            address = norm.get("address", norm.get("physical_address", ""))
-            phone = norm.get("phone number", norm.get("phone", norm.get("mobile", "")))
-            email = norm.get("email", norm.get("email_address", ""))
+            sub_county = norm.get("sub_county", "")
+            raw_type = norm.get("type", "")
+            owner = norm.get("owner", "")
+
+            # Build address from location fields if available
+            address_parts = []
+            for field in ("location", "division", "nearest_to"):
+                v = norm.get(field, "")
+                if v:
+                    address_parts.append(v)
+            address = ", ".join(address_parts) if address_parts else ""
 
             batch.append({
                 "id": str(uuid.uuid4()),
@@ -141,8 +147,8 @@ def main():
                 "county": county,
                 "sub_county": sub_county,
                 "address": address,
-                "phone": phone[:50] if phone else None,
-                "email": email[:100] if email else None,
+                "phone": None,
+                "email": None,
                 "created_at": now,
             })
 
