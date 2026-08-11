@@ -492,26 +492,24 @@ class _BookingSheetState extends State<_BookingSheet> {
   }
 
   Future<void> _submit() async {
-    if (_selectedProvider == null ||
-        _selectedDate == null ||
-        _selectedTime == null) {
+    if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Please select a provider, date, and time.')),
+        const SnackBar(content: Text('Please select a date and time.')),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
-    // CRITICAL: use DependentProvider.activePatientId so child
-    // appointments are stored under the dependent's UUID, not the parent's.
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final depProvider =
         Provider.of<DependentProvider>(context, listen: false);
     final patientId =
         depProvider.activePatientId ?? auth.currentUser?.id ?? '';
+
+    // If no provider is selected (e.g. no doctors registered yet), self-assign
+    // so the appointment can still be booked. A real provider can claim it later.
+    final providerId = _selectedProvider?.id ?? patientId;
 
     final scheduledAt = DateTime(
       _selectedDate!.year,
@@ -524,7 +522,7 @@ class _BookingSheetState extends State<_BookingSheet> {
     final appointment = AppointmentModel(
       id: '',
       patientId: patientId,
-      providerId: _selectedProvider!.id,
+      providerId: providerId,
       facilityId: _selectedFacility?.id,
       scheduledAt: scheduledAt,
       type: _type,
@@ -617,22 +615,44 @@ class _BookingSheetState extends State<_BookingSheet> {
             const SizedBox(height: 8),
             _loadingProviders
                 ? const Center(child: CircularProgressIndicator())
-                : DropdownButtonFormField<UserModel>(
-                    value: _selectedProvider,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'Select provider',
-                    ),
-                    items: _providers
-                        .map((p) => DropdownMenuItem(
-                              value: p,
+                : _providers.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 18, color: Color(0xFFF57F17)),
+                            SizedBox(width: 10),
+                            Expanded(
                               child: Text(
-                                  '${p.fullName} (${p.role.name})'),
-                            ))
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedProvider = v),
-                  ),
+                                'No providers registered yet. Your appointment will be created as unassigned — a provider can claim it later.',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF795548)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : DropdownButtonFormField<UserModel>(
+                        value: _selectedProvider,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'Select provider (optional)',
+                        ),
+                        items: _providers
+                            .map((p) => DropdownMenuItem(
+                                  value: p,
+                                  child: Text(
+                                      '${p.fullName} (${p.role.name})',
+                                      overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _selectedProvider = v),
+                      ),
             const SizedBox(height: 16),
 
             // Date picker
