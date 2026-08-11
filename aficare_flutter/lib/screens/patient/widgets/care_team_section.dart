@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -163,12 +164,15 @@ class _CareTeamSectionState extends State<CareTeamSection> {
 
   Widget _buildMemberCard(CareTeamProvider ct, CareTeamMemberModel m) {
     final isCustom = m.providerId == widget.patientId;
+    final notes = _parseNotes(m.notes);
+    final phone = notes['phone'] as String?;
+    final hospital = notes['hospital'] as String?;
     return Card(
       margin: const EdgeInsets.only(right: 10),
       color: isCustom ? Colors.blue.shade50 : Colors.green.shade50,
       elevation: 1,
       child: SizedBox(
-        width: 138,
+        width: 155,
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Column(
@@ -181,6 +185,14 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                       size: 14,
                       color: isCustom ? Colors.blue : AfiCareTheme.primaryGreen),
                   const Spacer(),
+                  InkWell(
+                    onTap: () => _showEditDialog(ct, m, phone, hospital),
+                    borderRadius: BorderRadius.circular(10),
+                    child: const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: Icon(Icons.edit, size: 12, color: Colors.grey),
+                    ),
+                  ),
                   if (m.isPrimary)
                     const Icon(Icons.star, size: 12, color: Colors.amber),
                   InkWell(
@@ -208,10 +220,15 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              if (isCustom)
-                const Spacer(),
-              if (!isCustom)
-                const Spacer(),
+              if (phone != null)
+                Text(phone,
+                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              if (hospital != null)
+                Text(hospital,
+                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              const Spacer(),
               if (!isCustom)
                 SizedBox(
                   width: double.infinity,
@@ -316,6 +333,68 @@ class _CareTeamSectionState extends State<CareTeamSection> {
     if (confirm == true && mounted) {
       await ct.removeMember(m.id, widget.patientId);
     }
+  }
+
+  Map<String, dynamic> _parseNotes(String? notes) {
+    if (notes == null || notes.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(notes);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    } catch (_) {}
+    return {};
+  }
+
+  void _showEditDialog(
+      CareTeamProvider ct, CareTeamMemberModel m, String? currentPhone, String? currentHospital) {
+    final phoneCtrl = TextEditingController(text: currentPhone);
+    final hospitalCtrl = TextEditingController(text: currentHospital);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(m.providerId == widget.patientId ? 'Edit details' : m.providerName),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: phoneCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Phone number',
+                hintText: 'e.g. 0712 345 678',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: hospitalCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Hospital / Clinic',
+                hintText: 'e.g. Kenyatta National Hospital',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final phone = phoneCtrl.text.trim();
+              final hospital = hospitalCtrl.text.trim();
+              await ct.updateMemberNotes(
+                  m.id, widget.patientId,
+                  phone.isNotEmpty ? phone : null,
+                  hospital.isNotEmpty ? hospital : null);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddProviderSheet(CareTeamProvider ct) {

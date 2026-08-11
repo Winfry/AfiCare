@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/care_team_member_model.dart';
@@ -178,6 +179,30 @@ class CareTeamProvider extends ChangeNotifier {
       await Supabase.instance.client
           .from('care_team')
           .update({'specialty_label': newLabel})
+          .eq('id', memberId);
+      await loadCareTeam(patientId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateMemberNotes(
+    String memberId,
+    String patientId,
+    String? phone,
+    String? hospital,
+  ) async {
+    try {
+      final notesMap = <String, dynamic>{};
+      if (phone != null && phone.isNotEmpty) notesMap['phone'] = phone;
+      if (hospital != null && hospital.isNotEmpty) notesMap['hospital'] = hospital;
+      final notes = notesMap.isNotEmpty ? jsonEncode(notesMap) : null;
+      await Supabase.instance.client
+          .from('care_team')
+          .update({'notes': notes})
           .eq('id', memberId);
       await loadCareTeam(patientId);
       return true;
