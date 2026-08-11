@@ -398,17 +398,19 @@ class _CareTeamSectionState extends State<CareTeamSection> {
   }
 
   void _showAddProviderSheet(CareTeamProvider ct) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _AddProviderSheet(
-        patientId: widget.patientId,
-        existingProviderIds: ct.members.map((m) => m.providerId).toList(),
-        onAdded: (providerId, label, {customName}) =>
-            providerId != null
-                ? ct.addMember(widget.patientId, providerId, specialtyLabel: label)
-                : ct.addCustomMember(widget.patientId, customName ?? label ?? ''),
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: _AddProviderSheet(
+          patientId: widget.patientId,
+          existingProviderIds: ct.members.map((m) => m.providerId).toList(),
+          onAdded: (providerId, label, {customName}) =>
+              providerId != null
+                  ? ct.addMember(widget.patientId, providerId, specialtyLabel: label)
+                  : ct.addCustomMember(widget.patientId, customName ?? label ?? ''),
+        ),
       ),
     );
   }
@@ -500,11 +502,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    return Padding(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
