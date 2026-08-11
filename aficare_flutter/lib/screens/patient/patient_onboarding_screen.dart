@@ -211,7 +211,15 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
     context.go('/patient');
   }
 
-  void _finish() {
+  Future<void> _finish() async {
+    // Reload the profile so the home screen sees the just-saved data
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final userId = auth.currentUser?.id;
+    if (userId != null) {
+      await Provider.of<PatientProfileProvider>(context, listen: false)
+          .loadProfile(userId);
+    }
+    if (!mounted) return;
     context.go('/patient');
   }
 
