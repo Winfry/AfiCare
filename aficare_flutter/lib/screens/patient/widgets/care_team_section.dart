@@ -463,6 +463,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
             const SizedBox(height: 8),
             TextField(
               controller: _labelController,
+              onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 hintText: 'e.g. Cardiologist at Moi Hospital',
