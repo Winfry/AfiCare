@@ -514,25 +514,22 @@ class _TrustBanner extends StatelessWidget {
                   style: TextStyle(fontSize: 13.5, color: _C.slate, height: 1.5),
                 ),
                 const SizedBox(height: 12),
-                Material(
-                  color: _C.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                    side: const BorderSide(color: _C.line),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => _showPrivacyDialog(context),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 11),
-                      child: Text(
-                        'Learn how we protect you',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: _C.canopy,
-                        ),
+                GestureDetector(
+                  onTap: () => _showPrivacyDialog(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: _C.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: _C.line),
+                    ),
+                    child: const Text(
+                      'Learn how we protect you',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: _C.canopy,
                       ),
                     ),
                   ),
@@ -1127,23 +1124,21 @@ class _ChecklistRow extends StatelessWidget {
           ),
           if (actionText != null) ...[
             const SizedBox(width: 10),
-            Material(
-              color: _C.canopy,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999)),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 11),
-                  child: Text(
-                    actionText!,
-                    style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white),
-                  ),
+            GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18, vertical: 11),
+                decoration: BoxDecoration(
+                  color: _C.canopy,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  actionText!,
+                  style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
                 ),
               ),
             ),
