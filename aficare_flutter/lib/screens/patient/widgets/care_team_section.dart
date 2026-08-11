@@ -162,9 +162,10 @@ class _CareTeamSectionState extends State<CareTeamSection> {
   }
 
   Widget _buildMemberCard(CareTeamProvider ct, CareTeamMemberModel m) {
+    final isCustom = m.providerId == widget.patientId;
     return Card(
       margin: const EdgeInsets.only(right: 10),
-      color: Colors.green.shade50,
+      color: isCustom ? Colors.blue.shade50 : Colors.green.shade50,
       elevation: 1,
       child: SizedBox(
         width: 138,
@@ -175,8 +176,10 @@ class _CareTeamSectionState extends State<CareTeamSection> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.medical_services,
-                      size: 14, color: AfiCareTheme.primaryGreen),
+                  Icon(
+                      isCustom ? Icons.person_add_alt : Icons.medical_services,
+                      size: 14,
+                      color: isCustom ? Colors.blue : AfiCareTheme.primaryGreen),
                   const Spacer(),
                   if (m.isPrimary)
                     const Icon(Icons.star, size: 12, color: Colors.amber),
@@ -192,41 +195,46 @@ class _CareTeamSectionState extends State<CareTeamSection> {
               ),
               const SizedBox(height: 4),
               Text(
-                m.providerName,
+                isCustom ? (m.specialtyLabel ?? m.providerName) : m.providerName,
                 style: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.bold),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                m.specialtyLabel ?? m.providerRole,
-                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => widget.onBookFromCareTeam(UserModel(
-                    id: m.providerId,
-                    email: '',
-                    fullName: m.providerName,
-                    role: m.providerRole == 'nurse'
-                        ? UserRole.nurse
-                        : UserRole.doctor,
-                    createdAt: DateTime.now(),
-                  )),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AfiCareTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    minimumSize: const Size(0, 28),
-                    textStyle: const TextStyle(fontSize: 11),
-                  ),
-                  child: const Text('Book'),
+              if (!isCustom)
+                Text(
+                  m.specialtyLabel ?? m.providerRole,
+                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              if (isCustom)
+                const Spacer(),
+              if (!isCustom)
+                const Spacer(),
+              if (!isCustom)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => widget.onBookFromCareTeam(UserModel(
+                      id: m.providerId,
+                      email: '',
+                      fullName: m.providerName,
+                      role: m.providerRole == 'nurse'
+                          ? UserRole.nurse
+                          : UserRole.doctor,
+                      createdAt: DateTime.now(),
+                    )),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AfiCareTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      minimumSize: const Size(0, 28),
+                      textStyle: const TextStyle(fontSize: 11),
+                    ),
+                    child: const Text('Book'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -318,9 +326,10 @@ class _CareTeamSectionState extends State<CareTeamSection> {
       builder: (ctx) => _AddProviderSheet(
         patientId: widget.patientId,
         existingProviderIds: ct.members.map((m) => m.providerId).toList(),
-        onAdded: (providerId, label) =>
-            ct.addMember(widget.patientId, providerId,
-                specialtyLabel: label),
+        onAdded: (providerId, label, {customName}) =>
+            providerId != null
+                ? ct.addMember(widget.patientId, providerId, specialtyLabel: label)
+                : ct.addCustomMember(widget.patientId, customName ?? label ?? ''),
       ),
     );
   }
@@ -331,7 +340,7 @@ class _CareTeamSectionState extends State<CareTeamSection> {
 class _AddProviderSheet extends StatefulWidget {
   final String patientId;
   final List<String> existingProviderIds;
-  final Future<bool> Function(String providerId, String? label) onAdded;
+  final Future<bool> Function(String? providerId, String? label, {String? customName}) onAdded;
 
   const _AddProviderSheet({
     required this.patientId,
@@ -383,17 +392,27 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
   }
 
   Future<void> _submit() async {
-    if (_selected == null) return;
-    setState(() => _submitting = true);
     final label = _labelController.text.trim().isEmpty
         ? null
         : _labelController.text.trim();
-    final ok = await widget.onAdded(_selected!.id, label);
+
+    // Allow submission with just a label (custom provider), even without
+    // selecting a registered provider from the dropdown.
+    final providerId = _selected?.id;
+
+    if (providerId == null && label == null) return;
+    setState(() => _submitting = true);
+
+    final ok = await widget.onAdded(
+      providerId,
+      label,
+      customName: providerId == null ? label : null,
+    );
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok
-            ? '${_selected!.fullName} added to your care team'
+            ? 'Added to your care team'
             : 'Could not add — try again'),
         backgroundColor: ok ? Colors.green : Colors.red,
       ));
@@ -485,7 +504,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed:
-                    (_submitting || _selected == null || _providers.isEmpty)
+                    (_submitting || (_selected == null && _labelController.text.trim().isEmpty))
                         ? null
                         : _submit,
                 icon: _submitting

@@ -129,6 +129,30 @@ class CareTeamProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> addCustomMember(String patientId, String customName) async {
+    try {
+      await Supabase.instance.client.from('care_team').insert({
+        'patient_id': patientId,
+        'provider_id': patientId,
+        'specialty_label': customName,
+        'is_primary': false,
+        'notes': 'custom',
+      });
+      await loadCareTeam(patientId);
+      await fetchSuggestions(patientId);
+      return true;
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('duplicate') || msg.contains('unique')) {
+        _error = 'This custom provider is already in your care team.';
+      } else {
+        _error = msg;
+      }
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> removeMember(String memberId, String patientId) async {
     try {
       await Supabase.instance.client
