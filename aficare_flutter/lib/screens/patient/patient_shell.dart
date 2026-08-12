@@ -128,7 +128,10 @@ class _PatientShellState extends State<PatientShell> {
       onSearch: _openSearch,
       searchHint: 'Search patients, records...',
       avatarLabel: 'P',
-      body: IndexedStack(index: _index, children: _screens),
+      body: Consumer<PatientProfileProvider>(
+        builder: (context, _, __) =>
+            IndexedStack(index: _index, children: _screens),
+      ),
     );
   }
 
