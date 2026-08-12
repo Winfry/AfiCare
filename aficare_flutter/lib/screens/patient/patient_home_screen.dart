@@ -84,10 +84,10 @@ class PatientHomeScreen extends StatelessWidget {
 
     final profileModel = profile;
     final needsOnboarding = profile == null ||
-        (profile.dateOfBirth == null &&
-            profile.emergencyContactName == null &&
-            profile.bloodType == null &&
-            allergies.isEmpty);
+        profile.dateOfBirth == null ||
+        profile.emergencyContactName == null ||
+        profile.bloodType == null ||
+        allergies.isEmpty;
 
     final profileHasStarted = profile != null &&
         (profile.dateOfBirth != null ||
