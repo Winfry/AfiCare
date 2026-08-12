@@ -129,8 +129,18 @@ class _PatientShellState extends State<PatientShell> {
       searchHint: 'Search patients, records...',
       avatarLabel: 'P',
       body: Consumer<PatientProfileProvider>(
-        builder: (context, _, __) =>
+        builder: (context, _, __) => Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.05,
+                child: Image.asset('assets/images/hero.png',
+                    fit: BoxFit.cover),
+              ),
+            ),
             IndexedStack(index: _index, children: _screens),
+          ],
+        ),
       ),
     );
   }

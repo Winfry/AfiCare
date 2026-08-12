@@ -152,7 +152,7 @@ class PatientHomeScreen extends StatelessWidget {
               ),
             ),
           ),
-        );
+        ); // SingleChildScrollView
       },
     );
   }
