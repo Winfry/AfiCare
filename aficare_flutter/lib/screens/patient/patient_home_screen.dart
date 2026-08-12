@@ -14,6 +14,7 @@ import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
 import '../../providers/patient_profile_provider.dart';
+import '../../utils/app_strings.dart';
 import '../../models/appointment_model.dart';
 import '../../models/triage_model.dart';
 import '../../models/disability_profile.dart';
@@ -130,6 +131,7 @@ class PatientHomeScreen extends StatelessWidget {
                         hasAppointments: appointments.appointments.isNotEmpty,
                         hasMedications: todayMeds.isNotEmpty || activeRx.isNotEmpty,
                         profileHasStarted: profileHasStarted,
+                        lang: lang,
                         listenText: listenText,
                         patientId: patientId,
                       )
@@ -146,6 +148,7 @@ class PatientHomeScreen extends StatelessWidget {
                         consultations: consultations,
                         isTwoCol: isTwoCol,
                         isQaWide: isQaWide,
+                        lang: lang,
                         listenText: listenText,
                         patientId: patientId,
                       ),
@@ -179,6 +182,7 @@ class _FirstRunDashboard extends StatelessWidget {
     required this.hasAppointments,
     required this.hasMedications,
     required this.profileHasStarted,
+    required this.lang,
     this.listenText,
     this.patientId,
   });
@@ -191,23 +195,25 @@ class _FirstRunDashboard extends StatelessWidget {
   final bool hasAppointments;
   final bool hasMedications;
   final bool profileHasStarted;
+  final String lang;
   final String? listenText;
   final String? patientId;
 
   @override
   Widget build(BuildContext context) {
+    final lang = 'en'; // Returning dashboard defaults to English
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _HeroBanner(),
+        _HeroBanner(lang: lang),
         const SizedBox(height: 20),
-        _Greeting(name: firstName, subtitle: dateStr, listenText: listenText),
+        _Greeting(name: firstName, subtitle: dateStr, listenText: listenText, lang: lang),
         const SizedBox(height: 16),
         if (allergies.isNotEmpty) ...[
-          _AllergyRow(allergies: allergies),
+          _AllergyRow(allergies: allergies, lang: lang),
           const SizedBox(height: 18),
         ],
-        _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
+        _MediLinkCard(fullName: fullName, medilinkId: medilinkId, lang: lang),
         if (patientId != null) ...[
           const SizedBox(height: 20),
           _CaregiverAlertsCard(patientId: patientId!),
@@ -217,9 +223,10 @@ class _FirstRunDashboard extends StatelessWidget {
           hasAppointments: hasAppointments,
           hasMedications: hasMedications,
           profileHasStarted: profileHasStarted,
+          lang: lang,
         ),
         const SizedBox(height: 24),
-        const _TrustBanner(),
+        _TrustBanner(lang: lang),
       ],
     );
   }
@@ -241,6 +248,7 @@ class _ReturningDashboard extends StatelessWidget {
     required this.consultations,
     required this.isTwoCol,
     required this.isQaWide,
+    required this.lang,
     this.listenText,
     this.patientId,
   });
@@ -257,6 +265,7 @@ class _ReturningDashboard extends StatelessWidget {
   final List<dynamic> consultations;
   final bool isTwoCol;
   final bool isQaWide;
+  final String lang;
   final String? listenText;
   final String? patientId;
 
@@ -275,10 +284,10 @@ class _ReturningDashboard extends StatelessWidget {
             listenText: listenText),
         const SizedBox(height: 16),
         if (allergies.isNotEmpty) ...[
-          _AllergyRow(allergies: allergies),
+          _AllergyRow(allergies: allergies, lang: lang),
           const SizedBox(height: 18),
         ],
-        _MediLinkCard(fullName: fullName, medilinkId: medilinkId),
+        _MediLinkCard(fullName: fullName, medilinkId: medilinkId, lang: 'en'),
         if (patientId != null) ...[
           const SizedBox(height: 20),
           _CaregiverAlertsCard(patientId: patientId!),
@@ -333,12 +342,13 @@ class _ReturningDashboard extends StatelessWidget {
 // ── Shared widgets ─────────────────────────────────────────────────────
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.subtitle, this.listenText, this.avatarImage});
+  const _Greeting({required this.name, required this.subtitle, this.listenText, this.avatarImage, this.lang = 'en'});
 
   final String name;
   final String subtitle;
   final String? listenText;
   final ImageProvider? avatarImage;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +360,7 @@ class _Greeting extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Habari, $name 👋',
+                AppStrings.greeting(name, lang),
                 style: GoogleFonts.fraunces(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -397,7 +407,8 @@ class _Greeting extends StatelessWidget {
 }
 
 class _HeroBanner extends StatelessWidget {
-  const _HeroBanner();
+  const _HeroBanner({this.lang = 'en'});
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -455,7 +466,7 @@ class _HeroBanner extends StatelessWidget {
           Align(
             alignment: Alignment.bottomLeft,
             child: Text(
-              'Warm. Human. Reassuring.\nEvery step here is here to help you.',
+              AppStrings.heroTagline(lang),
               style: GoogleFonts.fraunces(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -477,7 +488,8 @@ class _HeroBanner extends StatelessWidget {
 }
 
 class _TrustBanner extends StatelessWidget {
-  const _TrustBanner();
+  const _TrustBanner({this.lang = 'en'});
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -504,14 +516,13 @@ class _TrustBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("You're in good hands",
+                Text(AppStrings.trustTitle(lang),
                     style: GoogleFonts.fraunces(
                         fontSize: 17, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Your health information is private and secure. '
-                  'Only you decide who sees it.',
-                  style: TextStyle(fontSize: 13.5, color: _C.slate, height: 1.5),
+                Text(
+                  AppStrings.trustBody(lang),
+                  style: const TextStyle(fontSize: 13.5, color: _C.slate, height: 1.5),
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
@@ -524,8 +535,8 @@ class _TrustBanner extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: _C.line),
                     ),
-                    child: const Text(
-                      'Learn how we protect you',
+                    child: Text(
+                      AppStrings.trustLearn(lang),
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
@@ -547,18 +558,13 @@ class _TrustBanner extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text("You're in good hands"),
-        content: const Text(
-          'AfiCare keeps your health information private and secure.\n\n'
-          '• Your records are encrypted at rest and in transit.\n'
-          '• Sharing is always on your terms — you set the access codes.\n'
-          '• You can revoke access at any time, right from your settings.',
-        ),
+        title: Text(AppStrings.privacyTitle(lang)),
+        content: Text(AppStrings.privacyBody(lang)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it',
-                style: TextStyle(
+            child: Text(AppStrings.privacyGotIt(lang),
+                style: const TextStyle(
                     color: _C.canopy, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -600,9 +606,10 @@ class _SecHead extends StatelessWidget {
 }
 
 class _AllergyRow extends StatelessWidget {
-  const _AllergyRow({required this.allergies});
+  const _AllergyRow({required this.allergies, this.lang = 'en'});
 
   final List<String> allergies;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -619,20 +626,22 @@ class _AllergyRow extends StatelessWidget {
               border: Border.all(color: _C.danger.withOpacity(0.3)),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.warning_amber_rounded,
-                    size: 13, color: _C.danger),
-                const SizedBox(width: 6),
-                Text(
-                  'Allergy: $a',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _C.danger),
-                ),
-              ],
-            ),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 13, color: _C.danger),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '${AppStrings.allergiesLabel(lang)}: $a',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _C.danger),
+                    ),
+                  ),
+                ],
+              ),
           ),
       ],
     );
@@ -642,11 +651,12 @@ class _AllergyRow extends StatelessWidget {
 /// MediLink ID card — the digital identity card shown at the top of the
 /// dashboard.
 class _MediLinkCard extends StatelessWidget {
-  const _MediLinkCard({required this.fullName, required this.medilinkId, this.photo});
+  const _MediLinkCard({required this.fullName, required this.medilinkId, this.photo, this.lang = 'en'});
 
   final String fullName;
   final String medilinkId;
   final ImageProvider? photo;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -745,9 +755,9 @@ class _MediLinkCard extends StatelessWidget {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  _chip('Registered patient'),
+                  _chip(AppStrings.registeredPatient(lang)),
                   const SizedBox(width: 8),
-                  _chip('NHIF/SHA linked'),
+                  _chip(AppStrings.nshaLinked(lang)),
                 ],
               ),
             ],
@@ -907,41 +917,43 @@ class _OnboardingChecklist extends StatelessWidget {
     required this.hasAppointments,
     required this.hasMedications,
     required this.profileHasStarted,
+    required this.lang,
   });
 
   final bool hasAppointments;
   final bool hasMedications;
   final bool profileHasStarted;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
     final items = [
       _ChecklistData(
-        label: 'Complete your health profile',
-        sub: 'Tell us a bit about you',
+        label: AppStrings.checklistProfile(lang),
+        sub: AppStrings.checklistProfileSub(lang),
         done: profileHasStarted,
-        actionText: 'Complete',
+        actionText: AppStrings.btnComplete(lang),
         onTap: () => context.go('/onboarding'),
       ),
       _ChecklistData(
-        label: 'Book your first appointment',
-        sub: 'Find a doctor and book',
+        label: AppStrings.checklistAppointment(lang),
+        sub: AppStrings.checklistAppointmentSub(lang),
         done: hasAppointments,
-        actionText: 'Book now',
+        actionText: AppStrings.btnBookNow(lang),
         onTap: () => _push(context, const AppointmentsScreen()),
       ),
       _ChecklistData(
-        label: 'Add a medication',
-        sub: 'Keep track of your medicines',
+        label: AppStrings.checklistMedication(lang),
+        sub: AppStrings.checklistMedicationSub(lang),
         done: hasMedications,
-        actionText: 'Add now',
+        actionText: AppStrings.btnAddNow(lang),
         onTap: () => _push(context, const MedicationTrackerScreen()),
       ),
       _ChecklistData(
-        label: 'Set up sharing (QR code)',
-        sub: 'Share your records securely',
+        label: AppStrings.checklistSharing(lang),
+        sub: AppStrings.checklistSharingSub(lang),
         done: false,
-        actionText: 'Set up',
+        actionText: AppStrings.btnSetUp(lang),
         onTap: () => _push(context, const ShareRecords()),
       ),
     ];
@@ -961,11 +973,11 @@ class _OnboardingChecklist extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Let's get you started",
+              Text(AppStrings.checklistTitle(lang),
                   style: GoogleFonts.fraunces(
                       fontSize: 21, fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              const Text("A few simple steps — take them whenever you're ready.",
+              Text(AppStrings.checklistSub(lang),
                   style: TextStyle(fontSize: 14.5, color: _C.slate)),
               const SizedBox(height: 20),
               Row(
@@ -983,7 +995,7 @@ class _OnboardingChecklist extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '$doneCount of ${items.length} done',
+                    AppStrings.ofDone('$doneCount', '${items.length}', lang),
                     style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
