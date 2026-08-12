@@ -95,6 +95,144 @@ class AdherenceProvider with ChangeNotifier {
     return bars;
   }
 
+  /// Patient adds their own medication: creates a self-prescribed
+  /// prescription row + generates today's dose entries.
+  Future<bool> addMedication({
+    required String patientId,
+    required String medicationName,
+    required String dosage,
+    required int timesPerDay,
+    String? instructions,
+  }) async {
+    try {
+      // 1. Create a self-prescribed prescription
+      final rxResponse = await _supabase
+          .from('prescriptions')
+          .insert({
+            'patient_id': patientId,
+            'provider_id': patientId, // self-prescribed
+            'medication_name': medicationName,
+            'dosage': dosage,
+            'frequency': '$timesPerDay time${timesPerDay == 1 ? '' : 's'} a day',
+            'duration': 'ongoing',
+            'instructions': instructions,
+            'status': 'active',
+          })
+          .select()
+          .single();
+
+      final prescriptionId = rxResponse['id'] as String;
+
+      // 2. Generate today's dose entries
+      final now = DateTime.now();
+      final doses = <Map<String, dynamic>>[];
+      // Spread doses across the day: morning, noon, evening, night
+      const hours = [8, 13, 18, 21];
+      for (int i = 0; i < timesPerDay; i++) {
+        final scheduledTime = DateTime(
+          now.year, now.month, now.day,
+          hours[i], 0,
+        );
+        doses.add({
+          'prescription_id': prescriptionId,
+          'patient_id': patientId,
+          'scheduled_time': scheduledTime.toIso8601String(),
+          'status': 'pending',
+        });
+      }
+
+      if (doses.isNotEmpty) {
+        await _supabase.from('adherence_log').insert(doses);
+      }
+
+      // 3. Reload today's doses
+      await loadToday(patientId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Ensures today's doses exist for all active prescriptions.
+  /// If a prescription has no adherence_log entries for today,
+  /// this generates them based on the frequency.
+  Future<void> ensureTodayDoses(String patientId) async {
+    try {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, now.day);
+      final end = start.add(const Duration(days: 1));
+
+      // Get all active prescriptions for this patient
+      final prescriptions = await _supabase
+          .from('prescriptions')
+          .select('id, frequency, status')
+          .eq('patient_id', patientId)
+          .eq('status', 'active');
+
+      // Get today's existing dose entries
+      final existing = await _supabase
+          .from('adherence_log')
+          .select('prescription_id')
+          .eq('patient_id', patientId)
+          .gte('scheduled_time', start.toIso8601String())
+          .lt('scheduled_time', end.toIso8601String());
+
+      final existingRxIds = (existing as List)
+          .map((e) => e['prescription_id'] as String)
+          .toSet();
+
+      // For prescriptions without today's doses, generate them
+      final newDoses = <Map<String, dynamic>>[];
+      for (final rx in prescriptions as List) {
+        final rxId = rx['id'] as String;
+        if (existingRxIds.contains(rxId)) continue;
+
+        // Parse frequency to determine times per day
+        final freq = (rx['frequency'] as String?) ?? '';
+        int timesPerDay = _parseFrequency(freq);
+
+        const hours = [8, 13, 18, 21];
+        for (int i = 0; i < timesPerDay; i++) {
+          final scheduledTime = DateTime(
+            now.year, now.month, now.day,
+            i < hours.length ? hours[i] : 8,
+            0,
+          );
+          newDoses.add({
+            'prescription_id': rxId,
+            'patient_id': patientId,
+            'scheduled_time': scheduledTime.toIso8601String(),
+            'status': 'pending',
+          });
+        }
+      }
+
+      if (newDoses.isNotEmpty) {
+        await _supabase.from('adherence_log').insert(newDoses);
+      }
+    } catch (_) {
+      // Non-critical — the tracker will just show whatever exists
+    }
+  }
+
+  /// Parse a free-text frequency string into a number of doses per day.
+  int _parseFrequency(String freq) {
+    final f = freq.toLowerCase();
+    if (f.contains('once') || f.contains('1 time') || f.contains('1x')) return 1;
+    if (f.contains('twice') || f.contains('2 time') || f.contains('2x') || f.contains('2 times')) return 2;
+    if (f.contains('three') || f.contains('3 time') || f.contains('3x') || f.contains('3 times')) return 3;
+    if (f.contains('four') || f.contains('4 time') || f.contains('4x') || f.contains('4 times')) return 4;
+    // Try to extract a leading number
+    final match = RegExp(r'(\d+)').firstMatch(f);
+    if (match != null) {
+      final n = int.tryParse(match.group(1)!) ?? 1;
+      return n.clamp(1, 4);
+    }
+    return 1; // default to once daily
+  }
+
   Future<void> loadToday(String patientId) async {
     _isLoading = true;
     _error = null;
