@@ -139,8 +139,8 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
               color: const Color(0xFFE9F1F5),
               borderRadius: BorderRadius.circular(50),
             ),
-            child: const Icon(Icons.medication_rounded,
-                size: 42, color: Color(0xFF457B9D)),
+            child: Image.asset('assets/images/med-empty.png',
+                width: 120, height: 120, fit: BoxFit.contain),
           ),
         ),
         const SizedBox(height: 18),
@@ -171,18 +171,22 @@ class _MedicationHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 150),
+width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 180),
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 26),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
+        image: const DecorationImage(
+          image: AssetImage('assets/images/med-hero.jpg'),
+          fit: BoxFit.cover,
+        ),
         gradient: LinearGradient(
           colors: [
-            Color(0xFF1D3557),
-            Color(0xFF1D3557),
-            Color(0x8C1D3557),
-            Color(0x261D3557),
+            const Color(0xFF1D3557),
+            const Color(0xFF1D3557),
+            const Color(0xFF1D3557).withOpacity(0.55),
+            const Color(0xFF1D3557).withOpacity(0.15),
           ],
-          stops: [0, 0.45, 0.7, 1],
+          stops: const [0, 0.45, 0.7, 1],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -385,7 +389,7 @@ class _ScoreCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 image: const DecorationImage(
-                  image: AssetImage('assets/images/checklist.png'),
+                  image: AssetImage('assets/images/med-companion.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
