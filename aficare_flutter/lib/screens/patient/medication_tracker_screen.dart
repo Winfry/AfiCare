@@ -86,17 +86,15 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Score card overlapping hero
-                              Transform.translate(
-                                offset: const Offset(0, -30),
-                                child: _ScoreCard(
-                                  score: ad.todayScore,
-                                  remaining: ad.todayRemaining,
-                                  firstName: firstName,
-                                  streak: ad.streak,
-                                ),
+                              // Score card sits cleanly below hero
+                              const SizedBox(height: 20),
+                              _ScoreCard(
+                                score: ad.todayScore,
+                                remaining: ad.todayRemaining,
+                                firstName: firstName,
+                                streak: ad.streak,
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 26),
                               // Section header
                               Row(
                                 mainAxisAlignment:
