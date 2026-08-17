@@ -34,7 +34,11 @@ class AuthProvider with ChangeNotifier {
         final Session? session = data.session;
 
         if (event == AuthChangeEvent.signedIn && session != null) {
-          _loadUserProfile(session.user.id);
+          // Only load if we don't already have this user — avoids
+          // racing with the explicit call in signUp / signIn methods.
+          if (_currentUser?.id != session.user.id) {
+            _loadUserProfile(session.user.id);
+          }
         } else if (event == AuthChangeEvent.signedOut) {
           _currentUser = null;
           notifyListeners();
@@ -46,22 +50,42 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _loadUserProfile(String userId) async {
-    try {
-      final response = await _supabase
-          .from('users')
-          .select()
-          .eq('id', userId)
-          .single();
+  Future<void> _loadUserProfile(String userId, {int maxRetries = 3}) async {
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final response = await _supabase
+            .from('users')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
 
-      _currentUser = UserModel.fromJson(response);
-      _error = null;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading user profile: $e');
-      _error = 'Profile load failed: $e';
-      notifyListeners();
+        if (response != null) {
+          _currentUser = UserModel.fromJson(response);
+          _error = null;
+          notifyListeners();
+          return;
+        }
+
+        // Row not visible yet — wait and retry (eventual consistency)
+        if (attempt < maxRetries - 1) {
+          await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+        }
+      } catch (e) {
+        debugPrint('Error loading user profile (attempt ${attempt + 1}): $e');
+        if (attempt < maxRetries - 1) {
+          await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+        } else {
+          _error = 'Could not load your profile. '
+              'If your computer clock is wrong, sync it and try again. '
+              'Details: $e';
+          notifyListeners();
+        }
+      }
     }
+
+    // All retries exhausted — row doesn't exist
+    _error = _error ?? 'Your profile was not found. Please try logging in again.';
+    notifyListeners();
   }
 
   // ── Patient direct registration (phone + PIN, no OTP) ───────────────
@@ -100,16 +124,31 @@ class AuthProvider with ChangeNotifier {
       final userId = authResponse.user!.id;
       final pinHash = BCrypt.hashpw(pin, BCrypt.gensalt(logRounds: 12));
 
-      await _supabase.from('users').insert({
-        'id': userId,
-        'email': placeholderEmail,
-        'full_name': fullName,
-        'role': 'patient',
-        'phone': phone,
-        'medilink_id': UserModel.generateMedilinkId(),
-        'pin_hash': pinHash,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+      // Insert the profile row. If this fails (e.g. JWT clock-skew error),
+      // we catch it here and clean up the orphaned auth user so the patient
+      // can try again cleanly instead of getting "email already exists".
+      try {
+        await _supabase.from('users').insert({
+          'id': userId,
+          'email': placeholderEmail,
+          'full_name': fullName,
+          'role': 'patient',
+          'phone': phone,
+          'medilink_id': UserModel.generateMedilinkId(),
+          'pin_hash': pinHash,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } catch (insertError) {
+        // The auth account was created but the profile row failed.
+        // Try to clean up so the patient can re-register.
+        try {
+          await _supabase.auth.signOut();
+        } catch (_) {}
+        throw Exception(
+            'Could not save your profile. This is often caused by a '
+            'wrong computer clock — please sync your clock and try again. '
+            'Details: $insertError');
+      }
 
       await _supabase.auth.signInWithPassword(
         email: placeholderEmail,
