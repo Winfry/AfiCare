@@ -10,8 +10,10 @@ import 'package:aficare_flutter/presentation/auth/widgets/auth_split_layout.dart
 import 'package:aficare_flutter/presentation/auth/widgets/inline_error.dart';
 import 'package:aficare_flutter/presentation/auth/widgets/loading_button.dart';
 import 'package:aficare_flutter/presentation/auth/widgets/auth_footer.dart';
+import 'package:aficare_flutter/presentation/auth/register/patient/widgets/phone_prefix_field.dart';
+import 'package:aficare_flutter/presentation/auth/register/patient/utils/phone_formatter.dart';
 
-enum _LoginMethod { email, medilinkId }
+enum _LoginMethod { email, phone }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -57,10 +59,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     bool success;
 
-    if (_method == _LoginMethod.medilinkId) {
-      success = await auth.signInWithMedilinkId(
-        medilinkId: _identifierController.text.trim(),
-        password: _passwordController.text,
+    if (_method == _LoginMethod.phone) {
+      final formatted =
+          PhoneFormatter.format('254${_identifierController.text.trim()}');
+      if (formatted == null) {
+        setState(() {
+          _errorMsg = 'Enter a valid Kenyan phone number';
+          _submitting = false;
+        });
+        return;
+      }
+      success = await auth.signInWithPhoneAndPin(
+        phone: formatted,
+        pin: _passwordController.text.trim(),
       );
     } else {
       success = await auth.signIn(
@@ -104,36 +115,56 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 24),
 
           SegmentedToggle<_LoginMethod>(
-            values: const [_LoginMethod.email, _LoginMethod.medilinkId],
-            labels: const ['Email', 'MediLink ID'],
+            values: const [_LoginMethod.email, _LoginMethod.phone],
+            labels: const ['Email', 'Phone'],
             selected: _method,
             onChanged: (m) => setState(() { _method = m; _errorMsg = null; }),
           ),
           const SizedBox(height: 20),
 
-          BrandedTextField(
-            controller: _identifierController,
-            label: isEmail ? 'Email address' : 'MediLink ID',
-            hint: isEmail ? 'wanjiru@example.com' : 'ML-NBO-XXXX',
-            icon: isEmail ? Icons.mail_outline : Icons.badge_outlined,
-            keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return isEmail ? 'Enter your email address' : 'Enter your MediLink ID';
-              }
-              if (isEmail && !value.contains('@')) return 'Enter a valid email address';
-              return null;
-            },
-            textInputAction: TextInputAction.next,
-          ),
+          if (isEmail)
+            BrandedTextField(
+              controller: _identifierController,
+              label: 'Email address',
+              hint: 'wanjiru@example.com',
+              icon: Icons.mail_outline,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Enter your email address';
+                }
+                if (!value.contains('@')) return 'Enter a valid email address';
+                return null;
+              },
+              textInputAction: TextInputAction.next,
+            )
+          else
+            PhonePrefixField(
+              controller: _identifierController,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Enter your phone number';
+                final formatted = PhoneFormatter.format('254$v');
+                if (formatted == null) return 'Enter a valid Kenyan phone number';
+                return null;
+              },
+            ),
           const SizedBox(height: 16),
           BrandedTextField(
             controller: _passwordController,
-            label: 'Password',
-            hint: '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
-            icon: Icons.lock_outline,
+            label: isEmail ? 'Password' : '6-digit PIN',
+            hint: isEmail ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '\u2022\u2022\u2022\u2022\u2022\u2022',
+            icon: isEmail ? Icons.lock_outline : Icons.password_outlined,
             isPassword: true,
-            validator: (value) => (value == null || value.isEmpty) ? 'Enter your password' : null,
+            keyboardType: isEmail ? null : TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return isEmail ? 'Enter your password' : 'Enter your 6-digit PIN';
+              }
+              if (!isEmail && (value.length != 6 || int.tryParse(value) == null)) {
+                return 'PIN must be exactly 6 digits';
+              }
+              return null;
+            },
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _submit(),
           ),
@@ -187,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
               border: Border.all(color: const Color(0xFFC9DCE8)),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text.rich(
+            child:               const Text.rich(
               TextSpan(
                 children: [
                   TextSpan(
@@ -195,11 +226,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2C4A63)),
                   ),
                   TextSpan(
-                    text: 'patient@demo.aficare.ke \u00B7 provider@demo.aficare.ke \u00B7 admin@demo.aficare.ke\n',
+                    text: 'Providers / Admin: use Email tab\n',
                     style: TextStyle(color: Color(0xFF2C4A63)),
                   ),
                   TextSpan(
-                    text: 'Password: demo1234',
+                    text: 'provider@demo.aficare.ke \u00B7 admin@demo.aficare.ke \u00B7 Password: demo1234\n',
+                    style: TextStyle(color: Color(0xFF2C4A63)),
+                  ),
+                  TextSpan(
+                    text: 'Patients: use Phone tab with your PIN',
                     style: TextStyle(color: Color(0xFF2C4A63)),
                   ),
                 ],
