@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,15 +13,18 @@ import '../../providers/adherence_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
 import '../../providers/patient_profile_provider.dart';
+import '../../providers/care_team_provider.dart';
 import '../../utils/app_strings.dart';
 import '../../models/appointment_model.dart';
 import '../../models/disability_profile.dart';
 import '../../models/prescription_model.dart';
 import '../../models/adherence_model.dart';
+import '../../models/care_team_member_model.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../services/tts_service.dart';
 import 'health_summary.dart';
 import 'share_records.dart';
+import 'expenses_screen.dart';
 import 'medication_tracker_screen.dart';
 import 'appointments_screen.dart';
 
@@ -262,8 +267,19 @@ class _ReturningDashboard extends StatelessWidget {
               const SizedBox(height: 20),
               _CaregiverAlertsCard(patientId: patientId!),
             ],
-            const SizedBox(height: 28),
-            // Row 2 — Care Team / Quick Actions / Health Tip — coming next
+            const SizedBox(height: 24),
+            _summaryRow(
+              [
+                if (patientId != null)
+                  _CareTeamCard(patientId: patientId!)
+                else
+                  const _Card(child: SizedBox(height: 40)),
+                const _QuickActionsCard(),
+                const _HealthTipCard(),
+              ],
+              cols,
+              16,
+            ),
           ],
         );
       },
@@ -986,6 +1002,530 @@ class _ActiveMedicationsCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Row 2: My Care Team ────────────────────────────────────────────────
+
+class _CareTeamCard extends StatefulWidget {
+  const _CareTeamCard({required this.patientId});
+
+  final String patientId;
+
+  @override
+  State<_CareTeamCard> createState() => _CareTeamCardState();
+}
+
+class _CareTeamCardState extends State<_CareTeamCard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ct = Provider.of<CareTeamProvider>(context, listen: false);
+      if (ct.members.isEmpty && !ct.isLoading) {
+        ct.loadCareTeam(widget.patientId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<CareTeamProvider>(
+      builder: (context, ct, _) {
+        final members = ct.members;
+        final primary = members.firstWhere(
+          (m) => m.isPrimary,
+          orElse: () => members.isNotEmpty ? members.first : _emptyMember(),
+        );
+        final hasMembers = members.isNotEmpty;
+
+        return _Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SecHead(
+                title: AppStrings.careTeamTitle('en'),
+                actionText: AppStrings.viewAll('en'),
+                onAction: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (ct.isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              else if (!hasMembers)
+                _empty(AppStrings.careTeamEmpty('en'))
+              else
+                _memberRow(primary),
+              const SizedBox(height: 12),
+              _addMemberButton(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _memberRow(CareTeamMemberModel m) {
+    final initials = _initials(m.providerName);
+    final isCustom = m.providerId == widget.patientId;
+    final displayName = isCustom
+        ? (m.specialtyLabel ?? m.providerName)
+        : m.providerName;
+    final specialty = m.specialtyLabel ?? m.providerDepartment ?? m.providerRole;
+
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: _C.softBlue,
+          child: Text(
+            initials,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: _C.canopy,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
+                  ),
+                  if (m.isPrimary) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _C.softGreen,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text('Primary',
+                          style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: _C.sage)),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${_capitalize(specialty)}${m.providerDepartment != null ? '' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5, color: _C.slate),
+              ),
+            ],
+          ),
+        ),
+        if (!isCustom)
+          OutlinedButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _C.canopy,
+              side: const BorderSide(color: _C.line),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              minimumSize: const Size(0, 34),
+            ),
+            child: const Text('Book', style: TextStyle(fontSize: 12.5)),
+          ),
+      ],
+    );
+  }
+
+  Widget _addMemberButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+        ),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _C.line,
+              style: BorderStyle.solid,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.add, size: 16, color: _C.canopy),
+              const SizedBox(width: 6),
+              Text(
+                '+ ${AppStrings.careTeamAdd('en')}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _C.canopy,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  CareTeamMemberModel _emptyMember() => CareTeamMemberModel(
+        id: '',
+        patientId: '',
+        providerId: '',
+        isPrimary: false,
+        createdAt: DateTime.now(),
+        providerName: '',
+        providerRole: 'doctor',
+      );
+
+  String _initials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+}
+
+// ── Row 2: Quick Actions ───────────────────────────────────────────────
+//
+// Compact vertical action rows — NOT a 6-up grid. Each row has an icon tile,
+// a label, and a chevron. Desktop hover subtly lifts the row.
+
+class _QuickActionsCard extends StatelessWidget {
+  const _QuickActionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = [
+      _QaRowData(
+        icon: Icons.calendar_today_outlined,
+        iconBg: _C.softBlue,
+        iconColor: _C.lBlue,
+        label: 'Book an appointment',
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+        ),
+      ),
+      _QaRowData(
+        icon: Icons.medication_outlined,
+        iconBg: _C.softGreen,
+        iconColor: _C.sage,
+        label: 'Add medication',
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MedicationTrackerScreen()),
+        ),
+      ),
+      _QaRowData(
+        icon: Icons.description_outlined,
+        iconBg: _C.warmCream,
+        iconColor: _C.canopy,
+        label: 'View health records',
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const HealthSummary()),
+        ),
+      ),
+      _QaRowData(
+        icon: Icons.receipt_long_outlined,
+        iconBg: _C.medBg,
+        iconColor: _C.slate,
+        label: 'View expenses',
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ExpensesScreen()),
+        ),
+      ),
+    ];
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SecHead(title: 'Quick Actions'),
+          const SizedBox(height: 12),
+          for (int i = 0; i < actions.length; i++) ...[
+            _QuickActionRow(data: actions[i]),
+            if (i < actions.length - 1)
+              const Divider(height: 1, thickness: 0.5, color: _C.line),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QaRowData {
+  const _QaRowData({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String label;
+  final VoidCallback onTap;
+}
+
+class _QuickActionRow extends StatefulWidget {
+  const _QuickActionRow({required this.data});
+
+  final _QaRowData data;
+
+  @override
+  State<_QuickActionRow> createState() => _QuickActionRowState();
+}
+
+class _QuickActionRowState extends State<_QuickActionRow> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        transform: _hovering
+            ? Matrix4.translationValues(0, -1, 0)
+            : Matrix4.identity(),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.data.onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: widget.data.iconBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(widget.data.icon,
+                        size: 16, color: widget.data.iconColor),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(widget.data.label,
+                        style: const TextStyle(
+                            fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  ),
+                  Icon(Icons.chevron_right,
+                      size: 18,
+                      color: _hovering ? _C.canopy : _C.slate),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Row 2: Health Tip ──────────────────────────────────────────────────
+//
+// Warm illustration tile + rotating tips with pagination dots.
+// Auto-advances every 6 seconds; pauses on manual interaction.
+
+class _HealthTipCard extends StatefulWidget {
+  const _HealthTipCard();
+
+  @override
+  State<_HealthTipCard> createState() => _HealthTipCardState();
+}
+
+class _HealthTipCardState extends State<_HealthTipCard> {
+  final _pageController = PageController();
+  int _currentPage = 0;
+  Timer? _timer;
+
+  static const _tips = [
+    _HealthTipData(
+      icon: Icons.medication_outlined,
+      title: 'Small steps, big impact',
+      body:
+          'Taking your medication consistently helps you stay strong and healthy.',
+    ),
+    _HealthTipData(
+      icon: Icons.water_drop_outlined,
+      title: 'Stay hydrated',
+      body: 'Drinking enough water each day supports your overall wellbeing.',
+    ),
+    _HealthTipData(
+      icon: Icons.event_available,
+      title: 'Keep your appointments',
+      body: 'Regular check-ups help your care team catch issues early.',
+    ),
+    _HealthTipData(
+      icon: Icons.share_outlined,
+      title: 'Share your records',
+      body: 'Use your MediLink QR to securely share your health information.',
+    ),
+    _HealthTipData(
+      icon: Icons.favorite_outline,
+      title: 'Preventive care matters',
+      body: 'Small lifestyle choices today protect your health for tomorrow.',
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoAdvance();
+  }
+
+  void _startAutoAdvance() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (!mounted) return;
+      final next = (_currentPage + 1) % _tips.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  void _onManualPage(int page) {
+    setState(() => _currentPage = page);
+    _timer?.cancel();
+    _startAutoAdvance();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SecHead(title: 'Health Tip'),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 180,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: _tips.length,
+              onPageChanged: _onManualPage,
+              itemBuilder: (context, index) {
+                final tip = _tips[index];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Warm illustration tile
+                    Container(
+                      width: double.infinity,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: _C.warmCream,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(tip.icon, size: 36, color: _C.warmOrange),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(tip.title,
+                        style: GoogleFonts.fraunces(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Text(tip.body,
+                          style: const TextStyle(
+                              fontSize: 12.5,
+                              color: _C.slate,
+                              height: 1.5)),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (int i = 0; i < _tips.length; i++) ...[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: i == _currentPage ? 18 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: i == _currentPage ? _C.canopy : _C.line,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                if (i < _tips.length - 1) const SizedBox(width: 6),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthTipData {
+  const _HealthTipData({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
 }
 
 // ── Shared widgets ─────────────────────────────────────────────────────
