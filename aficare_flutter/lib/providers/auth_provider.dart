@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/supabase_config.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -60,25 +64,33 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Patient direct registration (phone-only, no OTP) ────────────────
+  // ── Patient direct registration (phone + PIN, no OTP) ───────────────
 
-  /// Creates a patient account using [phone] + random password behind the
-  /// scenes. No SMS / OTP needed — patients are auto-logged in on success.
+  /// Creates a patient account using [phone] + [pin] (6 digits) + [fullName].
+  /// The Supabase auth password is derived deterministically from
+  /// phone+PIN+app-secret so we never store it. The PIN itself is stored
+  /// as a bcrypt hash in the `users` table. Patients are auto-logged in
+  /// on success.
   Future<bool> signUpPatientDirect({
     required String phone,
     required String fullName,
+    required String pin,
   }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      if (pin.length != 6 || int.tryParse(pin) == null) {
+        throw Exception('PIN must be exactly 6 digits.');
+      }
+
       final placeholderEmail = '${phone.replaceAll('+', '')}@patient.aficare';
-      final tempPassword = UserModel.generateMedilinkId();
+      final derivedPassword = _derivePassword(phone, pin);
 
       final authResponse = await _supabase.auth.signUp(
         email: placeholderEmail,
-        password: tempPassword,
+        password: derivedPassword,
       );
 
       if (authResponse.user == null) {
@@ -86,6 +98,7 @@ class AuthProvider with ChangeNotifier {
       }
 
       final userId = authResponse.user!.id;
+      final pinHash = BCrypt.hashpw(pin, BCrypt.gensalt(logRounds: 12));
 
       await _supabase.from('users').insert({
         'id': userId,
@@ -94,15 +107,85 @@ class AuthProvider with ChangeNotifier {
         'role': 'patient',
         'phone': phone,
         'medilink_id': UserModel.generateMedilinkId(),
+        'pin_hash': pinHash,
         'created_at': DateTime.now().toIso8601String(),
       });
 
       await _supabase.auth.signInWithPassword(
         email: placeholderEmail,
-        password: tempPassword,
+        password: derivedPassword,
       );
 
       await _loadUserProfile(userId);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AuthException catch (e) {
+      if (e.statusCode == '422' || e.message.contains('already registered')) {
+        _error = 'An account with this phone number already exists. Please log in instead.';
+      } else {
+        _error = e.message;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── Patient phone + PIN sign in ─────────────────────────────────────
+
+  /// Signs in a patient using [phone] + [pin]. Looks up the user by phone,
+  /// verifies the PIN against the stored bcrypt hash, then derives the
+  /// Supabase auth password and signs in.
+  Future<bool> signInWithPhoneAndPin({
+    required String phone,
+    required String pin,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _supabase
+          .from('users')
+          .select('id, email, pin_hash, role')
+          .eq('phone', phone)
+          .maybeSingle();
+
+      if (response == null) {
+        throw Exception('No account found with this phone number.');
+      }
+
+      final pinHash = response['pin_hash'] as String?;
+      if (pinHash == null || pinHash.isEmpty) {
+        throw Exception(
+            'This account was created before PIN login was enabled. '
+            'Please re-register or contact support.');
+      }
+
+      final storedHash = pinHash;
+      final isValid = BCrypt.checkpw(pin, storedHash);
+      if (!isValid) {
+        throw Exception('Invalid phone number or PIN.');
+      }
+
+      final email = response['email'] as String;
+      final derivedPassword = _derivePassword(phone, pin);
+
+      final authResponse = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: derivedPassword,
+      );
+
+      if (authResponse.user != null) {
+        await _loadUserProfile(authResponse.user!.id);
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -113,6 +196,16 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Derives the Supabase auth password from [phone] + [pin] + the
+  /// app-side secret. Returns the first 32 hex characters of a SHA-256
+  /// digest — well above Supabase's 6-char minimum.
+  String _derivePassword(String phone, String pin) {
+    final input = '$phone:$pin:${SupabaseConfig.patientAuthSecret}';
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString().substring(0, 32);
   }
 
   // ── Email/password sign up (providers) ──────────────────────────────

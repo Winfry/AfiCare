@@ -22,15 +22,21 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _pinController = TextEditingController();
+  final _pinConfirmController = TextEditingController();
 
   bool _loading = false;
   bool _showSuccess = false;
+  bool _obscurePin = true;
+  bool _obscurePinConfirm = true;
   String? _error;
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _pinController.dispose();
+    _pinConfirmController.dispose();
     super.dispose();
   }
 
@@ -52,6 +58,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
     final success = await auth.signUpPatientDirect(
       phone: formatted,
       fullName: _nameController.text.trim(),
+      pin: _pinController.text.trim(),
     );
 
     if (!mounted) return;
@@ -99,6 +106,49 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
               return null;
             },
           ),
+          const SizedBox(height: 20),
+          const _FieldLabel(label: 'Choose a 6-digit PIN'),
+          TextFormField(
+            controller: _pinController,
+            obscureText: _obscurePin,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
+            decoration: _pinInputDecoration(
+              'e.g. 123456',
+              Icons.lock_outline,
+              _obscurePin,
+              () => setState(() => _obscurePin = !_obscurePin),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Enter a 6-digit PIN';
+              if (v.length != 6) return 'PIN must be exactly 6 digits';
+              if (int.tryParse(v) == null) return 'PIN must be numbers only';
+              return null;
+            },
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 20),
+          const _FieldLabel(label: 'Confirm PIN'),
+          TextFormField(
+            controller: _pinConfirmController,
+            obscureText: _obscurePinConfirm,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
+            decoration: _pinInputDecoration(
+              'Re-enter your PIN',
+              Icons.lock_outline,
+              _obscurePinConfirm,
+              () => setState(() => _obscurePinConfirm = !_obscurePinConfirm),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Confirm your PIN';
+              if (v != _pinController.text) return 'PINs do not match';
+              return null;
+            },
+            textInputAction: TextInputAction.done,
+          ),
           const SizedBox(height: 24),
           LoadingButton(
             label: 'Create account',
@@ -136,6 +186,39 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
       hintText: hint,
       hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
       prefixIcon: Icon(icon, size: 19, color: const Color(0xFF55708A)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF206B5D), width: 2),
+      ),
+    );
+  }
+
+  InputDecoration _pinInputDecoration(
+      String hint, IconData icon, bool obscured, VoidCallback onToggle) {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white,
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+      counterText: '',
+      prefixIcon: Icon(icon, size: 19, color: const Color(0xFF55708A)),
+      suffixIcon: IconButton(
+        icon: Icon(
+          obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          size: 19,
+          color: const Color(0xFF55708A),
+        ),
+        onPressed: onToggle,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

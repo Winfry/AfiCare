@@ -6,6 +6,14 @@ class SupabaseConfig {
 
   static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqemZvemZzc3d2ZW1nZHB0ZmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNjQ2MDQsImV4cCI6MjA5OTc0MDYwNH0.gRmCQFxFOE06uSqSt0e5xKk_rk_Fkn4-zEEYiW6HArc';
 
+  /// App-side secret used to derive the Supabase auth password from a
+  /// patient's phone + PIN. This is NOT a true server-side secret (any
+  /// client app can be reverse-engineered), but combined with the user's
+  /// 6-digit PIN it means a database leak alone cannot recover passwords.
+  /// Change this to a unique random string for your deployment.
+  static const String patientAuthSecret =
+      'aficare-patient-pin-v1-9f3a7c2e8b1d4f6a';
+
   // Table names
   static const String usersTable = 'users';
   static const String patientsTable = 'patients';
