@@ -14,6 +14,7 @@ import '../../providers/patient_provider.dart';
 import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
+import '../../providers/care_team_provider.dart';
 import '../../widgets/app_shell.dart';
 import 'patient_home_screen.dart';
 import 'appointments_screen.dart';
@@ -81,6 +82,7 @@ class _PatientShellState extends State<PatientShell> {
         Provider.of<LabProvider>(context, listen: false).loadOrders(id),
         Provider.of<PrescriptionProvider>(context, listen: false).loadPrescriptions(id),
         Provider.of<PreferencesProvider>(context, listen: false).loadPreferences(id),
+        Provider.of<CareTeamProvider>(context, listen: false).loadCareTeam(id),
       ]);
     } catch (_) {
       // Data loading errors are non-fatal; UI shows empty states
