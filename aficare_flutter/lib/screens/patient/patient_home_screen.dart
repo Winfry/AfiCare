@@ -116,7 +116,6 @@ class PatientHomeScreen extends StatelessWidget {
                 child: needsOnboarding
                     ? _FirstRunDashboard(
                         firstName: firstName,
-                        dateStr: dateStr,
                         allergies: allergies,
                         fullName: fullName,
                         medilinkId: medilinkId,
@@ -150,7 +149,6 @@ class PatientHomeScreen extends StatelessWidget {
 class _FirstRunDashboard extends StatelessWidget {
   const _FirstRunDashboard({
     required this.firstName,
-    required this.dateStr,
     required this.allergies,
     required this.fullName,
     required this.medilinkId,
@@ -163,7 +161,6 @@ class _FirstRunDashboard extends StatelessWidget {
   });
 
   final String firstName;
-  final String dateStr;
   final List<String> allergies;
   final String fullName;
   final String medilinkId;
@@ -176,33 +173,87 @@ class _FirstRunDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const lang = 'en'; // Returning dashboard defaults to English
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _HeroBanner(lang: lang),
-        const SizedBox(height: 20),
-        _Greeting(name: firstName, subtitle: dateStr, listenText: listenText, lang: lang),
-        const SizedBox(height: 16),
-        if (allergies.isNotEmpty) ...[
-          _AllergyRow(allergies: allergies, lang: lang),
-          const SizedBox(height: 18),
-        ],
-        _MediLinkCard(fullName: fullName, medilinkId: medilinkId, lang: lang),
-        if (patientId != null) ...[
-          const SizedBox(height: 20),
-          _CaregiverAlertsCard(patientId: patientId!),
-        ],
-        const SizedBox(height: 28),
-        _OnboardingChecklist(
-          hasAppointments: hasAppointments,
-          hasMedications: hasMedications,
-          profileHasStarted: profileHasStarted,
-          lang: lang,
-        ),
-        const SizedBox(height: 24),
-        const _TrustBanner(lang: lang),
-      ],
+    const lang = 'en';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Same hero as returning dashboard — greeting + 3 shortcuts
+            _ReturningHero(
+              firstName: firstName,
+              lang: lang,
+              listenText: listenText,
+            ),
+            if (allergies.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _AllergyRow(allergies: allergies, lang: lang),
+            ],
+            const SizedBox(height: 20),
+            // Row: MediLink ID card (left) + Caregiver alerts (right, if any)
+            if (isWide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: _MediLinkCard(
+                        fullName: fullName, medilinkId: medilinkId, lang: lang),
+                  ),
+                  if (patientId != null) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 4,
+                      child: _CaregiverAlertsCard(patientId: patientId!),
+                    ),
+                  ],
+                ],
+              )
+            else ...[
+              _MediLinkCard(
+                  fullName: fullName, medilinkId: medilinkId, lang: lang),
+              if (patientId != null) ...[
+                const SizedBox(height: 16),
+                _CaregiverAlertsCard(patientId: patientId!),
+              ],
+            ],
+            const SizedBox(height: 24),
+            // Row: Onboarding checklist (left, wider) + Trust banner (right)
+            if (isWide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 7,
+                    child: _OnboardingChecklist(
+                      hasAppointments: hasAppointments,
+                      hasMedications: hasMedications,
+                      profileHasStarted: profileHasStarted,
+                      lang: lang,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    flex: 4,
+                    child: _TrustBanner(lang: lang),
+                  ),
+                ],
+              )
+            else ...[
+              _OnboardingChecklist(
+                hasAppointments: hasAppointments,
+                hasMedications: hasMedications,
+                profileHasStarted: profileHasStarted,
+                lang: lang,
+              ),
+              const SizedBox(height: 16),
+              const _TrustBanner(lang: lang),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -1529,135 +1580,6 @@ class _HealthTipData {
 }
 
 // ── Shared widgets ─────────────────────────────────────────────────────
-
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.subtitle, this.listenText, this.lang = 'en'});
-
-  final String name;
-  final String subtitle;
-  final String? listenText;
-  final String lang;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppStrings.greeting(name, lang),
-                style: GoogleFonts.fraunces(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: _C.ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(subtitle,
-                  style: const TextStyle(fontSize: 14, color: _C.slate)),
-            ],
-            ),
-          ),
-        if (listenText != null)
-          IconButton(
-            onPressed: () => tts.speak(listenText!),
-            tooltip: 'Listen',
-            icon: const Icon(Icons.volume_up_rounded),
-            color: _C.canopy,
-            iconSize: 22,
-            style: IconButton.styleFrom(
-              backgroundColor: _C.mist,
-              minimumSize: const Size(42, 42),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner({this.lang = 'en'});
-  final String lang;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 170,
-      padding: const EdgeInsets.fromLTRB(24, 30, 24, 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        image: const DecorationImage(
-          image: AssetImage('assets/images/hero.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Gentle vignette — keeps the photo visible, just darkens edges
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    _C.canopy.withOpacity(0.05),
-                    Colors.transparent,
-                    Colors.transparent,
-                    _C.canopy.withOpacity(0.35),
-                  ],
-                  stops: const [0, 0.2, 0.6, 1],
-                ),
-              ),
-            ),
-          ),
-          // Warm amber glow — soft light from top-right
-          Positioned(
-            right: -30,
-            top: -40,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF64B5F6).withOpacity(0.15),
-                    Colors.transparent,
-                  ],
-                  stops: const [0, 0.6],
-                ),
-              ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomLeft,
-            child: Text(
-              AppStrings.heroTagline(lang),
-              style: GoogleFonts.fraunces(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                height: 1.35,
-                shadows: const [
-                  Shadow(
-                      color: Color(0x66000000),
-                      blurRadius: 8,
-                      offset: Offset(0, 2)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _TrustBanner extends StatelessWidget {
   const _TrustBanner({this.lang = 'en'});
