@@ -7,25 +7,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/appointment_provider.dart';
-import '../../providers/triage_provider.dart';
 import '../../providers/adherence_provider.dart';
-import '../../providers/patient_provider.dart';
-import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../utils/app_strings.dart';
 import '../../models/appointment_model.dart';
-import '../../models/triage_model.dart';
 import '../../models/disability_profile.dart';
+import '../../models/prescription_model.dart';
+import '../../models/adherence_model.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../services/tts_service.dart';
 import 'health_summary.dart';
 import 'share_records.dart';
-import 'expenses_screen.dart';
-import 'lab_results_screen.dart';
 import 'medication_tracker_screen.dart';
-import 'prescriptions_list_screen.dart';
 import 'appointments_screen.dart';
 
 /// Design tokens from the AfiCare dashboard prototype.
@@ -34,7 +29,6 @@ class _C {
   static const canopy = Color(0xFF1D3557);
   static const canopy2 = Color(0xFF24456B);
   static const marigold = Color(0xFF64B5F6);
-  static const marigold2 = Color(0xFF457B9D);
   static const sage = Color(0xFF2E7D32);
   static const mist = Color(0xFFEEF2F7);
   static const slate = Color(0xFF55708A);
@@ -42,11 +36,15 @@ class _C {
   static const danger = Color(0xFFB71C1C);
   static const white = Color(0xFFFFFFFF);
   static const lBlue = Color(0xFF1565C0);
-  static const medMist = Color(0xFFE9F1F5);
-  static const medIce = Color(0xFFEFF6FA);
-  static const medSky = Color(0xFFE5F2FD);
   static const medBg = Color(0xFFE8EDF3);
-  static const medGreen = Color(0xFFEAF6EE);
+
+  // ── Returning dashboard tokens (spec §4 color system) ────────────
+  static const heroDeep   = Color(0xFF102B4E);
+  static const softBlue   = Color(0xFFEAF3FC);
+  static const softGreen  = Color(0xFFEAF5EC);
+  static const warmOrange = Color(0xFFF57F17);
+  static const warmCream  = Color(0xFFFBF6EF);
+  static const ringTrack  = Color(0xFFE3E8ED);
 }
 
 /// Patient home dashboard — mirrors the "Onboarding & First-Run Dashboard"
@@ -56,19 +54,15 @@ class _C {
 class PatientHomeScreen extends StatelessWidget {
   const PatientHomeScreen({super.key});
 
-  static const double _twoColBreakpoint = 720;
-  static const double _qaBreakpoint = 640;
+  static const double _threeColBreakpoint = 940;
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final appointments = Provider.of<AppointmentProvider>(context);
-    final triage = Provider.of<TriageProvider>(context);
     final adherence = Provider.of<AdherenceProvider>(context);
     final prefs = Provider.of<PreferencesProvider>(context);
     final prescriptions = Provider.of<PrescriptionProvider>(context);
-    final labs = Provider.of<LabProvider>(context);
-    final consultations = Provider.of<PatientProvider>(context).consultations;
     final profile = Provider.of<PatientProfileProvider>(context).profile;
 
     final user = auth.currentUser;
@@ -83,7 +77,6 @@ class PatientHomeScreen extends StatelessWidget {
     final dateStr =
         DateFormat('EEEE, d MMMM', lang == 'sw' ? 'sw' : 'en').format(now);
 
-    final profileModel = profile;
     final needsOnboarding = profile == null ||
         profile.dateOfBirth == null ||
         profile.emergencyContactName == null ||
@@ -95,30 +88,24 @@ class PatientHomeScreen extends StatelessWidget {
             profile.bloodType != null ||
             profile.emergencyContactName != null);
 
-    final upcoming = _upcomingAppointments(appointments.appointments);
-    final todayMeds = adherence.todayDoses;
-    final activeRx = prescriptions.getActivePrescriptions();
-    final patientAssessments = triage.assessments
-        .where((a) => a.patientId == (user?.id ?? ''))
-        .toList();
-
     final ttsEnabled = prefs.prefs?.textToSpeech ?? false;
-    final listenText = ttsEnabled
-        ? 'Habari, $firstName. $dateStr. '
-            '${upcoming.isEmpty ? "You have no upcoming appointments." : "You have ${upcoming.length} upcoming appointment${upcoming.length == 1 ? '' : 's'}."}'
-        : null;
+    final listenText = ttsEnabled ? 'Habari, $firstName. $dateStr.' : null;
     final patientId = user?.id;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isTwoCol = constraints.maxWidth >= _twoColBreakpoint;
-        final isQaWide = constraints.maxWidth >= _qaBreakpoint;
+        final isWide = constraints.maxWidth >= _threeColBreakpoint;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 60),
+          padding: EdgeInsets.fromLTRB(
+            isWide ? 32 : 20,
+            8,
+            isWide ? 32 : 20,
+            60,
+          ),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
+              constraints: const BoxConstraints(maxWidth: 1300),
               child: DefaultTextStyle(
                 style: GoogleFonts.ibmPlexSans(color: _C.ink, fontSize: 14),
                 child: needsOnboarding
@@ -129,7 +116,9 @@ class PatientHomeScreen extends StatelessWidget {
                         fullName: fullName,
                         medilinkId: medilinkId,
                         hasAppointments: appointments.appointments.isNotEmpty,
-                        hasMedications: todayMeds.isNotEmpty || activeRx.isNotEmpty,
+                        hasMedications:
+                            adherence.todayDoses.isNotEmpty ||
+                                prescriptions.getActivePrescriptions().isNotEmpty,
                         profileHasStarted: profileHasStarted,
                         lang: lang,
                         listenText: listenText,
@@ -137,17 +126,7 @@ class PatientHomeScreen extends StatelessWidget {
                       )
                     : _ReturningDashboard(
                         firstName: firstName,
-                        dateStr: dateStr,
                         allergies: allergies,
-                        fullName: fullName,
-                        medilinkId: medilinkId,
-                        upcomingCount: upcoming.length,
-                        assessments: patientAssessments,
-                        activeRx: activeRx,
-                        labOrders: labs.orders,
-                        consultations: consultations,
-                        isTwoCol: isTwoCol,
-                        isQaWide: isQaWide,
                         lang: lang,
                         listenText: listenText,
                         patientId: patientId,
@@ -155,18 +134,9 @@ class PatientHomeScreen extends StatelessWidget {
               ),
             ),
           ),
-        ); // SingleChildScrollView
+        );
       },
     );
-  }
-
-  List<AppointmentModel> _upcomingAppointments(List<AppointmentModel> all) {
-    final upcoming = all.where((a) =>
-        a.scheduledAt.isAfter(DateTime.now()) &&
-        a.status != AppointmentStatus.cancelled &&
-        a.status != AppointmentStatus.completed).toList();
-    upcoming.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-    return upcoming;
   }
 }
 
@@ -201,11 +171,11 @@ class _FirstRunDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lang = 'en'; // Returning dashboard defaults to English
+    const lang = 'en'; // Returning dashboard defaults to English
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HeroBanner(lang: lang),
+        const _HeroBanner(lang: lang),
         const SizedBox(height: 20),
         _Greeting(name: firstName, subtitle: dateStr, listenText: listenText, lang: lang),
         const SizedBox(height: 16),
@@ -226,115 +196,794 @@ class _FirstRunDashboard extends StatelessWidget {
           lang: lang,
         ),
         const SizedBox(height: 24),
-        _TrustBanner(lang: lang),
+        const _TrustBanner(lang: lang),
       ],
     );
   }
 }
 
 // ── Returning dashboard ────────────────────────────────────────────────
+//
+// Three-row architecture (spec §19):
+//   1. Hero  — photo + navy overlay + greeting + 3 contextual shortcuts
+//   2. Row 1 — Today's Summary · Upcoming Appointment · Active Medications
+//   3. Row 2 — Care Team · Quick Actions · Health Tip  (placeholder)
+//
+// Responsive: 3 columns ≥940px, 2 ≥600px, 1 below.
 
 class _ReturningDashboard extends StatelessWidget {
   const _ReturningDashboard({
     required this.firstName,
-    required this.dateStr,
     required this.allergies,
-    required this.fullName,
-    required this.medilinkId,
-    required this.upcomingCount,
-    required this.assessments,
-    required this.activeRx,
-    required this.labOrders,
-    required this.consultations,
-    required this.isTwoCol,
-    required this.isQaWide,
     required this.lang,
     this.listenText,
     this.patientId,
   });
 
   final String firstName;
-  final String dateStr;
   final List<String> allergies;
-  final String fullName;
-  final String medilinkId;
-  final int upcomingCount;
-  final List<TriageAssessment> assessments;
-  final List<dynamic> activeRx;
-  final List<dynamic> labOrders;
-  final List<dynamic> consultations;
-  final bool isTwoCol;
-  final bool isQaWide;
   final String lang;
   final String? listenText;
   final String? patientId;
 
   @override
   Widget build(BuildContext context) {
-    final apptLine = upcomingCount == 1
-        ? 'you have 1 upcoming appointment'
-        : 'you have $upcomingCount upcoming appointments';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth >= 940
+            ? 3
+            : constraints.maxWidth >= 600
+                ? 2
+                : 1;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Greeting(
-            name: firstName,
-            subtitle: '$dateStr — $apptLine',
-            listenText: listenText),
-        const SizedBox(height: 16),
-        if (allergies.isNotEmpty) ...[
-          _AllergyRow(allergies: allergies, lang: lang),
-          const SizedBox(height: 18),
-        ],
-        _MediLinkCard(fullName: fullName, medilinkId: medilinkId, lang: 'en'),
-        if (patientId != null) ...[
-          const SizedBox(height: 20),
-          _CaregiverAlertsCard(patientId: patientId!),
-        ],
-        const SizedBox(height: 28),
-        const _SecHead(title: 'Quick actions'),
-        const SizedBox(height: 12),
-        _QuickActionsGrid(isWide: isQaWide),
-        const SizedBox(height: 28),
-        _rowPair(
-          _VitalsTrendCard(assessments: assessments),
-          const _ActivePrescriptionsCard(),
-          flexLeft: 14,
-          flexRight: 10,
-          isTwoCol: isTwoCol,
-        ),
-        const SizedBox(height: 22),
-        _rowPair(
-          const _PendingLabsCard(),
-          const _NotesCard(),
-          flexLeft: 10,
-          flexRight: 10,
-          isTwoCol: isTwoCol,
-        ),
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ReturningHero(
+              firstName: firstName,
+              lang: lang,
+              listenText: listenText,
+            ),
+            if (allergies.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _AllergyRow(allergies: allergies, lang: lang),
+            ],
+            const SizedBox(height: 20),
+            _summaryRow(
+              [
+                const _TodaysSummaryCard(),
+                const _UpcomingAppointmentCard(),
+                const _ActiveMedicationsCard(),
+              ],
+              cols,
+              16,
+            ),
+            if (patientId != null) ...[
+              const SizedBox(height: 20),
+              _CaregiverAlertsCard(patientId: patientId!),
+            ],
+            const SizedBox(height: 28),
+            // Row 2 — Care Team / Quick Actions / Health Tip — coming next
+          ],
+        );
+      },
     );
   }
 
-  Widget _rowPair(Widget left, Widget right,
-      {required int flexLeft, required int flexRight, required bool isTwoCol}) {
-    if (!isTwoCol) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _summaryRow(List<Widget> cards, int cols, double gap) {
+    if (cols >= 3) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          left,
-          const SizedBox(height: 22),
-          right,
+          for (int i = 0; i < cards.length; i++) ...[
+            Expanded(child: cards[i]),
+            if (i < cards.length - 1) SizedBox(width: gap),
+          ],
         ],
       );
     }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    if (cols == 2) {
+      return Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: cards[0]),
+              SizedBox(width: gap),
+              Expanded(child: cards[1]),
+            ],
+          ),
+          SizedBox(height: gap),
+          cards[2],
+        ],
+      );
+    }
+    return Column(
       children: [
-        Expanded(flex: flexLeft, child: left),
-        const SizedBox(width: 16),
-        Expanded(flex: flexRight, child: right),
+        for (int i = 0; i < cards.length; i++) ...[
+          cards[i],
+          if (i < cards.length - 1) SizedBox(height: gap),
+        ],
       ],
+    );
+  }
+}
+
+// ── Returning hero ─────────────────────────────────────────────────────
+
+class _ReturningHero extends StatelessWidget {
+  const _ReturningHero({
+    required this.firstName,
+    required this.lang,
+    this.listenText,
+  });
+
+  final String firstName;
+  final String lang;
+  final String? listenText;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 640;
+
+        final shortcuts = [
+          _HeroShortcut(
+            icon: Icons.medication_outlined,
+            iconBg: _C.softGreen,
+            iconColor: _C.sage,
+            title: 'Stay on track',
+            subtitle: 'Keep up with your medications',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const MedicationTrackerScreen()),
+            ),
+          ),
+          _HeroShortcut(
+            icon: Icons.calendar_today_outlined,
+            iconBg: _C.warmCream,
+            iconColor: _C.canopy,
+            title: 'Upcoming care',
+            subtitle: 'View and manage your appointments',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+            ),
+          ),
+          _HeroShortcut(
+            icon: Icons.description_outlined,
+            iconBg: _C.softBlue,
+            iconColor: _C.lBlue,
+            title: 'Your records',
+            subtitle: 'Access your health information',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HealthSummary()),
+            ),
+          ),
+        ];
+
+        return Container(
+          width: double.infinity,
+          height: isWide ? 290 : 380,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            image: const DecorationImage(
+              image: AssetImage('assets/images/hero.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(
+              children: [
+                // Navy gradient overlay — fades left → right
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          _C.heroDeep,
+                          _C.canopy.withOpacity(0.85),
+                          _C.canopy.withOpacity(0.25),
+                          Colors.transparent,
+                        ],
+                        stops: const [0, 0.35, 0.65, 0.9],
+                      ),
+                    ),
+                  ),
+                ),
+                // Content
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isWide ? 36 : 24,
+                    isWide ? 32 : 24,
+                    isWide ? 36 : 24,
+                    isWide ? 28 : 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Greeting + welcome line
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    AppStrings.greeting(firstName, lang),
+                                    style: GoogleFonts.fraunces(
+                                      fontSize: isWide ? 34 : 26,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ),
+                                if (listenText != null)
+                                  IconButton(
+                                    onPressed: () => tts.speak(listenText!),
+                                    tooltip: 'Listen',
+                                    icon: const Icon(Icons.volume_up_rounded),
+                                    color: Colors.white70,
+                                    iconSize: 20,
+                                    style: IconButton.styleFrom(
+                                      backgroundColor:
+                                          Colors.white.withOpacity(0.15),
+                                      minimumSize: const Size(36, 36),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              lang == 'sw'
+                                  ? 'Karibu tena! Huu hapa ni muhtasari wa afya yako.'
+                                  : "Welcome back! Here's your health overview.",
+                              style: TextStyle(
+                                fontSize: isWide ? 15 : 14,
+                                color: Colors.white.withOpacity(0.85),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Shortcut tiles
+                      const SizedBox(height: 16),
+                      if (isWide)
+                        Row(
+                          children: [
+                            for (int i = 0; i < shortcuts.length; i++) ...[
+                              Expanded(child: shortcuts[i]),
+                              if (i < shortcuts.length - 1)
+                                const SizedBox(width: 12),
+                            ],
+                          ],
+                        )
+                      else
+                        Column(
+                          children: [
+                            for (int i = 0; i < shortcuts.length; i++) ...[
+                              shortcuts[i],
+                              if (i < shortcuts.length - 1)
+                                const SizedBox(height: 8),
+                            ],
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HeroShortcut extends StatelessWidget {
+  const _HeroShortcut({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.12),
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 18, color: iconColor),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.white.withOpacity(0.75))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Row 1: Today's Summary ─────────────────────────────────────────────
+
+class _TodaysSummaryCard extends StatelessWidget {
+  const _TodaysSummaryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final adherence = Provider.of<AdherenceProvider>(context);
+    final score = adherence.todayScore;
+    final remaining = adherence.todayRemaining;
+    final streak = adherence.streak;
+    final hasDoses = adherence.todayDoses.isNotEmpty;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SecHead(
+            title: "Today's Summary",
+            actionText: 'View all',
+            onAction: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const MedicationTrackerScreen()),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              SizedBox(
+                width: 88,
+                height: 88,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      height: 88,
+                      child: CircularProgressIndicator(
+                        value: hasDoses ? score / 100 : 0,
+                        strokeWidth: 8,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: _C.ringTrack,
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(_C.sage),
+                      ),
+                    ),
+                    Text(
+                      hasDoses ? '$score%' : '--',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: _C.ink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasDoses
+                          ? (remaining > 0
+                              ? '$remaining dose${remaining == 1 ? '' : 's'} remaining'
+                              : 'All doses taken')
+                          : 'No doses today',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _C.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasDoses
+                          ? (remaining > 0
+                              ? "Keep going — you're doing great."
+                              : "Perfect! All done for today.")
+                          : 'No medications scheduled today.',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: _C.slate,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (streak > 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _C.warmOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$streak day streak',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _C.warmOrange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Row 1: Upcoming Appointment ────────────────────────────────────────
+
+class _UpcomingAppointmentCard extends StatefulWidget {
+  const _UpcomingAppointmentCard();
+
+  @override
+  State<_UpcomingAppointmentCard> createState() =>
+      _UpcomingAppointmentCardState();
+}
+
+class _UpcomingAppointmentCardState extends State<_UpcomingAppointmentCard> {
+  String? _providerName;
+  String? _providerDept;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProvider());
+  }
+
+  Future<void> _loadProvider() async {
+    final appts =
+        Provider.of<AppointmentProvider>(context, listen: false).appointments;
+    final now = DateTime.now();
+    final upcoming = appts
+        .where((a) =>
+            a.scheduledAt.isAfter(now) &&
+            a.status != AppointmentStatus.cancelled &&
+            a.status != AppointmentStatus.completed)
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+    if (upcoming.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    try {
+      final prov = await Supabase.instance.client
+          .from('users')
+          .select('full_name, department')
+          .eq('id', upcoming.first.providerId)
+          .maybeSingle();
+      if (mounted) {
+        setState(() {
+          _providerName = prov?['full_name'] as String?;
+          _providerDept = prov?['department'] as String?;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appts = Provider.of<AppointmentProvider>(context).appointments;
+    final now = DateTime.now();
+    final upcoming = appts
+        .where((a) =>
+            a.scheduledAt.isAfter(now) &&
+            a.status != AppointmentStatus.cancelled &&
+            a.status != AppointmentStatus.completed)
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    final next = upcoming.isNotEmpty ? upcoming.first : null;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SecHead(
+            title: 'Upcoming Appointment',
+            actionText: 'View all',
+            onAction: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (next == null)
+            _empty('No upcoming appointments')
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date tile
+                Container(
+                  width: 56,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _C.warmCream,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        DateFormat('MMM')
+                            .format(next.scheduledAt)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _C.warmOrange,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${next.scheduledAt.day}',
+                        style: GoogleFonts.fraunces(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: _C.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat('EEEE, d MMMM yyyy')
+                            .format(next.scheduledAt),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: _C.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        DateFormat('h:mm a').format(next.scheduledAt),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: _C.slate,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _loading
+                            ? 'Loading provider…'
+                            : (_providerName ?? 'Provider'),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: _C.ink,
+                        ),
+                      ),
+                      if (_providerDept != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _providerDept!,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: _C.slate,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _C.softBlue,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          next.type == AppointmentType.inPerson
+                              ? 'In-Person'
+                              : 'Telehealth',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _C.lBlue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Row 1: Active Medications ──────────────────────────────────────────
+
+class _ActiveMedicationsCard extends StatelessWidget {
+  const _ActiveMedicationsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final prescriptions =
+        Provider.of<PrescriptionProvider>(context).getActivePrescriptions();
+    final todayDoses = Provider.of<AdherenceProvider>(context).todayDoses;
+
+    final meds = prescriptions.take(3).toList();
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SecHead(
+            title: 'Active Medications',
+            actionText: 'View all',
+            onAction: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const MedicationTrackerScreen()),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (meds.isEmpty)
+            _empty('No active medications')
+          else
+            for (int i = 0; i < meds.length; i++)
+              _medRow(meds[i], todayDoses, i),
+        ],
+      ),
+    );
+  }
+
+  Widget _medRow(
+      PrescriptionModel p, List<AdherenceLogModel> todayDoses, int index) {
+    final dosesForRx =
+        todayDoses.where((d) => d.prescriptionId == p.id).toList();
+    final remaining =
+        dosesForRx.where((d) => d.status == AdherenceStatus.pending).length;
+    final isTaken = dosesForRx.isNotEmpty && remaining == 0;
+    final hasDoses = dosesForRx.isNotEmpty;
+
+    // Alternate blue / green icon tiles
+    final iconBg = index % 2 == 0 ? _C.softBlue : _C.softGreen;
+    final iconColor = index % 2 == 0 ? _C.lBlue : _C.sage;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child:
+                Icon(Icons.medication_outlined, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(p.medicationName,
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: _C.ink)),
+                const SizedBox(height: 2),
+                Text(
+                  '${p.dosage} • ${p.frequency}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5, color: _C.slate),
+                ),
+              ],
+            ),
+          ),
+          if (hasDoses)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  isTaken ? 'Taken' : '$remaining dose${remaining == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isTaken ? _C.sage : _C.warmOrange,
+                  ),
+                ),
+                Text(
+                  isTaken ? 'today' : 'remaining',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isTaken ? _C.sage : _C.warmOrange,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -342,12 +991,11 @@ class _ReturningDashboard extends StatelessWidget {
 // ── Shared widgets ─────────────────────────────────────────────────────
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.subtitle, this.listenText, this.avatarImage, this.lang = 'en'});
+  const _Greeting({required this.name, required this.subtitle, this.listenText, this.lang = 'en'});
 
   final String name;
   final String subtitle;
   final String? listenText;
-  final ImageProvider? avatarImage;
   final String lang;
 
   @override
@@ -371,22 +1019,6 @@ class _Greeting extends StatelessWidget {
               Text(subtitle,
                   style: const TextStyle(fontSize: 14, color: _C.slate)),
             ],
-            ),
-          ),
-        if (avatarImage != null)
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(image: avatarImage!, fit: BoxFit.cover),
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x29152A45),
-                    blurRadius: 16,
-                    offset: Offset(0, 6)),
-              ],
             ),
           ),
         if (listenText != null)
@@ -537,7 +1169,7 @@ class _TrustBanner extends StatelessWidget {
                     ),
                     child: Text(
                       AppStrings.trustLearn(lang),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                         color: _C.canopy,
@@ -586,7 +1218,8 @@ class _SecHead extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            style: GoogleFonts.fraunces(
+                fontSize: 16, fontWeight: FontWeight.w700, color: _C.ink)),
         if (actionText != null)
           InkWell(
             onTap: onAction,
@@ -651,11 +1284,10 @@ class _AllergyRow extends StatelessWidget {
 /// MediLink ID card — the digital identity card shown at the top of the
 /// dashboard.
 class _MediLinkCard extends StatelessWidget {
-  const _MediLinkCard({required this.fullName, required this.medilinkId, this.photo, this.lang = 'en'});
+  const _MediLinkCard({required this.fullName, required this.medilinkId, this.lang = 'en'});
 
   final String fullName;
   final String medilinkId;
-  final ImageProvider? photo;
   final String lang;
 
   @override
@@ -727,13 +1359,7 @@ class _MediLinkCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (photo != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image(image: photo!, width: 56, height: 56, fit: BoxFit.cover),
-                    )
-                  else
-                    Container(
+                  Container(
                       width: 56,
                       height: 56,
                       alignment: Alignment.center,
@@ -777,134 +1403,6 @@ class _MediLinkCard extends StatelessWidget {
       ),
       child: Text(label,
           style: const TextStyle(fontSize: 11, color: Colors.white)),
-    );
-  }
-}
-
-class _QuickActionsGrid extends StatelessWidget {
-  const _QuickActionsGrid({required this.isWide});
-
-  final bool isWide;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: isWide ? 6 : 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: isWide ? 1.4 : 1.1,
-      children: [
-        _QaCard(
-          icon: Icons.medication_outlined,
-          label: 'Prescriptions',
-          iconColor: _C.canopy,
-          iconBg: _C.medBg,
-          onTap: () => _push(context, const PrescriptionsListScreen()),
-        ),
-        _QaCard(
-          icon: Icons.check_circle_outline,
-          label: 'Medications',
-          iconColor: _C.marigold2,
-          iconBg: _C.medMist,
-          onTap: () => _push(context, const MedicationTrackerScreen()),
-        ),
-        _QaCard(
-          icon: Icons.science_outlined,
-          label: 'Lab results',
-          iconColor: _C.marigold2,
-          iconBg: _C.medIce,
-          onTap: () => _push(context, const LabResultsScreen()),
-        ),
-        _QaCard(
-          icon: Icons.description_outlined,
-          label: 'Health summary',
-          iconColor: _C.lBlue,
-          iconBg: _C.medSky,
-          onTap: () => _push(context, const HealthSummary()),
-        ),
-        _QaCard(
-          icon: Icons.qr_code,
-          label: 'Share records',
-          iconColor: _C.canopy,
-          iconBg: _C.medBg,
-          onTap: () => _push(context, const ShareRecords()),
-        ),
-        _QaCard(
-          icon: Icons.receipt_long_outlined,
-          label: 'Expenses',
-          iconColor: _C.sage,
-          iconBg: _C.medGreen,
-          onTap: () => _push(context, const ExpensesScreen()),
-        ),
-      ],
-    );
-  }
-
-  static void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
-}
-
-class _QaCard extends StatelessWidget {
-  const _QaCard({
-    required this.icon,
-    required this.label,
-    required this.iconColor,
-    required this.iconBg,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color iconColor;
-  final Color iconBg;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: _C.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: _C.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 15, color: iconColor),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(label,
-                        maxLines: 1,
-                        style: const TextStyle(
-                            fontSize: 12.5, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -978,7 +1476,7 @@ class _OnboardingChecklist extends StatelessWidget {
                       fontSize: 21, fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Text(AppStrings.checklistSub(lang),
-                  style: TextStyle(fontSize: 14.5, color: _C.slate)),
+                  style: const TextStyle(fontSize: 14.5, color: _C.slate)),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -1268,373 +1766,6 @@ class _CaregiverAlertsCard extends StatelessWidget {
         );
       },
     );
-  }
-}
-
-// ── Returning dashboard cards ──────────────────────────────────────────
-
-class _VitalsTrendCard extends StatelessWidget {
-  const _VitalsTrendCard({required this.assessments});
-
-  final List<TriageAssessment> assessments;
-
-  @override
-  Widget build(BuildContext context) {
-    final sorted = [...assessments]
-      ..sort((a, b) => b.assessedAt.compareTo(a.assessedAt));
-    final latest = sorted.isNotEmpty ? sorted.first : null;
-    final bars = _vitalsBars();
-
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('📈 Vitals trend (last 30 days)',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 100,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < bars.length; i++)
-                  Expanded(
-                    child: Container(
-                      height: bars[i],
-                      margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                      decoration: BoxDecoration(
-                        color: i == bars.length - 1
-                            ? _C.canopy
-                            : _C.marigold2.withOpacity(0.5),
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(4)),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.only(top: 14),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: _C.line)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _readout(
-                    'BP',
-                    (latest?.systolicBP != null &&
-                            latest?.diastolicBP != null)
-                        ? '${latest!.systolicBP}/${latest.diastolicBP}'
-                        : '—'),
-                _readout(
-                    'HR',
-                    latest?.heartRate != null
-                        ? '${latest!.heartRate} bpm'
-                        : '—'),
-                _readout(
-                    'SpO2',
-                    latest?.oxygenSaturation != null
-                        ? '${latest!.oxygenSaturation!.toInt()}%'
-                        : '—'),
-                _readout(
-                    'Temp',
-                    latest?.temperature != null
-                        ? '${latest!.temperature!.toStringAsFixed(1)}°C'
-                        : '—'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _readout(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: _C.slate)),
-        const SizedBox(height: 2),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 15, fontWeight: FontWeight.w700, color: _C.ink)),
-      ],
-    );
-  }
-
-  List<double> _vitalsBars() {
-    final rates = assessments
-        .where((a) => a.heartRate != null)
-        .map((a) => a.heartRate!)
-        .take(10)
-        .toList();
-    if (rates.length < 2) {
-      return [55, 62, 48, 70, 90, 66, 58, 74, 86, 94]
-          .map((h) => h * 0.9)
-          .toList();
-    }
-    final min = rates.reduce((a, b) => a < b ? a : b).toDouble();
-    final max = rates.reduce((a, b) => a > b ? a : b).toDouble();
-    final span = (max - min) < 1 ? 1.0 : (max - min);
-    return rates
-        .map((r) => 20 + ((r - min) / span) * 70)
-        .map((h) => h.clamp(15.0, 95.0))
-        .toList();
-  }
-}
-
-class _ActivePrescriptionsCard extends StatelessWidget {
-  const _ActivePrescriptionsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final prescriptions = Provider.of<PrescriptionProvider>(context)
-        .getActivePrescriptions();
-
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SecHead(
-            title: '📄 Active prescriptions',
-            actionText: 'View all',
-            onAction: () => _push(context, const PrescriptionsListScreen()),
-          ),
-          const SizedBox(height: 2),
-          if (prescriptions.isEmpty)
-            _empty('No active prescriptions')
-          else
-            for (final p in prescriptions.take(4)) _rxRow(p),
-        ],
-      ),
-    );
-  }
-
-  Widget _rxRow(dynamic p) {
-    final name = p.medicationName as String;
-    final instr = (p.instructions as String?)?.isNotEmpty ?? false
-        ? p.instructions as String
-        : '${p.frequency}${(p.dosage as String).isNotEmpty ? ' · ${p.dosage}' : ''}';
-    final expiresAt = p.expiresAt as DateTime?;
-    final days = expiresAt != null
-        ? expiresAt.difference(DateTime.now()).inDays
-        : -1;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _C.mist,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(name,
-              style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: _C.canopy)),
-          const SizedBox(height: 4),
-          Text(instr,
-              style: const TextStyle(
-                  fontSize: 12.5,
-                  color: _C.ink,
-                  height: 1.4)),
-          const SizedBox(height: 6),
-          Text(
-            days > 0 ? '$days days remaining' : 'Active',
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: days > 0 ? _C.canopy : _C.sage,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
-}
-
-class _PendingLabsCard extends StatelessWidget {
-  const _PendingLabsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final orders = Provider.of<LabProvider>(context).orders;
-
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('🧪 Pending lab orders',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          if (orders.isEmpty)
-            _empty('No lab orders yet')
-          else
-            for (var i = 0; i < orders.take(5).length; i++)
-              _labRow(orders[i], isLast: i == orders.take(5).length - 1),
-        ],
-      ),
-    );
-  }
-
-  Widget _labRow(dynamic order, {required bool isLast}) {
-    final status = _labStatusLabel(order.status as dynamic);
-    final (bg, fg) = _labStatusColors(status);
-    final orderedAt = order.orderedAt as DateTime;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: isLast ? null : const Border(bottom: BorderSide(color: _C.line)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(order.testName as String,
-                    style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(
-                  'Ordered: ${DateFormat('MMM d, yyyy').format(orderedAt)}',
-                  style: const TextStyle(fontSize: 12, color: _C.slate),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(status,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _labStatusLabel(dynamic status) {
-    switch (status.toString()) {
-      case 'LabOrderStatus.processing':
-        return 'Processing';
-      case 'LabOrderStatus.completed':
-        return 'Completed';
-      case 'LabOrderStatus.cancelled':
-        return 'Cancelled';
-      default:
-        return 'Scheduled';
-    }
-  }
-
-  (Color, Color) _labStatusColors(String label) {
-    switch (label) {
-      case 'Processing':
-        return (_C.marigold2.withOpacity(0.12), _C.marigold2);
-      case 'Completed':
-        return (_C.mist, _C.slate);
-      default:
-        return (_C.mist, _C.slate);
-    }
-  }
-}
-
-class _NotesCard extends StatelessWidget {
-  const _NotesCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final consultations = Provider.of<PatientProvider>(context).consultations;
-
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SecHead(
-            title: '📄 Recent clinical notes',
-            actionText: 'View all',
-            onAction: () => _push(context, const HealthSummary()),
-          ),
-          const SizedBox(height: 6),
-          if (consultations.isEmpty)
-            _empty('No clinical notes yet')
-          else
-            for (final c in consultations.take(3)) _noteCard(c),
-        ],
-      ),
-    );
-  }
-
-  Widget _noteCard(dynamic c) {
-    final chief = c.chiefComplaint as String;
-    final timestamp = c.timestamp as DateTime;
-    final notes = c.notes as String?;
-    final symptoms = (c.symptoms as List?) ?? const [];
-    final snippet = (notes != null && notes.isNotEmpty)
-        ? notes
-        : symptoms.isNotEmpty
-            ? symptoms.join(', ')
-            : 'No additional details recorded.';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        border: Border.all(color: _C.line),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  chief.isNotEmpty ? 'Visit — $chief' : 'Consultation',
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 15, color: _C.slate),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            DateFormat('MMM d, yyyy').format(timestamp),
-            style: const TextStyle(
-                fontSize: 11.5, color: _C.slate, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            snippet,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12.5, color: _C.ink, height: 1.5),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 }
 
