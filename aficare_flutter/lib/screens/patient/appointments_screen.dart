@@ -86,6 +86,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
         final screenW = MediaQuery.sizeOf(context).width;
         final isDesktop = screenW > 700;
+        final contentMaxW = isDesktop ? 900.0 : 780.0;
 
         final displayList = _showAll
             ? (aptProvider.appointments
@@ -107,7 +108,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 780),
+                    constraints: BoxConstraints(maxWidth: contentMaxW),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -155,7 +156,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                             runSpacing: 14,
                             children: displayList
                                 .map((a) => SizedBox(
-                                      width: (780 - 14) / 2,
+                                      width: (contentMaxW - 14) / 2,
                                       child: buildCard(a),
                                     ))
                                 .toList(),
@@ -171,6 +172,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               pastCount: past.length,
                               past: past,
                               providerNames: _providerNames,
+                              isDesktop: isDesktop,
+                              contentMaxW: contentMaxW,
                               onCancel: _cancelAppointment,
                               onReschedule: _reschedule),
 
@@ -475,12 +478,16 @@ class _PastToggle extends StatefulWidget {
     required this.pastCount,
     required this.past,
     required this.providerNames,
+    required this.isDesktop,
+    required this.contentMaxW,
     required this.onCancel,
     required this.onReschedule,
   });
   final int pastCount;
   final List<AppointmentModel> past;
   final Map<String, String> providerNames;
+  final bool isDesktop;
+  final double contentMaxW;
   final void Function(AppointmentModel) onCancel;
   final void Function(AppointmentModel) onReschedule;
 
@@ -525,15 +532,29 @@ class _PastToggleState extends State<_PastToggle> {
           firstChild: const SizedBox.shrink(),
           secondChild: Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Column(
-              children: widget.past
-                  .map((a) => _AppointmentCard(
-                      appointment: a,
-                      greyed: true,
-                      providerName:
-                          widget.providerNames[a.providerId] ?? 'Provider'))
-                  .toList(),
-            ),
+            child: widget.isDesktop && widget.past.length > 1
+                ? Wrap(
+                    spacing: 14,
+                    runSpacing: 14,
+                    children: widget.past
+                        .map((a) => SizedBox(
+                              width: (widget.contentMaxW - 14) / 2,
+                              child: _AppointmentCard(
+                                  appointment: a,
+                                  greyed: true,
+                                  providerName: widget.providerNames[a.providerId] ?? 'Provider'),
+                            ))
+                        .toList(),
+                  )
+                : Column(
+                    children: widget.past
+                        .map((a) => _AppointmentCard(
+                            appointment: a,
+                            greyed: true,
+                            providerName:
+                                widget.providerNames[a.providerId] ?? 'Provider'))
+                        .toList(),
+                  ),
           ),
           crossFadeState: _open
               ? CrossFadeState.showSecond
@@ -764,8 +785,67 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
     }
   }
 
+  Widget _buildProviderDropdown() {
+    return _FieldRow(
+      icon: Icons.person_outline,
+      child: _loadingProviders
+          ? const SizedBox(
+              height: 20,
+              child: Center(
+                  child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))))
+          : _providers.isEmpty
+              ? const Text('No providers registered — booking unassigned',
+                  style: TextStyle(color: Color(0xFF3D5470)))
+              : DropdownButton<UserModel>(
+                  value: _selectedProvider,
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  hint: const Text('Choose provider',
+                      style: TextStyle(color: Color(0xFF3D5470))),
+                  items: _providers
+                      .map((p) => DropdownMenuItem(
+                          value: p,
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: const Color(0xFFE8EDF3),
+                                child: Text(
+                                  p.fullName[0].toUpperCase(),
+                                  style: const TextStyle(
+                                      color: Color(0xFF1D3557),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(p.fullName,
+                                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  Text(p.role.name,
+                                      style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: const Color(0xFF3D5470).withOpacity(0.8))),
+                                ],
+                              ),
+                            ],
+                          )))
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedProvider = v),
+                ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final isDesktop = screenW > 700;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -777,190 +857,210 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
                     : 'Book appointment'),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(28, 22, 28, 28),
+                padding: EdgeInsets.fromLTRB(isDesktop ? 40 : 28, 22, isDesktop ? 40 : 28, 28),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
+                  constraints: BoxConstraints(maxWidth: isDesktop ? 640 : 520),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Facility
-                      _FieldLabel('Facility'),
-                      _FieldRow(
-                        icon: Icons.local_hospital_outlined,
-                        child: _loadingFacilities
-                            ? const SizedBox(
-                                height: 20,
-                                child: Center(
-                                    child: SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child:
-                                            CircularProgressIndicator(
-                                                strokeWidth: 2))))
-                            : DropdownButton<FacilityModel>(
-                                value: _selectedFacility,
-                                isExpanded: true,
-                                underline: const SizedBox.shrink(),
-                                hint: const Text('Choose facility',
-                                    style: TextStyle(
-                                        color:
-                                            Color(0xFF3D5470))),
-                                items: _facilities
-                                    .map((f) =>
-                                        DropdownMenuItem(
-                                            value: f,
-                                            child: Text(f.name)))
-                                    .toList(),
-                                onChanged: (v) => setState(() =>
-                                    _selectedFacility = v),
-                              ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Provider
-                      _FieldLabel('Provider'),
-                      _FieldRow(
-                        icon: Icons.person_outline,
-                        child: _loadingProviders
-                            ? const SizedBox(
-                                height: 20,
-                                child: Center(
-                                    child: SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child:
-                                            CircularProgressIndicator(
-                                                strokeWidth: 2))))
-                            : _providers.isEmpty
-                                ? const Text(
-                                    'No providers registered — booking unassigned',
-                                    style: TextStyle(
-                                        color:
-                                            Color(0xFF3D5470)))
-                                : DropdownButton<UserModel>(
-                                    value: _selectedProvider,
-                                    isExpanded: true,
-                                    underline:
-                                        const SizedBox.shrink(),
-                                    hint: const Text(
-                                        'Choose provider',
-                                        style: TextStyle(
-                                            color: Color(
-                                                0xFF3D5470))),
-                                    items: _providers
-                                        .map((p) =>
-                                            DropdownMenuItem(
-                                                value: p,
-                                                child: Row(
-                                                  children: [
-                                                    CircleAvatar(
-                                                      radius: 16,
-                                                      backgroundColor:
-                                                          const Color(
-                                                              0xFFE8EDF3),
-                                                      child: Text(
-                                                        p.fullName[0]
-                                                            .toUpperCase(),
-                                                        style: const TextStyle(
-                                                            color: Color(
-                                                                0xFF1D3557),
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w700,
-                                                            fontSize:
-                                                                12),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(
-                                                        width: 10),
-                                                    Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                            p.fullName,
-                                                            style: const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600)),
-                                                        Text(
-                                                            p.role.name,
-                                                            style: TextStyle(
-                                                                fontSize:
-                                                                    12.5,
-                                                                color: const Color(
-                                                                        0xFF3D5470)
-                                                                    .withOpacity(
-                                                                        0.8))),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                )))
-                                        .toList(),
-                                    onChanged: (v) => setState(
-                                        () => _selectedProvider = v),
+                      // Facility + Provider row on desktop
+                      if (isDesktop)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _FieldLabel('Facility'),
+                                  _FieldRow(
+                                    icon: Icons.local_hospital_outlined,
+                                    child: _loadingFacilities
+                                        ? const SizedBox(
+                                            height: 20,
+                                            child: Center(
+                                                child: SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child: CircularProgressIndicator(strokeWidth: 2))))
+                                        : DropdownButton<FacilityModel>(
+                                            value: _selectedFacility,
+                                            isExpanded: true,
+                                            underline: const SizedBox.shrink(),
+                                            hint: const Text('Choose facility',
+                                                style: TextStyle(color: Color(0xFF3D5470))),
+                                            items: _facilities
+                                                .map((f) => DropdownMenuItem(value: f, child: Text(f.name)))
+                                                .toList(),
+                                            onChanged: (v) => setState(() => _selectedFacility = v),
+                                          ),
                                   ),
-                      ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _FieldLabel('Provider'),
+                                  _buildProviderDropdown(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        _FieldLabel('Facility'),
+                        _FieldRow(
+                          icon: Icons.local_hospital_outlined,
+                          child: _loadingFacilities
+                              ? const SizedBox(
+                                  height: 20,
+                                  child: Center(
+                                      child: SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2))))
+                              : DropdownButton<FacilityModel>(
+                                  value: _selectedFacility,
+                                  isExpanded: true,
+                                  underline: const SizedBox.shrink(),
+                                  hint: const Text('Choose facility',
+                                      style: TextStyle(color: Color(0xFF3D5470))),
+                                  items: _facilities
+                                      .map((f) => DropdownMenuItem(value: f, child: Text(f.name)))
+                                      .toList(),
+                                  onChanged: (v) => setState(() => _selectedFacility = v),
+                                ),
+                        ),
+                        const SizedBox(height: 18),
+                        _FieldLabel('Provider'),
+                        _buildProviderDropdown(),
+                      ],
                       const SizedBox(height: 18),
 
-                      // Date
-                      _FieldLabel('Date'),
-                      _FieldRow(
-                        icon: Icons.calendar_today_outlined,
-                        child: GestureDetector(
-                          onTap: () => _pickDate(),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _selectedDate != null
-                                      ? DateFormat('d MMMM yyyy')
-                                          .format(_selectedDate!)
-                                      : 'Choose date',
-                                  style: TextStyle(
-                                    color: _selectedDate != null
-                                        ? const Color(0xFF152A45)
-                                        : const Color(0xFF3D5470),
+                      // Date + Time row on desktop
+                      if (isDesktop)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _FieldLabel('Date'),
+                                  _FieldRow(
+                                    icon: Icons.calendar_today_outlined,
+                                    child: GestureDetector(
+                                      onTap: () => _pickDate(),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              _selectedDate != null
+                                                  ? DateFormat('d MMMM yyyy').format(_selectedDate!)
+                                                  : 'Choose date',
+                                              style: TextStyle(
+                                                color: _selectedDate != null
+                                                    ? const Color(0xFF152A45)
+                                                    : const Color(0xFF3D5470),
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(Icons.chevron_right, size: 16, color: Color(0xFF3D5470)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _FieldLabel('Time'),
+                                  _FieldRow(
+                                    icon: Icons.access_time,
+                                    child: GestureDetector(
+                                      onTap: () => _pickTime(),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              _selectedTime != null
+                                                  ? _selectedTime!.format(context)
+                                                  : 'Choose time',
+                                              style: TextStyle(
+                                                color: _selectedTime != null
+                                                    ? const Color(0xFF152A45)
+                                                    : const Color(0xFF3D5470),
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(Icons.chevron_right, size: 16, color: Color(0xFF3D5470)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        _FieldLabel('Date'),
+                        _FieldRow(
+                          icon: Icons.calendar_today_outlined,
+                          child: GestureDetector(
+                            onTap: () => _pickDate(),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _selectedDate != null
+                                        ? DateFormat('d MMMM yyyy').format(_selectedDate!)
+                                        : 'Choose date',
+                                    style: TextStyle(
+                                      color: _selectedDate != null
+                                          ? const Color(0xFF152A45)
+                                          : const Color(0xFF3D5470),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const Icon(Icons.chevron_right,
-                                  size: 16,
-                                  color: Color(0xFF3D5470)),
-                            ],
+                                const Icon(Icons.chevron_right, size: 16, color: Color(0xFF3D5470)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Time
-                      _FieldLabel('Time'),
-                      _FieldRow(
-                        icon: Icons.access_time,
-                        child: GestureDetector(
-                          onTap: () => _pickTime(),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _selectedTime != null
-                                      ? _selectedTime!.format(context)
-                                      : 'Choose time',
-                                  style: TextStyle(
-                                    color: _selectedTime != null
-                                        ? const Color(0xFF152A45)
-                                        : const Color(0xFF3D5470),
+                        const SizedBox(height: 18),
+                        _FieldLabel('Time'),
+                        _FieldRow(
+                          icon: Icons.access_time,
+                          child: GestureDetector(
+                            onTap: () => _pickTime(),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _selectedTime != null
+                                        ? _selectedTime!.format(context)
+                                        : 'Choose time',
+                                    style: TextStyle(
+                                      color: _selectedTime != null
+                                          ? const Color(0xFF152A45)
+                                          : const Color(0xFF3D5470),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const Icon(Icons.chevron_right,
-                                  size: 16,
-                                  color: Color(0xFF3D5470)),
-                            ],
+                                const Icon(Icons.chevron_right, size: 16, color: Color(0xFF3D5470)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 18),
 
                       // Type
@@ -1244,7 +1344,7 @@ class _ConfirmationScreen extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
               children: [
                 const SizedBox(height: 50),
