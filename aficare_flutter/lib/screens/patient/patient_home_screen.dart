@@ -59,8 +59,6 @@ class _C {
 class PatientHomeScreen extends StatelessWidget {
   const PatientHomeScreen({super.key});
 
-  static const double _threeColBreakpoint = 940;
-
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -97,49 +95,39 @@ class PatientHomeScreen extends StatelessWidget {
     final listenText = ttsEnabled ? 'Habari, $firstName. $dateStr.' : null;
     final patientId = user?.id;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= _threeColBreakpoint;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            isWide ? 32 : 20,
-            8,
-            isWide ? 32 : 20,
-            60,
+    // AppShell already provides horizontal + vertical padding.
+    // Only add bottom padding so content doesn't clip behind bottom nav.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1300),
+          child: DefaultTextStyle(
+            style: GoogleFonts.ibmPlexSans(color: _C.ink, fontSize: 14),
+            child: needsOnboarding
+                ? _FirstRunDashboard(
+                    firstName: firstName,
+                    allergies: allergies,
+                    fullName: fullName,
+                    medilinkId: medilinkId,
+                    hasAppointments: appointments.appointments.isNotEmpty,
+                    hasMedications: adherence.todayDoses.isNotEmpty ||
+                        prescriptions.getActivePrescriptions().isNotEmpty,
+                    profileHasStarted: profileHasStarted,
+                    lang: lang,
+                    listenText: listenText,
+                    patientId: patientId,
+                  )
+                : _ReturningDashboard(
+                    firstName: firstName,
+                    allergies: allergies,
+                    lang: lang,
+                    listenText: listenText,
+                    patientId: patientId,
+                  ),
           ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1300),
-              child: DefaultTextStyle(
-                style: GoogleFonts.ibmPlexSans(color: _C.ink, fontSize: 14),
-                child: needsOnboarding
-                    ? _FirstRunDashboard(
-                        firstName: firstName,
-                        allergies: allergies,
-                        fullName: fullName,
-                        medilinkId: medilinkId,
-                        hasAppointments: appointments.appointments.isNotEmpty,
-                        hasMedications:
-                            adherence.todayDoses.isNotEmpty ||
-                                prescriptions.getActivePrescriptions().isNotEmpty,
-                        profileHasStarted: profileHasStarted,
-                        lang: lang,
-                        listenText: listenText,
-                        patientId: patientId,
-                      )
-                    : _ReturningDashboard(
-                        firstName: firstName,
-                        allergies: allergies,
-                        lang: lang,
-                        listenText: listenText,
-                        patientId: patientId,
-                      ),
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -312,7 +300,7 @@ class _ReturningDashboard extends StatelessWidget {
                 const _ActiveMedicationsCard(),
               ],
               cols,
-              16,
+              20,
             ),
             if (patientId != null) ...[
               const SizedBox(height: 20),
@@ -329,7 +317,7 @@ class _ReturningDashboard extends StatelessWidget {
                 const _HealthTipCard(),
               ],
               cols,
-              16,
+              20,
             ),
           ],
         );
@@ -434,7 +422,7 @@ class _ReturningHero extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          height: isWide ? 290 : 380,
+          height: isWide ? 330 : 380,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             image: const DecorationImage(
@@ -487,7 +475,7 @@ class _ReturningHero extends StatelessWidget {
                                   child: Text(
                                     AppStrings.greeting(firstName, lang),
                                     style: GoogleFonts.fraunces(
-                                      fontSize: isWide ? 34 : 26,
+                                      fontSize: isWide ? 38 : 26,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.white,
                                       height: 1.2,
@@ -515,7 +503,7 @@ class _ReturningHero extends StatelessWidget {
                                   ? 'Karibu tena! Huu hapa ni muhtasari wa afya yako.'
                                   : "Welcome back! Here's your health overview.",
                               style: TextStyle(
-                                fontSize: isWide ? 15 : 14,
+                                fontSize: isWide ? 16.5 : 14,
                                 color: Colors.white.withOpacity(0.85),
                                 height: 1.4,
                               ),
@@ -576,34 +564,35 @@ class _HeroShortcut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 940;
     return Material(
       color: Colors.white.withOpacity(0.12),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(isDesktop ? 14 : 12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(isDesktop ? 16 : 12),
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: isDesktop ? 44 : 36,
+                height: isDesktop ? 44 : 36,
                 decoration: BoxDecoration(
                   color: iconBg,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(isDesktop ? 11 : 9),
                 ),
-                child: Icon(icon, size: 18, color: iconColor),
+                child: Icon(icon, size: isDesktop ? 22 : 18, color: iconColor),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: isDesktop ? 14 : 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(title,
-                        style: const TextStyle(
-                            fontSize: 13,
+                        style: TextStyle(
+                            fontSize: isDesktop ? 15 : 13,
                             fontWeight: FontWeight.w700,
                             color: Colors.white)),
                     const SizedBox(height: 2),
@@ -611,7 +600,7 @@ class _HeroShortcut extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: isDesktop ? 13 : 11.5,
                             color: Colors.white.withOpacity(0.75))),
                   ],
                 ),
@@ -707,7 +696,7 @@ class _TodaysSummaryCard extends StatelessWidget {
                               : "Perfect! All done for today.")
                           : 'No medications scheduled today.',
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: _C.slate,
                         height: 1.4,
                       ),
@@ -880,7 +869,7 @@ class _UpcomingAppointmentCardState extends State<_UpcomingAppointmentCard> {
                         DateFormat('EEEE, d MMMM yyyy')
                             .format(next.scheduledAt),
                         style: const TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _C.ink,
                         ),
@@ -889,7 +878,7 @@ class _UpcomingAppointmentCardState extends State<_UpcomingAppointmentCard> {
                       Text(
                         DateFormat('h:mm a').format(next.scheduledAt),
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: _C.slate,
                         ),
                       ),
@@ -899,7 +888,7 @@ class _UpcomingAppointmentCardState extends State<_UpcomingAppointmentCard> {
                             ? 'Loading provider…'
                             : (_providerName ?? 'Provider'),
                         style: const TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: _C.ink,
                         ),
@@ -909,7 +898,7 @@ class _UpcomingAppointmentCardState extends State<_UpcomingAppointmentCard> {
                         Text(
                           _providerDept!,
                           style: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 14,
                             color: _C.slate,
                           ),
                         ),
@@ -1015,7 +1004,7 @@ class _ActiveMedicationsCard extends StatelessWidget {
               children: [
                 Text(p.medicationName,
                     style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: _C.ink)),
                 const SizedBox(height: 2),
@@ -1023,7 +1012,7 @@ class _ActiveMedicationsCard extends StatelessWidget {
                   '${p.dosage} • ${p.frequency}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5, color: _C.slate),
+                  style: const TextStyle(fontSize: 14, color: _C.slate),
                 ),
               ],
             ),
@@ -1185,7 +1174,7 @@ class _CareTeamCardState extends State<_CareTeamCard> {
                 '${_capitalize(specialty)}${m.providerDepartment != null ? '' : ''}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5, color: _C.slate),
+                style: const TextStyle(fontSize: 14, color: _C.slate),
               ),
             ],
           ),
@@ -1404,7 +1393,7 @@ class _QuickActionRowState extends State<_QuickActionRow> {
                   Expanded(
                     child: Text(widget.data.label,
                         style: const TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w600)),
+                            fontSize: 14.5, fontWeight: FontWeight.w600)),
                   ),
                   Icon(Icons.chevron_right,
                       size: 18,
@@ -1534,7 +1523,7 @@ class _HealthTipCardState extends State<_HealthTipCard> {
                     Expanded(
                       child: Text(tip.body,
                           style: const TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 14,
                               color: _C.slate,
                               height: 1.5)),
                     ),
@@ -1676,12 +1665,13 @@ class _SecHead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 940;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title,
             style: GoogleFonts.fraunces(
-                fontSize: 16, fontWeight: FontWeight.w700, color: _C.ink)),
+                fontSize: isDesktop ? 18 : 16, fontWeight: FontWeight.w700, color: _C.ink)),
         if (actionText != null)
           InkWell(
             onTap: onAction,
@@ -2240,9 +2230,10 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 940;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isDesktop ? 26 : 20),
       decoration: BoxDecoration(
         color: _C.white,
         borderRadius: BorderRadius.circular(16),
