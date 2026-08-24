@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/dependent_profile_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
-import '../../utils/theme.dart';
 
 class ManageDependentsScreen extends StatefulWidget {
   const ManageDependentsScreen({super.key});
@@ -32,15 +32,37 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Dependents'),
-        backgroundColor: AfiCareTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        elevation: 0,
+      backgroundColor: const Color(0xFFF5F8FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border:
+                Border(bottom: BorderSide(color: Color(0xFFDCE3EA), width: 1)),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Manage Dependents',
+                style: GoogleFonts.fraunces(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showFormSheet(),
-        backgroundColor: AfiCareTheme.primaryGreen,
+        backgroundColor: const Color(0xFF1D3557),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add),
         label: const Text('Add Dependent'),
@@ -53,11 +75,16 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
           if (dep.dependents.isEmpty) {
             return _buildEmptyState();
           }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-            itemCount: dep.dependents.length,
-            itemBuilder: (ctx, i) =>
-                _buildDependentCard(dep, dep.dependents[i]),
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: dep.dependents.length,
+                itemBuilder: (ctx, i) =>
+                    _buildDependentCard(dep, dep.dependents[i]),
+              ),
+            ),
           );
         },
       ),
@@ -71,21 +98,30 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.child_care, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEAF3FC),
+                shape: BoxShape.circle,
+              ),
+              child:
+                  const Icon(Icons.child_care, size: 36, color: Color(0xFF1D3557)),
+            ),
+            const SizedBox(height: 20),
+            const Text(
               'No dependents added yet',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF152A45),
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Add a child or family member to manage their health records under your account.',
+            const Text(
+              'Add a child or family member to manage\ntheir health records under your account.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              style: TextStyle(color: Color(0xFF55708A), fontSize: 14),
             ),
           ],
         ),
@@ -94,94 +130,95 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
   }
 
   Widget _buildDependentCard(DependentProvider dep, DependentProfileModel d) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.15),
-                  child: Text(
-                    d.fullName.isNotEmpty ? d.fullName[0].toUpperCase() : '?',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AfiCareTheme.primaryGreen),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDCE3EA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: const Color(0xFFE8EDF3),
+                child: Text(
+                  d.fullName.isNotEmpty ? d.fullName[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1D3557),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        d.fullName,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Row(
-                        children: [
-                          _buildBadge(
-                              _capitalize(d.relationship), Colors.blue),
-                          if (d.gender != null) ...[
-                            const SizedBox(width: 6),
-                            _buildBadge(
-                                _capitalize(d.gender!), Colors.purple),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (v) {
-                    if (v == 'edit') _showFormSheet(existing: d);
-                    if (v == 'delete') _confirmDelete(dep, d);
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(children: [
-                        Icon(Icons.edit, size: 18),
-                        SizedBox(width: 8),
-                        Text('Edit'),
-                      ]),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      d.fullName,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(children: [
-                        Icon(Icons.delete, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Delete',
-                            style: TextStyle(color: Colors.red)),
-                      ]),
+                    Row(
+                      children: [
+                        _buildBadge(_capitalize(d.relationship),
+                            const Color(0xFF457B9D)),
+                        if (d.gender != null) ...[
+                          const SizedBox(width: 6),
+                          _buildBadge(
+                              _capitalize(d.gender!), const Color(0xFF64B5F6)),
+                        ],
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              children: [
-                if (d.dateOfBirth != null)
-                  _infoChip(
-                      Icons.cake,
-                      '${d.dateOfBirth!.day}/${d.dateOfBirth!.month}/${d.dateOfBirth!.year}'),
-                if (d.bloodType != null)
-                  _infoChip(Icons.bloodtype, d.bloodType!),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (v) {
+                  if (v == 'edit') _showFormSheet(existing: d);
+                  if (v == 'delete') _confirmDelete(dep, d);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(children: [
+                      Icon(Icons.edit, size: 18),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ]),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: Colors.red)),
+                    ]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              if (d.dateOfBirth != null)
                 _infoChip(
-                    Icons.badge_outlined, d.medilinkId ?? 'No ID'),
-              ],
-            ),
-          ],
-        ),
+                    Icons.cake,
+                    '${d.dateOfBirth!.day}/${d.dateOfBirth!.month}/${d.dateOfBirth!.year}'),
+              if (d.bloodType != null) _infoChip(Icons.bloodtype, d.bloodType!),
+              _infoChip(Icons.badge_outlined, d.medilinkId ?? 'No ID'),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -225,6 +262,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Dependent?'),
         content: Text(
             'Remove ${d.fullName} and all associated data? This cannot be undone.'),
@@ -246,7 +284,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
           content: Text(ok
               ? '${d.fullName} removed'
               : 'Could not delete — try again'),
-          backgroundColor: ok ? Colors.green : Colors.red,
+          backgroundColor: ok ? const Color(0xFF1D3557) : Colors.red,
         ));
       }
     }
@@ -361,10 +399,32 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
                 ? '$name added successfully'
                 : 'Profile updated'
             : 'Could not save — try again'),
-        backgroundColor: ok ? Colors.green : Colors.red,
+        backgroundColor: ok ? const Color(0xFF1D3557) : Colors.red,
       ));
       if (ok) widget.onSaved();
     }
+  }
+
+  InputDecoration _fieldDecoration({
+    String? hintText,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      suffixIcon: suffixIcon,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF1D3557), width: 1.5),
+      ),
+    );
   }
 
   @override
@@ -391,8 +451,11 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
               children: [
                 Text(
                   isEdit ? 'Edit Dependent' : 'Add Dependent',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.fraunces(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF152A45),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -410,10 +473,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'e.g. Amani Waweru',
-              ),
+              decoration: _fieldDecoration(hintText: 'e.g. Amani Waweru'),
             ),
             const SizedBox(height: 16),
 
@@ -423,10 +483,8 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _relationship,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Select relationship',
-              ),
+              decoration:
+                  _fieldDecoration(hintText: 'Select relationship'),
               items: _relationships
                   .map((r) => DropdownMenuItem(
                         value: r,
@@ -452,9 +510,8 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
                 if (picked != null) setState(() => _dob = picked);
               },
               child: InputDecorator(
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_today),
+                decoration: _fieldDecoration(
+                  suffixIcon: const Icon(Icons.calendar_today),
                 ),
                 child: Text(
                   _dob != null
@@ -474,10 +531,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _gender,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Select gender',
-              ),
+              decoration: _fieldDecoration(hintText: 'Select gender'),
               items: _genders
                   .map((g) => DropdownMenuItem(
                         value: g,
@@ -494,10 +548,8 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _bloodType,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Select blood type',
-              ),
+              decoration:
+                  _fieldDecoration(hintText: 'Select blood type'),
               items: _bloodTypes
                   .map((t) =>
                       DropdownMenuItem(value: t, child: Text(t)))
@@ -506,27 +558,28 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             ),
             const SizedBox(height: 24),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _submitting ? null : _submit,
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Icon(isEdit ? Icons.save : Icons.person_add),
-                label: Text(_submitting
-                    ? 'Saving…'
-                    : isEdit
-                        ? 'Save Changes'
-                        : 'Add Dependent'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AfiCareTheme.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+            ElevatedButton.icon(
+              onPressed: _submitting ? null : _submit,
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Icon(isEdit ? Icons.save : Icons.person_add),
+              label: Text(_submitting
+                  ? 'Saving…'
+                  : isEdit
+                      ? 'Save Changes'
+                      : 'Add Dependent'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1D3557),
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999)),
+                textStyle: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700),
               ),
             ),
           ],
