@@ -349,33 +349,63 @@ class _TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Material(
-              color: chipBg,
-              borderRadius: BorderRadius.circular(999),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: onSearch,
-                child: Container(
-                  height: 38,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.search, size: 17, color: mutedColor),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          searchHint,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 13.5, color: mutedColor),
+          if (isWide)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Material(
+                color: chipBg,
+                borderRadius: BorderRadius.circular(999),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onSearch,
+                  child: Container(
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search, size: 17, color: mutedColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            searchHint,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13.5, color: mutedColor),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Material(
+                color: chipBg,
+                borderRadius: BorderRadius.circular(999),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onSearch,
+                  child: Container(
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search, size: 17, color: mutedColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            searchHint,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13.5, color: mutedColor),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           const SizedBox(width: 16),
           ...trailingActions,
           Stack(
