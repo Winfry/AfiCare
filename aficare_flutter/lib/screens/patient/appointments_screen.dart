@@ -16,6 +16,7 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/care_team_provider.dart';
 import '../../providers/dependent_provider.dart';
+import '../../widgets/provider_avatar.dart';
 import 'appointment_detail_screen.dart';
 import 'share_records.dart';
 import 'expenses_screen.dart';
@@ -423,9 +424,9 @@ class _HeroBanner extends StatelessWidget {
           stops: [0, 0.5, 1],
         ),
         image: DecorationImage(
-          image: AssetImage('assets/images/hero.png'),
+          image: AssetImage('assets/images/heeero.jpg'),
           fit: BoxFit.cover,
-          opacity: 0.15,
+          opacity: 0.2,
         ),
       ),
       child: ClipRect(
@@ -1354,7 +1355,6 @@ class _CareTeamSidebarCard extends StatelessWidget {
       spacing: 12,
       runSpacing: 12,
       children: members.take(4).map((m) {
-        final initials = _initials(m.providerName);
         final specialty = m.specialtyLabel ??
             m.providerDepartment ??
             m.providerRole;
@@ -1362,17 +1362,14 @@ class _CareTeamSidebarCard extends StatelessWidget {
           width: 110,
           child: Column(
             children: [
-              CircleAvatar(
+              ProviderAvatar(
+                name: m.providerName,
+                role: m.providerRole == 'nurse'
+                    ? UserRole.nurse
+                    : UserRole.doctor,
+                gender: m.providerGender,
+                photoUrl: m.providerPhotoUrl,
                 radius: 24,
-                backgroundColor: _navyBg,
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _navy,
-                  ),
-                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -1402,15 +1399,6 @@ class _CareTeamSidebarCard extends StatelessWidget {
         );
       }).toList(),
     );
-  }
-
-  String _initials(String name) {
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name[0].toUpperCase();
   }
 
   String _capitalize(String s) =>

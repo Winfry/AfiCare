@@ -41,7 +41,7 @@ class CareTeamProvider extends ChangeNotifier {
           teamRows.map((r) => r['provider_id'] as String).toList();
       final usersResponse = await Supabase.instance.client
           .from('users')
-          .select('id, full_name, role, department')
+          .select('id, full_name, role, department, gender')
           .inFilter('id', providerIds);
 
       final userMap = <String, Map<String, dynamic>>{};
@@ -57,6 +57,7 @@ class CareTeamProvider extends ChangeNotifier {
           'provider_name': u['full_name'] ?? 'Unknown Provider',
           'provider_role': u['role'] ?? 'doctor',
           'provider_department': u['department'],
+          'provider_gender': u['gender'],
         });
       }).toList();
     } catch (e) {

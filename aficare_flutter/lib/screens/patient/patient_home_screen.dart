@@ -20,8 +20,10 @@ import '../../models/disability_profile.dart';
 import '../../models/prescription_model.dart';
 import '../../models/adherence_model.dart';
 import '../../models/care_team_member_model.dart';
+import '../../models/user_model.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../services/tts_service.dart';
+import '../../widgets/provider_avatar.dart';
 import 'health_summary.dart';
 import 'share_records.dart';
 import 'expenses_screen.dart';
@@ -1116,7 +1118,6 @@ class _CareTeamCardState extends State<_CareTeamCard> {
   }
 
   Widget _memberRow(CareTeamMemberModel m) {
-    final initials = _initials(m.providerName);
     final isCustom = m.providerId == widget.patientId;
     final displayName = isCustom
         ? (m.specialtyLabel ?? m.providerName)
@@ -1125,17 +1126,14 @@ class _CareTeamCardState extends State<_CareTeamCard> {
 
     return Row(
       children: [
-        CircleAvatar(
+        ProviderAvatar(
+          name: m.providerName,
+          role: m.providerRole == 'nurse'
+              ? UserRole.nurse
+              : UserRole.doctor,
+          gender: m.providerGender,
+          photoUrl: m.providerPhotoUrl,
           radius: 22,
-          backgroundColor: _C.softBlue,
-          child: Text(
-            initials,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: _C.canopy,
-            ),
-          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1248,15 +1246,6 @@ class _CareTeamCardState extends State<_CareTeamCard> {
         providerName: '',
         providerRole: 'doctor',
       );
-
-  String _initials(String name) {
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name[0].toUpperCase();
-  }
 
   String _capitalize(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
