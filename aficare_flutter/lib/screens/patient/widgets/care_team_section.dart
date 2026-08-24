@@ -6,10 +6,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../models/care_team_member_model.dart';
 import '../../../models/user_model.dart';
 import '../../../providers/care_team_provider.dart';
+import '../../../widgets/provider_avatar.dart';
 
 /// Care team section shown at the top of the Appointments screen.
-/// Shows confirmed team members as cards with a quick-Book button,
-/// plus auto-suggested providers from appointment history.
+/// A horizontal scrollable row of fixed-width cards sitting directly
+/// on the page background, with an "Add member" card at the end of
+/// the row plus auto-suggested providers from appointment history.
 class CareTeamSection extends StatefulWidget {
   final String patientId;
   final void Function(UserModel provider) onBookFromCareTeam;
@@ -30,6 +32,7 @@ class _CareTeamSectionState extends State<CareTeamSection> {
   static const _line = Color(0xFFDCE3EA);
   static const _ink = Color(0xFF152A45);
   static const _navyBg = Color(0xFFE8EDF3);
+  static const _greyLight = Color(0xFFF1F3F5);
 
   @override
   void initState() {
@@ -56,272 +59,222 @@ class _CareTeamSectionState extends State<CareTeamSection> {
   Widget build(BuildContext context) {
     return Consumer<CareTeamProvider>(
       builder: (ctx, ct, _) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.group, color: _navy, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'My Care Team',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _showAddProviderSheet(ct),
-                    icon: const Icon(Icons.add, size: 16, color: _navy),
-                    label:
-                        const Text('Add', style: TextStyle(color: _navy)),
-                    style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4)),
-                  ),
-                ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            const Padding(
+              padding: EdgeInsets.only(bottom: 14),
+              child: Text('My care team',
+                  style: TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w700,
+                      color: _ink)),
+            ),
+            // Loading
+            if (ct.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                    child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2))),
+              )
+            // Empty state — just the add card
+            else if (ct.members.isEmpty && ct.suggestions.isEmpty)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildAddCard(),
+                  ],
+                ),
+              )
+            // Has members — horizontal scroll row
+            else ...[
+              SizedBox(
+                height: 220,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  itemCount: ct.members.length + 1, // +1 for add card
+                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  itemBuilder: (ctx, i) {
+                    if (i == ct.members.length) return _buildAddCard();
+                    return _buildCareCard(ct, ct.members[i]);
+                  },
+                ),
               ),
-
-              if (ct.isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
-                      child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child:
-                              CircularProgressIndicator(strokeWidth: 2))),
-                )
-              else if (ct.members.isEmpty && ct.suggestions.isEmpty)
-                _buildEmptyState()
-              else ...[
-                if (ct.members.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Builder(
-                    builder: (context) {
-                      final screenW = MediaQuery.sizeOf(context).width;
-                      if (screenW > 500) {
-                        return Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: ct.members
-                              .map((m) => SizedBox(
-                                    width: (screenW - 80) / 2 > 300
-                                        ? (screenW - 80) / 2
-                                        : 300,
-                                    child: _buildMemberCard(ct, m),
-                                  ))
-                              .toList(),
-                        );
-                      }
-                      return SizedBox(
-                        height: 150,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: ct.members.length,
-                          itemBuilder: (ctx, i) =>
-                              _buildMemberCard(ct, ct.members[i]),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-                if (ct.suggestions.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Suggested from your history',
+              // Suggestions row below
+              if (ct.suggestions.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text('Suggested from your history',
                     style: TextStyle(
                         fontSize: 13,
                         color: _slate,
-                        fontWeight: FontWeight.w500),
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 68,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: ct.suggestions.length,
+                    itemBuilder: (ctx, i) =>
+                        _buildSuggestionCard(ct, ct.suggestions[i]),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 68,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: ct.suggestions.length,
-                      itemBuilder: (ctx, i) =>
-                          _buildSuggestionCard(ct, ct.suggestions[i]),
-                    ),
-                  ),
-                ],
+                ),
               ],
             ],
-          ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFFEAF3FC),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.group_add_outlined,
-                  size: 26, color: _navy),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'No care team members yet',
-              style: TextStyle(
-                  color: _ink, fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Add your specialists for quick booking',
-              style: TextStyle(color: _slate, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMemberCard(
-      CareTeamProvider ct, CareTeamMemberModel m) {
+  Widget _buildCareCard(CareTeamProvider ct, CareTeamMemberModel m) {
     final isCustom = m.providerId == widget.patientId;
     final notes = _parseNotes(m.notes);
     final phone = notes['phone'] as String?;
     final hospital = notes['hospital'] as String?;
+
     return Container(
-      margin: const EdgeInsets.only(right: 10, bottom: 10),
+      width: 148,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _line),
       ),
-      child: SizedBox(
-        width: 165,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: _navyBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      isCustom
-                          ? Icons.person_add_alt
-                          : Icons.medical_services,
-                      size: 14,
-                      color: _navy,
-                    ),
-                  ),
-                  const Spacer(),
-                  InkWell(
-                    onTap: () =>
-                        _showEditDialog(ct, m, phone, hospital),
-                    borderRadius: BorderRadius.circular(10),
-                    child: const Padding(
-                      padding: EdgeInsets.all(2),
-                      child: Icon(Icons.edit,
-                          size: 12, color: Color(0xFF55708A)),
-                    ),
-                  ),
-                  if (m.isPrimary)
-                    const Icon(Icons.star,
-                        size: 12, color: Color(0xFFF3A83C)),
-                  InkWell(
-                    onTap: () => _confirmRemove(ct, m),
-                    borderRadius: BorderRadius.circular(10),
-                    child: const Padding(
-                      padding: EdgeInsets.all(2),
-                      child: Icon(Icons.close,
-                          size: 13, color: Color(0xFF55708A)),
-                    ),
-                  ),
-                ],
+      padding: const EdgeInsets.all(16),
+      child: Stack(
+        children: [
+          // Remove button (top-right)
+          Positioned(
+            top: -6,
+            right: -6,
+            child: GestureDetector(
+              onTap: () => _confirmRemove(ct, m),
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(
+                  color: _greyLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, size: 11, color: _slate),
               ),
-              const SizedBox(height: 6),
-              Text(
-                isCustom
-                    ? (m.specialtyLabel ?? m.providerName)
-                    : m.providerName,
-                style: const TextStyle(
-                    fontSize: 12.5, fontWeight: FontWeight.w700),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (!isCustom)
+            ),
+          ),
+          // Content — tapping the card body opens the edit dialog
+          GestureDetector(
+            onTap: () => _showEditDialog(ct, m, phone, hospital),
+            behavior: HitTestBehavior.translucent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Photo circle (52x52)
+                ProviderAvatar(
+                  name: m.providerName,
+                  role: m.providerRole == 'nurse'
+                      ? UserRole.nurse
+                      : UserRole.doctor,
+                  gender: m.providerGender,
+                  photoUrl: m.providerPhotoUrl,
+                  radius: 26,
+                ),
+                const SizedBox(height: 10),
+                // Name
                 Text(
-                  m.specialtyLabel ?? m.providerRole,
+                  isCustom
+                      ? (m.specialtyLabel ?? m.providerName)
+                      : m.providerName,
                   style: const TextStyle(
-                      fontSize: 11, color: _slate),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: _ink),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              if (phone != null)
-                Text(phone,
-                    style: const TextStyle(
-                        fontSize: 10.5, color: _slate),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              if (hospital != null)
-                Text(hospital,
-                    style: const TextStyle(
-                        fontSize: 10.5, color: _slate),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              const Spacer(),
-              if (!isCustom)
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () =>
-                        widget.onBookFromCareTeam(UserModel(
-                      id: m.providerId,
-                      email: '',
-                      fullName: m.providerName,
-                      role: m.providerRole == 'nurse'
-                          ? UserRole.nurse
-                          : UserRole.doctor,
-                      createdAt: DateTime.now(),
-                    )),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _navy,
-                      foregroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 4),
-                      minimumSize: const Size(0, 30),
-                      textStyle: const TextStyle(fontSize: 11),
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(8)),
-                    ),
-                    child: const Text('Book'),
-                  ),
+                const SizedBox(height: 2),
+                // Role
+                Text(
+                  isCustom ? '' : (m.specialtyLabel ?? m.providerRole),
+                  style: const TextStyle(fontSize: 12, color: _slate),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-            ],
+                const Spacer(),
+                // Book button
+                if (!isCustom)
+                  SizedBox(
+                    width: double.infinity,
+                    child: GestureDetector(
+                      onTap: () => widget.onBookFromCareTeam(UserModel(
+                        id: m.providerId,
+                        email: '',
+                        fullName: m.providerName,
+                        role: m.providerRole == 'nurse'
+                            ? UserRole.nurse
+                            : UserRole.doctor,
+                        createdAt: DateTime.now(),
+                      )),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: _navyBg,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text('Book',
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: _navy)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddCard() {
+    return GestureDetector(
+      onTap: () {
+        final ct = Provider.of<CareTeamProvider>(context, listen: false);
+        _showAddProviderSheet(ct);
+      },
+      child: Container(
+        width: 148,
+        height: 220,
+        decoration: BoxDecoration(
+          color: _greyLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _line, width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: _line, width: 1.5),
+              ),
+              child: const Icon(Icons.add, size: 18, color: _navy),
+            ),
+            const SizedBox(height: 8),
+            const Text('Add member',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _slate)),
+          ],
         ),
       ),
     );
@@ -341,8 +294,8 @@ class _CareTeamSectionState extends State<CareTeamSection> {
         child: SizedBox(
           width: 150,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 10),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
                 const Icon(Icons.add_circle_outline,
@@ -350,25 +303,20 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         u.fullName,
                         style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600),
+                            fontSize: 11.5, fontWeight: FontWeight.w600),
                         maxLines: 1,
-                        overflow:
-                            TextOverflow.ellipsis,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         u.role.name,
-                        style: const TextStyle(
-                            fontSize: 10.5,
-                            color: _slate),
+                        style:
+                            const TextStyle(fontSize: 10.5, color: _slate),
                       ),
                     ],
                   ),

@@ -10,6 +10,8 @@ class CareTeamMemberModel {
   final String providerName;
   final String providerRole;
   final String? providerDepartment;
+  final String? providerGender;
+  final String? providerPhotoUrl;
 
   const CareTeamMemberModel({
     required this.id,
@@ -22,6 +24,8 @@ class CareTeamMemberModel {
     required this.providerName,
     required this.providerRole,
     this.providerDepartment,
+    this.providerGender,
+    this.providerPhotoUrl,
   });
 
   factory CareTeamMemberModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +40,8 @@ class CareTeamMemberModel {
       providerName: json['provider_name'] as String? ?? 'Unknown Provider',
       providerRole: json['provider_role'] as String? ?? 'doctor',
       providerDepartment: json['provider_department'] as String?,
+      providerGender: json['provider_gender'] as String?,
+      providerPhotoUrl: json['provider_photo_url'] as String?,
     );
   }
 
@@ -51,6 +57,8 @@ class CareTeamMemberModel {
       'provider_name': providerName,
       'provider_role': providerRole,
       'provider_department': providerDepartment,
+      'provider_gender': providerGender,
+      'provider_photo_url': providerPhotoUrl,
     };
   }
 
@@ -65,6 +73,8 @@ class CareTeamMemberModel {
     String? providerName,
     String? providerRole,
     String? providerDepartment,
+    String? providerGender,
+    String? providerPhotoUrl,
   }) {
     return CareTeamMemberModel(
       id: id ?? this.id,
@@ -77,6 +87,8 @@ class CareTeamMemberModel {
       providerName: providerName ?? this.providerName,
       providerRole: providerRole ?? this.providerRole,
       providerDepartment: providerDepartment ?? this.providerDepartment,
+      providerGender: providerGender ?? this.providerGender,
+      providerPhotoUrl: providerPhotoUrl ?? this.providerPhotoUrl,
     );
   }
 }
