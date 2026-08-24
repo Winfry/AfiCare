@@ -108,18 +108,19 @@ class _CareTeamSectionState extends State<CareTeamSection> {
               else ...[
                 if (ct.members.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth > 500) {
+                  Builder(
+                    builder: (context) {
+                      final screenW = MediaQuery.sizeOf(context).width;
+                      if (screenW > 500) {
                         return Wrap(
                           spacing: 12,
                           runSpacing: 12,
                           children: ct.members
                               .map((m) => SizedBox(
-                                    width:
-                                        (constraints.maxWidth - 12) / 2,
-                                    child:
-                                        _buildMemberCard(ct, m),
+                                    width: (screenW - 80) / 2 > 300
+                                        ? (screenW - 80) / 2
+                                        : 300,
+                                    child: _buildMemberCard(ct, m),
                                   ))
                               .toList(),
                         );
