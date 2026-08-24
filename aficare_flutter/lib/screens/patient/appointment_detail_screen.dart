@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/appointment_model.dart';
 import '../../providers/appointment_provider.dart';
-import '../../utils/theme.dart';
 
 /// B7 — Appointment Detail
 class AppointmentDetailScreen extends StatefulWidget {
@@ -55,6 +57,23 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     }
   }
 
+  Future<void> _addToCalendar(AppointmentModel a) async {
+    final start = a.scheduledAt;
+    final end = start.add(const Duration(hours: 1));
+    final fmtStart = DateFormat("yyyyMMdd'T'HHmmss").format(start);
+    final fmtEnd = DateFormat("yyyyMMdd'T'HHmmss").format(end);
+    final providerName = _provider?['full_name'] ?? 'Provider';
+    final title = Uri.encodeComponent('Appointment with $providerName');
+    final details =
+        Uri.encodeComponent(a.chiefComplaint ?? 'Medical appointment');
+    final url = Uri.parse(
+        'https://calendar.google.com/calendar/render?action=TEMPLATE'
+        '&text=$title&dates=$fmtStart/$fmtEnd&details=$details&sf=true');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final a = widget.appointment;
@@ -63,45 +82,73 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         a.status != AppointmentStatus.completed;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Appointment Detail')),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(8, 12, 12, 0),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Appointment Detail',
+                style: GoogleFonts.fraunces(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _statusBadge(a.status),
-                  const SizedBox(height: 12),
-                  Text(
-                    _formatDateTime(a.scheduledAt),
-                    style: const TextStyle(
-                        fontSize: 26, fontWeight: FontWeight.bold),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _statusBadge(a.status),
+                      const SizedBox(height: 12),
+                      Text(
+                        _formatDateTime(a.scheduledAt),
+                        style: GoogleFonts.fraunces(
+                            fontSize: 26, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 20),
+                      _infoCard(
+                        icon: Icons.person,
+                        label: 'PROVIDER INFO',
+                        title: _provider?['full_name'] ?? 'Provider',
+                        subtitle: (_provider?['department'] as String?) ??
+                            (_provider?['role'] as String? ?? ''),
+                      ),
+                      const SizedBox(height: 12),
+                      _infoCard(
+                        icon: Icons.local_hospital,
+                        label: 'FACILITY INFO',
+                        title:
+                            _facility?['name'] ?? 'Facility not specified',
+                        subtitle:
+                            (_facility?['address'] as String?) ?? '',
+                      ),
+                      const SizedBox(height: 12),
+                      _reasonCard(a),
+                      if (a.notes != null && a.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _notesCard(a.notes!),
+                      ],
+                      const SizedBox(height: 24),
+                      if (upcoming) _actions(a),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  _infoCard(
-                    icon: Icons.person,
-                    label: 'PROVIDER INFO',
-                    title: _provider?['full_name'] ?? 'Provider',
-                    subtitle: (_provider?['department'] as String?) ??
-                        (_provider?['role'] as String? ?? ''),
-                  ),
-                  const SizedBox(height: 12),
-                  _infoCard(
-                    icon: Icons.local_hospital,
-                    label: 'FACILITY INFO',
-                    title: _facility?['name'] ?? 'Facility not specified',
-                    subtitle: (_facility?['address'] as String?) ?? '',
-                  ),
-                  const SizedBox(height: 12),
-                  _reasonCard(a),
-                  if (a.notes != null && a.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _notesCard(a.notes!),
-                  ],
-                  const SizedBox(height: 24),
-                  if (upcoming) _actions(a),
-                ],
+                ),
               ),
             ),
     );
@@ -109,26 +156,31 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
 
   Widget _statusBadge(AppointmentStatus status) {
     Color color;
+    Color bgColor;
     String label;
     IconData icon;
     switch (status) {
       case AppointmentStatus.confirmed:
-        color = Colors.green;
+        color = const Color(0xFF2E7D32);
+        bgColor = const Color(0xFFEAF5EC);
         label = 'CONFIRMED';
         icon = Icons.check_circle;
         break;
       case AppointmentStatus.pending:
-        color = Colors.orange;
+        color = const Color(0xFFF57F17);
+        bgColor = const Color(0xFFFEF3E0);
         label = 'PENDING';
         icon = Icons.schedule;
         break;
       case AppointmentStatus.completed:
-        color = Colors.grey;
+        color = const Color(0xFF55708A);
+        bgColor = const Color(0xFFEEF2F7);
         label = 'COMPLETED';
         icon = Icons.done_all;
         break;
       case AppointmentStatus.cancelled:
-        color = Colors.red;
+        color = const Color(0xFFB71C1C);
+        bgColor = const Color(0xFFFCEAEA);
         label = 'CANCELLED';
         icon = Icons.cancel;
         break;
@@ -136,7 +188,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: bgColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -160,40 +212,43 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     required String title,
     required String subtitle,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-              child: Icon(icon, color: AfiCareTheme.primaryGreen),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5)),
-                  const SizedBox(height: 4),
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        style: TextStyle(color: Colors.grey[600])),
-                  ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDCE3EA)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: const Color(0xFFE8EDF3),
+            child: Icon(icon, color: const Color(0xFF1D3557)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF55708A),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(color: Color(0xFF55708A))),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -203,16 +258,16 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AfiCareTheme.primaryGreen.withOpacity(0.06),
+        color: const Color(0xFFEAF3FC),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('REASON FOR VISIT',
+          const Text('REASON FOR VISIT',
               style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey[600],
+                  color: Color(0xFF55708A),
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5)),
           const SizedBox(height: 6),
@@ -236,24 +291,27 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   }
 
   Widget _notesCard(String notes) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('PROVIDER NOTES',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5)),
-            const SizedBox(height: 8),
-            Text(notes,
-                style: const TextStyle(
-                    fontStyle: FontStyle.italic, height: 1.4)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDCE3EA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('PROVIDER NOTES',
+              style: TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF55708A),
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5)),
+          const SizedBox(height: 8),
+          Text(notes,
+              style: const TextStyle(
+                  fontStyle: FontStyle.italic, height: 1.4)),
+        ],
       ),
     );
   }
@@ -263,13 +321,18 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       children: [
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Added to calendar')));
-            },
+          child: FilledButton.icon(
+            onPressed: () => _addToCalendar(a),
             icon: const Icon(Icons.event_available),
             label: const Text('Add to Calendar'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF1D3557),
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999)),
+              textStyle: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w700),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -279,22 +342,33 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
               child: OutlinedButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Reschedule coming soon')));
+                      content: Text(
+                          'Rescheduling is done from your appointments list — tap a card to reschedule')));
                 },
                 icon: const Icon(Icons.schedule),
                 label: const Text('Reschedule'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1D3557),
+                  side: const BorderSide(color: Color(0xFF1D3557)),
+                  minimumSize: const Size(0, 52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999)),
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () => _cancel(a),
-                icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                icon: const Icon(Icons.cancel_outlined, color: Color(0xFFB71C1C)),
                 label: const Text('Cancel',
-                    style: TextStyle(color: Colors.red)),
+                    style: TextStyle(color: Color(0xFFB71C1C))),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
+                  foregroundColor: const Color(0xFFB71C1C),
+                  side: const BorderSide(color: Color(0xFFB71C1C)),
+                  minimumSize: const Size(0, 52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999)),
                 ),
               ),
             ),
@@ -308,6 +382,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Cancel Appointment'),
         content: const Text('Are you sure you want to cancel?'),
         actions: [
@@ -317,33 +392,33 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Yes, Cancel',
-                  style: TextStyle(color: Colors.red))),
+                  style: TextStyle(color: Color(0xFFB71C1C)))),
         ],
       ),
     );
     if (confirm != true || !mounted) return;
     final provider = Provider.of<AppointmentProvider>(context, listen: false);
-    final ok = await provider.updateStatus(a.id, AppointmentStatus.cancelled);
+    final ok =
+        await provider.updateStatus(a.id, AppointmentStatus.cancelled);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok ? 'Appointment cancelled' : 'Could not cancel'),
-        backgroundColor: ok ? Colors.green : Colors.red,
+        backgroundColor: ok ? const Color(0xFF1D3557) : Colors.red,
       ));
       if (ok) Navigator.pop(context);
     }
   }
 
   String _formatDateTime(DateTime dt) {
-    const days = [
-      'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-    ];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final hour =
+        dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
     final amPm = dt.hour >= 12 ? 'PM' : 'AM';
     final min = dt.minute.toString().padLeft(2, '0');
-    return '${days[dt.weekday - 1]}, ${dt.day} ${months[dt.month - 1]} • $hour:$min $amPm';
+    return '${days[dt.weekday - 1]}, ${dt.day} ${months[dt.month - 1]} \u2022 $hour:$min $amPm';
   }
 }

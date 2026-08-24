@@ -12,7 +12,7 @@ import '../../providers/admin_facility_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
-import '../../utils/theme.dart';
+import 'appointment_detail_screen.dart';
 import 'widgets/care_team_section.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -24,6 +24,8 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
   bool _isLoading = true;
+  bool _showAll = false;
+  Map<String, String> _providerNames = {};
 
   @override
   void initState() {
@@ -38,6 +40,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final apt = Provider.of<AppointmentProvider>(context, listen: false);
     final activeId = depProvider.activePatientId ?? auth.currentUser?.id;
     if (activeId != null) await apt.loadAppointments(activeId);
+    try {
+      final provResp = await Supabase.instance.client
+          .from('users')
+          .select('id, full_name')
+          .inFilter('role', ['doctor', 'nurse']);
+      if (mounted) {
+        _providerNames = {
+          for (final p in provResp as List)
+            p['id'] as String: p['full_name'] as String,
+        };
+      }
+    } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -46,8 +60,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final depProvider = Provider.of<DependentProvider>(context, listen: false);
     final activeId = depProvider.activePatientId ?? auth.currentUser?.id ?? '';
-    final user = auth.currentUser;
-    final firstName = (user?.fullName ?? 'there').trim().split(' ').first;
 
     if (_isLoading) {
       return const Scaffold(
@@ -70,19 +82,32 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 a.status == AppointmentStatus.cancelled ||
                 a.status == AppointmentStatus.completed)
             .toList()
-          ..sort(
-              (a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+          ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+
+        final screenW = MediaQuery.sizeOf(context).width;
+        final isDesktop = screenW > 700;
+
+        final displayList = _showAll
+            ? (aptProvider.appointments
+                    .where((a) => a.status != AppointmentStatus.cancelled)
+                    .toList()
+                  ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt)))
+            : upcoming;
+
+        Widget buildCard(AppointmentModel a) => _AppointmentCard(
+              appointment: a,
+              providerName: _providerNames[a.providerId] ?? 'Provider',
+            );
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           body: Column(
             children: [
-              _AppointmentsHero(firstName: firstName),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
+                    constraints: const BoxConstraints(maxWidth: 780),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -98,19 +123,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         ),
                         const SizedBox(height: 22),
 
-                        // Upcoming section
+                        // Section header
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Upcoming appointments',
+                            Text(
+                                _showAll
+                                    ? 'All appointments'
+                                    : 'Upcoming appointments',
                                 style: TextStyle(
-                                    fontSize: 16.5,
+                                    fontSize: isDesktop ? 18 : 16.5,
                                     fontWeight: FontWeight.w700)),
                             TextButton(
-                              onPressed: () {},
-                              child: const Text('View all',
-                                  style: TextStyle(
+                              onPressed: () =>
+                                  setState(() => _showAll = !_showAll),
+                              child: Text(
+                                  _showAll ? 'Show upcoming' : 'View all',
+                                  style: const TextStyle(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF1D3557))),
@@ -118,11 +147,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        if (upcoming.isEmpty)
+                        if (displayList.isEmpty)
                           _buildEmptyState()
+                        else if (isDesktop && displayList.length > 1)
+                          Wrap(
+                            spacing: 14,
+                            runSpacing: 14,
+                            children: displayList
+                                .map((a) => SizedBox(
+                                      width: (780 - 14) / 2,
+                                      child: buildCard(a),
+                                    ))
+                                .toList(),
+                          )
                         else
-                          ...upcoming.map((a) =>
-                              _AppointmentCard(appointment: a)),
+                          ...displayList.map(buildCard),
 
                         const SizedBox(height: 6),
 
@@ -131,9 +170,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                           _PastToggle(
                               pastCount: past.length,
                               past: past,
+                              providerNames: _providerNames,
                               onCancel: _cancelAppointment,
-                              onReschedule: (a) =>
-                                  _openBooking(activeId)),
+                              onReschedule: _reschedule),
 
                         const SizedBox(height: 100),
                       ],
@@ -161,7 +200,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             Icon(Icons.calendar_today_outlined,
                 size: 48, color: Colors.grey[300]),
             const SizedBox(height: 10),
-            Text('No upcoming appointments',
+            Text(_showAll ? 'No appointments yet' : 'No upcoming appointments',
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -182,6 +221,31 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         builder: (_) => _BookAppointmentScreen(
           patientId: patientId,
           prefilledProvider: prefilledProvider,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        final depProvider =
+            Provider.of<DependentProvider>(context, listen: false);
+        final activeId =
+            depProvider.activePatientId ?? auth.currentUser?.id;
+        if (activeId != null) {
+          Provider.of<AppointmentProvider>(context, listen: false)
+              .loadAppointments(activeId);
+        }
+        setState(() {});
+      }
+    });
+  }
+
+  void _reschedule(AppointmentModel a) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _BookAppointmentScreen(
+          patientId: a.patientId,
+          rescheduleAppointment: a,
         ),
       ),
     ).then((_) {
@@ -230,115 +294,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 }
 
-// ── Hero header ──────────────────────────────────────────────────────
-
-class _AppointmentsHero extends StatelessWidget {
-  const _AppointmentsHero({required this.firstName});
-  final String firstName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 26),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1D3557), Color(0xFF24456B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Appointments',
-                  style: GoogleFonts.fraunces(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-              Row(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.14),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(Icons.notifications_none_rounded,
-                            color: Colors.white, size: 18),
-                      ),
-                      Positioned(
-                        top: -3,
-                        right: -3,
-                        child: Container(
-                          width: 17,
-                          height: 17,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE65100),
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(
-                                color: const Color(0xFF1D3557),
-                                width: 2),
-                          ),
-                          child: const Text('2',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700),
-                              textAlign: TextAlign.center),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 12),
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                    child: Text(
-                      firstName.isNotEmpty
-                          ? firstName[0].toUpperCase()
-                          : 'P',
-                      style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Text('Hello, $firstName 👋',
-                  style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-            ],
-          ),
-          const SizedBox(height: 2),
-          const Text("Here's your care schedule",
-              style: TextStyle(fontSize: 13.5, color: Color(0xFFC7D2DC))),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Appointment card ────────────────────────────────────────────────
 
 class _AppointmentCard extends StatelessWidget {
-  const _AppointmentCard({required this.appointment, this.greyed = false});
+  const _AppointmentCard({
+    required this.appointment,
+    required this.providerName,
+    this.greyed = false,
+  });
   final AppointmentModel appointment;
+  final String providerName;
   final bool greyed;
 
   @override
@@ -382,116 +347,121 @@ class _AppointmentCard extends StatelessWidget {
       }
     }
 
-    return Opacity(
-      opacity: greyed ? 0.85 : 1,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFDCE3EA)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: isTelehealth
-                    ? const Color(0xFFE9F1F5)
-                    : const Color(0xFFE8EDF3),
-                borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => AppointmentDetailScreen(appointment: appointment),
+      )),
+      child: Opacity(
+        opacity: greyed ? 0.85 : 1,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFDCE3EA)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: isTelehealth
+                      ? const Color(0xFFE9F1F5)
+                      : const Color(0xFFE8EDF3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isTelehealth ? Icons.videocam_rounded : Icons.local_hospital_rounded,
+                  color: isTelehealth
+                      ? const Color(0xFF457B9D)
+                      : const Color(0xFF1D3557),
+                  size: 19,
+                ),
               ),
-              child: Icon(
-                isTelehealth ? Icons.videocam_rounded : Icons.local_hospital_rounded,
-                color: isTelehealth
-                    ? const Color(0xFF457B9D)
-                    : const Color(0xFF1D3557),
-                size: 19,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTelehealth ? 'TELEHEALTH' : 'IN-PERSON',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF3D5470),
+                          letterSpacing: 0.3),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      providerName,
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: textColor),
+                    ),
+                    Text(
+                      isTelehealth ? 'Remote consultation' : 'In-person visit',
+                      style: TextStyle(
+                          fontSize: 12.5, color: const Color(0xFF3D5470)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    isTelehealth ? 'TELEHEALTH' : 'IN-PERSON',
-                    style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF3D5470),
-                        letterSpacing: 0.3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.calendar_today_outlined,
+                          size: 13,
+                          color: const Color(0xFF3D5470).withOpacity(0.7)),
+                      const SizedBox(width: 5),
+                      Text(
+                          DateFormat('d MMM yyyy')
+                              .format(appointment.scheduledAt),
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              color: const Color(0xFF3D5470))),
+                    ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Dr. Provider',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: textColor),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.access_time,
+                          size: 13,
+                          color: const Color(0xFF3D5470).withOpacity(0.7)),
+                      const SizedBox(width: 5),
+                      Text(
+                          DateFormat('h:mm a')
+                              .format(appointment.scheduledAt),
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              color: const Color(0xFF3D5470),
+                              fontWeight: FontWeight.w600)),
+                    ],
                   ),
-                  Text(
-                    isTelehealth ? 'Remote consultation' : 'In-person visit',
-                    style: TextStyle(
-                        fontSize: 12.5, color: const Color(0xFF3D5470)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: statusBg(),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(statusLabel(),
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor())),
                   ),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calendar_today_outlined,
-                        size: 13,
-                        color: const Color(0xFF3D5470).withOpacity(0.7)),
-                    const SizedBox(width: 5),
-                    Text(
-                        DateFormat('d MMM yyyy')
-                            .format(appointment.scheduledAt),
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            color: const Color(0xFF3D5470))),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.access_time,
-                        size: 13,
-                        color: const Color(0xFF3D5470).withOpacity(0.7)),
-                    const SizedBox(width: 5),
-                    Text(
-                        DateFormat('h:mm a')
-                            .format(appointment.scheduledAt),
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            color: const Color(0xFF3D5470),
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: statusBg(),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(statusLabel(),
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: statusColor())),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -504,11 +474,13 @@ class _PastToggle extends StatefulWidget {
   const _PastToggle({
     required this.pastCount,
     required this.past,
+    required this.providerNames,
     required this.onCancel,
     required this.onReschedule,
   });
   final int pastCount;
   final List<AppointmentModel> past;
+  final Map<String, String> providerNames;
   final void Function(AppointmentModel) onCancel;
   final void Function(AppointmentModel) onReschedule;
 
@@ -556,7 +528,10 @@ class _PastToggleState extends State<_PastToggle> {
             child: Column(
               children: widget.past
                   .map((a) => _AppointmentCard(
-                      appointment: a, greyed: true))
+                      appointment: a,
+                      greyed: true,
+                      providerName:
+                          widget.providerNames[a.providerId] ?? 'Provider'))
                   .toList(),
             ),
           ),
@@ -623,8 +598,12 @@ class _BookButton extends StatelessWidget {
 class _BookAppointmentScreen extends StatefulWidget {
   final String patientId;
   final UserModel? prefilledProvider;
-  const _BookAppointmentScreen(
-      {required this.patientId, this.prefilledProvider});
+  final AppointmentModel? rescheduleAppointment;
+  const _BookAppointmentScreen({
+    required this.patientId,
+    this.prefilledProvider,
+    this.rescheduleAppointment,
+  });
 
   @override
   State<_BookAppointmentScreen> createState() =>
@@ -648,6 +627,14 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
   void initState() {
     super.initState();
     _load();
+    if (widget.rescheduleAppointment != null) {
+      final a = widget.rescheduleAppointment!;
+      _selectedDate = a.scheduledAt;
+      _selectedTime = TimeOfDay(
+          hour: a.scheduledAt.hour, minute: a.scheduledAt.minute);
+      _isTelehealth = a.type == AppointmentType.telehealth;
+      _complaintCtrl.text = a.chiefComplaint ?? '';
+    }
   }
 
   @override
@@ -750,6 +737,10 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
     if (mounted) {
       setState(() => _submitting = false);
       if (ok) {
+        if (widget.rescheduleAppointment != null) {
+          await aptProvider.updateStatus(widget.rescheduleAppointment!.id,
+              AppointmentStatus.cancelled);
+        }
         Navigator.pop(context);
         Navigator.push(
           context,
@@ -780,7 +771,10 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const _BookingHeader(),
+            _BookingHeader(
+                title: widget.rescheduleAppointment != null
+                    ? 'Reschedule appointment'
+                    : 'Book appointment'),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(28, 22, 28, 28),
@@ -903,7 +897,7 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
                                                     ),
                                                   ],
                                                 )))
-                                    .toList(),
+                                        .toList(),
                                     onChanged: (v) => setState(
                                         () => _selectedProvider = v),
                                   ),
@@ -1057,7 +1051,9 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
                                     CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Colors.white))
-                            : const Text('Book appointment'),
+                            : Text(widget.rescheduleAppointment != null
+                                ? 'Reschedule appointment'
+                                : 'Book appointment'),
                       ),
                     ],
                   ),
@@ -1085,14 +1081,16 @@ class _BookAppointmentScreenState extends State<_BookAppointmentScreen> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: const TimeOfDay(hour: 10, minute: 0),
+      initialTime: _selectedTime ??
+          const TimeOfDay(hour: 10, minute: 0),
     );
     if (picked != null) setState(() => _selectedTime = picked);
   }
 }
 
 class _BookingHeader extends StatelessWidget {
-  const _BookingHeader();
+  const _BookingHeader({required this.title});
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -1106,7 +1104,7 @@ class _BookingHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Book appointment',
+          Text(title,
               style: GoogleFonts.fraunces(
                   fontSize: 21, fontWeight: FontWeight.w700)),
           GestureDetector(
