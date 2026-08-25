@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../models/care_team_member_model.dart';
 import '../../../models/user_model.dart';
 import '../../../providers/care_team_provider.dart';
+import '../../../widgets/avatar_picker.dart';
 import '../../../widgets/provider_avatar.dart';
 
 /// Care team section shown at the top of the Appointments screen.
@@ -180,7 +181,16 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                       : UserRole.doctor,
                   gender: m.providerGender,
                   photoUrl: m.providerPhotoUrl,
+                  patientId: widget.patientId,
+                  providerId: m.providerId,
                   radius: 26,
+                  onChooseAvatar: () => showAvatarPicker(
+                    context: context,
+                    patientId: widget.patientId,
+                    providerId: m.providerId,
+                  ).then((_) {
+                    if (mounted) setState(() {});
+                  }),
                 ),
                 const SizedBox(height: 10),
                 // Name

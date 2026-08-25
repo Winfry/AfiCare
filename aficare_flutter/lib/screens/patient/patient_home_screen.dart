@@ -24,6 +24,7 @@ import '../../models/user_model.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../services/tts_service.dart';
 import '../../widgets/provider_avatar.dart';
+import '../../widgets/avatar_picker.dart';
 import 'health_summary.dart';
 import 'share_records.dart';
 import 'expenses_screen.dart';
@@ -1133,7 +1134,16 @@ class _CareTeamCardState extends State<_CareTeamCard> {
               : UserRole.doctor,
           gender: m.providerGender,
           photoUrl: m.providerPhotoUrl,
+          patientId: widget.patientId,
+          providerId: m.providerId,
           radius: 22,
+          onChooseAvatar: () => showAvatarPicker(
+            context: context,
+            patientId: widget.patientId,
+            providerId: m.providerId,
+          ).then((_) {
+            if (mounted) setState(() {});
+          }),
         ),
         const SizedBox(width: 12),
         Expanded(

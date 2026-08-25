@@ -16,6 +16,7 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/care_team_provider.dart';
 import '../../providers/dependent_provider.dart';
+import '../../widgets/avatar_picker.dart';
 import '../../widgets/provider_avatar.dart';
 import 'appointment_detail_screen.dart';
 import 'share_records.dart';
@@ -1232,10 +1233,15 @@ class _PastSectionState extends State<_PastSection> {
 // CARE TEAM SIDEBAR CARD
 // ═══════════════════════════════════════════════════════════════════════
 
-class _CareTeamSidebarCard extends StatelessWidget {
+class _CareTeamSidebarCard extends StatefulWidget {
   const _CareTeamSidebarCard({required this.patientId});
   final String patientId;
 
+  @override
+  State<_CareTeamSidebarCard> createState() => _CareTeamSidebarCardState();
+}
+
+class _CareTeamSidebarCardState extends State<_CareTeamSidebarCard> {
   @override
   Widget build(BuildContext context) {
     return Consumer<CareTeamProvider>(
@@ -1369,7 +1375,16 @@ class _CareTeamSidebarCard extends StatelessWidget {
                     : UserRole.doctor,
                 gender: m.providerGender,
                 photoUrl: m.providerPhotoUrl,
+                patientId: widget.patientId,
+                providerId: m.providerId,
                 radius: 24,
+                onChooseAvatar: () => showAvatarPicker(
+                  context: context,
+                  patientId: widget.patientId,
+                  providerId: m.providerId,
+                ).then((_) {
+                  if (mounted) setState(() {});
+                }),
               ),
               const SizedBox(height: 8),
               Text(
