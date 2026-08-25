@@ -7,17 +7,13 @@ import '../models/consultation_model.dart';
 /// Supports both local rule-based AI and backend integration
 /// The local AI works completely offline - no internet required
 class MedicalAIService {
-  // Backend URL - uses Railway deployment or falls back to local AI
-  // Set to your Railway/Render/Heroku URL when deployed, e.g.:
-  // static const String backendUrl = 'https://aficare-backend.up.railway.app';
-  static const String backendUrl = 'https://ecstatically-unremonstrated-isiah.ngrok-free.dev'; // ngrok URL
+  static const String backendUrl = String.fromEnvironment(
+    'AFICARE_BACKEND_URL',
+    defaultValue: '',
+  );
 
-  // Set to false to use cloud backend first (recommended for production)
-  // Falls back to local AI only when backend is unavailable
   static const bool preferLocalAI = false;
-  
-  /// Conduct consultation using backend AI or local rules
-  /// Works completely offline with local AI - no internet required
+
   Future<ConsultationResult> conductConsultation({
     required String patientId,
     required List<String> symptoms,
@@ -26,8 +22,7 @@ class MedicalAIService {
     required String gender,
     required String chiefComplaint,
   }) async {
-    // Use local AI if preferred (works offline, faster response)
-    if (preferLocalAI) {
+    if (preferLocalAI || backendUrl.isEmpty) {
       return await _consultWithLocalAI(
         patientId: patientId,
         symptoms: symptoms,
@@ -39,7 +34,6 @@ class MedicalAIService {
     }
 
     try {
-      // Try backend if local AI not preferred
       final result = await _consultWithBackend(
         patientId: patientId,
         symptoms: symptoms,
@@ -50,7 +44,6 @@ class MedicalAIService {
       );
       return result;
     } catch (e) {
-      // Fallback to local AI
       debugPrint('Backend unavailable, using local AI: $e');
       return await _consultWithLocalAI(
         patientId: patientId,
@@ -63,7 +56,6 @@ class MedicalAIService {
     }
   }
 
-  /// Consult with backend AfiCare AI
   Future<ConsultationResult> _consultWithBackend({
     required String patientId,
     required List<String> symptoms,
@@ -93,7 +85,6 @@ class MedicalAIService {
     }
   }
 
-  /// Local rule-based AI consultation (offline fallback)
   Future<ConsultationResult> _consultWithLocalAI({
     required String patientId,
     required List<String> symptoms,
@@ -133,15 +124,15 @@ class MedicalAIService {
         'name': d.condition,
         'confidence': d.confidence,
       }).toList(),
-      recommendations: diagnoses.isNotEmpty 
-          ? diagnoses.first.treatment 
+      recommendations: diagnoses.isNotEmpty
+          ? diagnoses.first.treatment
           : ['Rest and monitor symptoms', 'Seek medical attention if symptoms worsen'],
       confidenceScore: diagnoses.isNotEmpty ? diagnoses.first.confidence : 0.5,
       referralNeeded: triageLevel == 'emergency' || triageLevel == 'urgent',
       followUpRequired: true,
     );
   }
-  // Medical conditions database
+
   final Map<String, MedicalCondition> _conditions = {
     'malaria': MedicalCondition(
       name: 'Malaria',
@@ -240,31 +231,26 @@ class MedicalAIService {
     ),
   };
 
-  /// Analyze symptoms and return diagnoses
   Future<Map<String, dynamic>> analyze({
     required List<String> symptoms,
     required VitalSigns vitalSigns,
     required int age,
     required String gender,
   }) async {
-    // Simulate processing time for better UX
     await Future.delayed(const Duration(milliseconds: 500));
 
     List<Diagnosis> diagnoses = [];
     String triageLevel = 'non_urgent';
 
-    // Normalize symptoms
     final normalizedSymptoms = symptoms
         .map((s) => s.toLowerCase().trim())
         .toList();
 
-    // Check each condition
     for (final entry in _conditions.entries) {
       final condition = entry.value;
       double score = 0.0;
       List<String> matchingSymptoms = [];
 
-      // Match symptoms
       for (final symptom in normalizedSymptoms) {
         for (final conditionSymptom in condition.symptoms.entries) {
           if (symptom.contains(conditionSymptom.key) ||
@@ -275,7 +261,6 @@ class MedicalAIService {
         }
       }
 
-      // Vital signs adjustments
       if (entry.key == 'malaria' && (vitalSigns.temperature ?? 37) > 38.5) {
         score += 0.3;
       } else if (entry.key == 'pneumonia') {
@@ -286,14 +271,12 @@ class MedicalAIService {
         score += 0.4;
       }
 
-      // Age adjustments
       if (entry.key == 'pneumonia' && (age < 5 || age > 65)) {
         score += 0.1;
       } else if (entry.key == 'hypertension' && age > 40) {
         score += 0.1;
       }
 
-      // Only include significant matches
       if (score > 0.3) {
         diagnoses.add(Diagnosis(
           condition: condition.name,
@@ -302,7 +285,6 @@ class MedicalAIService {
           treatment: condition.treatment,
         ));
 
-        // Check for danger signs
         for (final danger in condition.dangerSigns) {
           if (normalizedSymptoms.any((s) => s.contains(danger))) {
             triageLevel = 'emergency';
@@ -311,10 +293,8 @@ class MedicalAIService {
       }
     }
 
-    // Sort by confidence
     diagnoses.sort((a, b) => b.confidence.compareTo(a.confidence));
 
-    // Determine triage level based on vital signs
     triageLevel = _assessTriage(vitalSigns, normalizedSymptoms, triageLevel);
 
     return {
@@ -325,7 +305,6 @@ class MedicalAIService {
 
   String _assessTriage(
       VitalSigns vitals, List<String> symptoms, String currentLevel) {
-    // Emergency signs
     final emergencySymptoms = [
       'difficulty breathing', 'chest pain', 'unconscious',
       'severe bleeding', 'convulsions',
@@ -337,7 +316,6 @@ class MedicalAIService {
       }
     }
 
-    // Check vital signs
     final temp = vitals.temperature ?? 37;
     final systolic = vitals.systolicBP ?? 120;
     final respRate = vitals.respiratoryRate ?? 16;

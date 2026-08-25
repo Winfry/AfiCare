@@ -12,16 +12,23 @@ class ConsultationProvider with ChangeNotifier {
   List<Diagnosis> _diagnoses = [];
   List<ConsultationModel> _consultations = [];
   String _triageLevel = 'non_urgent';
+  bool _isLoading = false;
   bool _isAnalyzing = false;
+  String? _error;
 
   ConsultationModel? get currentConsultation => _currentConsultation;
   List<Diagnosis> get diagnoses => _diagnoses;
   List<ConsultationModel> get consultations => _consultations;
   String get triageLevel => _triageLevel;
+  bool get isLoading => _isLoading;
   bool get isAnalyzing => _isAnalyzing;
+  String? get error => _error;
 
-  // Load consultations recorded by a provider, most recent first.
   Future<void> loadConsultationsForProvider(String providerId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
       final data = await _supabase
           .from('consultations')
@@ -32,13 +39,15 @@ class ConsultationProvider with ChangeNotifier {
       _consultations = (data as List)
           .map((json) => ConsultationModel.fromJson(json as Map<String, dynamic>))
           .toList();
-      notifyListeners();
     } catch (e) {
       debugPrint('Error loading consultations: $e');
+      _error = 'Failed to load consultations. Please try again.';
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
-  // Analyze symptoms using rule-based AI
   Future<void> analyzeSymptoms({
     required List<String> symptoms,
     required VitalSigns vitalSigns,
@@ -46,10 +55,10 @@ class ConsultationProvider with ChangeNotifier {
     required String patientGender,
   }) async {
     _isAnalyzing = true;
+    _error = null;
     notifyListeners();
 
     try {
-      // Use the medical AI service
       final result = await _medicalAI.analyze(
         symptoms: symptoms,
         vitalSigns: vitalSigns,
@@ -59,16 +68,15 @@ class ConsultationProvider with ChangeNotifier {
 
       _diagnoses = result['diagnoses'] as List<Diagnosis>;
       _triageLevel = result['triage_level'] as String;
-
-      _isAnalyzing = false;
-      notifyListeners();
     } catch (e) {
-      _isAnalyzing = false;
-      notifyListeners();
+      debugPrint('Error analyzing symptoms: $e');
+      _error = 'Failed to analyze symptoms. Please try again.';
     }
+
+    _isAnalyzing = false;
+    notifyListeners();
   }
 
-  // Save consultation — returns the consultation ID on success, null on failure.
   Future<String?> saveConsultation({
     required String patientId,
     required String providerId,
@@ -80,6 +88,10 @@ class ConsultationProvider with ChangeNotifier {
     bool followUpRequired = false,
     DateTime? followUpDate,
   }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
       final consultation = ConsultationModel(
         id: const Uuid().v4(),
@@ -99,7 +111,6 @@ class ConsultationProvider with ChangeNotifier {
 
       await _supabase.from('consultations').insert(consultation.toJson());
 
-      // Log to audit
       await _supabase.from('audit_log').insert({
         'action': 'consultation_created',
         'user_id': providerId,
@@ -109,19 +120,23 @@ class ConsultationProvider with ChangeNotifier {
       });
 
       _currentConsultation = consultation;
+      _isLoading = false;
       notifyListeners();
       return consultation.id;
     } catch (e) {
       debugPrint('Error saving consultation: $e');
+      _error = 'Failed to save consultation. Please try again.';
+      _isLoading = false;
+      notifyListeners();
       return null;
     }
   }
 
-  // Clear current consultation
   void clearConsultation() {
     _currentConsultation = null;
     _diagnoses = [];
     _triageLevel = 'non_urgent';
+    _error = null;
     notifyListeners();
   }
 }
