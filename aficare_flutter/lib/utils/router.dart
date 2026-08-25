@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/user_model.dart';
 import '../screens/landing_screen.dart';
 import '../screens/login_screen.dart';
 import '../presentation/auth/register/role_selection/register_role_screen.dart';
@@ -39,8 +42,121 @@ import '../screens/web/provider_web_dashboard_screen.dart';
 import '../screens/web/referral_receiving_portal_screen.dart';
 import '../screens/facility_registration_screen.dart';
 
+/// Paths that are accessible without authentication.
+const _publicPaths = {
+  '/',
+  '/login',
+  '/register',
+  '/register/patient',
+  '/register/doctor',
+  '/register/nurse',
+  '/register/radiologist',
+  '/register/admin',
+  '/register-facility',
+};
+
+/// Paths that are accessible without authentication but only for
+/// new users (onboarding).
+const _onboardingPaths = {
+  '/onboarding',
+};
+
+/// Resolves the user's role from the [_UserProfileCache] or Supabase session.
+/// Returns null if not authenticated.
+class _UserProfileCache {
+  static UserRole? _cachedRole;
+
+  static void update(UserModel user) {
+    _cachedRole = user.role;
+  }
+
+  static void clear() {
+    _cachedRole = null;
+  }
+
+  static UserRole? get role => _cachedRole;
+}
+
+/// Call this whenever AuthProvider updates `_currentUser` so the
+/// router's redirect has the latest role info without querying Supabase.
+void updateRouterProfile(UserModel? user) {
+  if (user != null) {
+    _UserProfileCache.update(user);
+  } else {
+    _UserProfileCache.clear();
+  }
+}
+
 final appRouter = GoRouter(
   initialLocation: '/',
+  debugLogDiagnostics: false,
+
+  redirect: (context, state) {
+    final location = state.matchedLocation;
+    final session = Supabase.instance.client.auth.currentSession;
+    final isLoggedIn = session != null;
+
+    // ── Public routes — always accessible ─────────────────────
+    if (_publicPaths.contains(location)) {
+      // If logged in and visiting /login or /register, redirect to dashboard
+      if (isLoggedIn && _UserProfileCache.role != null) {
+        return _dashboardForRole(_UserProfileCache.role!);
+      }
+      return null; // allow
+    }
+
+    // ── Onboarding — only for logged-in users ─────────────────
+    if (_onboardingPaths.contains(location)) {
+      if (!isLoggedIn) return '/login';
+      return null;
+    }
+
+    // ── Protected routes — require auth ───────────────────────
+    if (!isLoggedIn) return '/login';
+
+    final role = _UserProfileCache.role;
+
+    // Profile not loaded yet — prevent routing to protected pages
+    if (role == null) return '/login';
+
+    // Role-based access control
+    if (location.startsWith('/admin')) {
+      if (role != UserRole.admin) {
+        return _dashboardForRole(role);
+      }
+      return null;
+    }
+
+    if (location.startsWith('/provider') || location == '/doctor' || location == '/nurse') {
+      if (role != UserRole.doctor && role != UserRole.nurse && role != UserRole.radiologist) {
+        return _dashboardForRole(role);
+      }
+      return null;
+    }
+
+    if (location.startsWith('/patient')) {
+      if (role != UserRole.patient) {
+        return _dashboardForRole(role);
+      }
+      return null;
+    }
+
+    // Web routes — provider-only for now
+    if (location.startsWith('/web/')) {
+      if (role != UserRole.doctor && role != UserRole.nurse && role != UserRole.radiologist) {
+        return _dashboardForRole(role);
+      }
+      return null;
+    }
+
+    // ── Root "/" — redirect logged-in users to their dashboard ─
+    if (location == '/') {
+      return _dashboardForRole(role);
+    }
+
+    return null; // allow
+  },
+
   routes: [
     // Landing Screen
     GoRoute(
@@ -266,4 +382,46 @@ final appRouter = GoRouter(
       },
     ),
   ],
+
+  errorBuilder: (context, state) => Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Color(0xFFD32F2F)),
+          const SizedBox(height: 16),
+          Text(
+            'Page not found',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'The page "${state.matchedLocation}" does not exist.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () => context.go('/'),
+            child: const Text('Go Home'),
+          ),
+        ],
+      ),
+    ),
+  ),
 );
+
+/// Maps a [UserRole] to its default dashboard path.
+String _dashboardForRole(UserRole role) {
+  switch (role) {
+    case UserRole.patient:
+      return '/patient';
+    case UserRole.doctor:
+    case UserRole.nurse:
+    case UserRole.radiologist:
+      return '/provider';
+    case UserRole.admin:
+      return '/admin';
+    default:
+      return '/login';
+  }
+}

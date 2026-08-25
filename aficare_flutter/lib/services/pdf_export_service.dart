@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:path_provider/path_provider.dart';
 
 class PdfExportService {
   static Future<Uint8List> generateReferralForm(Map<String, dynamic> data) async {
@@ -17,22 +15,12 @@ class PdfExportService {
         .header h1 { color: #1D3557; margin: 0; font-size: 20pt; }
         .header h2 { color: #457B9D; margin: 5px 0 0; font-size: 14pt; font-weight: normal; }
         .logo { font-size: 28pt; color: #1D3557; margin-bottom: 5px; }
-        .barcode { text-align: center; margin: 15px 0; }
-        .barcode svg { width: 200px; height: 60px; }
         .section { margin-bottom: 15px; }
         .section h3 { background: #1D3557; color: white; padding: 6px 12px; margin: 0 0 10px 0; font-size: 12pt; }
         .row { display: flex; margin-bottom: 6px; }
         .label { width: 150px; font-weight: bold; color: #555; }
         .value { flex: 1; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        table th { background: #f0f0f0; text-align: left; padding: 6px; border: 1px solid #ddd; font-size: 10pt; }
-        table td { padding: 6px; border: 1px solid #ddd; font-size: 10pt; }
         .footer { text-align: center; margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 9pt; color: #888; }
-        .footer .qr { margin-top: 10px; }
-        @media print {
-          .no-print { display: none; }
-          body { -webkit-print-color-adjust: exact; }
-        }
       </style>
     </head>
     <body>
@@ -41,53 +29,6 @@ class PdfExportService {
         <h1>AfiCare MediLink</h1>
         <h2>Medical Referral Form</h2>
       </div>
-
-      <div class="barcode">
-        <svg viewBox="0 0 200 60">
-          <rect x="10" y="10" width="3" height="40" fill="#333"/>
-          <rect x="15" y="10" width="1" height="40" fill="#333"/>
-          <rect x="18" y="10" width="2" height="40" fill="#333"/>
-          <rect x="22" y="10" width="4" height="40" fill="#333"/>
-          <rect x="28" y="10" width="1" height="40" fill="#333"/>
-          <rect x="31" y="10" width="3" height="40" fill="#333"/>
-          <rect x="36" y="10" width="2" height="40" fill="#333"/>
-          <rect x="40" y="10" width="1" height="40" fill="#333"/>
-          <rect x="43" y="10" width="3" height="40" fill="#333"/>
-          <rect x="48" y="10" width="4" height="40" fill="#333"/>
-          <rect x="54" y="10" width="1" height="40" fill="#333"/>
-          <rect x="57" y="10" width="2" height="40" fill="#333"/>
-          <rect x="61" y="10" width="3" height="40" fill="#333"/>
-          <rect x="66" y="10" width="1" height="40" fill="#333"/>
-          <rect x="69" y="10" width="4" height="40" fill="#333"/>
-          <rect x="75" y="10" width="2" height="40" fill="#333"/>
-          <rect x="79" y="10" width="1" height="40" fill="#333"/>
-          <rect x="82" y="10" width="3" height="40" fill="#333"/>
-          <rect x="87" y="10" width="2" height="40" fill="#333"/>
-          <rect x="91" y="10" width="4" height="40" fill="#333"/>
-          <rect x="97" y="10" width="1" height="40" fill="#333"/>
-          <rect x="100" y="10" width="3" height="40" fill="#333"/>
-          <rect x="105" y="10" width="2" height="40" fill="#333"/>
-          <rect x="109" y="10" width="1" height="40" fill="#333"/>
-          <rect x="112" y="10" width="4" height="40" fill="#333"/>
-          <rect x="118" y="10" width="3" height="40" fill="#333"/>
-          <rect x="123" y="10" width="2" height="40" fill="#333"/>
-          <rect x="127" y="10" width="1" height="40" fill="#333"/>
-          <rect x="130" y="10" width="3" height="40" fill="#333"/>
-          <rect x="135" y="10" width="4" height="40" fill="#333"/>
-          <rect x="141" y="10" width="1" height="40" fill="#333"/>
-          <rect x="144" y="10" width="3" height="40" fill="#333"/>
-          <rect x="149" y="10" width="2" height="40" fill="#333"/>
-          <rect x="153" y="10" width="1" height="40" fill="#333"/>
-          <rect x="156" y="10" width="4" height="40" fill="#333"/>
-          <rect x="162" y="10" width="2" height="40" fill="#333"/>
-          <rect x="166" y="10" width="3" height="40" fill="#333"/>
-          <rect x="171" y="10" width="1" height="40" fill="#333"/>
-          <rect x="174" y="10" width="2" height="40" fill="#333"/>
-          <rect x="178" y="10" width="3" height="40" fill="#333"/>
-          <text x="100" y="55" text-anchor="middle" font-size="8" fill="#333">REF-${data['referral_id'] ?? 'XXXX'}</text>
-        </svg>
-      </div>
-
       <div class="section">
         <h3>Patient Information</h3>
         <div class="row"><div class="label">Name:</div><div class="value">${data['patient_name'] ?? ''}</div></div>
@@ -95,7 +36,6 @@ class PdfExportService {
         <div class="row"><div class="label">Date of Birth:</div><div class="value">${data['dob'] ?? ''}</div></div>
         <div class="row"><div class="label">Gender:</div><div class="value">${data['gender'] ?? ''}</div></div>
       </div>
-
       <div class="section">
         <h3>Referral Details</h3>
         <div class="row"><div class="label">Referring Provider:</div><div class="value">${data['referring_provider'] ?? ''}</div></div>
@@ -104,16 +44,13 @@ class PdfExportService {
         <div class="row"><div class="label">Specialty:</div><div class="value">${data['specialty'] ?? ''}</div></div>
         <div class="row"><div class="label">Urgency:</div><div class="value">${data['urgency'] ?? ''}</div></div>
       </div>
-
       <div class="section">
         <h3>Clinical Information</h3>
         <div class="row"><div class="label">Reason:</div><div class="value">${data['reason'] ?? ''}</div></div>
         <div class="row"><div class="label">Clinical Notes:</div><div class="value">${data['clinical_notes'] ?? ''}</div></div>
       </div>
-
       <div class="footer">
         <p>Generated by AfiCare MediLink on ${_currentDate()}</p>
-        <p>This is a computer-generated document. Verify authenticity via QR code.</p>
       </div>
     </body>
     </html>
@@ -193,8 +130,6 @@ class PdfExportService {
         table { width: 100%; border-collapse: collapse; }
         table th { background: #1D3557; color: white; padding: 8px; text-align: left; font-size: 10pt; }
         table td { padding: 6px 8px; border-bottom: 1px solid #ddd; font-size: 10pt; }
-        .flag-abnormal { color: #E53935; font-weight: bold; }
-        .flag-normal { color: #43A047; }
         .footer { margin-top: 20px; text-align: center; font-size: 9pt; color: #888; }
       </style>
     </head>
@@ -276,14 +211,6 @@ class PdfExportService {
   }
 
   static Future<Uint8List> _renderHtml(String html) async {
-    final bytes = Uint8List.fromList(html.codeUnits);
-    return bytes;
-  }
-
-  static Future<String> saveToFile(Uint8List bytes, String filename) async {
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(bytes);
-    return file.path;
+    return Uint8List.fromList(html.codeUnits);
   }
 }

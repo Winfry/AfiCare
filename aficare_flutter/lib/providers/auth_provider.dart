@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:bcrypt/bcrypt.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/user_model.dart';
+import '../utils/router.dart' show updateRouterProfile;
 
 class AuthProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -12,6 +14,7 @@ class AuthProvider with ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
+  StreamSubscription<AuthState>? _authSubscription;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -22,6 +25,13 @@ class AuthProvider with ChangeNotifier {
     _initAuth();
   }
 
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    _authSubscription = null;
+    super.dispose();
+  }
+
   void _initAuth() {
     try {
       final session = _supabase.auth.currentSession;
@@ -29,7 +39,7 @@ class AuthProvider with ChangeNotifier {
         _loadUserProfile(session.user.id);
       }
 
-      _supabase.auth.onAuthStateChange.listen((data) {
+      _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
         final AuthChangeEvent event = data.event;
         final Session? session = data.session;
 
@@ -41,6 +51,7 @@ class AuthProvider with ChangeNotifier {
           }
         } else if (event == AuthChangeEvent.signedOut) {
           _currentUser = null;
+          updateRouterProfile(null);
           notifyListeners();
         }
       });
@@ -62,6 +73,7 @@ class AuthProvider with ChangeNotifier {
         if (response != null) {
           _currentUser = UserModel.fromJson(response);
           _error = null;
+          updateRouterProfile(_currentUser);
           notifyListeners();
           return;
         }
@@ -157,6 +169,12 @@ class AuthProvider with ChangeNotifier {
 
       await _loadUserProfile(userId);
 
+      if (_currentUser == null) {
+        throw Exception(
+            'Your profile could not be loaded after registration. '
+            'Please try logging in.');
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -222,13 +240,27 @@ class AuthProvider with ChangeNotifier {
         password: derivedPassword,
       );
 
-      if (authResponse.user != null) {
-        await _loadUserProfile(authResponse.user!.id);
+      if (authResponse.user == null) {
+        throw Exception('Authentication failed. Please try again.');
+      }
+
+      await _loadUserProfile(authResponse.user!.id);
+
+      // Verify profile actually loaded
+      if (_currentUser == null) {
+        throw Exception(
+            'Your profile could not be loaded. '
+            'Please try again or contact support.');
       }
 
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AuthException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -293,6 +325,12 @@ class AuthProvider with ChangeNotifier {
       await _supabase.from('users').insert(userRecord);
       await _loadUserProfile(authResponse.user!.id);
 
+      if (_currentUser == null) {
+        throw Exception(
+            'Your profile could not be loaded after registration. '
+            'Please try logging in.');
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -329,13 +367,26 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      if (response.user != null) {
-        await _loadUserProfile(response.user!.id);
+      if (response.user == null) {
+        throw Exception('Authentication failed. Please try again.');
+      }
+
+      await _loadUserProfile(response.user!.id);
+
+      if (_currentUser == null) {
+        throw Exception(
+            'Your profile could not be loaded. '
+            'Please try again or contact support.');
       }
 
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AuthException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -372,8 +423,15 @@ class AuthProvider with ChangeNotifier {
   // ── Sign Out ────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
-    await _supabase.auth.signOut();
+    try {
+      await _supabase.auth.signOut();
+    } catch (e) {
+      debugPrint('Error during Supabase signOut: $e');
+    }
+    // Always clear local state even if remote signOut fails
     _currentUser = null;
+    _error = null;
+    updateRouterProfile(null);
     notifyListeners();
   }
 

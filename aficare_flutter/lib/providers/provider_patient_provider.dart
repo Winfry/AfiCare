@@ -99,7 +99,9 @@ class ProviderPatientProvider with ChangeNotifier {
             .eq('id', patientId)
             .single();
         _patientProfile!.addAll(Map<String, dynamic>.from(patientResp));
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading patients table: $e');
+      }
 
       // Consultations
       try {
@@ -111,7 +113,9 @@ class ProviderPatientProvider with ChangeNotifier {
         _consultations = (consResp as List)
             .map((j) => ConsultationModel.fromJson(j))
             .toList();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading consultations: $e');
+      }
 
       // Triage
       try {
@@ -123,7 +127,9 @@ class ProviderPatientProvider with ChangeNotifier {
         _triageAssessments = (triResp as List)
             .map((j) => TriageAssessment.fromJson(j))
             .toList();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading triage assessments: $e');
+      }
 
       // Labs
       try {
@@ -135,7 +141,9 @@ class ProviderPatientProvider with ChangeNotifier {
         _labOrders = (labResp as List)
             .map((j) => LabOrderModel.fromJson(j))
             .toList();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading lab orders: $e');
+      }
 
       // Radiology
       try {
@@ -147,7 +155,9 @@ class ProviderPatientProvider with ChangeNotifier {
         _radiologyOrders = (radResp as List)
             .map((j) => RadiologyOrderModel.fromJson(j))
             .toList();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading radiology orders: $e');
+      }
 
       // Prescriptions
       try {
@@ -159,7 +169,9 @@ class ProviderPatientProvider with ChangeNotifier {
         _prescriptions = (rxResp as List)
             .map((j) => PrescriptionModel.fromJson(j))
             .toList();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading prescriptions: $e');
+      }
 
       // Referrals
       try {
@@ -171,7 +183,9 @@ class ProviderPatientProvider with ChangeNotifier {
         _referrals = (refResp as List)
             .map((j) => ReferralModel.fromJson(j))
             .toList();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error loading referrals: $e');
+      }
 
       _isLoadingPatient = false;
       notifyListeners();

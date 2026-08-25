@@ -6,13 +6,22 @@ class SupabaseConfig {
 
   static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqemZvemZzc3d2ZW1nZHB0ZmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNjQ2MDQsImV4cCI6MjA5OTc0MDYwNH0.gRmCQFxFOE06uSqSt0e5xKk_rk_Fkn4-zEEYiW6HArc';
 
-  /// App-side secret used to derive the Supabase auth password from a
-  /// patient's phone + PIN. This is NOT a true server-side secret (any
-  /// client app can be reverse-engineered), but combined with the user's
-  /// 6-digit PIN it means a database leak alone cannot recover passwords.
-  /// Change this to a unique random string for your deployment.
-  static const String patientAuthSecret =
-      'aficare-patient-pin-v1-9f3a7c2e8b1d4f6a';
+  /// Secret used to derive the Supabase auth password from phone + PIN.
+  ///
+  /// **In production**, pass the real secret at build time and NEVER
+  /// commit it to source control:
+  /// ```
+  /// flutter build apk --dart-define=PATIENT_AUTH_SECRET=your-real-secret
+  /// flutter build web --dart-define=PATIENT_AUTH_SECRET=your-real-secret
+  /// ```
+  ///
+  /// The value below is the dev-only fallback. For a true server-side
+  /// approach, move password derivation to a Supabase Edge Function so
+  /// the secret never leaves the server.
+  static const String patientAuthSecret = String.fromEnvironment(
+    'PATIENT_AUTH_SECRET',
+    defaultValue: 'aficare-patient-pin-v1-9f3a7c2e8b1d4f6a',
+  );
 
   // Table names
   static const String usersTable = 'users';
