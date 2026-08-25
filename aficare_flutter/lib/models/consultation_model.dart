@@ -31,22 +31,32 @@ class ConsultationModel {
 
   factory ConsultationModel.fromJson(Map<String, dynamic> json) {
     return ConsultationModel(
-      id: json['id'] as String,
-      patientId: json['patient_id'] as String,
-      providerId: json['provider_id'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      chiefComplaint: json['chief_complaint'] as String,
-      symptoms: List<String>.from(json['symptoms'] as List),
-      vitalSigns: VitalSigns.fromJson(json['vital_signs'] as Map<String, dynamic>),
-      triageLevel: json['triage_level'] as String,
-      diagnoses: (json['diagnoses'] as List)
-          .map((d) => Diagnosis.fromJson(d as Map<String, dynamic>))
-          .toList(),
-      recommendations: List<String>.from(json['recommendations'] as List),
+      id: json['id'] as String? ?? '',
+      patientId: json['patient_id'] as String? ?? '',
+      providerId: json['provider_id'] as String? ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      chiefComplaint: json['chief_complaint'] as String? ?? '',
+      symptoms: json['symptoms'] != null
+          ? List<String>.from(json['symptoms'] as List)
+          : <String>[],
+      vitalSigns: json['vital_signs'] != null
+          ? VitalSigns.fromJson(json['vital_signs'] as Map<String, dynamic>)
+          : VitalSigns(),
+      triageLevel: json['triage_level'] as String? ?? 'non_urgent',
+      diagnoses: json['diagnoses'] != null
+          ? (json['diagnoses'] as List)
+              .map((d) => Diagnosis.fromJson(d as Map<String, dynamic>))
+              .toList()
+          : <Diagnosis>[],
+      recommendations: json['recommendations'] != null
+          ? List<String>.from(json['recommendations'] as List)
+          : <String>[],
       notes: json['notes'] as String?,
-      followUpRequired: json['follow_up_required'] as bool,
+      followUpRequired: json['follow_up_required'] as bool? ?? false,
       followUpDate: json['follow_up_date'] != null
-          ? DateTime.parse(json['follow_up_date'] as String)
+          ? DateTime.tryParse(json['follow_up_date'] as String)
           : null,
     );
   }
@@ -102,18 +112,28 @@ class ConsultationResult {
 
   factory ConsultationResult.fromJson(Map<String, dynamic> json) {
     return ConsultationResult(
-      id: json['id'] as String,
-      patientId: json['patient_id'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      chiefComplaint: json['chief_complaint'] as String,
-      symptoms: List<String>.from(json['symptoms'] as List),
-      vitalSigns: VitalSigns.fromJson(json['vital_signs'] as Map<String, dynamic>),
-      triageLevel: json['triage_level'] as String,
-      suspectedConditions: List<Map<String, dynamic>>.from(json['suspected_conditions'] as List),
-      recommendations: List<String>.from(json['recommendations'] as List),
-      confidenceScore: (json['confidence_score'] as num).toDouble(),
-      referralNeeded: json['referral_needed'] as bool,
-      followUpRequired: json['follow_up_required'] as bool,
+      id: json['id'] as String? ?? '',
+      patientId: json['patient_id'] as String? ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      chiefComplaint: json['chief_complaint'] as String? ?? '',
+      symptoms: json['symptoms'] != null
+          ? List<String>.from(json['symptoms'] as List)
+          : <String>[],
+      vitalSigns: json['vital_signs'] != null
+          ? VitalSigns.fromJson(json['vital_signs'] as Map<String, dynamic>)
+          : VitalSigns(),
+      triageLevel: json['triage_level'] as String? ?? 'non_urgent',
+      suspectedConditions: json['suspected_conditions'] != null
+          ? List<Map<String, dynamic>>.from(json['suspected_conditions'] as List)
+          : <Map<String, dynamic>>[],
+      recommendations: json['recommendations'] != null
+          ? List<String>.from(json['recommendations'] as List)
+          : <String>[],
+      confidenceScore: (json['confidence_score'] as num?)?.toDouble() ?? 0.0,
+      referralNeeded: json['referral_needed'] as bool? ?? false,
+      followUpRequired: json['follow_up_required'] as bool? ?? false,
     );
   }
 
@@ -200,10 +220,14 @@ class Diagnosis {
 
   factory Diagnosis.fromJson(Map<String, dynamic> json) {
     return Diagnosis(
-      condition: json['condition'] as String,
-      confidence: (json['confidence'] as num).toDouble(),
-      matchingSymptoms: List<String>.from(json['matching_symptoms'] as List),
-      treatment: List<String>.from(json['treatment'] as List),
+      condition: json['condition'] as String? ?? '',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      matchingSymptoms: json['matching_symptoms'] != null
+          ? List<String>.from(json['matching_symptoms'] as List)
+          : <String>[],
+      treatment: json['treatment'] != null
+          ? List<String>.from(json['treatment'] as List)
+          : <String>[],
     );
   }
 

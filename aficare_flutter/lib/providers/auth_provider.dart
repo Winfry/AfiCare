@@ -288,6 +288,8 @@ class AuthProvider with ChangeNotifier {
     required UserRole role,
     String? phone,
     String? facilityId,
+    String? department,
+    String? orgName,
   }) async {
     _isLoading = true;
     _error = null;
@@ -308,6 +310,21 @@ class AuthProvider with ChangeNotifier {
         medilinkId = UserModel.generateMedilinkId();
       }
 
+      // If admin registered with an org name, create a facility first
+      String? resolvedFacilityId = facilityId;
+      if (orgName != null && orgName.trim().isNotEmpty && resolvedFacilityId == null) {
+        final facilityResp = await _supabase
+            .from('facilities')
+            .insert({
+              'name': orgName.trim(),
+              'type': 'clinic',
+              'created_at': DateTime.now().toIso8601String(),
+            })
+            .select('id')
+            .single();
+        resolvedFacilityId = facilityResp['id'] as String;
+      }
+
       final userRecord = <String, dynamic>{
         'id': authResponse.user!.id,
         'email': email,
@@ -317,9 +334,12 @@ class AuthProvider with ChangeNotifier {
         'medilink_id': medilinkId,
         'created_at': DateTime.now().toIso8601String(),
       };
-      if (facilityId != null) {
-        userRecord['hospital_id'] = facilityId;
-        userRecord['facility_id'] = facilityId;
+      if (resolvedFacilityId != null) {
+        userRecord['hospital_id'] = resolvedFacilityId;
+        userRecord['facility_id'] = resolvedFacilityId;
+      }
+      if (department != null && department.trim().isNotEmpty) {
+        userRecord['department'] = department.trim();
       }
 
       await _supabase.from('users').insert(userRecord);

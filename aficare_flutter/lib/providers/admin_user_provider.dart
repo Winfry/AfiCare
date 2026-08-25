@@ -83,7 +83,8 @@ class AdminUserProvider with ChangeNotifier {
       final response = await _supabase
           .from('users')
           .select('*')
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(500);
 
       _users = (response as List)
           .map((json) => UserModel.fromJson(json))

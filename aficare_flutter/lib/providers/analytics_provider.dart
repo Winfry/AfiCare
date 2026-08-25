@@ -68,14 +68,15 @@ class AnalyticsProvider with ChangeNotifier {
 
   Future<void> _loadCounts() async {
     try {
-      final allUsers = await _supabase.from('users').select('id');
+      final allUsers = await _supabase.from('users').select('id').limit(10000);
       _totalUsers = (allUsers as List).length;
 
       final activeProv = await _supabase
           .from('users')
           .select('id')
           .neq('role', 'patient')
-          .eq('status', 'active');
+          .eq('status', 'active')
+          .limit(5000);
       _activeProviders = (activeProv as List).length;
 
       final now = DateTime.now();
@@ -84,19 +85,21 @@ class AnalyticsProvider with ChangeNotifier {
       final referrals = await _supabase
           .from('referrals')
           .select('id')
-          .gte('created_at', monthStart);
+          .gte('created_at', monthStart)
+          .limit(5000);
       _referralsThisMonth = (referrals as List).length;
 
       final cancelled = await _supabase
           .from('appointments')
           .select('id')
-          .eq('status', 'cancelled');
+          .eq('status', 'cancelled')
+          .limit(5000);
       _missedAppointments = (cancelled as List).length;
 
-      final consultations = await _supabase.from('consultations').select('id');
+      final consultations = await _supabase.from('consultations').select('id').limit(10000);
       _totalConsultations = (consultations as List).length;
 
-      final facilities = await _supabase.from('facilities').select('id');
+      final facilities = await _supabase.from('facilities').select('id').limit(1000);
       _totalFacilities = (facilities as List).length;
     } catch (e) {
       debugPrint('Counts error: $e');
@@ -108,7 +111,8 @@ class AnalyticsProvider with ChangeNotifier {
       final response = await _supabase
           .from('users')
           .select('created_at')
-          .order('created_at');
+          .order('created_at')
+          .limit(5000);
       final counts = <String, int>{};
       for (final r in response as List) {
         final date = (r['created_at'] as String).substring(0, 10);
@@ -127,7 +131,8 @@ class AnalyticsProvider with ChangeNotifier {
     try {
       final response = await _supabase
           .from('referrals')
-          .select('to_facility');
+          .select('to_facility')
+          .limit(5000);
       final counts = <String, int>{};
       for (final r in response as List) {
         final f = (r['to_facility'] as String?) ?? 'Unknown';
@@ -144,7 +149,7 @@ class AnalyticsProvider with ChangeNotifier {
 
   Future<void> _loadRoleDistribution() async {
     try {
-      final response = await _supabase.from('users').select('role');
+      final response = await _supabase.from('users').select('role').limit(10000);
       final counts = <String, int>{};
       for (final r in response as List) {
         final role = r['role'] as String;
@@ -162,7 +167,8 @@ class AnalyticsProvider with ChangeNotifier {
     try {
       final response = await _supabase
           .from('triage_assessments')
-          .select('triage_level');
+          .select('triage_level')
+          .limit(5000);
       final counts = <String, int>{};
       for (final r in response as List) {
         final level = r['triage_level'] as String;
@@ -181,7 +187,8 @@ class AnalyticsProvider with ChangeNotifier {
       final response = await _supabase
           .from('appointments')
           .select('scheduled_at')
-          .order('scheduled_at');
+          .order('scheduled_at')
+          .limit(5000);
       final counts = <String, int>{};
       for (final r in response as List) {
         final date = (r['scheduled_at'] as String).substring(0, 10);
