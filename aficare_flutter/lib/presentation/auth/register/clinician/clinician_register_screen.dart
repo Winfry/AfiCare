@@ -109,6 +109,8 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
       fullName: _nameController.text.trim(),
       role: _userRole,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+      facilityId: _selectedFacility == 'Select your facility' ? null : _selectedFacility,
+      department: _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
     );
 
     if (!mounted) return;

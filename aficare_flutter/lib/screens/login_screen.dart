@@ -189,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => context.go('/forgot-password'),
                 style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
                 child: const Text('Forgot password?', style: TextStyle(fontSize: 13)),
               ),

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../screens/landing_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/forgot_password_screen.dart';
 import '../presentation/auth/register/role_selection/register_role_screen.dart';
 import '../presentation/auth/register/patient/patient_register_screen.dart';
 import '../presentation/auth/register/clinician/clinician_register_screen.dart';
@@ -53,6 +54,7 @@ const _publicPaths = {
   '/register/radiologist',
   '/register/admin',
   '/register-facility',
+  '/forgot-password',
 };
 
 /// Paths that are accessible without authentication but only for
@@ -77,6 +79,9 @@ class _UserProfileCache {
   static UserRole? get role => _cachedRole;
 }
 
+/// Notifier that triggers GoRouter redirect re-evaluation on auth state changes.
+final ValueNotifier<int> _authRefreshNotifier = ValueNotifier<int>(0);
+
 /// Call this whenever AuthProvider updates `_currentUser` so the
 /// router's redirect has the latest role info without querying Supabase.
 void updateRouterProfile(UserModel? user) {
@@ -85,11 +90,13 @@ void updateRouterProfile(UserModel? user) {
   } else {
     _UserProfileCache.clear();
   }
+  _authRefreshNotifier.value++;
 }
 
 final appRouter = GoRouter(
   initialLocation: '/',
   debugLogDiagnostics: false,
+  refreshListenable: _authRefreshNotifier,
 
   redirect: (context, state) {
     final location = state.matchedLocation;
@@ -168,6 +175,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordScreen(),
     ),
     GoRoute(
       path: '/register',

@@ -60,6 +60,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
       fullName: _nameController.text.trim(),
       role: UserRole.admin,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+      orgName: _orgController.text.trim().isEmpty ? null : _orgController.text.trim(),
     );
 
     if (!mounted) return;

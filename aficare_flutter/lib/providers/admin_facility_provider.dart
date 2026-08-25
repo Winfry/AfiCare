@@ -47,7 +47,8 @@ class AdminFacilityProvider with ChangeNotifier {
       final response = await _supabase
           .from('facilities')
           .select('*')
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(200);
 
       _facilities = (response as List)
           .map((json) => FacilityModel.fromJson(json))
