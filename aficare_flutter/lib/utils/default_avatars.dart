@@ -4,51 +4,42 @@ import '../models/user_model.dart';
 
 /// Default avatar illustrations for healthcare providers.
 ///
-/// When a provider has no uploaded profile photo, the system shows
-/// a standardized illustration based on their role and gender.
-///
-/// Asset files (to be added by designer):
-///   assets/images/avatar-doctor-male.png
-///   assets/images/avatar-doctor-female.png
-///   assets/images/avatar-nurse-male.png
-///   assets/images/avatar-nurse-female.png
-///   assets/images/avatar-provider.png        (generic fallback)
+/// When a provider has no uploaded profile photo and the patient hasn't
+/// picked a custom avatar, the system shows one of these based on role+gender.
 class DefaultAvatar {
   const DefaultAvatar._();
 
   // ── Asset paths ────────────────────────────────────────────────
 
-  static const _basePath = 'assets/images';
+  static const _base = 'assets/images';
 
-  static const doctorMale = '$_basePath/avatar-doctor-male.png';
-  static const doctorFemale = '$_basePath/avatar-doctor-female.png';
-  static const nurseMale = '$_basePath/avatar-nurse-male.png';
-  static const nurseFemale = '$_basePath/avatar-nurse-female.png';
-  static const generic = '$_basePath/avatar-provider.png';
+  static const doctorMale   = '$_base/doc-male-01.png';
+  static const doctorFemale = '$_base/doc-female-01.png';
+  static const nurseMale    = '$_base/nurse-male-01.png';
+  static const nurseFemale  = '$_base/nurse-female-01.png';
+  static const generic      = '$_base/Avatar.png';
 
   // ── Role → color mapping (for initials fallback) ──────────────
 
   static const _roleColors = {
-    UserRole.doctor: Color(0xFF1D3557),    // navy
-    UserRole.nurse: Color(0xFF2E7D32),     // green
-    UserRole.radiologist: Color(0xFF457B9D), // med blue
-    UserRole.admin: Color(0xFF55708A),     // slate
-    UserRole.patient: Color(0xFF1D3557),   // navy
+    UserRole.doctor:     Color(0xFF1D3557),
+    UserRole.nurse:      Color(0xFF2E7D32),
+    UserRole.radiologist: Color(0xFF457B9D),
+    UserRole.admin:      Color(0xFF55708A),
+    UserRole.patient:    Color(0xFF1D3557),
   };
 
   static const _roleLabels = {
-    UserRole.doctor: 'Dr',
-    UserRole.nurse: 'N',
+    UserRole.doctor:     'Dr',
+    UserRole.nurse:      'N',
     UserRole.radiologist: 'R',
-    UserRole.admin: 'A',
-    UserRole.patient: 'P',
+    UserRole.admin:      'A',
+    UserRole.patient:    'P',
   };
 
   // ── Public API ────────────────────────────────────────────────
 
-  /// Returns the asset path for the default avatar based on role + gender.
-  ///
-  /// Falls back to [generic] if role/gender are unknown.
+  /// Returns the default asset path for a given role + gender.
   static String assetPath({
     required UserRole role,
     String? gender,
@@ -79,7 +70,6 @@ class DefaultAvatar {
   /// Foreground color for initials text.
   static Color foregroundColor(UserRole role) {
     final bg = backgroundColor(role);
-    // Dark backgrounds → white text, light backgrounds → dark text
     final luminance = bg.computeLuminance();
     return luminance < 0.4 ? Colors.white : const Color(0xFF152A45);
   }
