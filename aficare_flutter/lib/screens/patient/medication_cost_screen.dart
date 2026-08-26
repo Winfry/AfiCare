@@ -51,6 +51,15 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
       _costs = (data as List).map((j) => MedicationCost.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading medication costs: $e');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load medication costs: $e'), backgroundColor: Colors.red),
+            );
+          }
+        });
+      }
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -291,19 +300,27 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
                       final qty = int.tryParse(qtyCtrl.text) ?? 1;
                       final total = double.tryParse(costCtrl.text) ?? 0;
 
-                      await _supabase.from('medication_costs').insert({
-                        'id': const Uuid().v4(),
-                        'patient_id': patientId,
-                        'medication_name': medCtrl.text.trim(),
-                        'dosage': dosageCtrl.text.trim(),
-                        'quantity': qty,
-                        'unit_cost': qty > 0 ? total / qty : total,
-                        'total_cost': total,
-                        'pharmacy_name': pharmacyCtrl.text.trim().isNotEmpty ? pharmacyCtrl.text.trim() : null,
-                        'payment_method': paymentMethod,
-                        'purchase_date': DateTime.now().toIso8601String(),
-                      });
-                      if (mounted) { Navigator.pop(ctx); _loadData(); }
+                      try {
+                        await _supabase.from('medication_costs').insert({
+                          'id': const Uuid().v4(),
+                          'patient_id': patientId,
+                          'medication_name': medCtrl.text.trim(),
+                          'dosage': dosageCtrl.text.trim(),
+                          'quantity': qty,
+                          'unit_cost': qty > 0 ? total / qty : total,
+                          'total_cost': total,
+                          'pharmacy_name': pharmacyCtrl.text.trim().isNotEmpty ? pharmacyCtrl.text.trim() : null,
+                          'payment_method': paymentMethod,
+                          'purchase_date': DateTime.now().toIso8601String(),
+                        });
+                        if (mounted) { Navigator.pop(ctx); _loadData(); }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error saving purchase: $e'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),

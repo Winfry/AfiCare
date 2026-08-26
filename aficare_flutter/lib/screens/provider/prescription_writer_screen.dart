@@ -127,6 +127,8 @@ class _PrescriptionWriterScreenState extends State<PrescriptionWriterScreen> {
           'dosage': entry.dosage,
           'frequency': entry.frequency,
           'duration': entry.duration,
+          'route': entry.routeController.text.trim().isNotEmpty
+              ? entry.routeController.text.trim() : null,
           'instructions': entry.instructions.isEmpty
               ? null : entry.instructions,
           'issued_at': DateTime.now().toIso8601String(),

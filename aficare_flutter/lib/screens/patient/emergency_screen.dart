@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 
 class EmergencyScreen extends StatefulWidget {
@@ -163,9 +164,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             child: const Text('Close'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // TODO: url_launcher for tel:999
+              final uri = Uri(scheme: 'tel', path: '999');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Call Emergency', style: TextStyle(color: Colors.white)),

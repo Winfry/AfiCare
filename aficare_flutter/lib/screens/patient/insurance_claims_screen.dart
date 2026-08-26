@@ -38,6 +38,15 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
       _claims = (data as List).map((j) => InsuranceClaim.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading claims: $e');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load claims: $e'), backgroundColor: Colors.red),
+            );
+          }
+        });
+      }
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -303,18 +312,26 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
                       onPressed: diagnosisCtrl.text.trim().isEmpty ? null : () async {
                         final patientId = _supabase.auth.currentUser?.id;
                         if (patientId == null) return;
-                        await _supabase.from('insurance_claims').insert({
-                          'id': const Uuid().v4(),
-                          'patient_id': patientId,
-                          'insurance_type': insuranceType,
-                          'insurance_number': numberCtrl.text.trim(),
-                          'claim_status': 'draft',
-                          'claimed_amount': double.tryParse(amountCtrl.text) ?? 0,
-                          'diagnosis': diagnosisCtrl.text.trim(),
-                          'date_of_service': DateTime.now().toIso8601String(),
-                          'created_at': DateTime.now().toIso8601String(),
-                        });
-                        if (mounted) { Navigator.pop(ctx); _loadClaims(); }
+                        try {
+                          await _supabase.from('insurance_claims').insert({
+                            'id': const Uuid().v4(),
+                            'patient_id': patientId,
+                            'insurance_type': insuranceType,
+                            'insurance_number': numberCtrl.text.trim(),
+                            'claim_status': 'draft',
+                            'claimed_amount': double.tryParse(amountCtrl.text) ?? 0,
+                            'diagnosis': diagnosisCtrl.text.trim(),
+                            'date_of_service': DateTime.now().toIso8601String(),
+                            'created_at': DateTime.now().toIso8601String(),
+                          });
+                          if (mounted) { Navigator.pop(ctx); _loadClaims(); }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error creating claim: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       child: const Text('Create Claim', style: TextStyle(fontWeight: FontWeight.w600)),

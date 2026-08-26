@@ -39,6 +39,15 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
       _receipts = (data as List).map((j) => Receipt.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading receipts: $e');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load receipts: $e'), backgroundColor: Colors.red),
+            );
+          }
+        });
+      }
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -282,18 +291,26 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                     width: double.infinity, height: 48,
                     child: ElevatedButton(
                       onPressed: () async {
-                        await _supabase.from('receipts').insert({
-                          'id': const Uuid().v4(),
-                          'patient_id': patientId,
-                          'image_url': imageUrl,
-                          'facility_name': facilityCtrl.text.isNotEmpty ? facilityCtrl.text : null,
-                          'total_amount': double.tryParse(amountCtrl.text),
-                          'service_type': serviceType,
-                          'payment_method': paymentMethod,
-                          'date': DateTime.now().toIso8601String(),
-                        });
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        _loadReceipts();
+                        try {
+                          await _supabase.from('receipts').insert({
+                            'id': const Uuid().v4(),
+                            'patient_id': patientId,
+                            'image_url': imageUrl,
+                            'facility_name': facilityCtrl.text.isNotEmpty ? facilityCtrl.text : null,
+                            'total_amount': double.tryParse(amountCtrl.text),
+                            'service_type': serviceType,
+                            'payment_method': paymentMethod,
+                            'date': DateTime.now().toIso8601String(),
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _loadReceipts();
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error saving receipt: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
