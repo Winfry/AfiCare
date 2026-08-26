@@ -49,6 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return '/provider';
       case UserRole.admin:
         return '/admin';
+      case UserRole.chw:
+        return '/chw';
     }
   }
 

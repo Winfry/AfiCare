@@ -125,12 +125,15 @@ class _RootAppState extends State<_RootApp> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final auth = Provider.of<AuthProvider>(context);
-    final pp = Provider.of<PreferencesProvider>(context);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     final id = auth.currentUser?.id;
     if (id != null && id != _loadedUserId) {
       _loadedUserId = id;
-      pp.loadPreferences(id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Provider.of<PreferencesProvider>(context, listen: false).loadPreferences(id);
+        }
+      });
     }
   }
 

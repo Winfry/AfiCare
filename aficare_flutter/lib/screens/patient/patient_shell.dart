@@ -43,9 +43,22 @@ class _PatientShellState extends State<PatientShell> {
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Home'),
     SidebarNavItem(icon: Icons.calendar_today_outlined, label: 'Appointments'),
     SidebarNavItem(icon: Icons.chat_bubble_outline, label: 'Messages'),
+    SidebarGroupLabel('Health Tools'),
+    SidebarNavItem(icon: Icons.emergency_outlined, label: 'Emergency SOS'),
+    SidebarNavItem(icon: Icons.psychology_outlined, label: 'Mental Health'),
+    SidebarNavItem(icon: Icons.pregnant_woman_outlined, label: 'ANC Tracker'),
+    SidebarNavItem(icon: Icons.vaccines_outlined, label: 'Vaccinations'),
+    SidebarNavItem(icon: Icons.medication_outlined, label: 'Med Reminders'),
+    SidebarNavItem(icon: Icons.male_outlined, label: "Men's Health"),
+    SidebarNavItem(icon: Icons.shield_outlined, label: 'Drug Checker'),
+    SidebarGroupLabel('Financial'),
+    SidebarNavItem(icon: Icons.payments_outlined, label: 'Med Costs'),
+    SidebarNavItem(icon: Icons.receipt_long_outlined, label: 'Receipts'),
+    SidebarNavItem(icon: Icons.health_and_safety_outlined, label: 'Insurance'),
     SidebarGroupLabel('Records'),
     SidebarNavItem(icon: Icons.medical_information_outlined, label: 'Records'),
-    SidebarNavItem(icon: Icons.receipt_long_outlined, label: 'Expenses'),
+    SidebarNavItem(icon: Icons.family_restroom_outlined, label: 'Caregiver'),
+    SidebarNavItem(icon: Icons.accessibility_new_outlined, label: 'Accessibility'),
   ];
 
   static const _bottomNavItems = [
@@ -113,9 +126,31 @@ class _PatientShellState extends State<PatientShell> {
     if (navIndex <= 2) {
       setState(() => _index = navIndex);
     } else if (navIndex == 3) {
-      context.go('/patient/records');
+      context.go('/patient/emergency');
     } else if (navIndex == 4) {
-      context.go('/patient/expenses');
+      context.go('/patient/mental-health');
+    } else if (navIndex == 5) {
+      context.go('/patient/anc');
+    } else if (navIndex == 6) {
+      context.go('/patient/vaccinations');
+    } else if (navIndex == 7) {
+      context.go('/patient/medication-reminders');
+    } else if (navIndex == 8) {
+      context.go('/patient/mens-health');
+    } else if (navIndex == 9) {
+      context.go('/patient/drug-interactions');
+    } else if (navIndex == 10) {
+      context.go('/patient/medication-costs');
+    } else if (navIndex == 11) {
+      context.go('/patient/receipt-upload');
+    } else if (navIndex == 12) {
+      context.go('/patient/insurance-claims');
+    } else if (navIndex == 13) {
+      context.go('/patient/records');
+    } else if (navIndex == 14) {
+      context.go('/patient/caregiver-portal');
+    } else if (navIndex == 15) {
+      context.go('/patient/accessibility');
     }
   }
 
