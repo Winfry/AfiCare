@@ -31,6 +31,7 @@ class _ProviderShellState extends State<ProviderShell> {
     SidebarNavItem(icon: Icons.reorder_outlined, label: 'Referrals'),
     SidebarGroupLabel('Workspace'),
     SidebarNavItem(icon: Icons.analytics_outlined, label: 'Reports'),
+    SidebarNavItem(icon: Icons.medication_liquid_outlined, label: 'Adherence'),
     SidebarNavItem(icon: Icons.inbox_outlined, label: 'Inbox'),
     SidebarNavItem(icon: Icons.settings_outlined, label: 'Settings'),
   ];
@@ -52,9 +53,11 @@ class _ProviderShellState extends State<ProviderShell> {
         setState(() => _currentIndex = 3);
       case 3: // Reports (full page)
         context.go('/provider/reports');
-      case 4: // Inbox
+      case 4: // Adherence (full page)
+        context.go('/provider/adherence');
+      case 5: // Inbox
         setState(() => _currentIndex = 2);
-      case 5: // Settings (full page)
+      case 6: // Settings (full page)
         context.go('/provider/settings');
     }
   }

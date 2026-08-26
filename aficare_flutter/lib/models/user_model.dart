@@ -1,4 +1,4 @@
-enum UserRole { patient, doctor, nurse, radiologist, admin }
+enum UserRole { patient, doctor, nurse, radiologist, admin, chw }
 enum UserStatus { active, suspended, invited }
 
 class UserModel {

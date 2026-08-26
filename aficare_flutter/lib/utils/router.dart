@@ -20,6 +20,21 @@ import '../screens/patient/share_records.dart';
 import '../screens/patient/qr_scanner.dart';
 import '../screens/patient/appointments_screen.dart';
 import '../screens/patient/expenses_screen.dart';
+import '../screens/patient/mental_health_screen.dart';
+import '../screens/patient/emergency_screen.dart';
+import '../screens/patient/anc_screen.dart';
+import '../screens/patient/vaccination_screen.dart';
+import '../screens/patient/medication_reminder_screen.dart';
+import '../screens/patient/mens_health_screen.dart';
+import '../screens/patient/caregiver_portal_screen.dart';
+import '../screens/patient/receipt_upload_screen.dart';
+import '../screens/patient/drug_interaction_screen.dart';
+import '../screens/patient/medication_cost_screen.dart';
+import '../screens/patient/insurance_claims_screen.dart';
+import '../screens/patient/accessibility_settings_screen.dart';
+import '../screens/chw/chw_shell.dart';
+import '../screens/chw/chw_new_visit_screen.dart';
+import '../screens/chw/chw_patient_search.dart';
 import '../screens/provider/provider_shell.dart';
 import '../screens/provider/provider_dashboard.dart';
 import '../screens/provider/consultation_screen.dart';
@@ -33,6 +48,7 @@ import '../screens/provider/radiology_report_viewer_screen.dart';
 import '../screens/provider/referral_tracker_screen.dart';
 import '../screens/provider/provider_inbox_screen.dart';
 import '../screens/provider/provider_settings_screen.dart';
+import '../screens/provider/adherence_monitoring_screen.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/admin/admin_user_management_screen.dart';
 import '../screens/admin/admin_facility_management_screen.dart';
@@ -136,6 +152,13 @@ final appRouter = GoRouter(
 
     if (location.startsWith('/provider') || location == '/doctor' || location == '/nurse') {
       if (role != UserRole.doctor && role != UserRole.nurse && role != UserRole.radiologist) {
+        return _dashboardForRole(role);
+      }
+      return null;
+    }
+
+    if (location.startsWith('/chw')) {
+      if (role != UserRole.chw) {
         return _dashboardForRole(role);
       }
       return null;
@@ -247,6 +270,54 @@ final appRouter = GoRouter(
           builder: (context, state) => const ExpensesScreen(),
         ),
         GoRoute(
+          path: 'mental-health',
+          builder: (context, state) => const MentalHealthScreen(),
+        ),
+        GoRoute(
+          path: 'emergency',
+          builder: (context, state) => const EmergencyScreen(),
+        ),
+        GoRoute(
+          path: 'anc',
+          builder: (context, state) => const AncScreen(),
+        ),
+        GoRoute(
+          path: 'vaccinations',
+          builder: (context, state) => const VaccinationScreen(),
+        ),
+        GoRoute(
+          path: 'medication-reminders',
+          builder: (context, state) => const MedicationReminderScreen(),
+        ),
+        GoRoute(
+          path: 'mens-health',
+          builder: (context, state) => const MensHealthScreen(),
+        ),
+        GoRoute(
+          path: 'caregiver-portal',
+          builder: (context, state) => const CaregiverPortalScreen(),
+        ),
+        GoRoute(
+          path: 'receipt-upload',
+          builder: (context, state) => const ReceiptUploadScreen(),
+        ),
+        GoRoute(
+          path: 'drug-interactions',
+          builder: (context, state) => const DrugInteractionScreen(),
+        ),
+        GoRoute(
+          path: 'medication-costs',
+          builder: (context, state) => const MedicationCostScreen(),
+        ),
+        GoRoute(
+          path: 'insurance-claims',
+          builder: (context, state) => const InsuranceClaimsScreen(),
+        ),
+        GoRoute(
+          path: 'accessibility',
+          builder: (context, state) => const AccessibilitySettingsScreen(),
+        ),
+        GoRoute(
           path: 'messages',
           builder: (context, state) => const MessagesScreen(),
         ),
@@ -346,6 +417,10 @@ final appRouter = GoRouter(
           builder: (context, state) => const ProviderSettingsScreen(),
         ),
         GoRoute(
+          path: 'adherence',
+          builder: (context, state) => const AdherenceMonitoringScreen(),
+        ),
+        GoRoute(
           path: 'referrals',
           builder: (context, state) => const ReferralTrackerScreen(),
         ),
@@ -392,6 +467,22 @@ final appRouter = GoRouter(
         return ReferralReceivingPortalScreen(referralId: referralId);
       },
     ),
+
+    // CHW Routes
+    GoRoute(
+      path: '/chw',
+      builder: (context, state) => const CHWShell(),
+      routes: [
+        GoRoute(
+          path: 'new-visit',
+          builder: (context, state) => const CHWNewVisitScreen(),
+        ),
+        GoRoute(
+          path: 'patients',
+          builder: (context, state) => const CHWPatientSearchScreen(),
+        ),
+      ],
+    ),
   ],
 
   errorBuilder: (context, state) => Scaffold(
@@ -432,6 +523,8 @@ String _dashboardForRole(UserRole role) {
       return '/provider';
     case UserRole.admin:
       return '/admin';
+    case UserRole.chw:
+      return '/chw';
     default:
       return '/login';
   }

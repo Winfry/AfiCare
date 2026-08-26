@@ -431,6 +431,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return const Color(0xFF457B9D);
       case UserRole.admin:
         return AfiCareTheme.adminColor;
+      case UserRole.chw:
+        return const Color(0xFF2E7D32);
     }
   }
 }
