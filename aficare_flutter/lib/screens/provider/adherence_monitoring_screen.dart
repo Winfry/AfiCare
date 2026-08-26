@@ -15,6 +15,8 @@ class _AdherenceMonitoringScreenState extends State<AdherenceMonitoringScreen> {
   List<Map<String, dynamic>> _patients = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  int _activeCount = 0;
+  int _defaulterCount = 0;
 
   @override
   void initState() {
@@ -33,6 +35,34 @@ class _AdherenceMonitoringScreenState extends State<AdherenceMonitoringScreen> {
     } catch (e) {
       debugPrint('Error loading patients for adherence: $e');
     }
+
+    try {
+      final activeData = await _supabase
+          .from('medication_reminders')
+          .select('patient_id')
+          .eq('is_active', true);
+      final activePatientIds = (activeData as List)
+          .map((r) => r['patient_id'] as String)
+          .toSet();
+      _activeCount = activePatientIds.length;
+    } catch (_) {
+      _activeCount = _patients.length;
+    }
+
+    try {
+      final defaulterData = await _supabase
+          .from('medication_reminders')
+          .select('patient_id')
+          .eq('is_active', true)
+          .lt('last_taken_at', DateTime.now().subtract(const Duration(days: 3)).toIso8601String());
+      final defaulterIds = (defaulterData as List)
+          .map((r) => r['patient_id'] as String)
+          .toSet();
+      _defaulterCount = defaulterIds.length;
+    } catch (_) {
+      _defaulterCount = 0;
+    }
+
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -80,9 +110,9 @@ class _AdherenceMonitoringScreenState extends State<AdherenceMonitoringScreen> {
                     children: [
                       _statCard('Total', '${_patients.length}', AppColors.canopy),
                       const SizedBox(width: 10),
-                      _statCard('Active', '${_patients.length}', const Color(0xFF2E7D32)),
+                      _statCard('Active', '$_activeCount', const Color(0xFF2E7D32)),
                       const SizedBox(width: 10),
-                      _statCard('Defaulters', '0', const Color(0xFFE53935)),
+                      _statCard('Defaulters', '$_defaulterCount', const Color(0xFFE53935)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -135,6 +165,7 @@ class _AdherenceMonitoringScreenState extends State<AdherenceMonitoringScreen> {
   Widget _patientCard(Map<String, dynamic> patient) {
     final name = patient['full_name'] ?? 'Unknown';
     final dob = patient['date_of_birth'] as String?;
+    final patientId = patient['id'] as String?;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -159,13 +190,50 @@ class _AdherenceMonitoringScreenState extends State<AdherenceMonitoringScreen> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(6)),
-            child: const Text('Active', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32))),
-          ),
+          if (patientId != null)
+            FutureBuilder<int>(
+              future: _countReminders(patientId),
+              builder: (ctx, snap) {
+                final count = snap.data ?? 0;
+                final hasReminders = count > 0;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: hasReminders ? const Color(0xFFE8F5E9) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    hasReminders ? '$count active Rx' : 'No Rx',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: hasReminders ? const Color(0xFF2E7D32) : Colors.grey,
+                    ),
+                  ),
+                );
+              },
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+              child: Text('No Rx', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
+            ),
         ],
       ),
     );
+  }
+
+  Future<int> _countReminders(String patientId) async {
+    try {
+      final data = await Supabase.instance.client
+          .from('medication_reminders')
+          .select('id')
+          .eq('patient_id', patientId)
+          .eq('is_active', true);
+      return (data as List).length;
+    } catch (_) {
+      return 0;
+    }
   }
 }

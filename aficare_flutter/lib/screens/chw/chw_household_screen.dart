@@ -220,22 +220,30 @@ class _CHWHouseholdScreenState extends State<CHWHouseholdScreen> {
                       final chvId = _supabase.auth.currentUser?.id;
                       if (chvId == null) return;
 
-                      await _supabase.from('households').insert({
-                        'id': const Uuid().v4(),
-                        'chv_id': chvId,
-                        'household_name': nameCtrl.text.trim(),
-                        'village': villageCtrl.text.trim(),
-                        'total_members': int.tryParse(membersCtrl.text) ?? 1,
-                        'children_under_5': int.tryParse(childrenCtrl.text) ?? 0,
-                        'pregnant_women': int.tryParse(pregnantCtrl.text) ?? 0,
-                        'elderly_members': int.tryParse(elderlyCtrl.text) ?? 0,
-                        'chronically_ill': int.tryParse(chronicCtrl.text) ?? 0,
-                        'has_mosquito_nets': hasNets,
-                        'created_at': DateTime.now().toIso8601String(),
-                      });
-                      if (mounted) {
-                        Navigator.pop(ctx);
-                        _loadHouseholds();
+                      try {
+                        await _supabase.from('households').insert({
+                          'id': const Uuid().v4(),
+                          'chv_id': chvId,
+                          'household_name': nameCtrl.text.trim(),
+                          'village': villageCtrl.text.trim(),
+                          'total_members': int.tryParse(membersCtrl.text) ?? 1,
+                          'children_under_5': int.tryParse(childrenCtrl.text) ?? 0,
+                          'pregnant_women': int.tryParse(pregnantCtrl.text) ?? 0,
+                          'elderly_members': int.tryParse(elderlyCtrl.text) ?? 0,
+                          'chronically_ill': int.tryParse(chronicCtrl.text) ?? 0,
+                          'has_mosquito_nets': hasNets,
+                          'created_at': DateTime.now().toIso8601String(),
+                        });
+                        if (mounted) {
+                          Navigator.pop(ctx);
+                          _loadHouseholds();
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error saving household: $e'), backgroundColor: Colors.red),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import '../common/notifications_screen.dart';
@@ -14,6 +15,23 @@ class ProviderSettingsScreen extends StatefulWidget {
 }
 
 class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
+  String _selectedLanguage = 'English (default)';
+  String _selectedTheme = 'System default';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedLanguage = prefs.getString('provider_language') ?? 'English (default)';
+      _selectedTheme = prefs.getString('provider_theme') ?? 'System default';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -104,46 +122,102 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                _settingTile(Icons.language, 'Language', 'English (default)', () {
+                _settingTile(Icons.language, 'Language', _selectedLanguage, () {
                   showDialog(
                     context: context,
                     builder: (ctx) => SimpleDialog(
                       title: const Text('Language'),
                       children: [
                         SimpleDialogOption(
-                          onPressed: () { Navigator.pop(ctx); },
-                          child: const Text('English (default)'),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await SharedPreferences.getInstance()
+                                .then((p) => p.setString('provider_language', 'English (default)'));
+                            setState(() => _selectedLanguage = 'English (default)');
+                          },
+                          child: Row(
+                            children: [
+                              if (_selectedLanguage == 'English (default)')
+                                const Icon(Icons.check, color: Colors.green, size: 18),
+                              const SizedBox(width: 8),
+                              const Text('English (default)'),
+                            ],
+                          ),
                         ),
                         SimpleDialogOption(
-                          onPressed: () { Navigator.pop(ctx); },
-                          child: const Text('Swahili'),
-                        ),
-                        SimpleDialogOption(
-                          onPressed: () { Navigator.pop(ctx); },
-                          child: const Text('French'),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await SharedPreferences.getInstance()
+                                .then((p) => p.setString('provider_language', 'Swahili'));
+                            setState(() => _selectedLanguage = 'Swahili');
+                          },
+                          child: Row(
+                            children: [
+                              if (_selectedLanguage == 'Swahili')
+                                const Icon(Icons.check, color: Colors.green, size: 18),
+                              const SizedBox(width: 8),
+                              const Text('Swahili'),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   );
                 }),
                 const Divider(height: 1),
-                _settingTile(Icons.dark_mode, 'Theme', 'System default', () {
+                _settingTile(Icons.dark_mode, 'Theme', _selectedTheme, () {
                   showDialog(
                     context: context,
                     builder: (ctx) => SimpleDialog(
                       title: const Text('Theme'),
                       children: [
                         SimpleDialogOption(
-                          onPressed: () { Navigator.pop(ctx); },
-                          child: const Text('System default'),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await SharedPreferences.getInstance()
+                                .then((p) => p.setString('provider_theme', 'System default'));
+                            setState(() => _selectedTheme = 'System default');
+                          },
+                          child: Row(
+                            children: [
+                              if (_selectedTheme == 'System default')
+                                const Icon(Icons.check, color: Colors.green, size: 18),
+                              const SizedBox(width: 8),
+                              const Text('System default'),
+                            ],
+                          ),
                         ),
                         SimpleDialogOption(
-                          onPressed: () { Navigator.pop(ctx); },
-                          child: const Text('Light'),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await SharedPreferences.getInstance()
+                                .then((p) => p.setString('provider_theme', 'Light'));
+                            setState(() => _selectedTheme = 'Light');
+                          },
+                          child: Row(
+                            children: [
+                              if (_selectedTheme == 'Light')
+                                const Icon(Icons.check, color: Colors.green, size: 18),
+                              const SizedBox(width: 8),
+                              const Text('Light'),
+                            ],
+                          ),
                         ),
                         SimpleDialogOption(
-                          onPressed: () { Navigator.pop(ctx); },
-                          child: const Text('Dark'),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await SharedPreferences.getInstance()
+                                .then((p) => p.setString('provider_theme', 'Dark'));
+                            setState(() => _selectedTheme = 'Dark');
+                          },
+                          child: Row(
+                            children: [
+                              if (_selectedTheme == 'Dark')
+                                const Icon(Icons.check, color: Colors.green, size: 18),
+                              const SizedBox(width: 8),
+                              const Text('Dark'),
+                            ],
+                          ),
                         ),
                       ],
                     ),

@@ -174,7 +174,7 @@ class _AccessibilitySettingsScreenState extends State<AccessibilitySettingsScree
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Settings are saved locally. Sign in on another device to apply the same settings there.',
+                            'Settings are saved locally on this device. These options help you customize the app for your needs.',
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                           ),
                         ),

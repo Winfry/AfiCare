@@ -37,6 +37,15 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
       _grantedAccess = (granted as List).map((j) => CaregiverAccess.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading caregiver access: $e');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load caregiver access: $e'), backgroundColor: Colors.red),
+            );
+          }
+        });
+      }
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -215,42 +224,50 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
                     if (userId == null) return;
                     final code = CaregiverAccess.generateAccessCode();
 
-                    await _supabase.from('caregiver_access').insert({
-                      'id': const Uuid().v4(),
-                      'caregiver_user_id': 'pending',
-                      'dependent_patient_id': userId,
-                      'access_code': code,
-                      'access_level': accessLevel,
-                      'is_active': true,
-                      'granted_by_patient_id': userId,
-                      'granted_at': DateTime.now().toIso8601String(),
-                    });
+                    try {
+                      await _supabase.from('caregiver_access').insert({
+                        'id': const Uuid().v4(),
+                        'caregiver_user_id': 'pending',
+                        'dependent_patient_id': userId,
+                        'access_code': code,
+                        'access_level': accessLevel,
+                        'is_active': true,
+                        'granted_by_patient_id': userId,
+                        'granted_at': DateTime.now().toIso8601String(),
+                      });
 
-                    if (mounted) {
-                      Navigator.pop(ctx);
-                      _loadAccess();
-                      showDialog(
-                        context: context,
-                        builder: (dlgCtx) => AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          title: const Text('Access Code Generated'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Share this code with your caregiver:',
-                                  textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
-                              const SizedBox(height: 12),
-                              Text(code, style: TextStyle(fontFamily: 'monospace', fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.canopy)),
-                              const SizedBox(height: 8),
-                              Text(CaregiverAccess.accessLevelLabel(accessLevel),
-                                  style: TextStyle(color: Colors.grey.shade500)),
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        _loadAccess();
+                        showDialog(
+                          context: context,
+                          builder: (dlgCtx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: const Text('Access Code Generated'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Share this code with your caregiver:',
+                                    textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+                                const SizedBox(height: 12),
+                                Text(code, style: TextStyle(fontFamily: 'monospace', fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.canopy)),
+                                const SizedBox(height: 8),
+                                Text(CaregiverAccess.accessLevelLabel(accessLevel),
+                                    style: TextStyle(color: Colors.grey.shade500)),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Done')),
                             ],
                           ),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Done')),
-                          ],
-                        ),
-                      );
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error granting access: $e'), backgroundColor: Colors.red),
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
@@ -277,10 +294,18 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
       ),
     );
     if (confirm == true) {
-      await _supabase
-          .from('caregiver_access')
-          .update({'is_active': false}).eq('id', access.id);
-      _loadAccess();
+      try {
+        await _supabase
+            .from('caregiver_access')
+            .update({'is_active': false}).eq('id', access.id);
+        _loadAccess();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error revoking access: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     }
   }
 }

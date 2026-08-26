@@ -263,12 +263,8 @@ class _RadiologyOrderScreenState extends State<RadiologyOrderScreen> {
               ),
               const SizedBox(height: 12),
               Center(
-                child:               TextButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Draft saved')),
-                    );
-                  },
+                child: TextButton.icon(
+                  onPressed: _saveDraft,
                   icon: const Icon(Icons.save_outlined, size: 18),
                   label: const Text('Save Draft'),
                 ),
@@ -283,6 +279,46 @@ class _RadiologyOrderScreenState extends State<RadiologyOrderScreen> {
 
   Widget _label(String text) {
     return Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600));
+  }
+
+  Future<void> _saveDraft() async {
+    if (_selectedStudyType == null && _bodyPartController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing to save — enter at least a study type or body part')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final providerId = auth.currentUser?.id ?? '';
+    final supabase = Supabase.instance.client;
+
+    try {
+      await supabase.from('radiology_orders').insert({
+        'patient_id': widget.patientId,
+        'provider_id': providerId,
+        'study_type': _selectedStudyType ?? 'Other',
+        'body_part': _bodyPartController.text.trim(),
+        'clinical_indication': _indicationController.text.trim(),
+        'priority': _priority,
+        'status': 'draft',
+        'ordered_at': DateTime.now().toIso8601String(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Draft saved'), backgroundColor: Color(0xFF2E7D32)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving draft: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   Widget _priorityChip(String label, String value, Color color) {

@@ -36,6 +36,15 @@ class _MensHealthScreenState extends State<MensHealthScreen> {
       _screenings = (data as List).map((j) => MensHealthScreening.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading mens health: $e');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load screening data: $e'), backgroundColor: Colors.red),
+            );
+          }
+        });
+      }
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -215,7 +224,6 @@ class _MensHealthScreeningSheetState extends State<_MensHealthScreeningSheet> {
   @override
   Widget build(BuildContext context) {
     if (_currentQ >= _questions.length) {
-      _submitScreening();
       return const SizedBox.shrink();
     }
 
@@ -257,7 +265,12 @@ class _MensHealthScreeningSheetState extends State<_MensHealthScreeningSheet> {
                     return GestureDetector(
                       onTap: () {
                         _answers.add(scores[entry.key]);
-                        setState(() => _currentQ++);
+                        setState(() {
+                          _currentQ++;
+                          if (_currentQ >= _questions.length) {
+                            _submitScreening();
+                          }
+                        });
                       },
                       child: Container(
                         width: double.infinity,

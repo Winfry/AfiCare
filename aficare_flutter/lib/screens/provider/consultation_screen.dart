@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
@@ -1477,6 +1479,12 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       return;
     }
 
+    final summary = 'Consultation Summary\n'
+        'Patient: ${_medilinkIdController.text}\n'
+        'Triage: ${_aiResult!.triageLevel.toUpperCase()}\n'
+        'Conditions: ${_aiResult!.suspectedConditions.map((c) => c['name']).join(', ')}\n'
+        'Recommendations: ${_aiResult!.recommendations.first}';
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1502,15 +1510,19 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                 child: Icon(Icons.message, color: Colors.white),
               ),
               title: const Text('Send via SMS'),
-              subtitle: const Text('Send summary to patient\'s phone'),
-              onTap: () {
+              subtitle: const Text('Open SMS app with consultation summary'),
+              onTap: () async {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Consultation summary sent via SMS'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                final uri = Uri.parse('sms:?body=${Uri.encodeComponent(summary)}');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('SMS not available on this device')),
+                    );
+                  }
+                }
               },
             ),
             ListTile(
@@ -1519,49 +1531,37 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                 child: Icon(Icons.email, color: Colors.white),
               ),
               title: const Text('Send via Email'),
-              subtitle: const Text('Send detailed report to patient\'s email'),
-              onTap: () {
+              subtitle: const Text('Open email app with consultation report'),
+              onTap: () async {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Consultation report sent via email'),
-                    backgroundColor: Colors.blue,
-                  ),
+                final uri = Uri(
+                  scheme: 'mailto',
+                  queryParameters: {
+                    'subject': 'Consultation Summary - ${_medilinkIdController.text}',
+                    'body': summary,
+                  },
                 );
-              },
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.purple,
-                child: Icon(Icons.qr_code, color: Colors.white),
-              ),
-              title: const Text('Generate QR Code'),
-              subtitle: const Text('Patient can scan to view consultation'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('QR code generated for patient'),
-                    backgroundColor: Colors.purple,
-                  ),
-                );
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No email app configured')),
+                    );
+                  }
+                }
               },
             ),
             ListTile(
               leading: const CircleAvatar(
                 backgroundColor: Colors.orange,
-                child: Icon(Icons.print, color: Colors.white),
+                child: Icon(Icons.copy_rounded, color: Colors.white),
               ),
-              title: const Text('Print Summary'),
-              subtitle: const Text('Print consultation summary'),
+              title: const Text('Copy to Clipboard'),
+              subtitle: const Text('Copy consultation summary text'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Printing consultation summary...'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
+                _copyToClipboard(context, summary);
               },
             ),
             const SizedBox(height: 10),
@@ -1569,6 +1569,18 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         ),
       ),
     );
+  }
+
+  void _copyToClipboard(BuildContext context, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Consultation summary copied to clipboard'),
+          backgroundColor: Color(0xFF2E7D32),
+        ),
+      );
+    }
   }
 
   @override

@@ -56,6 +56,15 @@ class _AncScreenState extends State<AncScreen> {
       } catch (_) {}
     } catch (e) {
       debugPrint('Error loading ANC data: $e');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load ANC data: $e'), backgroundColor: Colors.red),
+            );
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -453,27 +462,35 @@ class _AncScreenState extends State<AncScreen> {
                     if (patientId == null) return;
 
                     // Save LMP to patient notes
-                    final notes = _notesRaw ?? '';
-                    String updatedNotes;
-                    if (notes.contains('lmp:')) {
-                      updatedNotes = notes.replaceAll(
-                        RegExp(r'lmp:.*?;'),
-                        'lmp: ${selectedDate.toIso8601String()};',
-                      );
-                    } else {
-                      updatedNotes = '$notes lmp: ${selectedDate.toIso8601String()};';
+                    try {
+                      final notes = _notesRaw ?? '';
+                      String updatedNotes;
+                      if (notes.contains('lmp:')) {
+                        updatedNotes = notes.replaceAll(
+                          RegExp(r'lmp:.*?;'),
+                          'lmp: ${selectedDate.toIso8601String()};',
+                        );
+                      } else {
+                        updatedNotes = '$notes lmp: ${selectedDate.toIso8601String()};';
+                      }
+
+                      await _supabase.from('patients').upsert({
+                        'id': patientId,
+                        'notes': updatedNotes,
+                      });
+
+                      Navigator.pop(ctx);
+                      setState(() {
+                        _lmp = selectedDate;
+                        _notesRaw = updatedNotes;
+                      });
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error saving LMP: $e'), backgroundColor: Colors.red),
+                        );
+                      }
                     }
-
-                    await _supabase.from('patients').upsert({
-                      'id': patientId,
-                      'notes': updatedNotes,
-                    });
-
-                    Navigator.pop(ctx);
-                    setState(() {
-                      _lmp = selectedDate;
-                      _notesRaw = updatedNotes;
-                    });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE91E63),
