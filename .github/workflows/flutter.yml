@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'aficare_flutter/**'
+  workflow_dispatch:
 
 jobs:
   build-web:
