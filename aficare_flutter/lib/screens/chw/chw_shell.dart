@@ -39,14 +39,19 @@ class _CHWShellState extends State<CHWShell> {
     switch (navIndex) {
       case 0:
         setState(() => _currentIndex = 0);
+        break;
       case 1:
         context.go('/chw/new-visit');
+        break;
       case 2:
         context.go('/chw/patients');
+        break;
       case 3:
         context.go('/chw/referrals');
+        break;
       case 4:
         context.go('/chw/vitals');
+        break;
     }
   }
 

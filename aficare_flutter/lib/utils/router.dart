@@ -36,6 +36,10 @@ import '../screens/patient/referral_screen.dart';
 import '../screens/chw/chw_shell.dart';
 import '../screens/chw/chw_new_visit_screen.dart';
 import '../screens/chw/chw_patient_search.dart';
+import '../screens/chw/chw_screening_screen.dart';
+import '../screens/chw/chw_referrals_screen.dart';
+import '../screens/chw/chw_home_visit_screen.dart';
+import '../screens/chw/chw_education_screen.dart';
 import '../screens/provider/provider_shell.dart';
 import '../screens/provider/provider_dashboard.dart';
 import '../screens/provider/consultation_screen.dart';
@@ -485,6 +489,26 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'patients',
           builder: (context, state) => const CHWPatientSearchScreen(),
+        ),
+        GoRoute(
+          path: 'referrals',
+          builder: (context, state) => const CHWReferralsScreen(),
+        ),
+        GoRoute(
+          path: 'referral',
+          builder: (context, state) => const CHWReferralsScreen(),
+        ),
+        GoRoute(
+          path: 'vitals',
+          builder: (context, state) => const CHWScreeningScreen(),
+        ),
+        GoRoute(
+          path: 'visit',
+          builder: (context, state) => const CHWHomeVisitScreen(),
+        ),
+        GoRoute(
+          path: 'education',
+          builder: (context, state) => const CHWEducationScreen(),
         ),
       ],
     ),
