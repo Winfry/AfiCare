@@ -43,6 +43,7 @@ class _PatientShellState extends State<PatientShell> {
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Home'),
     SidebarNavItem(icon: Icons.calendar_today_outlined, label: 'Appointments'),
     SidebarNavItem(icon: Icons.chat_bubble_outline, label: 'Messages'),
+    SidebarNavItem(icon: Icons.send_outlined, label: 'Referrals'),
     SidebarGroupLabel('Health Tools'),
     SidebarNavItem(icon: Icons.emergency_outlined, label: 'Emergency SOS'),
     SidebarNavItem(icon: Icons.psychology_outlined, label: 'Mental Health'),
@@ -126,30 +127,32 @@ class _PatientShellState extends State<PatientShell> {
     if (navIndex <= 2) {
       setState(() => _index = navIndex);
     } else if (navIndex == 3) {
-      context.go('/patient/emergency');
+      context.go('/patient/referrals');
     } else if (navIndex == 4) {
-      context.go('/patient/mental-health');
+      context.go('/patient/emergency');
     } else if (navIndex == 5) {
-      context.go('/patient/anc');
+      context.go('/patient/mental-health');
     } else if (navIndex == 6) {
-      context.go('/patient/vaccinations');
+      context.go('/patient/anc');
     } else if (navIndex == 7) {
-      context.go('/patient/medication-reminders');
+      context.go('/patient/vaccinations');
     } else if (navIndex == 8) {
-      context.go('/patient/mens-health');
+      context.go('/patient/medication-reminders');
     } else if (navIndex == 9) {
-      context.go('/patient/drug-interactions');
+      context.go('/patient/mens-health');
     } else if (navIndex == 10) {
-      context.go('/patient/medication-costs');
+      context.go('/patient/drug-interactions');
     } else if (navIndex == 11) {
-      context.go('/patient/receipt-upload');
+      context.go('/patient/medication-costs');
     } else if (navIndex == 12) {
-      context.go('/patient/insurance-claims');
+      context.go('/patient/receipt-upload');
     } else if (navIndex == 13) {
-      context.go('/patient/records');
+      context.go('/patient/insurance-claims');
     } else if (navIndex == 14) {
-      context.go('/patient/caregiver-portal');
+      context.go('/patient/records');
     } else if (navIndex == 15) {
+      context.go('/patient/caregiver-portal');
+    } else if (navIndex == 16) {
       context.go('/patient/accessibility');
     }
   }

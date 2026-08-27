@@ -32,6 +32,7 @@ import '../screens/patient/drug_interaction_screen.dart';
 import '../screens/patient/medication_cost_screen.dart';
 import '../screens/patient/insurance_claims_screen.dart';
 import '../screens/patient/accessibility_settings_screen.dart';
+import '../screens/patient/referral_screen.dart';
 import '../screens/chw/chw_shell.dart';
 import '../screens/chw/chw_new_visit_screen.dart';
 import '../screens/chw/chw_patient_search.dart';
@@ -324,6 +325,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'records',
           builder: (context, state) => const HealthSummary(),
+        ),
+        GoRoute(
+          path: 'referrals',
+          builder: (context, state) => const PatientReferralScreen(),
         ),
         GoRoute(
           path: 'profile',
