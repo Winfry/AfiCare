@@ -156,6 +156,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
           DropdownMenuItem(value: 'patient', child: Text('Patients')),
           DropdownMenuItem(value: 'doctor', child: Text('Doctors')),
           DropdownMenuItem(value: 'nurse', child: Text('Nurses')),
+          DropdownMenuItem(value: 'chw', child: Text('CHWs')),
           DropdownMenuItem(value: 'admin', child: Text('Admins')),
         ],
         onChanged: (v) => provider.setRoleFilter(v ?? 'all'),
@@ -356,6 +357,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       UserRole.doctor: Colors.green,
       UserRole.nurse: Colors.purple,
       UserRole.admin: Colors.orange,
+      UserRole.chw: Colors.teal,
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -475,6 +477,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                 DropdownMenuItem(value: 'doctor', child: Text('Doctor')),
                 DropdownMenuItem(value: 'nurse', child: Text('Nurse')),
                 DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                DropdownMenuItem(value: 'chw', child: Text('Community Health Worker')),
               ],
               onChanged: (v) => role = v ?? 'doctor',
             ),
