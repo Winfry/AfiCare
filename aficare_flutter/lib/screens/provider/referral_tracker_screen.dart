@@ -49,7 +49,15 @@ class _ReferralTrackerScreenState extends State<ReferralTrackerScreen> {
       if (mounted) setState(() {});
     } catch (e) {
       _isLoading = false;
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load referrals. Check your connection and try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
