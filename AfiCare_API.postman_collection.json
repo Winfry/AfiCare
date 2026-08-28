@@ -1,18 +1,18 @@
 {
   "info": {
     "name": "AfiCare MediLink API",
-    "description": "Complete API collection for AfiCare MediLink — Supabase REST + FastAPI AI Backend",
+    "description": "Complete API collection for AfiCare MediLink: Supabase REST API. (The Python AI backend was disabled; the app runs fully offline/local.)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "supabase_url",
-      "value": "https://uxphfdezypgshgfklcky.supabase.co",
+      "value": "https://jjzfozfsswvemgdptfdk.supabase.co",
       "type": "string"
     },
     {
       "key": "supabase_anon_key",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cGhmZGV6eXBnc2hnZmtsY2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTAxMzcsImV4cCI6MjA4NTg2NjEzN30.tv4-MxEIWK9cBKxuvYPKbSSlE32zFpDVOnXnn_TN7Co",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqemZvemZzc3d2ZW1nZHB0ZmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNjQ2MDQsImV4cCI6MjA5OTc0MDYwNH0.gRmCQFxFOE06uSqSt0e5xKk_rk_Fkn4-zEEYiW6HArc",
       "type": "string"
     },
     {
@@ -23,8 +23,9 @@
     },
     {
       "key": "backend_url",
-      "value": "https://aficare-backend.up.railway.app",
-      "type": "string"
+      "value": "",
+      "type": "string",
+      "description": "The Python AI backend (aficare-backend.up.railway.app) is DISABLED. The Flutter app now runs fully offline/local. This variable is no longer used by any request."
     },
     {
       "key": "patient_id",
@@ -40,9 +41,21 @@
   "auth": {
     "type": "apikey",
     "apikey": [
-      { "key": "key", "value": "apikey", "type": "string" },
-      { "key": "value", "value": "{{supabase_anon_key}}", "type": "string" },
-      { "key": "in", "value": "header", "type": "string" }
+      {
+        "key": "key",
+        "value": "apikey",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{supabase_anon_key}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
     ]
   },
   "item": [
@@ -55,13 +68,25 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/auth/v1/signup",
-              "host": ["{{supabase_url}}"],
-              "path": ["auth", "v1", "signup"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "auth",
+                "v1",
+                "signup"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -90,14 +115,31 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
-              "host": ["{{supabase_url}}"],
-              "path": ["auth", "v1", "token"],
-              "query": [{ "key": "grant_type", "value": "password" }]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "auth",
+                "v1",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                }
+              ]
             },
             "body": {
               "mode": "raw",
@@ -110,13 +152,25 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/auth/v1/user",
-              "host": ["{{supabase_url}}"],
-              "path": ["auth", "v1", "user"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "auth",
+                "v1",
+                "user"
+              ]
             }
           }
         }
@@ -131,16 +185,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/users?id=eq.{{user_uuid}}&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "users"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "users"
+              ],
               "query": [
-                { "key": "id", "value": "eq.{{user_uuid}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "id",
+                  "value": "eq.{{user_uuid}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -150,16 +222,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/users?role=in.(doctor,nurse)&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "users"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "users"
+              ],
               "query": [
-                { "key": "role", "value": "in.(doctor,nurse)" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "role",
+                  "value": "in.(doctor,nurse)"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -169,15 +259,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/users",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "users"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "users"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -190,16 +298,39 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/users?id=eq.{{user_uuid}}",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "users"],
-              "query": [{ "key": "id", "value": "eq.{{user_uuid}}" }]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.{{user_uuid}}"
+                }
+              ]
             },
             "body": {
               "mode": "raw",
@@ -218,17 +349,38 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/consultations?patient_id=eq.{{patient_id}}&order=timestamp.desc&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "consultations"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "consultations"
+              ],
               "query": [
-                { "key": "patient_id", "value": "eq.{{patient_id}}" },
-                { "key": "order", "value": "timestamp.desc" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "patient_id",
+                  "value": "eq.{{patient_id}}"
+                },
+                {
+                  "key": "order",
+                  "value": "timestamp.desc"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -238,15 +390,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/consultations",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "consultations"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "consultations"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -265,17 +435,38 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/appointments?patient_id=eq.{{patient_id}}&order=scheduled_at.desc&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "appointments"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "appointments"
+              ],
               "query": [
-                { "key": "patient_id", "value": "eq.{{patient_id}}" },
-                { "key": "order", "value": "scheduled_at.desc" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "patient_id",
+                  "value": "eq.{{patient_id}}"
+                },
+                {
+                  "key": "order",
+                  "value": "scheduled_at.desc"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -285,15 +476,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/appointments",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "appointments"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "appointments"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -306,16 +515,39 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/appointments?id=eq.<appointment_uuid>",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "appointments"],
-              "query": [{ "key": "id", "value": "eq.<appointment_uuid>" }]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "appointments"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.<appointment_uuid>"
+                }
+              ]
             },
             "body": {
               "mode": "raw",
@@ -334,16 +566,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/prescriptions?patient_id=eq.{{patient_id}}&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "prescriptions"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "prescriptions"
+              ],
               "query": [
-                { "key": "patient_id", "value": "eq.{{patient_id}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "patient_id",
+                  "value": "eq.{{patient_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -353,15 +603,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/prescriptions",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "prescriptions"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "prescriptions"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -380,16 +648,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/dependent_profiles?guardian_id=eq.{{user_uuid}}&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "dependent_profiles"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "dependent_profiles"
+              ],
               "query": [
-                { "key": "guardian_id", "value": "eq.{{user_uuid}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "guardian_id",
+                  "value": "eq.{{user_uuid}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -399,15 +685,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/dependent_profiles",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "dependent_profiles"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "dependent_profiles"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -420,14 +724,31 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/dependent_profiles?id=eq.<dependent_uuid>",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "dependent_profiles"],
-              "query": [{ "key": "id", "value": "eq.<dependent_uuid>" }]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "dependent_profiles"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.<dependent_uuid>"
+                }
+              ]
             }
           }
         }
@@ -442,16 +763,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/care_team?patient_id=eq.{{patient_id}}&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "care_team"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "care_team"
+              ],
               "query": [
-                { "key": "patient_id", "value": "eq.{{patient_id}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "patient_id",
+                  "value": "eq.{{patient_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -461,15 +800,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/care_team",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "care_team"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "care_team"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -482,14 +839,31 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/care_team?id=eq.<care_team_uuid>",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "care_team"],
-              "query": [{ "key": "id", "value": "eq.<care_team_uuid>" }]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "care_team"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.<care_team_uuid>"
+                }
+              ]
             }
           }
         }
@@ -504,16 +878,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/access_codes?patient_id=eq.{{user_uuid}}&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "access_codes"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "access_codes"
+              ],
               "query": [
-                { "key": "patient_id", "value": "eq.{{user_uuid}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "patient_id",
+                  "value": "eq.{{user_uuid}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -523,15 +915,33 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Prefer", "value": "return=representation" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/access_codes",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "access_codes"]
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "access_codes"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -550,132 +960,39 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_anon_key}}" },
-              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_anon_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_jwt}}"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}/rest/v1/audit_log?order=timestamp.desc&limit=50&select=*",
-              "host": ["{{supabase_url}}"],
-              "path": ["rest", "v1", "audit_log"],
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "audit_log"
+              ],
               "query": [
-                { "key": "order", "value": "timestamp.desc" },
-                { "key": "limit", "value": "50" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "order",
+                  "value": "timestamp.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "AI Backend (FastAPI)",
-      "description": "AfiCare AI consultation engine on Railway",
-      "item": [
-        {
-          "name": "Health Check — Root",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{backend_url}}/",
-              "host": ["{{backend_url}}"],
-              "path": [""]
-            }
-          }
-        },
-        {
-          "name": "Health Check — System Status",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{backend_url}}/health",
-              "host": ["{{backend_url}}"],
-              "path": ["health"]
-            }
-          }
-        },
-        {
-          "name": "AI Consultation (Full)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "url": {
-              "raw": "{{backend_url}}/api/consultations",
-              "host": ["{{backend_url}}"],
-              "path": ["api", "consultations"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"age\": 35,\n  \"gender\": \"male\",\n  \"symptoms\": [\"fever\", \"cough\", \"fatigue\"],\n  \"vital_signs\": {\n    \"temperature\": 38.5,\n    \"systolic_bp\": 120,\n    \"diastolic_bp\": 80,\n    \"pulse\": 92,\n    \"respiratory_rate\": 20,\n    \"oxygen_saturation\": 98.0\n  },\n  \"medical_history\": [\"asthma\"],\n  \"current_medications\": [\"lisinopril\"],\n  \"chief_complaint\": \"Fever and cough for 3 days\",\n  \"risk_factors\": [\"smoking\"]\n}"
-            }
-          }
-        },
-        {
-          "name": "AI Triage Assessment",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "url": {
-              "raw": "{{backend_url}}/api/triage",
-              "host": ["{{backend_url}}"],
-              "path": ["api", "triage"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"age\": 28,\n  \"gender\": \"female\",\n  \"symptoms\": [\"headache\", \"nausea\", \"dizziness\"],\n  \"vital_signs\": {\n    \"temperature\": 37.2,\n    \"systolic_bp\": 140,\n    \"diastolic_bp\": 95,\n    \"pulse\": 88,\n    \"respiratory_rate\": 18,\n    \"oxygen_saturation\": 99.0\n  },\n  \"chief_complaint\": \"Severe headache and dizziness\"\n}"
-            }
-          }
-        },
-        {
-          "name": "Patient History",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{backend_url}}/api/patients/{{patient_id}}/history",
-              "host": ["{{backend_url}}"],
-              "path": ["api", "patients", "{{patient_id}}", "history"]
-            }
-          }
-        },
-        {
-          "name": "List All Conditions",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{backend_url}}/api/conditions",
-              "host": ["{{backend_url}}"],
-              "path": ["api", "conditions"]
-            }
-          }
-        },
-        {
-          "name": "Get Condition Details",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{backend_url}}/api/conditions/malaria",
-              "host": ["{{backend_url}}"],
-              "path": ["api", "conditions", "malaria"]
-            }
-          }
-        },
-        {
-          "name": "System Statistics",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{backend_url}}/api/statistics",
-              "host": ["{{backend_url}}"],
-              "path": ["api", "statistics"]
             }
           }
         }

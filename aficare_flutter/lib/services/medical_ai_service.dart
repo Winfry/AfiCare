@@ -12,7 +12,7 @@ class MedicalAIService {
     defaultValue: '',
   );
 
-  static const bool preferLocalAI = false;
+  static const bool preferLocalAI = true;
 
   Future<ConsultationResult> conductConsultation({
     required String patientId,

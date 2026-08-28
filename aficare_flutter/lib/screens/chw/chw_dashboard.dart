@@ -60,7 +60,7 @@ class _CHWDashboardState extends State<CHWDashboard> {
       final referrals = await _supabase
           .from('referrals')
           .select('id')
-          .eq('referred_by', userId)
+          .eq('from_provider_id', userId)
           .eq('status', 'pending');
       _pendingReferrals = (referrals as List).length;
 

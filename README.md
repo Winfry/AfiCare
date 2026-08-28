@@ -47,8 +47,13 @@ python scripts/import_sample_data.py
 
 5. Run the application:
 ```bash
-python run.py
+python run_aficare.py
 ```
+
+> **Note:** The optional Python AI backend / REST API
+> (`aficare-backend.up.railway.app`) has been **disabled**. The Flutter app and
+> the AI consultation engine (`MedicalAIService`) now run fully **offline /
+> local-only** and no longer require a backend service.
 
 ## 📖 Documentation
 
