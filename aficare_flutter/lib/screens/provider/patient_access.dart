@@ -970,7 +970,7 @@ class _PatientAccessState extends State<PatientAccess>
           'used_by': context.read<AuthProvider>().currentUser?.id,
           'used_at': DateTime.now().toIso8601String(),
         }).eq('id', codeId);
-      } catch (_) {}
+      } catch (e) { debugPrint('patient_access: failed to load access_codes: $e'); _showError('Could not load access_codes'); }
 
       await _logAudit(patientId, 'access_code');
       await _loadPatientData(patientId);
@@ -1028,7 +1028,7 @@ class _PatientAccessState extends State<PatientAccess>
         'details': {'method': method},
         'timestamp': DateTime.now().toIso8601String(),
       });
-    } catch (_) {}
+    } catch (e) { debugPrint('patient_access: audit log write failed (non-critical): $e'); }
   }
 
   Future<void> _loadPatientData(String patientId) async {
@@ -1048,7 +1048,7 @@ class _PatientAccessState extends State<PatientAccess>
             .select('date_of_birth, allergies, chronic_conditions')
             .eq('id', patientId)
             .single());
-      } catch (_) {}
+      } catch (e) { debugPrint('patient_access: failed to load patients: $e'); _showError('Could not load patients'); }
 
       List<Map<String, dynamic>> consults = [];
       try {
@@ -1058,7 +1058,7 @@ class _PatientAccessState extends State<PatientAccess>
             .eq('patient_id', patientId)
             .order('timestamp', ascending: false)
             .limit(1));
-      } catch (_) {}
+      } catch (e) { debugPrint('patient_access: failed to load consultations: $e'); _showError('Could not load consultations'); }
 
       List<Map<String, dynamic>> rx = [];
       try {
@@ -1068,7 +1068,7 @@ class _PatientAccessState extends State<PatientAccess>
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .limit(20));
-      } catch (_) {}
+      } catch (e) { debugPrint('patient_access: failed to load prescriptions: $e'); _showError('Could not load prescriptions'); }
 
       final dobRaw = patientExtras?['date_of_birth'];
       final age = dobRaw != null ? _calcAge(DateTime.parse(dobRaw as String)) : null;

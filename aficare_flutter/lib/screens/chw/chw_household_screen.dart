@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/household_model.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWHouseholdScreen extends StatefulWidget {
   const CHWHouseholdScreen({super.key});
@@ -36,6 +37,7 @@ class _CHWHouseholdScreenState extends State<CHWHouseholdScreen> {
       _households = (data as List).map((j) => Household.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading households: $e');
+      showErrorSnackBar(context, 'Could not load household data');
     }
     if (mounted) setState(() => _isLoading = false);
   }

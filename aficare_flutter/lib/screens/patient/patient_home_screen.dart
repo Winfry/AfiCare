@@ -15,6 +15,7 @@ import '../../providers/prescription_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../providers/care_team_provider.dart';
 import '../../utils/app_strings.dart';
+import '../../utils/snackbar_utils.dart';
 import '../../models/appointment_model.dart';
 import '../../models/disability_profile.dart';
 import '../../models/prescription_model.dart';
@@ -792,7 +793,9 @@ class _UpcomingAppointmentCardState extends State<_UpcomingAppointmentCard> {
           _loading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('patient_home_screen: loading home appointments failed: $e');
+      showErrorSnackBar(context, 'Could not load appointments');
       if (mounted) setState(() => _loading = false);
     }
   }

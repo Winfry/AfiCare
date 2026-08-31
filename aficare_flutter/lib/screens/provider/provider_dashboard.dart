@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 import '../../widgets/greeting_header.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/section_head.dart';
@@ -74,7 +75,10 @@ class _ProviderDashboardState extends State<ProviderDashboard>
         _consultationsCount = (results[0] as List).length;
         _referralsCount = (results[1] as List).length;
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('provider_dashboard: loading dashboard stats failed: $e');
+      showErrorSnackBar(context, 'Could not load dashboard stats');
+    }
   }
 
   Future<void> _loadMyPatients(String providerId) async {
@@ -134,7 +138,10 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             .eq('id', patient['id'])
             .single();
         patient.addAll(profile);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('provider_dashboard: loading dashboard data failed: $e');
+        showErrorSnackBar(context, 'Could not load dashboard data');
+      }
 
       if (mounted) {
         setState(() {

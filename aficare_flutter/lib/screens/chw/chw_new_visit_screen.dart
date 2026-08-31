@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWNewVisitScreen extends StatefulWidget {
   const CHWNewVisitScreen({super.key});
@@ -52,6 +53,7 @@ class _CHWNewVisitScreenState extends State<CHWNewVisitScreen> {
       setState(() => _searchResults = (data as List).cast<Map<String, dynamic>>());
     } catch (e) {
       debugPrint('Search error: $e');
+      showErrorSnackBar(context, 'Could not load visit data');
     }
   }
 

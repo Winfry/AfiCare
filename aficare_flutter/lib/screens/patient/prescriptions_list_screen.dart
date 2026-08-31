@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/prescription_provider.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 import 'prescription_detail_screen.dart';
 
 /// B10 — Prescriptions Full List
@@ -53,7 +54,10 @@ class _PrescriptionsListScreenState extends State<PrescriptionsListScreen> {
       for (final j in (res as List)) {
         _prescriberNames[j['id'] as String] = j['full_name'] as String;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('prescriptions_list_screen: loading prescriptions failed: $e');
+      showErrorSnackBar(context, 'Could not load prescriptions');
+    }
   }
 
   @override

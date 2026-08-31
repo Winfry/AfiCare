@@ -6,6 +6,7 @@ import '../../models/prescription_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 import 'adherence_log_screen.dart';
 
 /// B11 — Prescription Detail (with today's adherence check-in)
@@ -65,7 +66,10 @@ class _PrescriptionDetailScreenState extends State<PrescriptionDetailScreen> {
           _todayStatus = todayStatus;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('prescription_detail_screen: loading prescription detail failed: $e');
+      showErrorSnackBar(context, 'Could not load prescription details');
+    }
   }
 
   Future<void> _checkIn(String status) async {

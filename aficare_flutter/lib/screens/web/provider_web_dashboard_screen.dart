@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 import '../provider/patient_search_screen.dart';
 import '../provider/provider_inbox_screen.dart';
 import '../provider/referral_tracker_screen.dart';
@@ -60,7 +61,7 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           'timestamp': DateTime.tryParse(c['timestamp'] as String),
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Provider web dashboard: failed to load consultations: $e'); showErrorSnackBar(context, 'Could not load consultations: $e'); }
 
     try {
       final referrals = await supabase
@@ -76,7 +77,7 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           'timestamp': DateTime.tryParse(r['created_at'] as String),
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Provider web dashboard: failed to load referrals: $e'); showErrorSnackBar(context, 'Could not load referrals: $e'); }
 
     try {
       final results = await supabase
@@ -93,7 +94,7 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
           'timestamp': DateTime.tryParse(lr['resulted_at'] as String),
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Provider web dashboard: failed to load lab_results: $e'); showErrorSnackBar(context, 'Could not load lab_results: $e'); }
 
     items.sort((a, b) {
       final ta = a['timestamp'] as DateTime?;
@@ -140,7 +141,7 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
       if (mounted) {
         setState(() => _appointments = upcoming.take(5).toList());
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Provider web dashboard: failed to load appointments: $e'); showErrorSnackBar(context, 'Could not load appointments: $e'); }
   }
 
   @override

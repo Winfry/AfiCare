@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 
 class ResourceDashboardScreen extends StatefulWidget {
   const ResourceDashboardScreen({super.key});
@@ -53,6 +54,8 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen> {
         });
       }
     } catch (e) {
+      debugPrint('resource_dashboard_screen: loading resource data failed: $e');
+      showErrorSnackBar(context, 'Could not load resource data');
       if (mounted) setState(() => _isLoading = false);
     }
   }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
@@ -65,6 +66,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       }
     } catch (e) {
       debugPrint('Error loading emergency profile: $e');
+      showErrorSnackBar(context, 'Could not load emergency data');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

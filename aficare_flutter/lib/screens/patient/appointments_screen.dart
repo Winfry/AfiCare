@@ -16,6 +16,7 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/care_team_provider.dart';
 import '../../providers/dependent_provider.dart';
+import '../../utils/snackbar_utils.dart';
 import '../../widgets/avatar_picker.dart';
 import '../../widgets/provider_avatar.dart';
 import 'appointment_detail_screen.dart';
@@ -81,7 +82,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             p['id'] as String: p['full_name'] as String,
         };
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('appointments_screen: loading providers failed: $e');
+      showErrorSnackBar(context, 'Could not load appointments');
+    }
 
     if (mounted) {
       final ct =
@@ -1646,7 +1650,9 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
           _loadingProviders = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('appointments_screen: loading providers failed: $e');
+      showErrorSnackBar(context, 'Could not load providers');
       if (mounted) setState(() => _loadingProviders = false);
     }
   }
@@ -1662,7 +1668,9 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
           _loadingFacilities = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('appointments_screen: loading facilities failed: $e');
+      showErrorSnackBar(context, 'Could not load facilities');
       if (mounted) setState(() => _loadingFacilities = false);
     }
   }

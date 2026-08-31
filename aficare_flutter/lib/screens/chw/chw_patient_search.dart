@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWPatientSearchScreen extends StatefulWidget {
   const CHWPatientSearchScreen({super.key});
@@ -44,6 +45,7 @@ class _CHWPatientSearchScreenState extends State<CHWPatientSearchScreen> {
       }
     } catch (e) {
       debugPrint('Error loading patients: $e');
+      showErrorSnackBar(context, 'Could not load patients');
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -61,6 +63,7 @@ class _CHWPatientSearchScreenState extends State<CHWPatientSearchScreen> {
       setState(() { _patients = (data as List).cast<Map<String, dynamic>>(); _searching = false; });
     } catch (e) {
       setState(() => _searching = false);
+      showErrorSnackBar(context, 'Could not search patients');
     }
   }
 

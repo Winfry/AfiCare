@@ -15,6 +15,7 @@ import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
 import '../../providers/care_team_provider.dart';
+import '../../utils/snackbar_utils.dart';
 import '../../widgets/app_shell.dart';
 import 'patient_home_screen.dart';
 import 'appointments_screen.dart';
@@ -231,7 +232,9 @@ class _SearchSheetState extends State<_SearchSheet> {
           _searching = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('patient_shell: searching patients failed: $e');
+      showErrorSnackBar(context, 'Could not search patients');
       if (mounted) setState(() => _searching = false);
     }
   }

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/appointment_model.dart';
 import '../../providers/appointment_provider.dart';
+import '../../utils/snackbar_utils.dart';
 
 /// B7 — Appointment Detail
 class AppointmentDetailScreen extends StatefulWidget {
@@ -52,7 +53,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           _loading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('appointment_detail_screen: loading appointment detail failed: $e');
+      showErrorSnackBar(context, 'Could not load appointment details');
       if (mounted) setState(() => _loading = false);
     }
   }

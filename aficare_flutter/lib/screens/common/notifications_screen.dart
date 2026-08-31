@@ -17,6 +17,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final List<NotificationItem> _notifications = [];
   bool _isLoading = true;
+  bool _hadError = false;
 
   @override
   void initState() {
@@ -58,7 +59,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ));
           }
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load appointments: $e'); _hadError = true; }
 
       try {
         final res = await supabase
@@ -82,7 +83,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             timestamp: DateTime.tryParse(l['ordered_at'] as String) ?? now,
           ));
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load lab_orders: $e'); _hadError = true; }
 
       try {
         final res = await supabase
@@ -106,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ));
           }
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load consultations: $e'); _hadError = true; }
 
       try {
         final res = await supabase
@@ -126,7 +127,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             timestamp: usedAt ?? now,
           ));
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load access_codes: $e'); _hadError = true; }
     } else if (widget.userRole == 'provider') {
       try {
         final res = await supabase
@@ -146,7 +147,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             timestamp: DateTime.tryParse(t['check_in_time'] as String) ?? now,
           ));
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load triage_queue: $e'); _hadError = true; }
 
       try {
         final res = await supabase
@@ -165,7 +166,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             timestamp: DateTime.tryParse(m['created_at'] as String) ?? now,
           ));
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load messages: $e'); _hadError = true; }
 
       try {
         final res = await supabase
@@ -192,7 +193,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ));
           }
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load appointments: $e'); _hadError = true; }
     } else {
       try {
         final res = await supabase
@@ -209,7 +210,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             timestamp: DateTime.tryParse(l['timestamp'] as String) ?? now,
           ));
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('Notifications: failed to load audit_log: $e'); _hadError = true; }
     }
 
     items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -219,6 +220,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ..clear()
           ..addAll(items.take(30));
         _isLoading = false;
+      });
+    }
+    if (_hadError && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Some notifications could not be loaded.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       });
     }
   }

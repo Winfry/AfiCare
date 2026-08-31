@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class AdherenceMonitoringScreen extends StatefulWidget {
   const AdherenceMonitoringScreen({super.key});
@@ -34,6 +35,7 @@ class _AdherenceMonitoringScreenState extends State<AdherenceMonitoringScreen> {
       _patients = List<Map<String, dynamic>>.from(data);
     } catch (e) {
       debugPrint('Error loading patients for adherence: $e');
+      showErrorSnackBar(context, 'Could not load adherence data');
     }
 
     try {

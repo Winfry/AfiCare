@@ -14,6 +14,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 
 /// First-run onboarding wizard shown after a patient creates their
 /// MediLink ID. Steps: Welcome → Complete profile → Care setup → QR code.
@@ -120,7 +121,10 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
         await Supabase.instance.client
             .from('users')
             .update({'facility_id': _facilityId}).eq('id', userId);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('patient_onboarding_screen: loading onboarding data failed: $e');
+        showErrorSnackBar(context, 'Could not load onboarding data');
+      }
     }
 
     for (final name in _dependents) {

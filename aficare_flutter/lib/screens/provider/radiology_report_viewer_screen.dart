@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 
 class RadiologyReportViewerScreen extends StatefulWidget {
   final String patientId;
@@ -45,6 +46,8 @@ class _RadiologyReportViewerScreenState
       _isLoading = false;
       if (mounted) setState(() {});
     } catch (e) {
+      debugPrint('radiology_report_viewer_screen: loading report failed: $e');
+      showErrorSnackBar(context, 'Could not load report');
       _isLoading = false;
       if (mounted) setState(() {});
     }

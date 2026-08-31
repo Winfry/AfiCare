@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/medication_cost_model.dart';
+import '../../utils/snackbar_utils.dart';
 
 class MedicationCostScreen extends StatefulWidget {
   const MedicationCostScreen({super.key});
@@ -361,7 +362,10 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
                       'user_id': patientId,
                       'preferences': {'monthly_med_budget': budget},
                     });
-                  } catch (_) {}
+                  } catch (e) {
+                    debugPrint('medication_cost_screen: saving budget preference failed: $e');
+                    showErrorSnackBar(context, 'Could not save your budget');
+                  }
                   if (mounted) { setState(() => _monthlyBudget = budget); Navigator.pop(ctx); }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),

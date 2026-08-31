@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
 import '../../models/mental_health_model.dart';
+import '../../utils/snackbar_utils.dart';
 
 class MentalHealthScreen extends StatefulWidget {
   const MentalHealthScreen({super.key});
@@ -49,6 +50,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
           .toList();
     } catch (e) {
       debugPrint('Error loading mental health data: $e');
+      showErrorSnackBar(context, 'Could not load your mental health data');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -349,6 +351,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
       }
     } catch (e) {
       debugPrint('Error saving mood: $e');
+      showErrorSnackBar(context, 'Could not save mood entry');
     }
   }
 
@@ -606,6 +609,7 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
       }
     } catch (e) {
       debugPrint('Error saving screening: $e');
+      showErrorSnackBar(context, 'Could not save screening');
     }
   }
 

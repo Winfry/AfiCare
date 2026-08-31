@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/mens_health_model.dart';
+import '../../utils/snackbar_utils.dart';
 
 class MensHealthScreen extends StatefulWidget {
   const MensHealthScreen({super.key});
@@ -320,6 +321,7 @@ class _MensHealthScreeningSheetState extends State<_MensHealthScreeningSheet> {
       });
     } catch (e) {
       debugPrint('Error saving screening: $e');
+      showErrorSnackBar(context, 'Could not save screening');
     }
 
     if (mounted) {

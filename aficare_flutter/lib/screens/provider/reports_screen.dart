@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import '../../utils/snackbar_utils.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -101,6 +102,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('reports_screen: loading reports failed: $e');
+      showErrorSnackBar(context, 'Could not load reports');
       setState(() => _isLoading = false);
     }
   }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWReferralsScreen extends StatefulWidget {
   const CHWReferralsScreen({super.key});
@@ -35,6 +36,7 @@ class _CHWReferralsScreenState extends State<CHWReferralsScreen> {
       _referrals = (data as List).cast<Map<String, dynamic>>();
     } catch (e) {
       debugPrint('Error loading referrals: $e');
+      showErrorSnackBar(context, 'Could not load referrals');
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -187,6 +189,7 @@ class _NewReferralSheetState extends State<_NewReferralSheet> {
       }
     } catch (e) {
       debugPrint('Error loading patients for referral: $e');
+      showErrorSnackBar(context, 'Could not load patients for referral');
     }
     if (mounted) setState(() {});
   }

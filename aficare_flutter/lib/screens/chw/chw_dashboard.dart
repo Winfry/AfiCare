@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWDashboard extends StatefulWidget {
   const CHWDashboard({super.key});
@@ -86,6 +87,7 @@ class _CHWDashboardState extends State<CHWDashboard> {
       } catch (_) {}
     } catch (e) {
       debugPrint('Error loading CHW dashboard: $e');
+      showErrorSnackBar(context, 'Could not load dashboard data');
     }
 
     if (mounted) setState(() => _isLoading = false);

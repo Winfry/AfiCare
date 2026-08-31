@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWHomeVisitScreen extends StatefulWidget {
   const CHWHomeVisitScreen({super.key});
@@ -58,6 +59,7 @@ class _CHWHomeVisitScreenState extends State<CHWHomeVisitScreen> {
       }
     } catch (e) {
       debugPrint('Error loading patients: $e');
+      showErrorSnackBar(context, 'Could not load home visits');
     }
     if (mounted) setState(() {});
   }

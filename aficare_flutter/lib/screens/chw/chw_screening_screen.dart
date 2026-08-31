@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/household_model.dart';
+import '../../utils/snackbar_utils.dart';
 
 class CHWScreeningScreen extends StatefulWidget {
   const CHWScreeningScreen({super.key});
@@ -37,6 +38,7 @@ class _CHWScreeningScreenState extends State<CHWScreeningScreen> {
       _screenings = (data as List).map((j) => CommunityScreening.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading screenings: $e');
+      showErrorSnackBar(context, 'Could not load screening data');
     }
     if (mounted) setState(() => _isLoading = false);
   }
