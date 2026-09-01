@@ -428,9 +428,15 @@ class AuthProvider with ChangeNotifier {
           .from('users')
           .select('email')
           .eq('medilink_id', medilinkId)
-          .single();
+          .maybeSingle();
 
-      final email = response['email'] as String;
+      final email = response?['email'] as String?;
+      if (email == null) {
+        _error = 'Invalid MediLink ID or password';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
       return await signIn(email: email, password: password);
     } catch (e) {
       _error = 'Invalid MediLink ID or password';

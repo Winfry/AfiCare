@@ -109,10 +109,32 @@ class MedicationReminderService {
   }
 
   /// Cancel all notifications for a medication reminder.
-  Future<void> cancelReminder(String reminderId) async {
+  ///
+  /// A reminder schedules one notification per time slot, each using the id
+  /// `reminderId.hashCode + i`. This cancels every slot, not just the first.
+  Future<void> cancelReminder(String reminderId, {int? slotCount}) async {
     if (kIsWeb || !_initialized) return;
+
+    var count = slotCount;
+    if (count == null) {
+      try {
+        final data = await _supabase
+            .from('medication_reminders')
+            .select('times')
+            .eq('id', reminderId)
+            .maybeSingle();
+        final times = data != null ? (data['times'] as List?) : null;
+        count = times?.length;
+      } catch (e) {
+        debugPrint('Failed to load reminder for cancel: $e');
+      }
+    }
+    if (count == null || count < 1) count = 1;
+
     try {
-      await _plugin.cancel(reminderId.hashCode);
+      for (var i = 0; i < count; i++) {
+        await _plugin.cancel(reminderId.hashCode + i);
+      }
     } catch (e) {
       debugPrint('Failed to cancel notification: $e');
     }

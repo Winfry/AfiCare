@@ -79,7 +79,7 @@ class _CHWDashboardState extends State<CHWDashboard> {
         final highRisk = await _supabase
             .from('triage_assessments')
             .select('patient_id, triage_level, created_at')
-            .eq('assessed_by', userId)
+            .eq('provider_id', userId)
             .inFilter('triage_level', ['emergency', 'urgent'])
             .order('created_at', ascending: false)
             .limit(10);

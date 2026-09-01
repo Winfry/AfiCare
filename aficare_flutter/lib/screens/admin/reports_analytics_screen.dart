@@ -210,7 +210,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     final data = provider.usersOverTime;
     if (data.isEmpty) return _buildChartContainer('Users Over Time', const Center(child: Text('No data')));
 
-    final maxCount = data.fold<int>(0, (max, d) => (d['count'] as int) > max ? (d['count'] as int) : max);
+    final maxCount = data.fold<int>(0, (max, d) => ((d['count'] as num?)?.toInt() ?? 0) > max ? (d['count'] as num).toInt() : max);
     return _buildChartContainer('Users Over Time', CustomPaint(
       painter: _BarChartPainter(data, maxCount, 'date', 'count', Colors.blue),
       size: const Size(double.infinity, 200),
@@ -221,7 +221,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     final data = provider.referralsByFacility;
     if (data.isEmpty) return _buildChartContainer('Referrals by Facility', const Center(child: Text('No data')));
 
-    final maxCount = data.fold<int>(0, (max, d) => (d['count'] as int) > max ? (d['count'] as int) : max);
+    final maxCount = data.fold<int>(0, (max, d) => ((d['count'] as num?)?.toInt() ?? 0) > max ? (d['count'] as num).toInt() : max);
     return _buildChartContainer('Referrals by Facility', CustomPaint(
       painter: _BarChartPainter(data, maxCount, 'facility', 'count', Colors.orange),
       size: const Size(double.infinity, 200),
@@ -240,7 +240,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
             children: [
               Expanded(
                 child: CustomPaint(
-                  painter: _PieChartPainter(data.map((d) => (d['count'] as int).toDouble()).toList(), colors),
+                  painter: _PieChartPainter(data.map((d) => ((d['count'] as num?)?.toDouble() ?? 0)).toList(), colors),
                   size: const Size(120, 120),
                 ),
               ),
@@ -277,7 +277,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     final data = provider.triageBreakdown;
     if (data.isEmpty) return _buildChartContainer('Triage Breakdown', const Center(child: Text('No data')));
 
-    final maxCount = data.fold<int>(0, (max, d) => (d['count'] as int) > max ? (d['count'] as int) : max);
+    final maxCount = data.fold<int>(0, (max, d) => ((d['count'] as num?)?.toInt() ?? 0) > max ? (d['count'] as num).toInt() : max);
     return _buildChartContainer('Triage Breakdown', CustomPaint(
       painter: _BarChartPainter(data, maxCount, 'level', 'count', Colors.purple),
       size: const Size(double.infinity, 200),
@@ -340,7 +340,7 @@ class _BarChartPainter extends CustomPainter {
     final barWidth = (size.width - 20) / data.length;
 
     for (int i = 0; i < data.length; i++) {
-      final value = data[i][valueKey] as int;
+      final value = (data[i][valueKey] as num?)?.toInt() ?? 0;
       final barHeight = (value / maxValue) * (size.height - 30);
       final x = i * barWidth + 10;
       final y = size.height - 20 - barHeight;

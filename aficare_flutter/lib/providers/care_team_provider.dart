@@ -38,7 +38,15 @@ class CareTeamProvider extends ChangeNotifier {
 
       // Fetch provider details separately to avoid join syntax issues
       final providerIds =
-          teamRows.map((r) => r['provider_id'] as String).toList();
+          teamRows.map((r) => (r['provider_id'] as String? ?? '').isEmpty
+              ? null
+              : r['provider_id'] as String).whereType<String>().toList();
+      if (providerIds.isEmpty) {
+        _members = [];
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
       final usersResponse = await Supabase.instance.client
           .from('users')
           .select('id, full_name, role, department, gender')

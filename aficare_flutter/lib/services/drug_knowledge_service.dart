@@ -41,7 +41,7 @@ class DrugKnowledgeService {
     final q = query.toLowerCase();
     return _medications.where((m) {
       final name = (m['generic_name'] as String? ?? '').toLowerCase();
-      final brands = (m['brand_names'] as List? ?? []).cast<String>();
+      final brands = (m['brand_names'] as List? ?? []).whereType<String>().toList();
       if (name.contains(q)) return true;
       for (final b in brands) {
         if (b.toLowerCase().contains(q)) return true;
@@ -85,7 +85,7 @@ class DrugKnowledgeService {
       if (!drugNames.any((d) => d.toLowerCase() == name)) continue;
 
       final category = (med['category'] as String? ?? '').toLowerCase();
-      final contraindications = (med['contraindications'] as List? ?? []).cast<String>();
+      final contraindications = (med['contraindications'] as List? ?? []).whereType<String>().toList();
 
       for (final allergy in lowerAllergies) {
         bool conflict = false;
@@ -135,7 +135,7 @@ class DrugKnowledgeService {
     final q = name.toLowerCase();
     for (final m in _medications) {
       if ((m['generic_name'] as String? ?? '').toLowerCase() == q) return m;
-      final brands = (m['brand_names'] as List? ?? []).cast<String>();
+      final brands = (m['brand_names'] as List? ?? []).whereType<String>().toList();
       for (final b in brands) {
         if (b.toLowerCase() == q) return m;
       }

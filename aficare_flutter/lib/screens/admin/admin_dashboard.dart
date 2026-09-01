@@ -90,7 +90,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         builder: (context, analytics, _) {
           final patientCount = analytics.roleDistribution
               .where((r) => r['role'] == 'patient')
-              .fold<int>(0, (sum, r) => sum + (r['count'] as int));
+              .fold<int>(0, (sum, r) => sum + ((r['count'] as num?)?.toInt() ?? 0));
           final patientsStr = _formatCount(patientCount);
           final providersStr = _formatCount(analytics.activeProviders);
           final facilitiesStr = _formatCount(analytics.totalFacilities);

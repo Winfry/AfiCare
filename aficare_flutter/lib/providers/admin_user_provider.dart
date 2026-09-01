@@ -172,7 +172,18 @@ class AdminUserProvider with ChangeNotifier {
 
   Future<bool> resetPassword(String userId) async {
     try {
-      final user = _users.firstWhere((u) => u.id == userId);
+      UserModel? user;
+      for (final u in _users) {
+        if (u.id == userId) {
+          user = u;
+          break;
+        }
+      }
+      if (user == null || user.email.isEmpty) {
+        _error = 'User not found';
+        notifyListeners();
+        return false;
+      }
       await _supabase.auth.resetPasswordForEmail(user.email);
       return true;
     } catch (e) {
