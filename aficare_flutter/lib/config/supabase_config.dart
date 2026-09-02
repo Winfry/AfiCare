@@ -4,24 +4,16 @@
 class SupabaseConfig {
   static const String url = 'https://jjzfozfsswvemgdptfdk.supabase.co';
 
-  static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqemZvemZzc3d2ZW1nZHB0ZmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNjQ2MDQsImV4cCI6MjA5OTc0MDYwNH0.gRmCQFxFOE06uSqSt0e5xKk_rk_Fkn4-zEEYiW6HArc';
+  // Supabase's newer "publishable key" format — replaces the legacy
+  // JWT-shaped anon key, which the project's Edge Functions gateway now
+  // rejects outright. Safe to keep in source (it's the public-facing key,
+  // access is still governed entirely by RLS policies on each table).
+  static const String anonKey = 'sb_publishable_WkPCejAjYiUGx8WeoOC4lw_NoxsQrpP';
 
-  /// Secret used to derive the Supabase auth password from phone + PIN.
-  ///
-  /// **In production**, pass the real secret at build time and NEVER
-  /// commit it to source control:
-  /// ```
-  /// flutter build apk --dart-define=PATIENT_AUTH_SECRET=your-real-secret
-  /// flutter build web --dart-define=PATIENT_AUTH_SECRET=your-real-secret
-  /// ```
-  ///
-  /// The value below is the dev-only fallback. For a true server-side
-  /// approach, move password derivation to a Supabase Edge Function so
-  /// the secret never leaves the server.
-  static const String patientAuthSecret = String.fromEnvironment(
-    'PATIENT_AUTH_SECRET',
-    defaultValue: 'aficare-patient-pin-v1-9f3a7c2e8b1d4f6a',
-  );
+  // Patient PIN registration/login is handled entirely server-side by the
+  // `patient-auth` Edge Function (see supabase/functions/patient-auth).
+  // The PIN hash and the password-derivation secret never reach the
+  // client — see AuthProvider.signUpPatientDirect / signInWithPhoneAndPin.
 
   // Table names
   static const String usersTable = 'users';

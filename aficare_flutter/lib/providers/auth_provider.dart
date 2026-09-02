@@ -1,10 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../config/supabase_config.dart';
 import '../models/user_model.dart';
 import '../utils/router.dart' show updateRouterProfile;
 
@@ -103,10 +99,10 @@ class AuthProvider with ChangeNotifier {
   // ── Patient direct registration (phone + PIN, no OTP) ───────────────
 
   /// Creates a patient account using [phone] + [pin] (6 digits) + [fullName].
-  /// The Supabase auth password is derived deterministically from
-  /// phone+PIN+app-secret so we never store it. The PIN itself is stored
-  /// as a bcrypt hash in the `users` table. Patients are auto-logged in
-  /// on success.
+  /// PIN hashing, Supabase auth password derivation, and the account
+  /// creation itself all happen inside the `patient-auth` Edge Function —
+  /// this client never sees the PIN hash or the derivation secret.
+  /// Patients are auto-logged in on success.
   Future<bool> signUpPatientDirect({
     required String phone,
     required String fullName,
@@ -121,53 +117,33 @@ class AuthProvider with ChangeNotifier {
         throw Exception('PIN must be exactly 6 digits.');
       }
 
-      final placeholderEmail = '${phone.replaceAll('+', '')}@patient.aficare';
-      final derivedPassword = _derivePassword(phone, pin);
-
-      final authResponse = await _supabase.auth.signUp(
-        email: placeholderEmail,
-        password: derivedPassword,
-      );
-
-      if (authResponse.user == null) {
-        throw Exception('Failed to create account. Please try again.');
-      }
-
-      final userId = authResponse.user!.id;
-      final pinHash = BCrypt.hashpw(pin, BCrypt.gensalt(logRounds: 12));
-
-      // Insert the profile row. If this fails (e.g. JWT clock-skew error),
-      // we catch it here and clean up the orphaned auth user so the patient
-      // can try again cleanly instead of getting "email already exists".
-      try {
-        await _supabase.from('users').insert({
-          'id': userId,
-          'email': placeholderEmail,
-          'full_name': fullName,
-          'role': 'patient',
+      final response = await _supabase.functions.invoke(
+        'patient-auth',
+        body: {
+          'action': 'register',
           'phone': phone,
-          'medilink_id': UserModel.generateMedilinkId(),
-          'pin_hash': pinHash,
-          'created_at': DateTime.now().toIso8601String(),
-        });
-      } catch (insertError) {
-        // The auth account was created but the profile row failed.
-        // Try to clean up so the patient can re-register.
-        try {
-          await _supabase.auth.signOut();
-        } catch (_) {}
-        throw Exception(
-            'Could not save your profile. This is often caused by a '
-            'wrong computer clock — please sync your clock and try again. '
-            'Details: $insertError');
-      }
-
-      await _supabase.auth.signInWithPassword(
-        email: placeholderEmail,
-        password: derivedPassword,
+          'pin': pin,
+          'fullName': fullName,
+        },
       );
 
-      await _loadUserProfile(userId);
+      final data = response.data as Map<String, dynamic>?;
+      final accessToken = data?['access_token'] as String?;
+      final refreshToken = data?['refresh_token'] as String?;
+
+      if (accessToken == null || refreshToken == null) {
+        // Account may still have been created (e.g. the immediate sign-in
+        // failed) — surface the server's message rather than assume failure.
+        throw Exception(
+            (data?['error'] as String?) ?? 'Failed to create account. Please try again.');
+      }
+
+      final authResponse = await _supabase.auth.setSession(refreshToken);
+      if (authResponse.user == null) {
+        throw Exception('Account created but sign-in failed. Please try logging in.');
+      }
+
+      await _loadUserProfile(authResponse.user!.id);
 
       if (_currentUser == null) {
         throw Exception(
@@ -178,12 +154,11 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } on AuthException catch (e) {
-      if (e.statusCode == '422' || e.message.contains('already registered')) {
-        _error = 'An account with this phone number already exists. Please log in instead.';
-      } else {
-        _error = e.message;
-      }
+    } on FunctionException catch (e) {
+      final details = e.details;
+      _error = (details is Map && details['error'] is String)
+          ? details['error'] as String
+          : 'Failed to create account. Please try again.';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -197,9 +172,10 @@ class AuthProvider with ChangeNotifier {
 
   // ── Patient phone + PIN sign in ─────────────────────────────────────
 
-  /// Signs in a patient using [phone] + [pin]. Looks up the user by phone,
-  /// verifies the PIN against the stored bcrypt hash, then derives the
-  /// Supabase auth password and signs in.
+  /// Signs in a patient using [phone] + [pin]. The lookup, bcrypt
+  /// verification, lockout enforcement, and password derivation all
+  /// happen inside the `patient-auth` Edge Function — the PIN hash is
+  /// never fetched by this client.
   Future<bool> signInWithPhoneAndPin({
     required String phone,
     required String pin,
@@ -209,37 +185,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _supabase
-          .from('users')
-          .select('id, email, pin_hash, role')
-          .eq('phone', phone)
-          .maybeSingle();
-
-      if (response == null) {
-        throw Exception('No account found with this phone number.');
-      }
-
-      final pinHash = response['pin_hash'] as String?;
-      if (pinHash == null || pinHash.isEmpty) {
-        throw Exception(
-            'This account was created before PIN login was enabled. '
-            'Please re-register or contact support.');
-      }
-
-      final storedHash = pinHash;
-      final isValid = BCrypt.checkpw(pin, storedHash);
-      if (!isValid) {
-        throw Exception('Invalid phone number or PIN.');
-      }
-
-      final email = response['email'] as String;
-      final derivedPassword = _derivePassword(phone, pin);
-
-      final authResponse = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: derivedPassword,
+      final response = await _supabase.functions.invoke(
+        'patient-auth',
+        body: {'action': 'login', 'phone': phone, 'pin': pin},
       );
 
+      final data = response.data as Map<String, dynamic>?;
+      final refreshToken = data?['refresh_token'] as String?;
+      if (refreshToken == null) {
+        throw Exception((data?['error'] as String?) ?? 'Invalid phone number or PIN.');
+      }
+
+      final authResponse = await _supabase.auth.setSession(refreshToken);
       if (authResponse.user == null) {
         throw Exception('Authentication failed. Please try again.');
       }
@@ -256,8 +213,11 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } on AuthException catch (e) {
-      _error = e.message;
+    } on FunctionException catch (e) {
+      final details = e.details;
+      _error = (details is Map && details['error'] is String)
+          ? details['error'] as String
+          : 'Invalid phone number or PIN.';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -267,16 +227,6 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return false;
     }
-  }
-
-  /// Derives the Supabase auth password from [phone] + [pin] + the
-  /// app-side secret. Returns the first 32 hex characters of a SHA-256
-  /// digest — well above Supabase's 6-char minimum.
-  String _derivePassword(String phone, String pin) {
-    final input = '$phone:$pin:${SupabaseConfig.patientAuthSecret}';
-    final bytes = utf8.encode(input);
-    final digest = sha256.convert(bytes);
-    return digest.toString().substring(0, 32);
   }
 
   // ── Email/password sign up (providers) ──────────────────────────────

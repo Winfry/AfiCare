@@ -1,0 +1,55 @@
+name: RLS Guardrail
+
+# Fails loudly instead of leaking data quietly. This exists because
+# 008_canonical_schema.sql shipped three tables (referrals,
+# triage_assessments, community-facing CHW tables) with Row-Level
+# Security left off — a freshly created Postgres table has RLS
+# disabled by default, and nothing caught it until a manual audit did.
+# This job checks the live database directly, on a schedule and on
+# demand, so the next time a table is added without RLS it's a failed
+# workflow run within 24 hours, not a silent hole.
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # daily — RLS state can drift without a code change (e.g. a manual dashboard edit)
+  workflow_dispatch:
+
+jobs:
+  check-rls:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every public table must have Row-Level Security enabled
+        env:
+          PGCONNECT: ${{ secrets.SUPABASE_RLS_CHECK_URL }}
+        run: |
+          set -e
+          UNPROTECTED=$(psql "$PGCONNECT" -Atc "
+            SELECT string_agg(tablename, ', ')
+            FROM pg_tables
+            WHERE schemaname = 'public' AND rowsecurity = false;
+          ")
+          if [ -n "$UNPROTECTED" ]; then
+            echo "::error::Tables with Row-Level Security OFF: $UNPROTECTED"
+            exit 1
+          fi
+          echo "All public tables have RLS enabled."
+
+      - name: patient_credentials must have zero policies
+        env:
+          PGCONNECT: ${{ secrets.SUPABASE_RLS_CHECK_URL }}
+        run: |
+          set -e
+          # This table holds PIN hashes and is deliberately reachable by
+          # nothing except the service-role key inside the patient-auth
+          # Edge Function. If a policy ever appears here — even a
+          # well-intentioned "let admins read it" one — that is itself an
+          # incident: it means the vault-style table has been reopened.
+          POLICY_COUNT=$(psql "$PGCONNECT" -Atc "
+            SELECT count(*) FROM pg_policies
+            WHERE schemaname = 'public' AND tablename = 'patient_credentials';
+          ")
+          if [ "$POLICY_COUNT" != "0" ]; then
+            echo "::error::patient_credentials has $POLICY_COUNT polic(y/ies) — it must have none. See supabase_migrations/009_security_hardening.sql for why."
+            exit 1
+          fi
+          echo "patient_credentials remains policy-free, as designed."

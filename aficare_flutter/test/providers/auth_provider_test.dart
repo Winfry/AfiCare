@@ -1,11 +1,8 @@
 import 'dart:convert';
 
-import 'package:bcrypt/bcrypt.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:aficare_flutter/config/supabase_config.dart';
 import 'package:aficare_flutter/providers/auth_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,7 +28,6 @@ void main() {
   const userId = 'user-1';
   const phone = '+254712345678';
   const pin = '123456';
-  final pinHash = BCrypt.hashpw(pin, BCrypt.gensalt(logRounds: 4));
 
   Map<String, dynamic> userRow() => {
         'id': userId,
@@ -40,11 +36,12 @@ void main() {
         'role': 'patient',
         'phone': phone,
         'medilink_id': 'ML-NBO-123456',
-        'pin_hash': pinHash,
         'created_at': '2026-01-01T00:00:00.000Z',
       };
 
-  /// A valid GoTrue session response for a password sign-in.
+  /// A valid GoTrue session response for a refresh-token grant — this is
+  /// what `auth.setSession(refreshToken)` requests from `/auth/v1/token`
+  /// once the patient-auth Edge Function hands the client a refresh token.
   Map<String, dynamic> sessionJson() => {
         'access_token': 'test-access-token',
         'token_type': 'bearer',
@@ -62,21 +59,32 @@ void main() {
         },
       };
 
-  String expectedDerivedPassword() {
-    const input = '$phone:$pin:${SupabaseConfig.patientAuthSecret}';
-    return sha256.convert(utf8.encode(input)).toString().substring(0, 32);
-  }
+  /// Builds the exact response shape the real `patient-auth` Edge Function
+  /// returns on failure: a JSON body with an `error` field, served with a
+  /// real `content-type: application/json` header (without this header the
+  /// Supabase functions client falls back to treating the body as plain
+  /// text, which would silently defeat these tests).
+  http.Response edgeError(String message, int status) => http.Response(
+        jsonEncode({'error': message}),
+        status,
+        headers: const {'content-type': 'application/json'},
+      );
 
   group('AuthProvider.signInWithPhoneAndPin', () {
     test('accepts a valid PIN and completes a full sign-in', () async {
-      fake.routeJson('/rest/v1/users', [userRow()]);
+      // PIN verification now happens entirely inside the patient-auth Edge
+      // Function — from the client's perspective, success just means "the
+      // function returned a session".
+      fake.routeJson('/functions/v1/patient-auth', {
+        'access_token': 'edge-access-token',
+        'refresh_token': 'test-refresh-token',
+        'user_id': userId,
+      });
       fake.routeJson('/auth/v1/token', sessionJson());
+      fake.routeJson('/rest/v1/users', [userRow()]);
 
       final provider = AuthProvider();
-      final ok = await provider.signInWithPhoneAndPin(
-        phone: phone,
-        pin: pin,
-      );
+      final ok = await provider.signInWithPhoneAndPin(phone: phone, pin: pin);
 
       expect(ok, isTrue);
       expect(provider.error, isNull);
@@ -84,41 +92,120 @@ void main() {
       expect(provider.currentUser?.id, userId);
       expect(provider.currentUser?.role.name, 'patient');
 
-      // The Supabase auth password must be the deterministic derivation.
-      final tokenBody = jsonDecode(
-        fake.requestsTo('POST', 'auth/v1/token').last.body,
+      // The client must send the raw phone+PIN to the function and nothing
+      // else — it no longer knows how to check a PIN or derive a password.
+      final callBody = jsonDecode(
+        fake.requestsTo('post', 'functions/v1/patient-auth').single.body,
       ) as Map<String, dynamic>;
-      expect(tokenBody['email'], '${phone.replaceAll('+', '')}@patient.aficare');
-      expect(tokenBody['password'], expectedDerivedPassword());
+      expect(callBody['action'], 'login');
+      expect(callBody['phone'], phone);
+      expect(callBody['pin'], pin);
+
+      // And it must hand the resulting refresh token to setSession — never
+      // call signInWithPassword itself.
+      final tokenBody = jsonDecode(
+        fake.requestsTo('POST', 'auth/v1/token').single.body,
+      ) as Map<String, dynamic>;
+      expect(tokenBody['refresh_token'], 'test-refresh-token');
     });
 
-    test('rejects a wrong PIN before contacting auth', () async {
-      fake.routeJson('/rest/v1/users', [userRow()]);
+    test('a wrong PIN surfaces the function\'s generic error, without minting a session', () async {
+      fake.routeRaw('/functions/v1/patient-auth', edgeError('Invalid phone number or PIN.', 401));
 
       final provider = AuthProvider();
-      final ok = await provider.signInWithPhoneAndPin(
-        phone: phone,
-        pin: '000000',
-      );
+      final ok = await provider.signInWithPhoneAndPin(phone: phone, pin: '000000');
 
       expect(ok, isFalse);
       expect(provider.isLoggedIn, isFalse);
-      expect(provider.error, contains('Invalid phone number or PIN'));
-      // No auth token call should have been made for a bad PIN.
+      expect(provider.error, 'Invalid phone number or PIN.');
       expect(fake.requestsTo('POST', 'auth/v1/token'), isEmpty);
     });
 
-    test('unknown phone number returns false with a helpful error', () async {
-      fake.routeJson('/rest/v1/users', <Object?>[]);
+    test('an unknown phone number gets the exact same error as a wrong PIN', () async {
+      // The Edge Function deliberately never distinguishes "no such
+      // account" from "wrong PIN" — this is what prevents a caller from
+      // using this endpoint to enumerate registered phone numbers.
+      fake.routeRaw('/functions/v1/patient-auth', edgeError('Invalid phone number or PIN.', 401));
 
       final provider = AuthProvider();
-      final ok = await provider.signInWithPhoneAndPin(
-        phone: '+254700000000',
+      final ok = await provider.signInWithPhoneAndPin(phone: '+254700000000', pin: pin);
+
+      expect(ok, isFalse);
+      expect(provider.error, 'Invalid phone number or PIN.');
+    });
+
+    test('too many failed attempts surfaces the lockout message', () async {
+      fake.routeRaw(
+        '/functions/v1/patient-auth',
+        edgeError('Too many attempts. Please try again in a few minutes.', 429),
+      );
+
+      final provider = AuthProvider();
+      final ok = await provider.signInWithPhoneAndPin(phone: phone, pin: pin);
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('Too many attempts'));
+    });
+  });
+
+  group('AuthProvider.signUpPatientDirect', () {
+    test('registers and signs the patient in on success', () async {
+      fake.routeJson('/functions/v1/patient-auth', {
+        'access_token': 'edge-access-token',
+        'refresh_token': 'test-refresh-token',
+        'user_id': userId,
+      });
+      fake.routeJson('/auth/v1/token', sessionJson());
+      fake.routeJson('/rest/v1/users', [userRow()]);
+
+      final provider = AuthProvider();
+      final ok = await provider.signUpPatientDirect(
+        phone: phone,
+        fullName: 'Test Patient',
+        pin: pin,
+      );
+
+      expect(ok, isTrue);
+      expect(provider.isLoggedIn, isTrue);
+      expect(provider.currentUser?.id, userId);
+
+      final callBody = jsonDecode(
+        fake.requestsTo('post', 'functions/v1/patient-auth').single.body,
+      ) as Map<String, dynamic>;
+      expect(callBody['action'], 'register');
+      expect(callBody['phone'], phone);
+      expect(callBody['pin'], pin);
+      expect(callBody['fullName'], 'Test Patient');
+    });
+
+    test('rejects a PIN that is not exactly 6 digits without calling the server', () async {
+      final provider = AuthProvider();
+      final ok = await provider.signUpPatientDirect(
+        phone: phone,
+        fullName: 'Test Patient',
+        pin: '123',
+      );
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('6 digits'));
+      expect(fake.requestsTo('post', 'functions/v1/patient-auth'), isEmpty);
+    });
+
+    test('a phone number that is already registered surfaces the function\'s error', () async {
+      fake.routeRaw(
+        '/functions/v1/patient-auth',
+        edgeError('An account with this phone number already exists. Please log in instead.', 409),
+      );
+
+      final provider = AuthProvider();
+      final ok = await provider.signUpPatientDirect(
+        phone: phone,
+        fullName: 'Test Patient',
         pin: pin,
       );
 
       expect(ok, isFalse);
-      expect(provider.error, contains('No account found'));
+      expect(provider.error, contains('already exists'));
     });
   });
 
