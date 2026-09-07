@@ -106,7 +106,11 @@ void main() {
   });
 
   group('AdminUserProvider.updateUserRole', () {
-    test('patches role and reloads', () async {
+    test('calls the admin_set_user_role RPC and reloads', () async {
+      // Role changes must go through the checked RPC (010_role_escalation_fix.sql)
+      // — a raw PATCH to `users` is rejected by a database trigger now, so the
+      // provider must never attempt one.
+      fake.routeJson('/rest/v1/rpc/admin_set_user_role', <String, dynamic>{});
       fake.routeJson('/rest/v1/users', [
         userRow(id: 'u1', role: 'admin'),
       ]);
@@ -115,9 +119,57 @@ void main() {
       final ok = await provider.updateUserRole('u1', UserRole.admin);
 
       expect(ok, isTrue);
-      final update = fake.requestsTo('PATCH', 'users').single;
-      expect(jsonDecode(update.body), containsPair('role', 'admin'));
+      final rpcCall = fake.requestsTo('POST', 'rpc/admin_set_user_role').single;
+      final body = jsonDecode(rpcCall.body) as Map<String, dynamic>;
+      expect(body, containsPair('target_user_id', 'u1'));
+      expect(body, containsPair('new_role', 'admin'));
       expect(provider.users.single.role, UserRole.admin);
+    });
+
+    test('a rejected RPC (non-admin caller) surfaces as an error, not a crash', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/admin_set_user_role',
+        http.Response(
+          jsonEncode({'message': 'Only admins can change a user\'s role'}),
+          403,
+        ),
+      );
+
+      final provider = AdminUserProvider();
+      final ok = await provider.updateUserRole('u1', UserRole.admin);
+
+      expect(ok, isFalse);
+      expect(provider.error, isNotNull);
+    });
+  });
+
+  group('AdminUserProvider.updateUserStatus', () {
+    test('calls the admin_set_user_status RPC and reloads', () async {
+      fake.routeJson('/rest/v1/rpc/admin_set_user_status', <String, dynamic>{});
+      fake.routeJson('/rest/v1/users', [userRow(id: 'u1', status: 'suspended')]);
+
+      final provider = AdminUserProvider();
+      final ok = await provider.updateUserStatus('u1', UserStatus.suspended);
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/admin_set_user_status').single;
+      final body = jsonDecode(rpcCall.body) as Map<String, dynamic>;
+      expect(body, containsPair('target_user_id', 'u1'));
+      expect(body, containsPair('new_status', 'suspended'));
+    });
+  });
+
+  group('AdminUserProvider.bulkUpdateStatus', () {
+    test('calls the RPC once per selected user', () async {
+      fake.routeJson('/rest/v1/rpc/admin_set_user_status', <String, dynamic>{});
+      fake.routeJson('/rest/v1/users', [userRow(id: 'u1'), userRow(id: 'u2')]);
+
+      final provider = AdminUserProvider();
+      final ok = await provider.bulkUpdateStatus({'u1', 'u2'}, UserStatus.suspended);
+
+      expect(ok, isTrue);
+      expect(fake.requestsTo('POST', 'rpc/admin_set_user_status'), hasLength(2));
+      expect(provider.selectedIds, isEmpty);
     });
   });
 

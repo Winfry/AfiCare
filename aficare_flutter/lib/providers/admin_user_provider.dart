@@ -98,12 +98,16 @@ class AdminUserProvider with ChangeNotifier {
     }
   }
 
+  /// Role changes go through `admin_set_user_role`, not a direct table
+  /// write — the database itself rejects a raw UPDATE to this column
+  /// (see 010_role_escalation_fix.sql). The RPC re-checks the caller is
+  /// an admin and logs the change to audit_log.
   Future<bool> updateUserRole(String userId, UserRole newRole) async {
     try {
-      await _supabase
-          .from('users')
-          .update({'role': newRole.name})
-          .eq('id', userId);
+      await _supabase.rpc('admin_set_user_role', params: {
+        'target_user_id': userId,
+        'new_role': newRole.name,
+      });
       await loadUsers();
       return true;
     } catch (e) {
@@ -113,12 +117,14 @@ class AdminUserProvider with ChangeNotifier {
     }
   }
 
+  /// See updateUserRole — status changes are equally locked at the
+  /// database level and go through `admin_set_user_status`.
   Future<bool> updateUserStatus(String userId, UserStatus status) async {
     try {
-      await _supabase
-          .from('users')
-          .update({'status': status.name})
-          .eq('id', userId);
+      await _supabase.rpc('admin_set_user_status', params: {
+        'target_user_id': userId,
+        'new_status': status.name,
+      });
       await loadUsers();
       return true;
     } catch (e) {
@@ -155,10 +161,10 @@ class AdminUserProvider with ChangeNotifier {
   Future<bool> bulkUpdateStatus(Set<String> ids, UserStatus status) async {
     try {
       for (final id in ids) {
-        await _supabase
-            .from('users')
-            .update({'status': status.name})
-            .eq('id', id);
+        await _supabase.rpc('admin_set_user_status', params: {
+          'target_user_id': id,
+          'new_status': status.name,
+        });
       }
       _selectedIds.clear();
       await loadUsers();
