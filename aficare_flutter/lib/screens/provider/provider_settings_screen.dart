@@ -122,6 +122,13 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   ),
                 ),
                 const Divider(height: 1),
+                _settingTile(
+                  Icons.verified_user_outlined,
+                  'Provider Verification',
+                  'Submit your license, or check your review status',
+                  () => context.push('/verify-provider'),
+                ),
+                const Divider(height: 1),
                 _settingTile(Icons.language, 'Language', _selectedLanguage, () {
                   showDialog(
                     context: context,

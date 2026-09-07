@@ -57,12 +57,14 @@ import '../screens/provider/adherence_monitoring_screen.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/admin/admin_user_management_screen.dart';
 import '../screens/admin/admin_facility_management_screen.dart';
+import '../screens/admin/admin_provider_verification_screen.dart';
 import '../screens/admin/system_settings_screen.dart';
 import '../screens/admin/audit_log_screen.dart';
 import '../screens/admin/reports_analytics_screen.dart';
 import '../screens/web/provider_web_dashboard_screen.dart';
 import '../screens/web/referral_receiving_portal_screen.dart';
 import '../screens/facility_registration_screen.dart';
+import '../screens/provider_verification_request_screen.dart';
 
 /// Paths that are accessible without authentication.
 const _publicPaths = {
@@ -461,7 +463,19 @@ final appRouter = GoRouter(
           path: 'reports',
           builder: (context, state) => const ReportsAnalyticsScreen(),
         ),
+        GoRoute(
+          path: 'provider-verification',
+          builder: (context, state) => const AdminProviderVerificationScreen(),
+        ),
       ],
+    ),
+
+    // Any logged-in user (any role) can apply to become a verified
+    // provider — deliberately not nested under /admin, /provider, etc.
+    // so it isn't caught by any role-specific redirect gate above.
+    GoRoute(
+      path: '/verify-provider',
+      builder: (context, state) => const ProviderVerificationRequestScreen(),
     ),
 
     // Web Routes

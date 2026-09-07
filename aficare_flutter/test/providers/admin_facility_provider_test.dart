@@ -117,4 +117,63 @@ void main() {
       expect(stats['departments'], 3);
     });
   });
+
+  group('AdminFacilityProvider provider linking', () {
+    Map<String, dynamic> linkRow({String providerId = 'p1', String facilityId = 'f1', bool isPrimary = false}) {
+      return {
+        'provider_id': providerId,
+        'facility_id': facilityId,
+        'specialty': 'Cardiology',
+        'is_primary': isPrimary,
+        'created_at': '2026-01-01T09:00:00.000Z',
+      };
+    }
+
+    test('loadFacilityProviders merges provider_facilities with user names', () async {
+      fake.routeJson('/rest/v1/provider_facilities', [linkRow()]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'p1', 'full_name': 'Dr. Mwangi'},
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadFacilityProviders('f1');
+
+      expect(provider.facilityProviders, hasLength(1));
+      expect(provider.facilityProviders.first.providerName, 'Dr. Mwangi');
+      expect(provider.facilityProviders.first.specialty, 'Cardiology');
+    });
+
+    test('searchVerifiedProviders keeps only verified candidates', () async {
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'p1', 'full_name': 'Dr. Mwangi', 'email': 'mwangi@example.com'},
+        {'id': 'p2', 'full_name': 'Dr. Otieno', 'email': 'otieno@example.com'},
+      ]);
+      fake.routeJson('/rest/v1/provider_credentials', [
+        {'provider_id': 'p1', 'specialty': 'Cardiology'},
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.searchVerifiedProviders('Dr');
+
+      expect(provider.providerSearchResults, hasLength(1));
+      expect(provider.providerSearchResults.first['id'], 'p1');
+    });
+
+    test('linkProviderToFacility calls the admin RPC and reloads the roster', () async {
+      fake.routeJson('/rest/v1/rpc/admin_link_provider_to_facility', <String, dynamic>{});
+      fake.routeJson('/rest/v1/provider_facilities', [linkRow(isPrimary: true)]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'p1', 'full_name': 'Dr. Mwangi'},
+      ]);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.linkProviderToFacility('p1', 'f1', specialty: 'Cardiology', isPrimary: true);
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/admin_link_provider_to_facility').single;
+      expect(rpcCall.body, contains('"target_user_id":"p1"'));
+      expect(rpcCall.body, contains('"target_facility_id":"f1"'));
+      expect(provider.facilityProviders.single.isPrimary, isTrue);
+    });
+  });
 }

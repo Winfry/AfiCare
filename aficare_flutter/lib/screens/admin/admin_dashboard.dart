@@ -22,6 +22,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
     SidebarNavItem(icon: Icons.people_outline, label: 'User Management'),
     SidebarNavItem(icon: Icons.local_hospital_outlined, label: 'Facility Management'),
+    SidebarNavItem(icon: Icons.verified_user_outlined, label: 'Provider Verification'),
     SidebarNavItem(icon: Icons.settings_outlined, label: 'System Settings'),
     SidebarGroupLabel('Insights'),
     SidebarNavItem(icon: Icons.analytics_outlined, label: 'Analytics'),
@@ -54,11 +55,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         context.push('/admin/users');
       case 2: // Facility Management
         context.push('/admin/facilities');
-      case 3: // System Settings
+      case 3: // Provider Verification
+        context.push('/admin/provider-verification');
+      case 4: // System Settings
         context.push('/admin/settings');
-      case 4: // Analytics
+      case 5: // Analytics
         context.push('/admin/reports');
-      case 5: // Audit Log
+      case 6: // Audit Log
         context.push('/admin/audit-log');
     }
   }
@@ -184,6 +187,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       title: 'Facility Management',
                       description: 'Add, edit, and manage healthcare facilities and their linkages.',
                       onTap: () => context.push('/admin/facilities'),
+                    ),
+                    ManagementCard(
+                      icon: Icons.verified_user_outlined,
+                      iconBackground: AppColors.canopy.withOpacity(0.08),
+                      iconColor: AppColors.canopy,
+                      title: 'Provider Verification',
+                      description: 'Review submitted licenses and approve or reject provider applicants.',
+                      onTap: () => context.push('/admin/provider-verification'),
                     ),
                     ManagementCard(
                       icon: Icons.settings_outlined,

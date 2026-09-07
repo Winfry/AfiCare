@@ -46,6 +46,8 @@ class PatientProfileScreen extends StatelessWidget {
               () => _push(context, const PatientSettingsScreen())),
           _tile(context, Icons.people_outline, 'More (Full Dashboard)',
               () => context.go('/patient/full')),
+          _tile(context, Icons.badge_outlined, 'Become a Verified Provider',
+              () => context.push('/verify-provider')),
           const Divider(),
           _tile(
             context,

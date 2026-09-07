@@ -268,6 +268,7 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
 
   void _showFacilityDetail(BuildContext context, AdminFacilityProvider provider, FacilityModel facility) {
     provider.loadDepartments(facility.id);
+    provider.loadFacilityProviders(facility.id);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -278,52 +279,75 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         expand: false,
-        builder: (ctx, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _facilityIcon(facility.type),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(facility.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text(facility.type, style: TextStyle(color: Colors.grey[600])),
-                      ],
+        builder: (ctx, scrollController) => Consumer<AdminFacilityProvider>(
+          builder: (ctx, provider, _) => SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _facilityIcon(facility.type),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(facility.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(facility.type, style: TextStyle(color: Colors.grey[600])),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              _detailRow('Address', facility.address ?? '-'),
-              _detailRow('County', facility.county ?? '-'),
-              _detailRow('Phone', facility.phone ?? '-'),
-              _detailRow('Email', facility.email ?? '-'),
-              _detailRow('License', facility.licenseNo ?? '-'),
-              _detailRow('Status', facility.status),
-              const SizedBox(height: 16),
-              const Text('Departments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              if (provider.departments.isEmpty)
-                const Text('No departments yet', style: TextStyle(color: Colors.grey))
-              else
-                ...provider.departments.map((d) => ListTile(
-                  dense: true,
-                  title: Text(d.name),
-                  subtitle: d.headProviderId != null ? Text('Head: ${d.headProviderId}') : null,
-                )),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => _showAddDepartmentDialog(context, provider, facility.id),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Department'),
-              ),
-            ],
+                  ],
+                ),
+                const Divider(height: 24),
+                _detailRow('Address', facility.address ?? '-'),
+                _detailRow('County', facility.county ?? '-'),
+                _detailRow('Phone', facility.phone ?? '-'),
+                _detailRow('Email', facility.email ?? '-'),
+                _detailRow('License', facility.licenseNo ?? '-'),
+                _detailRow('Status', facility.status),
+                const SizedBox(height: 16),
+                const Text('Departments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (provider.departments.isEmpty)
+                  const Text('No departments yet', style: TextStyle(color: Colors.grey))
+                else
+                  ...provider.departments.map((d) => ListTile(
+                    dense: true,
+                    title: Text(d.name),
+                    subtitle: d.headProviderId != null ? Text('Head: ${d.headProviderId}') : null,
+                  )),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => _showAddDepartmentDialog(context, provider, facility.id),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Department'),
+                ),
+                const SizedBox(height: 16),
+                const Text('Providers', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (provider.facilityProviders.isEmpty)
+                  const Text('No providers linked yet', style: TextStyle(color: Colors.grey))
+                else
+                  ...provider.facilityProviders.map((p) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.medical_services_outlined),
+                    title: Text(p.providerName ?? 'Unknown'),
+                    subtitle: Text([
+                      if (p.specialty != null && p.specialty!.isNotEmpty) p.specialty!,
+                      if (p.isPrimary) 'Primary facility',
+                    ].join(' · ')),
+                  )),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => _showAddProviderDialog(context, provider, facility.id),
+                  icon: const Icon(Icons.person_add_alt),
+                  label: const Text('Add Provider'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -440,6 +464,68 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
             },
             child: const Text('Add'),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddProviderDialog(BuildContext context, AdminFacilityProvider provider, String facilityId) {
+    final searchCtl = TextEditingController();
+    provider.searchVerifiedProviders('');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Provider'),
+        content: SizedBox(
+          width: 400,
+          child: Consumer<AdminFacilityProvider>(
+            builder: (ctx, p, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: searchCtl,
+                  decoration: const InputDecoration(labelText: 'Search verified providers by name', isDense: true),
+                  onChanged: (v) => p.searchVerifiedProviders(v),
+                ),
+                const SizedBox(height: 12),
+                if (p.providerSearchResults.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text('Type a name to search verified providers', style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: p.providerSearchResults.map((u) => ListTile(
+                        dense: true,
+                        title: Text(u['full_name'] as String? ?? ''),
+                        subtitle: Text((u['specialty'] as String?) ?? (u['email'] as String?) ?? ''),
+                        onTap: () async {
+                          final ok = await p.linkProviderToFacility(
+                            u['id'] as String,
+                            facilityId,
+                            specialty: u['specialty'] as String?,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(ok ? 'Provider linked' : 'Failed: ${p.error}')),
+                            );
+                          }
+                        },
+                      )).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );

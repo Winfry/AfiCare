@@ -2,12 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/facility_model.dart';
 import '../models/department_model.dart';
+import '../models/provider_facility_model.dart';
 
 class AdminFacilityProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   List<FacilityModel> _facilities = [];
   List<DepartmentModel> _departments = [];
+  List<ProviderFacilityModel> _facilityProviders = [];
+  List<Map<String, dynamic>> _providerSearchResults = [];
   bool _isLoading = false;
   String? _error;
   String _searchQuery = '';
@@ -15,6 +18,8 @@ class AdminFacilityProvider with ChangeNotifier {
 
   List<FacilityModel> get facilities => _facilities;
   List<DepartmentModel> get departments => _departments;
+  List<ProviderFacilityModel> get facilityProviders => _facilityProviders;
+  List<Map<String, dynamic>> get providerSearchResults => _providerSearchResults;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get searchQuery => _searchQuery;
@@ -144,6 +149,117 @@ class AdminFacilityProvider with ChangeNotifier {
       };
     } catch (e) {
       return {'providers': 0, 'departments': 0};
+    }
+  }
+
+  /// Loads the roster of providers linked to a facility (provider_facilities
+  /// joined to users, done as two queries per the codebase's no-embedded-
+  /// join convention — see CareTeamProvider).
+  Future<void> loadFacilityProviders(String facilityId) async {
+    try {
+      final links = await _supabase
+          .from('provider_facilities')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .order('created_at', ascending: false);
+
+      final rows = links as List;
+      if (rows.isEmpty) {
+        _facilityProviders = [];
+        notifyListeners();
+        return;
+      }
+
+      final providerIds = rows.map((r) => r['provider_id'] as String).toSet().toList();
+      final users = await _supabase
+          .from('users')
+          .select('id, full_name')
+          .inFilter('id', providerIds);
+
+      final nameById = <String, String>{
+        for (final u in users as List) u['id'] as String: u['full_name'] as String? ?? 'Unknown',
+      };
+
+      _facilityProviders = rows
+          .map((r) => ProviderFacilityModel.fromJson(r as Map<String, dynamic>)
+              .copyWith(providerName: nameById[r['provider_id']]))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Searches verified providers by name for the "add provider to this
+  /// facility" picker. Two-query: search users by name, then keep only
+  /// the ones with a verified provider_credentials row — an unverified
+  /// person should never show up as linkable staff.
+  Future<void> searchVerifiedProviders(String query) async {
+    if (query.trim().isEmpty) {
+      _providerSearchResults = [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final candidates = await _supabase
+          .from('users')
+          .select('id, full_name, email')
+          .ilike('full_name', '%$query%')
+          .limit(20);
+
+      final ids = (candidates as List).map((u) => u['id'] as String).toList();
+      if (ids.isEmpty) {
+        _providerSearchResults = [];
+        notifyListeners();
+        return;
+      }
+
+      final verified = await _supabase
+          .from('provider_credentials')
+          .select('provider_id, specialty')
+          .inFilter('provider_id', ids)
+          .eq('verification_status', 'verified');
+
+      final specialtyById = <String, String?>{
+        for (final v in verified as List) v['provider_id'] as String: v['specialty'] as String?,
+      };
+
+      _providerSearchResults = candidates
+          .where((u) => specialtyById.containsKey(u['id']))
+          .map((u) => {
+                'id': u['id'],
+                'full_name': u['full_name'],
+                'email': u['email'],
+                'specialty': specialtyById[u['id']],
+              })
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<bool> linkProviderToFacility(
+    String providerId,
+    String facilityId, {
+    String? specialty,
+    bool isPrimary = false,
+  }) async {
+    try {
+      await _supabase.rpc('admin_link_provider_to_facility', params: {
+        'target_user_id': providerId,
+        'target_facility_id': facilityId,
+        'provider_specialty': specialty,
+        'make_primary': isPrimary,
+      });
+      await loadFacilityProviders(facilityId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 }
