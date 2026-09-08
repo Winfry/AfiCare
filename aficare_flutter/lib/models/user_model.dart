@@ -1,4 +1,5 @@
-enum UserRole { patient, doctor, nurse, radiologist, admin, chw }
+// ignore: constant_identifier_names
+enum UserRole { patient, doctor, nurse, radiologist, admin, chw, facility_admin }
 enum UserStatus { active, suspended, invited }
 
 class UserModel {

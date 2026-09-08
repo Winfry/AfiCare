@@ -9,7 +9,6 @@ import '../screens/forgot_password_screen.dart';
 import '../presentation/auth/register/role_selection/register_role_screen.dart';
 import '../presentation/auth/register/patient/patient_register_screen.dart';
 import '../presentation/auth/register/clinician/clinician_register_screen.dart';
-import '../presentation/auth/register/admin/admin_register_screen.dart';
 import '../screens/patient/patient_shell.dart';
 import '../screens/patient/patient_onboarding_screen.dart';
 import '../screens/patient/patient_dashboard.dart';
@@ -61,6 +60,7 @@ import '../screens/admin/admin_provider_verification_screen.dart';
 import '../screens/admin/system_settings_screen.dart';
 import '../screens/admin/audit_log_screen.dart';
 import '../screens/admin/reports_analytics_screen.dart';
+import '../screens/facility_admin/facility_admin_shell.dart';
 import '../screens/web/provider_web_dashboard_screen.dart';
 import '../screens/web/referral_receiving_portal_screen.dart';
 import '../screens/facility_registration_screen.dart';
@@ -75,7 +75,6 @@ const _publicPaths = {
   '/register/doctor',
   '/register/nurse',
   '/register/radiologist',
-  '/register/admin',
   '/register-facility',
   '/forgot-password',
 };
@@ -171,6 +170,13 @@ final appRouter = GoRouter(
       return null;
     }
 
+    if (location.startsWith('/facility-admin')) {
+      if (role != UserRole.facility_admin) {
+        return _dashboardForRole(role);
+      }
+      return null;
+    }
+
     if (location.startsWith('/patient')) {
       if (role != UserRole.patient) {
         return _dashboardForRole(role);
@@ -229,10 +235,6 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'radiologist',
           builder: (context, state) => const ClinicianRegisterScreen(initialRole: 'radiologist'),
-        ),
-        GoRoute(
-          path: 'admin',
-          builder: (context, state) => const AdminRegisterScreen(),
         ),
       ],
     ),
@@ -526,6 +528,12 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+
+    // Facility Admin Routes
+    GoRoute(
+      path: '/facility-admin',
+      builder: (context, state) => const FacilityAdminShell(),
+    ),
   ],
 
   errorBuilder: (context, state) => Scaffold(
@@ -568,6 +576,8 @@ String _dashboardForRole(UserRole role) {
       return '/admin';
     case UserRole.chw:
       return '/chw';
+    case UserRole.facility_admin:
+      return '/facility-admin';
     default:
       return '/login';
   }

@@ -216,4 +216,91 @@ void main() {
       expect(provider.facilityProviders.single.isPrimary, isTrue);
     });
   });
+
+  group('AdminFacilityProvider departments via RPC', () {
+    test('addDepartment calls facility_admin_add_department, not a raw insert', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_add_department', <String, dynamic>{});
+      fake.routeJson('/rest/v1/departments', [deptRow()]);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.addDepartment({
+        'facility_id': 'f1',
+        'name': 'Cardiology',
+        'description': 'Heart care',
+      });
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_add_department').single;
+      expect(rpcCall.body, contains('"target_facility_id":"f1"'));
+      expect(rpcCall.body, contains('"department_name":"Cardiology"'));
+      expect(fake.requestsTo('POST', '/departments'), isEmpty);
+    });
+
+    test('updateDepartment calls facility_admin_update_department and reloads', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_update_department', <String, dynamic>{});
+      fake.routeJson('/rest/v1/departments', [deptRow(id: 'd1')]);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.updateDepartment('d1', 'f1', 'Cardiology', 'Updated');
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_update_department').single;
+      expect(rpcCall.body, contains('"target_department_id":"d1"'));
+    });
+  });
+
+  group('AdminFacilityProvider facility admins', () {
+    test('loadFacilityAdmins merges facility_admins with user names', () async {
+      fake.routeJson('/rest/v1/facility_admins', [
+        {'user_id': 'u1', 'facility_id': 'f1', 'created_at': '2026-01-01T09:00:00.000Z'},
+      ]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'u1', 'full_name': 'Jane Front-Desk', 'email': 'jane@example.com'},
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadFacilityAdmins('f1');
+
+      expect(provider.facilityAdmins, hasLength(1));
+      expect(provider.facilityAdmins.first['full_name'], 'Jane Front-Desk');
+    });
+
+    test('searchPatientsForFacilityAdmin only queries patients', () async {
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'u1', 'full_name': 'Jane Doe', 'email': 'jane@example.com'},
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.searchPatientsForFacilityAdmin('jane');
+
+      final req = fake.requestsTo('GET', 'users').single;
+      expect(req.url.queryParameters['role'], 'eq.patient');
+      expect(provider.patientSearchResults, hasLength(1));
+    });
+
+    test('grantFacilityAdmin calls the admin RPC and reloads', () async {
+      fake.routeJson('/rest/v1/rpc/admin_grant_facility_admin', <String, dynamic>{});
+      fake.routeJson('/rest/v1/facility_admins', <Map<String, dynamic>>[]);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.grantFacilityAdmin('u1', 'f1');
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/admin_grant_facility_admin').single;
+      expect(rpcCall.body, contains('"target_user_id":"u1"'));
+      expect(rpcCall.body, contains('"target_facility_id":"f1"'));
+    });
+
+    test('revokeFacilityAdmin calls the admin RPC and reloads', () async {
+      fake.routeJson('/rest/v1/rpc/admin_revoke_facility_admin', <String, dynamic>{});
+      fake.routeJson('/rest/v1/facility_admins', <Map<String, dynamic>>[]);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.revokeFacilityAdmin('u1', 'f1');
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/admin_revoke_facility_admin').single;
+      expect(rpcCall.body, contains('"target_user_id":"u1"'));
+    });
+  });
 }

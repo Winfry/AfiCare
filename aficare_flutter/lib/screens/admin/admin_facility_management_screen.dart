@@ -296,6 +296,7 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
   void _showFacilityDetail(BuildContext context, AdminFacilityProvider provider, FacilityModel facility) {
     provider.loadDepartments(facility.id);
     provider.loadFacilityProviders(facility.id);
+    provider.loadFacilityAdmins(facility.id);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -386,6 +387,34 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                   onPressed: () => _showAddProviderDialog(context, provider, facility.id),
                   icon: const Icon(Icons.person_add_alt),
                   label: const Text('Add Provider'),
+                ),
+                const SizedBox(height: 16),
+                const Text('Facility Admins', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(
+                  'Front-desk/office staff who manage this facility\'s roster. Not a clinician.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                if (provider.facilityAdmins.isEmpty)
+                  const Text('No facility admins yet', style: TextStyle(color: Colors.grey))
+                else
+                  ...provider.facilityAdmins.map((a) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.badge_outlined),
+                    title: Text(a['full_name'] as String? ?? 'Unknown'),
+                    subtitle: Text(a['email'] as String? ?? ''),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.link_off, size: 20),
+                      tooltip: 'Revoke facility admin access',
+                      onPressed: () => _confirmRevokeFacilityAdmin(context, provider, a, facility),
+                    ),
+                  )),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => _showAddFacilityAdminDialog(context, provider, facility.id),
+                  icon: const Icon(Icons.person_add_alt_1),
+                  label: const Text('Add Facility Admin'),
                 ),
               ],
             ),
@@ -567,6 +596,110 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showAddFacilityAdminDialog(BuildContext context, AdminFacilityProvider provider, String facilityId) {
+    final searchCtl = TextEditingController();
+    provider.searchPatientsForFacilityAdmin('');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Facility Admin'),
+        content: SizedBox(
+          width: 400,
+          child: Consumer<AdminFacilityProvider>(
+            builder: (ctx, p, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFB8C00).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'This changes the account\'s role. Only pick someone who registered '
+                    'specifically to manage this facility\'s front desk -- never a real '
+                    'patient using AfiCare for their own healthcare. They will lose patient '
+                    'access once granted.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF8A5300)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: searchCtl,
+                  decoration: const InputDecoration(labelText: 'Search unassigned accounts by name', isDense: true),
+                  onChanged: (v) => p.searchPatientsForFacilityAdmin(v),
+                ),
+                const SizedBox(height: 12),
+                if (p.patientSearchResults.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text('Type a name to search', style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: p.patientSearchResults.map((u) => ListTile(
+                        dense: true,
+                        title: Text(u['full_name'] as String? ?? ''),
+                        subtitle: Text(u['email'] as String? ?? ''),
+                        onTap: () async {
+                          final ok = await p.grantFacilityAdmin(u['id'] as String, facilityId);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(ok ? 'Facility admin granted' : 'Failed: ${p.error}')),
+                            );
+                          }
+                        },
+                      )).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRevokeFacilityAdmin(
+    BuildContext context,
+    AdminFacilityProvider provider,
+    Map<String, dynamic> admin,
+    FacilityModel facility,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Revoke facility admin access'),
+        content: Text('Revoke ${admin['full_name'] ?? 'this person'}\'s admin access to ${facility.name}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              final ok = await provider.revokeFacilityAdmin(admin['user_id'] as String, facility.id);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(ok ? 'Access revoked' : 'Failed: ${provider.error}')),
+                );
+              }
+            },
+            child: const Text('Revoke'),
+          ),
         ],
       ),
     );

@@ -7,6 +7,7 @@ import 'package:aficare_flutter/screens/patient/patient_shell.dart';
 import 'package:aficare_flutter/screens/provider/provider_shell.dart';
 import 'package:aficare_flutter/screens/admin/admin_dashboard.dart';
 import 'package:aficare_flutter/screens/chw/chw_shell.dart';
+import 'package:aficare_flutter/screens/facility_admin/facility_admin_shell.dart';
 import 'package:aficare_flutter/widgets/app_shell.dart';
 
 import 'helpers/smoke_harness.dart';
@@ -59,6 +60,13 @@ void main() {
   testWidgets('CHWShell builds without throwing', (tester) async {
     useCleanSurface(tester);
     final exception = await pumpShell(tester, const CHWShell());
+    expect(exception, isNull);
+    expect(find.byType(AppShell), findsOneWidget);
+  });
+
+  testWidgets('FacilityAdminShell builds without throwing', (tester) async {
+    useCleanSurface(tester);
+    final exception = await pumpShell(tester, const FacilityAdminShell());
     expect(exception, isNull);
     expect(find.byType(AppShell), findsOneWidget);
   });

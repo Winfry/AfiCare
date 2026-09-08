@@ -12,6 +12,8 @@ class AdminFacilityProvider with ChangeNotifier {
   List<DepartmentModel> _departments = [];
   List<ProviderFacilityModel> _facilityProviders = [];
   List<Map<String, dynamic>> _providerSearchResults = [];
+  List<Map<String, dynamic>> _facilityAdmins = [];
+  List<Map<String, dynamic>> _patientSearchResults = [];
   bool _isLoading = false;
   String? _error;
   String _searchQuery = '';
@@ -21,6 +23,8 @@ class AdminFacilityProvider with ChangeNotifier {
   List<DepartmentModel> get departments => _departments;
   List<ProviderFacilityModel> get facilityProviders => _facilityProviders;
   List<Map<String, dynamic>> get providerSearchResults => _providerSearchResults;
+  List<Map<String, dynamic>> get facilityAdmins => _facilityAdmins;
+  List<Map<String, dynamic>> get patientSearchResults => _patientSearchResults;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get searchQuery => _searchQuery;
@@ -178,10 +182,34 @@ class AdminFacilityProvider with ChangeNotifier {
     }
   }
 
+  /// Goes through facility_admin_add_department (works for the platform
+  /// admin or that facility's own facility admin) rather than a raw
+  /// insert — departments' legacy RLS predates the checked-RPC pattern
+  /// used everywhere else, and its live policy text is unverified.
   Future<bool> addDepartment(Map<String, dynamic> data) async {
     try {
-      await _supabase.from('departments').insert(data);
+      await _supabase.rpc('facility_admin_add_department', params: {
+        'target_facility_id': data['facility_id'],
+        'department_name': data['name'],
+        'department_description': data['description'],
+      });
       await loadDepartments(data['facility_id'] as String);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateDepartment(String departmentId, String facilityId, String name, String? description) async {
+    try {
+      await _supabase.rpc('facility_admin_update_department', params: {
+        'target_department_id': departmentId,
+        'department_name': name,
+        'department_description': description,
+      });
+      await loadDepartments(facilityId);
       return true;
     } catch (e) {
       _error = e.toString();
@@ -328,6 +356,101 @@ class AdminFacilityProvider with ChangeNotifier {
         'target_facility_id': facilityId,
       });
       await loadFacilityProviders(facilityId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Loads who administers a facility (facility_admins joined to users,
+  /// same two-query convention as [loadFacilityProviders]).
+  Future<void> loadFacilityAdmins(String facilityId) async {
+    try {
+      final links = await _supabase
+          .from('facility_admins')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .order('created_at', ascending: false);
+
+      final rows = links as List;
+      if (rows.isEmpty) {
+        _facilityAdmins = [];
+        notifyListeners();
+        return;
+      }
+
+      final userIds = rows.map((r) => r['user_id'] as String).toSet().toList();
+      final users = await _supabase
+          .from('users')
+          .select('id, full_name, email')
+          .inFilter('id', userIds);
+
+      final byId = <String, Map<String, dynamic>>{
+        for (final u in users as List) u['id'] as String: u as Map<String, dynamic>,
+      };
+
+      _facilityAdmins = rows
+          .map((r) => {
+                'user_id': r['user_id'],
+                'full_name': byId[r['user_id']]?['full_name'] ?? 'Unknown',
+                'email': byId[r['user_id']]?['email'] ?? '',
+              })
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Searches plain patient accounts by name — only a 'patient' account
+  /// can be granted facility admin (one role per person; a doctor can't
+  /// also run the front desk).
+  Future<void> searchPatientsForFacilityAdmin(String query) async {
+    if (query.trim().isEmpty) {
+      _patientSearchResults = [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final results = await _supabase
+          .from('users')
+          .select('id, full_name, email')
+          .eq('role', 'patient')
+          .ilike('full_name', '%$query%')
+          .limit(20);
+      _patientSearchResults = (results as List).cast<Map<String, dynamic>>();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<bool> grantFacilityAdmin(String userId, String facilityId) async {
+    try {
+      await _supabase.rpc('admin_grant_facility_admin', params: {
+        'target_user_id': userId,
+        'target_facility_id': facilityId,
+      });
+      await loadFacilityAdmins(facilityId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> revokeFacilityAdmin(String userId, String facilityId) async {
+    try {
+      await _supabase.rpc('admin_revoke_facility_admin', params: {
+        'target_user_id': userId,
+        'target_facility_id': facilityId,
+      });
+      await loadFacilityAdmins(facilityId);
       return true;
     } catch (e) {
       _error = e.toString();

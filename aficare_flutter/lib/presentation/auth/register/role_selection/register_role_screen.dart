@@ -43,15 +43,6 @@ class RegisterRoleScreen extends StatelessWidget {
           titleColor: Color(0xFF457B9D),
           route: "/register/radiologist",
         ),
-        RegisterRole(
-          title: "I'm an admin",
-          description: "Manage facilities, users, system settings, and analytics.",
-          icon: Icons.admin_panel_settings_rounded,
-          iconCircleColor: Color(0xFF6D597A),
-          titleColor: Color(0xFF6D597A),
-          route: "/register/admin",
-          fullWidth: true,
-        ),
       ];
 
   @override
