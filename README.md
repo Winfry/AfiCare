@@ -1,99 +1,72 @@
-# AfiCare - AI-Powered Medical Assistant
+# AfiCare MediLink
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+AfiCare MediLink is a patient-owned healthcare records and care-coordination
+platform for Kenya. It's a Flutter app backed by Supabase, with role-based
+portals for patients, healthcare providers (doctors, nurses, radiologists),
+community health workers (CHWs), and administrators.
 
-AfiCare is an AI-powered medical assistant designed to support healthcare providers in resource-constrained environments, particularly in African healthcare settings. It provides offline-capable medical decision support, patient management, and clinical guidance.
+> **Note:** This repo also contains `aficare-agent/`, an earlier Python/
+> Streamlit AI triage prototype. It is **legacy and no longer active** — see
+> [aficare-agent/README.md](aficare-agent/README.md). The current app's AI
+> consultation logic (`MedicalAIService`) runs fully offline/local-only
+> inside the Flutter app and does not depend on it.
 
 ## 🌟 Features
 
-- **Offline AI Medical Assistant**: Local LLM for medical consultations without internet
-- **Multi-language Support**: English, Swahili, Luganda
-- **Clinical Decision Support**: WHO IMCI guidelines, Kenya MOH protocols
-- **Patient Management**: Complete patient records and visit tracking
-- **Triage System**: Automated patient prioritization
-- **Knowledge Base**: Comprehensive medical conditions and treatments
-- **Cross-platform**: Windows, macOS, Linux support
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.8 or higher
-- 4GB+ RAM (8GB recommended for LLM)
-- 10GB+ storage space
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/your-org/aficare.git
-cd aficare
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Set up the local LLM:
-```bash
-python scripts/setup_ollama.py
-```
-
-4. Import sample data:
-```bash
-python scripts/import_sample_data.py
-```
-
-5. Run the application:
-```bash
-python run_aficare.py
-```
-
-> **Note:** The optional Python AI backend / REST API
-> (`aficare-backend.up.railway.app`) has been **disabled**. The Flutter app and
-> the AI consultation engine (`MedicalAIService`) now run fully **offline /
-> local-only** and no longer require a backend service.
-
-## 📖 Documentation
-
-- [Installation Guide](docs/installation.md)
-- [User Guide](docs/user_guide.md)
-- [Developer Guide](docs/developer_guide.md)
-- [API Reference](docs/api_reference.md)
-- [Medical Rules](docs/medical_rules.md)
+- **Patient records patients own**: MediLink ID (QR-shareable), health
+  summary, dependent profiles for family members without their own login
+- **Appointments & care team**: booking, rescheduling, provider directory
+- **Clinical tools**: prescriptions, lab results, radiology, triage,
+  referrals, adherence monitoring
+- **Preventive & maternal care**: vaccinations, antenatal care (ANC),
+  mental health screening (PHQ-9/GAD-7), men's health
+- **Medication support**: reminders, adherence tracking, drug-interaction
+  checking, cost tracking
+- **Financial**: expense tracking, receipt uploads, insurance claims
+- **Community health**: CHW household registry, home visits, screening,
+  education, referrals
+- **Admin**: user & facility management, provider license verification,
+  system settings, audit log, analytics
+- **Accessibility**: text-to-speech, adjustable text scale, reduced motion,
+  disability (PWD) profiles
+- **Localization**: English and Swahili
+- **Offline-capable**: Hive-backed local cache
 
 ## 🏗️ Architecture
 
-AfiCare follows a modular architecture:
+- **Frontend**: Flutter (Android, iOS, Web) — `aficare_flutter/`
+- **State management**: `provider` (`ChangeNotifier`)
+- **Routing**: `go_router`, with role-gated redirects per portal
+- **Backend**: Supabase (Postgres + Row-Level Security + Edge Functions) —
+  no custom server. Schema and RLS policies live in `supabase_migrations/`.
+- **Offline storage**: Hive
 
-- **Core Agent**: Main reasoning and decision engine
-- **LLM Integration**: Local language model for medical queries
-- **Memory System**: Patient data and visit management
-- **Rules Engine**: Medical protocols and guidelines
-- **UI Layer**: User interface for healthcare providers
-- **API Layer**: RESTful endpoints for integration
+## 🚀 Quick Start
 
-## 🌍 Supported Conditions
+```bash
+cd aficare_flutter
+flutter pub get
+flutter run
+```
 
-- Malaria
-- Pneumonia
-- Tuberculosis
-- Hypertension
-- Diabetes
-- Antenatal Care
-- Childhood Diarrhea
-- And more...
+Copy `.env.example` to `.env` and fill in your Supabase project URL and
+anon key (used by `aficare_flutter/lib/config/supabase_config.dart`).
 
-## 🤝 Contributing
+### Local dev via Docker
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+```bash
+docker compose up --build   # serves the Flutter web build on :8080
+```
 
-## 📄 License
+### Database
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Apply the migrations in `supabase_migrations/` in order (008 onward is the
+current, actively maintained schema) via the Supabase SQL editor or CLI.
+
+## 📖 Documentation
+
+Notes on past RLS/schema fixes and troubleshooting live in [`docs/`](docs/).
 
 ## ⚠️ Medical Disclaimer
 
-AfiCare is designed to assist healthcare providers and should not replace professional medical judgment. Always consult with qualified healthcare professionals for medical decisions.         
-
+AfiCare MediLink is designed to support patients and healthcare providers and should not replace professional medical judgment. Always consult with qualified healthcare professionals for medical decisions.

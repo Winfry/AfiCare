@@ -3,13 +3,16 @@ version: "3.9"
 # ── AfiCare MediLink — Local development stack ────────────────
 # Services:
 #   flutter-web  — Flutter web app served by Nginx (port 8080)
-#   agent        — Python/Streamlit AI agent (port 8501)
+#
+# The old Python/Streamlit AI agent (aficare-agent/) is legacy and no
+# longer part of this stack — its hosted backend is disabled and the
+# Flutter app's MedicalAIService runs fully offline/local-only. See
+# aficare-agent/README.md for details. That directory is kept for
+# reference only; it is not built or run here.
 #
 # Usage:
-#   docker compose up --build          # start everything
-#   docker compose up flutter-web      # frontend only
-#   docker compose up agent            # agent only
-#   docker compose down                # stop all
+#   docker compose up --build          # start the app
+#   docker compose down                # stop it
 #
 # Environment:
 #   Copy .env.example to .env and fill in your Supabase credentials.
@@ -34,31 +37,6 @@ services:
       start_period: 15s
     labels:
       - "com.aficare.service=flutter-web"
-
-  # ── AI Agent (Streamlit) ─────────────────────────────────────
-  agent:
-    build:
-      context: ./aficare-agent
-      dockerfile: Dockerfile
-    container_name: aficare-agent
-    ports:
-      - "8501:8501"
-    env_file:
-      - .env
-    environment:
-      # Override individual vars here if needed
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_HEADLESS=true
-      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    labels:
-      - "com.aficare.service=agent"
 
 networks:
   default:

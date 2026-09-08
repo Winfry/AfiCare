@@ -1,4 +1,15 @@
-# AfiCare Medical Agent
+# AfiCare Medical Agent (Legacy / Archived)
+
+> **⚠️ This is the original AfiCare product and is no longer active.** The
+> live project is now **AfiCare MediLink**, a Flutter app in
+> [`../aficare_flutter`](../aficare_flutter) backed by Supabase — see the
+> [root README](../README.md) for the current architecture. This Python/
+> Streamlit agent's hosted backend (`aficare-backend.up.railway.app`) has
+> been disabled; the Flutter app's `MedicalAIService` now runs its AI
+> consultation logic fully offline/local-only and does not call this
+> service. This directory is kept for reference only — it is not built,
+> deployed, or exercised by CI, and `docker-compose.yml` no longer
+> includes it.
 
 An AI-powered medical assistant designed for healthcare settings in Africa, providing evidence-based diagnostic support and treatment recommendations for common conditions.
 
