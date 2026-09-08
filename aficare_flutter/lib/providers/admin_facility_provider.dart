@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/facility_model.dart';
@@ -40,8 +41,65 @@ class AdminFacilityProvider with ChangeNotifier {
     return result;
   }
 
-  void setSearchQuery(String q) { _searchQuery = q; notifyListeners(); }
-  void setTypeFilter(String f) { _typeFilter = f; notifyListeners(); }
+  Timer? _searchDebounce;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  /// With 10,000+ facilities (the full KMHFL list), [loadFacilities]
+  /// deliberately only loads a recent-200 browse page — searching must hit
+  /// the database directly rather than filter what's already in memory, or
+  /// anything outside that first page would silently appear "not found".
+  void setSearchQuery(String q) {
+    _searchQuery = q;
+    notifyListeners();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), _applyServerFilters);
+  }
+
+  void setTypeFilter(String f) {
+    _typeFilter = f;
+    notifyListeners();
+    _applyServerFilters();
+  }
+
+  /// Queries the database with whatever search text / type filter is
+  /// currently set, replacing [_facilities] with the matches (up to 500).
+  /// Falls back to the plain recent-200 browse view when both are cleared.
+  Future<void> _applyServerFilters() async {
+    if (_searchQuery.isEmpty && _typeFilter == 'all') {
+      await loadFacilities();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      var query = _supabase.from('facilities').select('*');
+      if (_typeFilter != 'all') {
+        query = query.eq('type', _typeFilter);
+      }
+      if (_searchQuery.isNotEmpty) {
+        query = query.ilike('name', '%$_searchQuery%');
+      }
+      final response = await query.order('name', ascending: true).limit(500);
+
+      _facilities = (response as List)
+          .map((json) => FacilityModel.fromJson(json))
+          .toList();
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> loadFacilities() async {
     _isLoading = true;
@@ -253,6 +311,21 @@ class AdminFacilityProvider with ChangeNotifier {
         'target_facility_id': facilityId,
         'provider_specialty': specialty,
         'make_primary': isPrimary,
+      });
+      await loadFacilityProviders(facilityId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> unlinkProviderFromFacility(String providerId, String facilityId) async {
+    try {
+      await _supabase.rpc('admin_unlink_provider_from_facility', params: {
+        'target_user_id': providerId,
+        'target_facility_id': facilityId,
       });
       await loadFacilityProviders(facilityId);
       return true;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/admin_facility_provider.dart';
 import '../../models/facility_model.dart';
+import '../../models/provider_facility_model.dart';
 import '../../utils/theme.dart';
 
 class AdminFacilityManagementScreen extends StatefulWidget {
@@ -173,6 +174,12 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                 flex: 1,
                 child: _facilityStatusChip(facility.status),
               ),
+              if (facility.status == 'pending')
+                TextButton.icon(
+                  onPressed: () => _verifyFacility(context, provider, facility),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Verify'),
+                ),
               PopupMenuButton(
                 onSelected: (v) {
                   switch (v) {
@@ -223,6 +230,17 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                 const SizedBox(height: 4),
                 Text('📞 ${facility.phone}', style: const TextStyle(fontSize: 12)),
               ],
+              if (facility.status == 'pending') ...[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _verifyFacility(context, provider, facility),
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Verify'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -264,6 +282,15 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
         style: TextStyle(fontSize: 12, color: s, fontWeight: FontWeight.w600),
       ),
     );
+  }
+
+  void _verifyFacility(BuildContext context, AdminFacilityProvider provider, FacilityModel facility) async {
+    final ok = await provider.updateFacility(facility.id, {'status': 'verified'});
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? '${facility.name} marked verified' : 'Failed: ${provider.error}')),
+      );
+    }
   }
 
   void _showFacilityDetail(BuildContext context, AdminFacilityProvider provider, FacilityModel facility) {
@@ -308,6 +335,15 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                 _detailRow('Email', facility.email ?? '-'),
                 _detailRow('License', facility.licenseNo ?? '-'),
                 _detailRow('Status', facility.status),
+                if (facility.status == 'pending')
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => _verifyFacility(context, provider, facility),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text('Mark Verified'),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 const Text('Departments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -339,6 +375,11 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                       if (p.specialty != null && p.specialty!.isNotEmpty) p.specialty!,
                       if (p.isPrimary) 'Primary facility',
                     ].join(' · ')),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.link_off, size: 20),
+                      tooltip: 'Remove from facility',
+                      onPressed: () => _confirmUnlinkProvider(context, provider, p, facility.name),
+                    ),
                   )),
                 const SizedBox(height: 8),
                 TextButton.icon(
@@ -526,6 +567,37 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _confirmUnlinkProvider(
+    BuildContext context,
+    AdminFacilityProvider provider,
+    ProviderFacilityModel link,
+    String facilityName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove provider'),
+        content: Text('Remove ${link.providerName ?? 'this provider'} from $facilityName\'s staff list?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              final ok = await provider.unlinkProviderFromFacility(link.providerId, link.facilityId);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(ok ? 'Provider removed' : 'Failed: ${provider.error}')),
+                );
+              }
+            },
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );

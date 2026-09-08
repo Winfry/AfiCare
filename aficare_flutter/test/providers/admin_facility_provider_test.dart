@@ -49,14 +49,54 @@ void main() {
       ]);
 
       final provider = AdminFacilityProvider();
+      addTearDown(provider.dispose); // cancels the search debounce timer below
+
       await provider.loadFacilities();
 
       provider.setTypeFilter('clinic');
+      await Future.delayed(const Duration(milliseconds: 20));
       expect(provider.filteredFacilities.map((f) => f.id), ['f2']);
 
       provider.setTypeFilter('all');
+      await Future.delayed(const Duration(milliseconds: 20));
       provider.setSearchQuery('nairobi');
+      await Future.delayed(const Duration(milliseconds: 400));
       expect(provider.filteredFacilities.map((f) => f.id), ['f2']);
+    });
+  });
+
+  group('AdminFacilityProvider search (server-side)', () {
+    test('setSearchQuery debounces then queries the database, not just what is loaded', () async {
+      fake.routeJson('/rest/v1/facilities', [
+        facilityRow(id: 'f9', name: 'Faraway Dispensary'),
+      ]);
+
+      final provider = AdminFacilityProvider();
+      addTearDown(provider.dispose);
+      provider.setSearchQuery('faraway');
+
+      // Debounced -- nothing fired yet.
+      expect(fake.requestsTo('GET', 'facilities'), isEmpty);
+
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      final req = fake.requestsTo('GET', 'facilities').single;
+      expect(req.url.queryParameters['name'], contains('faraway'));
+      expect(provider.facilities.single.id, 'f9');
+    });
+
+    test('clearing search and type filter falls back to the recent-200 browse view', () async {
+      fake.routeJson('/rest/v1/facilities', [facilityRow()]);
+
+      final provider = AdminFacilityProvider();
+      addTearDown(provider.dispose);
+      provider.setTypeFilter('all');
+
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final req = fake.requestsTo('GET', 'facilities').single;
+      expect(req.url.queryParameters['limit'], '200');
+      expect(req.url.queryParameters['order'], contains('created_at.desc'));
     });
   });
 

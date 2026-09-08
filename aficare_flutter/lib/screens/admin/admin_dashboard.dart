@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/analytics_provider.dart';
+import '../../providers/provider_verification_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/section_head.dart';
@@ -44,6 +45,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Provider.of<AnalyticsProvider>(context, listen: false).loadAll();
+      Provider.of<ProviderVerificationProvider>(context, listen: false).loadPendingCount();
     });
   }
 
@@ -149,6 +151,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           value: flagsStr,
                           icon: Icons.flag_outlined,
                           iconColor: AppColors.clay,
+                        ),
+                        Consumer<ProviderVerificationProvider>(
+                          builder: (context, verification, _) => StatCard(
+                            label: 'Pending Verifications',
+                            value: _formatCount(verification.pendingCount),
+                            icon: Icons.verified_user_outlined,
+                            iconColor: AppColors.marigold,
+                          ),
                         ),
                       ],
                     );

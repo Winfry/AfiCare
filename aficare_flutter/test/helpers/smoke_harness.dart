@@ -24,6 +24,7 @@ import 'package:aficare_flutter/providers/referral_provider.dart';
 import 'package:aficare_flutter/providers/provider_patient_provider.dart';
 import 'package:aficare_flutter/providers/admin_user_provider.dart';
 import 'package:aficare_flutter/providers/admin_facility_provider.dart';
+import 'package:aficare_flutter/providers/provider_verification_provider.dart';
 import 'package:aficare_flutter/providers/audit_log_provider.dart';
 import 'package:aficare_flutter/providers/system_settings_provider.dart';
 import 'package:aficare_flutter/providers/analytics_provider.dart';
@@ -86,6 +87,7 @@ List<SingleChildWidget> _allProviders() {
     ChangeNotifierProvider(create: (_) => ProviderPatientProvider()),
     ChangeNotifierProvider(create: (_) => AdminUserProvider()),
     ChangeNotifierProvider(create: (_) => AdminFacilityProvider()),
+    ChangeNotifierProvider(create: (_) => ProviderVerificationProvider()),
     ChangeNotifierProvider(create: (_) => AuditLogProvider()),
     ChangeNotifierProvider(create: (_) => SystemSettingsProvider()),
     ChangeNotifierProvider(create: (_) => AnalyticsProvider()),

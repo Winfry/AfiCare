@@ -14,6 +14,7 @@ class ProviderVerificationProvider with ChangeNotifier {
 
   List<ProviderCredentialModel> _requests = [];
   ProviderCredentialModel? _myRequest;
+  int _pendingCount = 0;
   bool _isLoading = false;
   String? _error;
   String _statusFilter = 'pending';
@@ -21,6 +22,7 @@ class ProviderVerificationProvider with ChangeNotifier {
 
   List<ProviderCredentialModel> get requests => _requests;
   ProviderCredentialModel? get myRequest => _myRequest;
+  int get pendingCount => _pendingCount;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get statusFilter => _statusFilter;
@@ -102,6 +104,22 @@ class ProviderVerificationProvider with ChangeNotifier {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Admin dashboard stat tile: a cheap count-only query, so a dashboard
+  /// visit doesn't pay for the full applicant-name join in [loadRequests].
+  Future<void> loadPendingCount() async {
+    try {
+      final rows = await _supabase
+          .from('provider_credentials')
+          .select('id')
+          .eq('verification_status', 'pending')
+          .limit(5000);
+      _pendingCount = (rows as List).length;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Pending verification count error: $e');
     }
   }
 

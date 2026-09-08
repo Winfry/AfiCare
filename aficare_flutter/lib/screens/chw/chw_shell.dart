@@ -26,6 +26,8 @@ class _CHWShellState extends State<CHWShell> {
     SidebarNavItem(icon: Icons.send_rounded, label: 'Referrals'),
     SidebarGroupLabel('Health'),
     SidebarNavItem(icon: Icons.monitor_heart_rounded, label: 'Vitals Check'),
+    SidebarGroupLabel('Account'),
+    SidebarNavItem(icon: Icons.verified_user_outlined, label: 'Provider Verification'),
   ];
 
   static const _bottomNavItems = [
@@ -51,6 +53,9 @@ class _CHWShellState extends State<CHWShell> {
         break;
       case 4:
         context.go('/chw/vitals');
+        break;
+      case 5:
+        context.push('/verify-provider');
         break;
     }
   }
