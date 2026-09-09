@@ -303,4 +303,43 @@ void main() {
       expect(rpcCall.body, contains('"target_user_id":"u1"'));
     });
   });
+
+  group('AdminFacilityProvider.loadFacilityAppointments', () {
+    test('merges appointments with patient and provider names', () async {
+      fake.routeJson('/rest/v1/appointments', [
+        {
+          'id': 'a1',
+          'patient_id': 'p1',
+          'provider_id': 'd1',
+          'scheduled_at': '2026-01-05T09:00:00.000Z',
+          'type': 'in-person',
+          'status': 'confirmed',
+        },
+      ]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'p1', 'full_name': 'Jane Doe'},
+        {'id': 'd1', 'full_name': 'Dr. Mwangi'},
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadFacilityAppointments('f1');
+
+      expect(provider.facilityAppointments, hasLength(1));
+      expect(provider.facilityAppointments.first['patient_name'], 'Jane Doe');
+      expect(provider.facilityAppointments.first['provider_name'], 'Dr. Mwangi');
+      expect(provider.facilityAppointments.first['status'], 'confirmed');
+
+      final req = fake.requestsTo('GET', 'appointments').single;
+      expect(req.url.queryParameters['facility_id'], 'eq.f1');
+    });
+
+    test('empty facility has no appointments, no crash', () async {
+      fake.routeJson('/rest/v1/appointments', <Map<String, dynamic>>[]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadFacilityAppointments('f1');
+
+      expect(provider.facilityAppointments, isEmpty);
+    });
+  });
 }

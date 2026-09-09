@@ -14,6 +14,7 @@ class AdminFacilityProvider with ChangeNotifier {
   List<Map<String, dynamic>> _providerSearchResults = [];
   List<Map<String, dynamic>> _facilityAdmins = [];
   List<Map<String, dynamic>> _patientSearchResults = [];
+  List<Map<String, dynamic>> _facilityAppointments = [];
   bool _isLoading = false;
   String? _error;
   String _searchQuery = '';
@@ -25,6 +26,7 @@ class AdminFacilityProvider with ChangeNotifier {
   List<Map<String, dynamic>> get providerSearchResults => _providerSearchResults;
   List<Map<String, dynamic>> get facilityAdmins => _facilityAdmins;
   List<Map<String, dynamic>> get patientSearchResults => _patientSearchResults;
+  List<Map<String, dynamic>> get facilityAppointments => _facilityAppointments;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get searchQuery => _searchQuery;
@@ -456,6 +458,56 @@ class AdminFacilityProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  /// View-only: a facility's appointment list (who, when, with which
+  /// provider, what status) -- not the clinical reason for the visit.
+  /// Same two-query, no-embedded-join convention as the rest of this file.
+  Future<void> loadFacilityAppointments(String facilityId) async {
+    try {
+      final rows = await _supabase
+          .from('appointments')
+          .select('id, patient_id, provider_id, scheduled_at, type, status')
+          .eq('facility_id', facilityId)
+          .order('scheduled_at', ascending: false)
+          .limit(200);
+
+      final list = rows as List;
+      if (list.isEmpty) {
+        _facilityAppointments = [];
+        notifyListeners();
+        return;
+      }
+
+      final userIds = {
+        for (final r in list) r['patient_id'] as String,
+        for (final r in list) r['provider_id'] as String,
+      }.toList();
+
+      final users = await _supabase
+          .from('users')
+          .select('id, full_name')
+          .inFilter('id', userIds);
+
+      final nameById = <String, String>{
+        for (final u in users as List) u['id'] as String: u['full_name'] as String? ?? 'Unknown',
+      };
+
+      _facilityAppointments = list
+          .map((r) => {
+                'id': r['id'],
+                'scheduled_at': r['scheduled_at'],
+                'type': r['type'],
+                'status': r['status'],
+                'patient_name': nameById[r['patient_id']] ?? 'Unknown',
+                'provider_name': nameById[r['provider_id']] ?? 'Unknown',
+              })
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
     }
   }
 }

@@ -31,12 +31,14 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
     SidebarNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     SidebarNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
+    SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
   ];
 
   static const _bottomNavItems = [
     BottomNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
     BottomNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     BottomNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
+    BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
   ];
 
   @override
@@ -51,6 +53,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         final admin = context.read<AdminFacilityProvider>();
         admin.loadFacilityProviders(facility.id);
         admin.loadDepartments(facility.id);
+        admin.loadFacilityAppointments(facility.id);
       }
     });
   }
@@ -92,6 +95,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     _OverviewTab(facility: facility),
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
+                    const _AppointmentsTab(),
                   ],
                 ),
     );
@@ -383,6 +387,78 @@ class _DepartmentsTab extends StatelessWidget {
             child: const Text('Save'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AppointmentsTab extends StatelessWidget {
+  const _AppointmentsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AdminFacilityProvider>();
+    final appointments = provider.facilityAppointments;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Appointments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(
+            'Who is booked, when, and with which provider. Not the clinical reason for the visit.',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: appointments.isEmpty
+                ? const Center(child: Text('No appointments yet', style: TextStyle(color: Colors.grey)))
+                : ListView(
+                    children: appointments.map((a) => Card(
+                      child: ListTile(
+                        leading: Icon(
+                          a['type'] == 'telehealth' ? Icons.videocam_outlined : Icons.person_outline,
+                        ),
+                        title: Text(a['patient_name'] as String? ?? 'Unknown'),
+                        subtitle: Text(
+                          '${_formatDateTime(a['scheduled_at'] as String?)} with ${a['provider_name'] ?? 'Unknown'}',
+                        ),
+                        trailing: _statusChip(a['status'] as String? ?? 'pending'),
+                      ),
+                    )).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateTime(String? iso) {
+    if (iso == null) return '-';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '-';
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _statusChip(String status) {
+    final color = switch (status) {
+      'confirmed' => const Color(0xFF43A047),
+      'completed' => const Color(0xFF1D3557),
+      'cancelled' => const Color(0xFFE53935),
+      _ => const Color(0xFFFB8C00),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status[0].toUpperCase() + status.substring(1),
+        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
