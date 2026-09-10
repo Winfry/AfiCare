@@ -63,7 +63,9 @@ import '../screens/admin/reports_analytics_screen.dart';
 import '../screens/facility_admin/facility_admin_shell.dart';
 import '../screens/web/provider_web_dashboard_screen.dart';
 import '../screens/web/referral_receiving_portal_screen.dart';
-import '../screens/facility_registration_screen.dart';
+import '../screens/facility_admin_registration_screen.dart';
+import '../screens/admin/admin_facility_admin_requests_screen.dart';
+import '../screens/accept_invite_screen.dart';
 import '../screens/provider_verification_request_screen.dart';
 
 /// Paths that are accessible without authentication.
@@ -89,16 +91,20 @@ const _onboardingPaths = {
 /// Returns null if not authenticated.
 class _UserProfileCache {
   static UserRole? _cachedRole;
+  static UserStatus? _cachedStatus;
 
   static void update(UserModel user) {
     _cachedRole = user.role;
+    _cachedStatus = user.status;
   }
 
   static void clear() {
     _cachedRole = null;
+    _cachedStatus = null;
   }
 
   static UserRole? get role => _cachedRole;
+  static UserStatus? get status => _cachedStatus;
 }
 
 /// Notifier that triggers GoRouter redirect re-evaluation on auth state changes.
@@ -143,10 +149,23 @@ final appRouter = GoRouter(
     // ── Protected routes — require auth ───────────────────────
     if (!isLoggedIn) return '/login';
 
+    // ── Invited facility admin — must activate before anything else ─
+    // Status-driven, not tied to a specific auth event: robust to
+    // however Supabase's SDK reports the session it establishes from
+    // an invite-email link. See accept_invite_screen.dart.
+    if (_UserProfileCache.status == UserStatus.invited) {
+      return location == '/accept-invite' ? null : '/accept-invite';
+    }
+
     final role = _UserProfileCache.role;
 
     // Profile not loaded yet — prevent routing to protected pages
     if (role == null) return '/login';
+
+    // Already activated — /accept-invite has nothing left to do
+    if (location == '/accept-invite') {
+      return _dashboardForRole(role);
+    }
 
     // Role-based access control
     if (location.startsWith('/admin')) {
@@ -240,7 +259,11 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/register-facility',
-      builder: (context, state) => const FacilityRegistrationScreen(),
+      builder: (context, state) => const FacilityAdminRegistrationScreen(),
+    ),
+    GoRoute(
+      path: '/accept-invite',
+      builder: (context, state) => const AcceptInviteScreen(),
     ),
 
     // First-run onboarding wizard (new patients)
@@ -468,6 +491,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'provider-verification',
           builder: (context, state) => const AdminProviderVerificationScreen(),
+        ),
+        GoRoute(
+          path: 'facility-admin-requests',
+          builder: (context, state) => const AdminFacilityAdminRequestsScreen(),
         ),
       ],
     ),

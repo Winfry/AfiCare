@@ -402,8 +402,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (confirm == true && mounted) {
       final aptProvider =
           Provider.of<AppointmentProvider>(context, listen: false);
-      await aptProvider.updateStatus(
-          a.id, AppointmentStatus.cancelled);
+      await aptProvider.cancelAppointment(a.id);
     }
   }
 }
@@ -1600,6 +1599,8 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
   bool _loadingFacilities = true;
   bool _submitting = false;
 
+  bool get _isRescheduling => widget.rescheduleAppointment != null;
+
   @override
   void initState() {
     super.initState();
@@ -1643,6 +1644,13 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
             selected = widget.prefilledProvider;
             providers.insert(0, widget.prefilledProvider!);
           }
+        } else if (widget.rescheduleAppointment != null) {
+          try {
+            selected = providers.firstWhere(
+                (p) => p.id == widget.rescheduleAppointment!.providerId);
+          } catch (_) {
+            selected = null;
+          }
         }
         setState(() {
           _providers = providers;
@@ -1665,6 +1673,14 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       if (mounted) {
         setState(() {
           _facilities = provider.facilities;
+          if (widget.rescheduleAppointment?.facilityId != null) {
+            try {
+              _selectedFacility = _facilities.firstWhere(
+                  (f) => f.id == widget.rescheduleAppointment!.facilityId);
+            } catch (_) {
+              // Facility not in the loaded list -- leave unselected.
+            }
+          }
           _loadingFacilities = false;
         });
       }
@@ -1692,34 +1708,44 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       _selectedTime!.minute,
     );
 
-    final providerId = _selectedProvider?.id ?? widget.patientId;
-
-    final appointment = AppointmentModel(
-      id: '',
-      patientId: widget.patientId,
-      providerId: providerId,
-      facilityId: _selectedFacility?.id,
-      scheduledAt: scheduledAt,
-      type:
-          _isTelehealth ? AppointmentType.telehealth : AppointmentType.inPerson,
-      status: AppointmentStatus.pending,
-      chiefComplaint:
-          _complaintCtrl.text.trim().isEmpty ? null : _complaintCtrl.text.trim(),
-      isFollowUp: false,
-    );
-
     final aptProvider =
         Provider.of<AppointmentProvider>(context, listen: false);
-    final ok = await aptProvider.bookAppointment(appointment);
+    final bool ok;
+
+    if (widget.rescheduleAppointment != null) {
+      // In-place reschedule: only scheduled_at changes. The provider/
+      // facility/type pickers above are locked to the original appointment's
+      // values in reschedule mode (see the disabled onChanged below) --
+      // reschedule_appointment() only moves the time, so it would be
+      // misleading to let the user pick different values here and have
+      // them silently ignored.
+      ok = await aptProvider.rescheduleAppointment(
+        widget.rescheduleAppointment!.id,
+        scheduledAt,
+      );
+    } else {
+      final providerId = _selectedProvider?.id ?? widget.patientId;
+      final appointment = AppointmentModel(
+        id: '',
+        patientId: widget.patientId,
+        providerId: providerId,
+        facilityId: _selectedFacility?.id,
+        scheduledAt: scheduledAt,
+        type: _isTelehealth
+            ? AppointmentType.telehealth
+            : AppointmentType.inPerson,
+        status: AppointmentStatus.pending,
+        chiefComplaint: _complaintCtrl.text.trim().isEmpty
+            ? null
+            : _complaintCtrl.text.trim(),
+        isFollowUp: false,
+      );
+      ok = await aptProvider.bookAppointment(appointment);
+    }
 
     if (mounted) {
       setState(() => _submitting = false);
       if (ok) {
-        if (widget.rescheduleAppointment != null) {
-          await aptProvider.updateStatus(
-              widget.rescheduleAppointment!.id, AppointmentStatus.cancelled);
-        }
-        if (!mounted) return;
         Navigator.pop(context);
         _showConfirmation(
           providerName: _selectedProvider?.fullName ?? 'Unassigned',
@@ -1730,8 +1756,9 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Could not book — try again'),
+          SnackBar(
+              content: Text(
+                  'Could not ${widget.rescheduleAppointment != null ? "reschedule" : "book"} — try again'),
               backgroundColor: Colors.red),
         );
       }
@@ -1890,8 +1917,10 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
                             icon: Icons.local_hospital_outlined,
                             label: 'In-Person',
                             selected: !_isTelehealth,
-                            onTap: () =>
-                                setState(() => _isTelehealth = false),
+                            onTap: _isRescheduling
+                                ? () {}
+                                : () =>
+                                    setState(() => _isTelehealth = false),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1900,8 +1929,10 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
                             icon: Icons.videocam_outlined,
                             label: 'Telehealth',
                             selected: _isTelehealth,
-                            onTap: () =>
-                                setState(() => _isTelehealth = true),
+                            onTap: _isRescheduling
+                                ? () {}
+                                : () =>
+                                    setState(() => _isTelehealth = true),
                           ),
                         ),
                       ],
@@ -2023,8 +2054,9 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis)))
                       .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedFacility = v),
+                  onChanged: _isRescheduling
+                      ? null
+                      : (v) => setState(() => _selectedFacility = v),
                 ),
         ),
       ],
@@ -2142,8 +2174,10 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
                                       ),
                                     ))
                                 .toList(),
-                            onChanged: (v) => setState(
-                                () => _selectedProvider = v),
+                            onChanged: _isRescheduling
+                                ? null
+                                : (v) => setState(
+                                    () => _selectedProvider = v),
                           ),
                         ),
                       ],

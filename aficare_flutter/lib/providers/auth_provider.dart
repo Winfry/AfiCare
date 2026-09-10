@@ -444,4 +444,41 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
+
+  // ── Accept a facility admin invite ──────────────────────────────────
+
+  /// Called from the accept-invite screen once the invited person is
+  /// already authenticated (Supabase establishes the session from the
+  /// invite link automatically). Sets their real password, then flips
+  /// their account from 'invited' to 'active' via the checked RPC --
+  /// see activate_invited_account (017_facility_admin_invite_flow.sql).
+  Future<bool> activateInvitedAccount(String newPassword) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('Your invite link has expired. Please ask for a new one.');
+      }
+
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+      await _supabase.rpc('activate_invited_account');
+      await _loadUserProfile(userId);
+
+      if (_currentUser == null) {
+        throw Exception('Your profile could not be loaded. Please try logging in.');
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }

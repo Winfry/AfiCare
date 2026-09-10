@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/department_model.dart';
 import '../../models/facility_model.dart';
 import '../../providers/admin_facility_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/facility_admin_provider.dart';
 import '../../widgets/app_shell.dart';
@@ -95,7 +96,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     _OverviewTab(facility: facility),
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
-                    const _AppointmentsTab(),
+                    _AppointmentsTab(facility: facility),
                   ],
                 ),
     );
@@ -393,7 +394,8 @@ class _DepartmentsTab extends StatelessWidget {
 }
 
 class _AppointmentsTab extends StatelessWidget {
-  const _AppointmentsTab();
+  const _AppointmentsTab({required this.facility});
+  final FacilityModel facility;
 
   @override
   Widget build(BuildContext context) {
@@ -417,15 +419,27 @@ class _AppointmentsTab extends StatelessWidget {
                 ? const Center(child: Text('No appointments yet', style: TextStyle(color: Colors.grey)))
                 : ListView(
                     children: appointments.map((a) => Card(
-                      child: ListTile(
-                        leading: Icon(
-                          a['type'] == 'telehealth' ? Icons.videocam_outlined : Icons.person_outline,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              leading: Icon(
+                                a['type'] == 'telehealth' ? Icons.videocam_outlined : Icons.person_outline,
+                              ),
+                              title: Text(a['patient_name'] as String? ?? 'Unknown'),
+                              subtitle: Text(
+                                '${_formatDateTime(a['scheduled_at'] as String?)} with ${a['provider_name'] ?? 'Unknown'}',
+                              ),
+                              trailing: _statusChip(a['status'] as String? ?? 'pending'),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, right: 8, bottom: 4),
+                              child: _actionsFor(context, a),
+                            ),
+                          ],
                         ),
-                        title: Text(a['patient_name'] as String? ?? 'Unknown'),
-                        subtitle: Text(
-                          '${_formatDateTime(a['scheduled_at'] as String?)} with ${a['provider_name'] ?? 'Unknown'}',
-                        ),
-                        trailing: _statusChip(a['status'] as String? ?? 'pending'),
                       ),
                     )).toList(),
                   ),
@@ -433,6 +447,99 @@ class _AppointmentsTab extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _actionsFor(BuildContext context, Map<String, dynamic> a) {
+    final id = a['id'] as String;
+    final status = a['status'] as String? ?? 'pending';
+
+    Future<void> refresh() =>
+        context.read<AdminFacilityProvider>().loadFacilityAppointments(facility.id);
+
+    final buttons = <Widget>[];
+
+    if (status == 'pending') {
+      buttons.add(TextButton(
+        onPressed: () async {
+          final aptProvider = context.read<AppointmentProvider>();
+          final ok = await aptProvider.confirmAppointment(id);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(ok ? 'Confirmed' : 'Failed: ${aptProvider.error}')),
+            );
+          }
+          if (ok) await refresh();
+        },
+        child: const Text('Confirm'),
+      ));
+    }
+
+    if (status == 'pending' || status == 'confirmed') {
+      buttons.add(TextButton(
+        onPressed: () => _showRescheduleDialog(context, id, refresh),
+        child: const Text('Reschedule'),
+      ));
+      buttons.add(TextButton(
+        onPressed: () => _showCancelDialog(context, id, refresh),
+        style: TextButton.styleFrom(foregroundColor: Colors.red),
+        child: const Text('Cancel'),
+      ));
+    }
+
+    return buttons.isEmpty ? const SizedBox.shrink() : Wrap(spacing: 4, children: buttons);
+  }
+
+  Future<void> _showRescheduleDialog(
+      BuildContext context, String id, Future<void> Function() onDone) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (time == null || !context.mounted) return;
+
+    final newDt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final aptProvider = context.read<AppointmentProvider>();
+    final ok = await aptProvider.rescheduleAppointment(id, newDt);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Rescheduled' : 'Failed: ${aptProvider.error}')),
+      );
+    }
+    if (ok) await onDone();
+  }
+
+  Future<void> _showCancelDialog(
+      BuildContext context, String id, Future<void> Function() onDone) async {
+    final reasonCtl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel appointment?'),
+        content: TextField(
+          controller: reasonCtl,
+          decoration: const InputDecoration(labelText: 'Reason (optional)', isDense: true),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel appointment')),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final aptProvider = context.read<AppointmentProvider>();
+    final reason = reasonCtl.text.trim();
+    final ok = await aptProvider.cancelAppointment(id, reason: reason.isEmpty ? null : reason);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Cancelled' : 'Failed: ${aptProvider.error}')),
+      );
+    }
+    if (ok) await onDone();
   }
 
   String _formatDateTime(String? iso) {

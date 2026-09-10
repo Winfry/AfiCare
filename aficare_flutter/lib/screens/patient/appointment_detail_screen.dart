@@ -401,8 +401,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     );
     if (confirm != true || !mounted) return;
     final provider = Provider.of<AppointmentProvider>(context, listen: false);
-    final ok =
-        await provider.updateStatus(a.id, AppointmentStatus.cancelled);
+    final ok = await provider.cancelAppointment(a.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok ? 'Appointment cancelled' : 'Could not cancel'),

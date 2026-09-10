@@ -47,3 +47,7 @@ app.*.map.json
 android/key.properties
 android/app/*.jks
 android/app/*.keystore
+
+# Supabase CLI local project-link metadata (machine-specific, not secrets
+# but not portable/shareable either)
+supabase/.temp/

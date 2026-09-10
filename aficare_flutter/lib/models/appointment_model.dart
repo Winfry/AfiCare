@@ -15,6 +15,7 @@ class AppointmentModel {
   final String? notes;
   final bool isFollowUp;
   final String? consultationId;
+  final String? cancelledReason;
 
   AppointmentModel({
     required this.id,
@@ -29,6 +30,7 @@ class AppointmentModel {
     this.notes,
     this.isFollowUp = false,
     this.consultationId,
+    this.cancelledReason,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -45,6 +47,7 @@ class AppointmentModel {
       notes: json['notes'] as String?,
       isFollowUp: (json['is_follow_up'] as bool?) ?? false,
       consultationId: json['consultation_id'] as String?,
+      cancelledReason: json['cancelled_reason'] as String?,
     );
   }
 
@@ -62,6 +65,7 @@ class AppointmentModel {
       'notes': notes,
       'is_follow_up': isFollowUp,
       'consultation_id': consultationId,
+      'cancelled_reason': cancelledReason,
     };
   }
 
@@ -78,6 +82,7 @@ class AppointmentModel {
     String? notes,
     bool? isFollowUp,
     String? consultationId,
+    String? cancelledReason,
   }) {
     return AppointmentModel(
       id: id ?? this.id,
@@ -92,6 +97,7 @@ class AppointmentModel {
       notes: notes ?? this.notes,
       isFollowUp: isFollowUp ?? this.isFollowUp,
       consultationId: consultationId ?? this.consultationId,
+      cancelledReason: cancelledReason ?? this.cancelledReason,
     );
   }
 

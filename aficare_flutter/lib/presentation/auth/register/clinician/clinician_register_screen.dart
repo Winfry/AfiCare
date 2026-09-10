@@ -35,14 +35,6 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
   bool _loading = false;
   String? _error;
 
-  final List<String> _facilities = [
-    'Select your facility',
-    'Kenyatta National Hospital',
-    'Aga Khan University Hospital',
-    'Moi Teaching & Referral Hospital',
-  ];
-  String _selectedFacility = 'Select your facility';
-
   Color get _roleColor {
     switch (_role) {
       case 'nurse': return const Color(0xFF4A90E2);
@@ -95,10 +87,6 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
       setState(() => _error = 'Passwords do not match');
       return;
     }
-    if (_selectedFacility == 'Select your facility') {
-      setState(() => _error = 'Please select your facility');
-      return;
-    }
 
     setState(() { _loading = true; _error = null; });
 
@@ -109,7 +97,6 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
       fullName: _nameController.text.trim(),
       role: _userRole,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-      facilityId: _selectedFacility == 'Select your facility' ? null : _selectedFacility,
       department: _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
     );
 
@@ -254,8 +241,6 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 16),
-        _buildFacilityField(),
-        const SizedBox(height: 16),
         BrandedTextField(
           controller: _departmentController,
           label: _departmentLabel,
@@ -320,51 +305,6 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
               ),
             ),
           ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFacilityField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 6),
-          child: Text(
-            'Facility',
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF55708A)),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFDCE3EA), width: 1.5),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedFacility,
-              isExpanded: true,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              items: _facilities.map((f) => DropdownMenuItem(
-                value: f,
-                child: Text(f, style: TextStyle(
-                  fontSize: 14,
-                  color: f == 'Select your facility' ? const Color(0xFF94A3B8) : const Color(0xFF152A45),
-                )),
-              )).toList(),
-              onChanged: (v) => setState(() => _selectedFacility = v ?? _selectedFacility),
-            ),
-          ),
-        ),
-        TextButton(
-          onPressed: () => context.go('/register-facility'),
-          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 4)),
-          child: const Text(
-            '+ Register new facility',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF206B5D)),
-          ),
         ),
       ],
     );

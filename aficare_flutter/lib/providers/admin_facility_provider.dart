@@ -223,10 +223,9 @@ class AdminFacilityProvider with ChangeNotifier {
   Future<Map<String, int>> getFacilityStats(String facilityId) async {
     try {
       final providers = await _supabase
-          .from('users')
-          .select('id')
-          .eq('facility_id', facilityId)
-          .neq('role', 'patient');
+          .from('provider_facilities')
+          .select('provider_id')
+          .eq('facility_id', facilityId);
       final depts = await _supabase
           .from('departments')
           .select('id')

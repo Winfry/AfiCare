@@ -77,15 +77,12 @@ class AppointmentProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateStatus(String id, AppointmentStatus status) async {
+  Future<bool> confirmAppointment(String id) async {
     try {
-      await _supabase
-          .from('appointments')
-          .update({'status': _statusToString(status)})
-          .eq('id', id);
+      await _supabase.rpc('confirm_appointment', params: {'target_appointment_id': id});
       final idx = _appointments.indexWhere((a) => a.id == id);
       if (idx != -1) {
-        _appointments[idx] = _appointments[idx].copyWith(status: status);
+        _appointments[idx] = _appointments[idx].copyWith(status: AppointmentStatus.confirmed);
         notifyListeners();
       }
       return true;
@@ -96,16 +93,41 @@ class AppointmentProvider with ChangeNotifier {
     }
   }
 
-  String _statusToString(AppointmentStatus s) {
-    switch (s) {
-      case AppointmentStatus.confirmed:
-        return 'confirmed';
-      case AppointmentStatus.completed:
-        return 'completed';
-      case AppointmentStatus.cancelled:
-        return 'cancelled';
-      case AppointmentStatus.pending:
-        return 'pending';
+  Future<bool> rescheduleAppointment(String id, DateTime newScheduledAt) async {
+    try {
+      await _supabase.rpc('reschedule_appointment', params: {
+        'target_appointment_id': id,
+        'new_scheduled_at': newScheduledAt.toIso8601String(),
+      });
+      final idx = _appointments.indexWhere((a) => a.id == id);
+      if (idx != -1) {
+        _appointments[idx] = _appointments[idx].copyWith(scheduledAt: newScheduledAt);
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> cancelAppointment(String id, {String? reason}) async {
+    try {
+      await _supabase.rpc('cancel_appointment', params: {
+        'target_appointment_id': id,
+        'reason': reason,
+      });
+      final idx = _appointments.indexWhere((a) => a.id == id);
+      if (idx != -1) {
+        _appointments[idx] = _appointments[idx].copyWith(status: AppointmentStatus.cancelled);
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 }

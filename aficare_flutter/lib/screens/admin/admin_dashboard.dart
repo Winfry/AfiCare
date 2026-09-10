@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/analytics_provider.dart';
 import '../../providers/provider_verification_provider.dart';
+import '../../providers/facility_admin_request_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/section_head.dart';
@@ -24,6 +25,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     SidebarNavItem(icon: Icons.people_outline, label: 'User Management'),
     SidebarNavItem(icon: Icons.local_hospital_outlined, label: 'Facility Management'),
     SidebarNavItem(icon: Icons.verified_user_outlined, label: 'Provider Verification'),
+    SidebarNavItem(icon: Icons.domain_add_outlined, label: 'Facility Requests'),
     SidebarNavItem(icon: Icons.settings_outlined, label: 'System Settings'),
     SidebarGroupLabel('Insights'),
     SidebarNavItem(icon: Icons.analytics_outlined, label: 'Analytics'),
@@ -46,6 +48,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (!mounted) return;
       Provider.of<AnalyticsProvider>(context, listen: false).loadAll();
       Provider.of<ProviderVerificationProvider>(context, listen: false).loadPendingCount();
+      Provider.of<FacilityAdminRequestProvider>(context, listen: false).loadPendingCount();
     });
   }
 
@@ -59,11 +62,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         context.push('/admin/facilities');
       case 3: // Provider Verification
         context.push('/admin/provider-verification');
-      case 4: // System Settings
+      case 4: // Facility Requests
+        context.push('/admin/facility-admin-requests');
+      case 5: // System Settings
         context.push('/admin/settings');
-      case 5: // Analytics
+      case 6: // Analytics
         context.push('/admin/reports');
-      case 6: // Audit Log
+      case 7: // Audit Log
         context.push('/admin/audit-log');
     }
   }
@@ -160,6 +165,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             iconColor: AppColors.marigold,
                           ),
                         ),
+                        Consumer<FacilityAdminRequestProvider>(
+                          builder: (context, facilityRequests, _) => StatCard(
+                            label: 'Pending Facility Requests',
+                            value: _formatCount(facilityRequests.pendingCount),
+                            icon: Icons.domain_add_outlined,
+                            iconColor: const Color(0xFF457B9D),
+                          ),
+                        ),
                       ],
                     );
                   },
@@ -205,6 +218,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       title: 'Provider Verification',
                       description: 'Review submitted licenses and approve or reject provider applicants.',
                       onTap: () => context.push('/admin/provider-verification'),
+                    ),
+                    ManagementCard(
+                      icon: Icons.domain_add_outlined,
+                      iconBackground: const Color(0xFF457B9D).withOpacity(0.08),
+                      iconColor: const Color(0xFF457B9D),
+                      title: 'Facility Requests',
+                      description: 'Review facilities requesting to join and approve their admins.',
+                      onTap: () => context.push('/admin/facility-admin-requests'),
                     ),
                     ManagementCard(
                       icon: Icons.settings_outlined,

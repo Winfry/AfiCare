@@ -392,7 +392,7 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                 const Text('Facility Admins', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(
-                  'Front-desk/office staff who manage this facility\'s roster. Not a clinician.',
+                  'Granted by approving a facility admin request — see Facility Requests.',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 8),
@@ -410,12 +410,6 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
                       onPressed: () => _confirmRevokeFacilityAdmin(context, provider, a, facility),
                     ),
                   )),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: () => _showAddFacilityAdminDialog(context, provider, facility.id),
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('Add Facility Admin'),
-                ),
               ],
             ),
           ),
@@ -601,78 +595,6 @@ class _AdminFacilityManagementScreenState extends State<AdminFacilityManagementS
     );
   }
 
-  void _showAddFacilityAdminDialog(BuildContext context, AdminFacilityProvider provider, String facilityId) {
-    final searchCtl = TextEditingController();
-    provider.searchPatientsForFacilityAdmin('');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Facility Admin'),
-        content: SizedBox(
-          width: 400,
-          child: Consumer<AdminFacilityProvider>(
-            builder: (ctx, p, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFB8C00).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'This changes the account\'s role. Only pick someone who registered '
-                    'specifically to manage this facility\'s front desk -- never a real '
-                    'patient using AfiCare for their own healthcare. They will lose patient '
-                    'access once granted.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF8A5300)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: searchCtl,
-                  decoration: const InputDecoration(labelText: 'Search unassigned accounts by name', isDense: true),
-                  onChanged: (v) => p.searchPatientsForFacilityAdmin(v),
-                ),
-                const SizedBox(height: 12),
-                if (p.patientSearchResults.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text('Type a name to search', style: TextStyle(color: Colors.grey)),
-                  )
-                else
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 260),
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: p.patientSearchResults.map((u) => ListTile(
-                        dense: true,
-                        title: Text(u['full_name'] as String? ?? ''),
-                        subtitle: Text(u['email'] as String? ?? ''),
-                        onTap: () async {
-                          final ok = await p.grantFacilityAdmin(u['id'] as String, facilityId);
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(ok ? 'Facility admin granted' : 'Failed: ${p.error}')),
-                            );
-                          }
-                        },
-                      )).toList(),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-        ],
-      ),
-    );
-  }
 
   void _confirmRevokeFacilityAdmin(
     BuildContext context,

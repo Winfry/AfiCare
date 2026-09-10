@@ -43,6 +43,15 @@ class RegisterRoleScreen extends StatelessWidget {
           titleColor: Color(0xFF457B9D),
           route: "/register/radiologist",
         ),
+        RegisterRole(
+          title: "I'm registering a facility",
+          description: "Onboard your hospital or clinic and manage its presence on AfiCare.",
+          icon: Icons.local_hospital_rounded,
+          iconCircleColor: Color(0xFF206B5D),
+          titleColor: Color(0xFF206B5D),
+          route: "/register-facility",
+          fullWidth: true,
+        ),
       ];
 
   @override
