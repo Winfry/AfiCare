@@ -222,29 +222,55 @@ class _AdminFacilityAdminRequestsScreenState
   void _confirmApprove(BuildContext context, FacilityAdminRequestProvider provider, FacilityAdminRequestModel request) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Approve facility admin'),
-        content: Text(
-          'Approve ${request.applicantName} to administer '
-          '${request.facilityName ?? 'this facility'}? The facility will be marked '
-          'verified and ${request.applicantEmail} will receive a real invite email '
-          'to activate their account -- no account exists until they accept it.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final ok = await provider.approve(request);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(ok ? 'Request approved' : 'Approval failed: ${provider.error}')),
-                );
-              }
-            },
-            child: const Text('Approve'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          var submitting = false;
+          return AlertDialog(
+            title: const Text('Approve facility admin'),
+            content: Text(
+              'Approve ${request.applicantName} to administer '
+              '${request.facilityName ?? 'this facility'}? The facility will be marked '
+              'verified and ${request.applicantEmail} will receive a real invite email '
+              'to activate their account -- no account exists until they accept it.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                // Disabled the instant the first tap fires -- a slow
+                // network response otherwise invites a second tap,
+                // which double-invokes the invite Edge Function. That
+                // race is what deleted a just-created real account
+                // during testing: the second call's "duplicate key"
+                // failure triggered its own rollback, which deleted
+                // the account the FIRST call had just legitimately
+                // created and emailed an invite for.
+                onPressed: submitting
+                    ? null
+                    : () async {
+                        setState(() => submitting = true);
+                        final ok = await provider.approve(request);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(ok ? 'Request approved' : 'Approval failed: ${provider.error}')),
+                          );
+                        }
+                      },
+                child: submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Approve'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

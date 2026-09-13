@@ -131,6 +131,18 @@ final appRouter = GoRouter(
     final session = Supabase.instance.client.auth.currentSession;
     final isLoggedIn = session != null;
 
+    // ── Invited facility admin — must activate before anything else ─
+    // Checked before the public-path branch below: an invite link's
+    // session detection lands the user at "/" (a public path), and
+    // that branch would otherwise redirect a logged-in user straight
+    // to their role dashboard before this status is ever consulted.
+    // Status-driven, not tied to a specific auth event: robust to
+    // however Supabase's SDK reports the session it establishes from
+    // an invite-email link. See accept_invite_screen.dart.
+    if (isLoggedIn && _UserProfileCache.status == UserStatus.invited) {
+      return location == '/accept-invite' ? null : '/accept-invite';
+    }
+
     // ── Public routes — always accessible ─────────────────────
     if (_publicPaths.contains(location)) {
       // If logged in and visiting /login or /register, redirect to dashboard
@@ -148,14 +160,6 @@ final appRouter = GoRouter(
 
     // ── Protected routes — require auth ───────────────────────
     if (!isLoggedIn) return '/login';
-
-    // ── Invited facility admin — must activate before anything else ─
-    // Status-driven, not tied to a specific auth event: robust to
-    // however Supabase's SDK reports the session it establishes from
-    // an invite-email link. See accept_invite_screen.dart.
-    if (_UserProfileCache.status == UserStatus.invited) {
-      return location == '/accept-invite' ? null : '/accept-invite';
-    }
 
     final role = _UserProfileCache.role;
 

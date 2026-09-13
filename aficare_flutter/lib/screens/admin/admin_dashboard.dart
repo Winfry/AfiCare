@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/analytics_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/provider_verification_provider.dart';
 import '../../providers/facility_admin_request_provider.dart';
 import '../../widgets/app_shell.dart';
@@ -96,6 +97,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       onBottomNavSelect: _onBottomNavSelect,
       searchHint: 'Search facilities, users...',
       avatarLabel: 'AD',
+      onLogout: () async {
+        await context.read<AuthProvider>().signOut();
+        if (context.mounted) context.go('/login');
+      },
       body: Consumer<AnalyticsProvider>(
         builder: (context, analytics, _) {
           final patientCount = analytics.roleDistribution

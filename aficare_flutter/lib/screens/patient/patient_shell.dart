@@ -169,6 +169,10 @@ class _PatientShellState extends State<PatientShell> {
       onSearch: _openSearch,
       searchHint: 'Search patients, records...',
       avatarLabel: 'P',
+      onLogout: () async {
+        await context.read<AuthProvider>().signOut();
+        if (context.mounted) context.go('/login');
+      },
       body: Consumer<PatientProfileProvider>(
         builder: (context, _, __) => Stack(
           children: [

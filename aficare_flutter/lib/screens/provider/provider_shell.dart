@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../widgets/app_shell.dart';
 import 'provider_dashboard.dart';
 import 'patient_search_screen.dart';
@@ -72,6 +74,10 @@ class _ProviderShellState extends State<ProviderShell> {
       onBottomNavSelect: (i) => setState(() => _currentIndex = i),
       searchHint: 'Search patients, records...',
       avatarLabel: 'DR',
+      onLogout: () async {
+        await context.read<AuthProvider>().signOut();
+        if (context.mounted) context.go('/login');
+      },
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,

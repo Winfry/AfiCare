@@ -39,7 +39,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (kIsWeb) {
-    setUrlStrategy(const HashUrlStrategy());
+    // PathUrlStrategy (not Hash): Supabase delivers invite/magic-link
+    // login tokens in the URL fragment ("#access_token=..."). With
+    // HashUrlStrategy, GoRouter treats everything after "#" as its own
+    // route and overwrites it before Supabase's client ever reads the
+    // token -- the login silently never happens. Path-based routing
+    // leaves the fragment free for Supabase. Requires the web server to
+    // serve index.html for any unmatched path (the static server this
+    // app is served from already does, via its SPA-fallback flag).
+    setUrlStrategy(PathUrlStrategy());
   }
 
   String? initError;
@@ -55,6 +63,21 @@ void main() async {
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
+      // Admin-generated links (invite-facility-admin's inviteUserByEmail,
+      // and any admin.generateLink call) always deliver the session as
+      // "#access_token=..." in the URL fragment -- there's no client-side
+      // PKCE code_verifier involved when an admin triggers the link
+      // server-side, so Supabase can't use the PKCE "?code=" style here.
+      // The client's own deeplink handler only recognizes a URL as an
+      // auth callback when its configured flow type matches what's
+      // actually in the URL (see supabase_flutter's
+      // SupabaseAuth._isAuthCallbackDeeplink) -- left at the PKCE
+      // default, it silently ignores every invite link entirely, with
+      // no error. This app has no client-initiated OAuth/PKCE flows, so
+      // implicit is correct here, not just a workaround.
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.implicit,
+      ),
     );
   } catch (e) {
     initError = 'Network init failed: $e';
