@@ -163,5 +163,99 @@ void main() {
       expect(rpcCall.body, contains('"visit_chief_complaint":"Fever"'));
       expect(provider.selectedPatientVisits, hasLength(1));
     });
+
+    test('forwards status and priority when adding straight to the queue', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_register_visit', 'v1');
+      fake.routeJson('/rest/v1/facility_patients', patientRow());
+      fake.routeJson('/rest/v1/visits', [visitRow()]);
+
+      final provider = FacilityPatientProvider();
+      final ok = await provider.registerVisit(
+        facilityPatientId: 'fp1',
+        chiefComplaint: 'Fever',
+        status: 'waiting',
+        priority: 'urgent',
+      );
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_register_visit').single;
+      expect(rpcCall.body, contains('"visit_status":"waiting"'));
+      expect(rpcCall.body, contains('"visit_priority":"urgent"'));
+    });
+  });
+
+  group('FacilityPatientProvider.loadActiveVisits', () {
+    test('maps rows with patient names and file numbers', () async {
+      fake.routeJson('/rest/v1/visits', [
+        visitRow(id: 'v1', facilityPatientId: 'fp1', status: 'waiting'),
+      ]);
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1', fullName: 'Jane Walkin')]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadActiveVisits('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.activeVisits, hasLength(1));
+      expect(provider.activeVisits.first['patient_name'], 'Jane Walkin');
+      expect(provider.activeVisits.first['patient_file_number'], 'OP-001');
+    });
+
+    test('requests only queue-relevant statuses, not registered/cancelled', () async {
+      fake.routeJson('/rest/v1/visits', [
+        visitRow(id: 'v1', facilityPatientId: 'fp1', status: 'waiting'),
+      ]);
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1')]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadActiveVisits('f1');
+
+      final req = fake.requestsTo('GET', '/visits').single;
+      final orParam = req.url.queryParameters['or'] ?? '';
+      expect(orParam, contains('waiting'));
+      expect(orParam, contains('triage'));
+      expect(orParam, contains('in_consultation'));
+      expect(orParam, contains('completed'));
+      expect(orParam, isNot(contains('registered')));
+      expect(orParam, isNot(contains('cancelled')));
+    });
+
+    test('empty facility has no active visits, no crash', () async {
+      fake.routeJson('/rest/v1/visits', <Map<String, dynamic>>[]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadActiveVisits('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.activeVisits, isEmpty);
+      expect(fake.requestsTo('GET', '/facility_patients'), isEmpty);
+    });
+  });
+
+  group('FacilityPatientProvider.updateVisitStatus', () {
+    test('calls facility_admin_update_visit_status, not a raw update', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_update_visit_status', null);
+
+      final provider = FacilityPatientProvider();
+      final ok = await provider.updateVisitStatus(visitId: 'v1', newStatus: 'triage');
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_update_visit_status').single;
+      expect(rpcCall.body, contains('"target_visit_id":"v1"'));
+      expect(rpcCall.body, contains('"new_status":"triage"'));
+      expect(fake.requestsTo('PATCH', '/visits'), isEmpty);
+    });
+
+    test('RPC failure surfaces the error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_update_visit_status',
+        http.Response('{"message":"Only an admin of this facility can update this visit"}', 400),
+      );
+
+      final provider = FacilityPatientProvider();
+      final ok = await provider.updateVisitStatus(visitId: 'v1', newStatus: 'triage');
+
+      expect(ok, isFalse);
+      expect(provider.error, isNotNull);
+    });
   });
 }

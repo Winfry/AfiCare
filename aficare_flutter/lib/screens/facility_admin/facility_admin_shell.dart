@@ -11,6 +11,7 @@ import '../../providers/facility_admin_provider.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../theme/app_colors.dart';
+import 'opd_queue_tab.dart';
 import 'patients_tab.dart';
 
 /// Shell for a facility admin — front-desk/office staff scoped to one
@@ -32,6 +33,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarGroupLabel('My Facility'),
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
     SidebarNavItem(icon: Icons.people_outline, label: 'Patients'),
+    SidebarNavItem(icon: Icons.checklist_outlined, label: 'OPD Queue'),
     SidebarNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     SidebarNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
@@ -40,6 +42,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
   static const _bottomNavItems = [
     BottomNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
     BottomNavItem(icon: Icons.people_outline, label: 'Patients'),
+    BottomNavItem(icon: Icons.checklist_outlined, label: 'OPD Queue'),
     BottomNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     BottomNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
@@ -58,7 +61,9 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         admin.loadFacilityProviders(facility.id);
         admin.loadDepartments(facility.id);
         admin.loadFacilityAppointments(facility.id);
-        context.read<FacilityPatientProvider>().loadFacilityPatients(facility.id);
+        final patientProvider = context.read<FacilityPatientProvider>();
+        patientProvider.loadFacilityPatients(facility.id);
+        patientProvider.loadActiveVisits(facility.id);
       }
     });
   }
@@ -109,6 +114,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                   children: [
                     _OverviewTab(facility: facility, onGoToPatients: _goToPatients),
                     PatientsTab(facility: facility),
+                    OpdQueueTab(facility: facility),
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
                     _AppointmentsTab(facility: facility),

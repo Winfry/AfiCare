@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/facility_model.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/register_patient_dialog.dart';
 
 const _cardShadow = [
   BoxShadow(color: Color(0x0D0D1B2A), blurRadius: 2, offset: Offset(0, 1)),
@@ -113,7 +114,15 @@ class _PatientsTabState extends State<PatientsTab> {
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                onPressed: () => _showRegisterPatientDialog(context),
+                onPressed: () async {
+                  final newId = await showRegisterPatientDialog(context, facilityId: widget.facility.id);
+                  if (newId != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Patient registered')),
+                    );
+                    _selectPatient(newId);
+                  }
+                },
                 icon: Icon(Icons.add, size: 18, color: AppColors.deepNavy),
                 label: Text(
                   'New Patient',
@@ -264,146 +273,6 @@ class _PatientsTabState extends State<PatientsTab> {
     );
   }
 
-  void _showRegisterPatientDialog(BuildContext context) {
-    final nameCtl = TextEditingController();
-    final phoneCtl = TextEditingController();
-    final fileNumberCtl = TextEditingController();
-    final allergiesCtl = TextEditingController();
-    DateTime? dob;
-    String? gender;
-    var shaStatus = 'unknown';
-    var submitting = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('Register Patient'),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: nameCtl,
-                    decoration: const InputDecoration(labelText: 'Full Name *', isDense: true),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: ctx,
-                              initialDate: DateTime(2000),
-                              firstDate: DateTime(1900),
-                              lastDate: DateTime.now(),
-                            );
-                            if (picked != null) setState(() => dob = picked);
-                          },
-                          child: Text(dob == null
-                              ? 'Date of Birth'
-                              : '${dob!.year}-${dob!.month.toString().padLeft(2, '0')}-${dob!.day.toString().padLeft(2, '0')}'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: gender,
-                          isDense: true,
-                          decoration: const InputDecoration(labelText: 'Gender', isDense: true),
-                          items: const [
-                            DropdownMenuItem(value: 'male', child: Text('Male')),
-                            DropdownMenuItem(value: 'female', child: Text('Female')),
-                            DropdownMenuItem(value: 'other', child: Text('Other')),
-                          ],
-                          onChanged: (v) => setState(() => gender = v),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: phoneCtl,
-                    decoration: const InputDecoration(labelText: 'Phone', isDense: true),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: fileNumberCtl,
-                    decoration: const InputDecoration(labelText: 'File / OP Number', isDense: true),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: shaStatus,
-                    isDense: true,
-                    decoration: const InputDecoration(labelText: 'SHA Status', isDense: true),
-                    items: const [
-                      DropdownMenuItem(value: 'unknown', child: Text('Unknown')),
-                      DropdownMenuItem(value: 'not_registered', child: Text('Not Registered')),
-                      DropdownMenuItem(value: 'registered', child: Text('Registered')),
-                    ],
-                    onChanged: (v) => setState(() => shaStatus = v ?? shaStatus),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: allergiesCtl,
-                    decoration: const InputDecoration(labelText: 'Allergies (comma-separated)', isDense: true),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: submitting ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      if (nameCtl.text.trim().isEmpty) return;
-                      setState(() => submitting = true);
-                      final provider = context.read<FacilityPatientProvider>();
-                      final newId = await provider.registerPatient(
-                        facilityId: widget.facility.id,
-                        fullName: nameCtl.text.trim(),
-                        dateOfBirth: dob,
-                        gender: gender,
-                        phone: phoneCtl.text.trim().isEmpty ? null : phoneCtl.text.trim(),
-                        fileNumber: fileNumberCtl.text.trim().isEmpty ? null : fileNumberCtl.text.trim(),
-                        shaStatus: shaStatus,
-                        allergies: allergiesCtl.text
-                            .split(',')
-                            .map((a) => a.trim())
-                            .where((a) => a.isNotEmpty)
-                            .toList(),
-                      );
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(newId != null ? 'Patient registered' : 'Failed: ${provider.error}')),
-                        );
-                        if (newId != null) _selectPatient(newId);
-                      }
-                    },
-              child: submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Register'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _PatientDetail extends StatelessWidget {

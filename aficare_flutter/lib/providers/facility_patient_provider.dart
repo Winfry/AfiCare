@@ -16,12 +16,14 @@ class FacilityPatientProvider with ChangeNotifier {
   List<FacilityPatientModel> _patients = [];
   FacilityPatientModel? _selectedPatient;
   List<VisitModel> _selectedPatientVisits = [];
+  List<Map<String, dynamic>> _activeVisits = [];
   bool _isLoading = false;
   String? _error;
 
   List<FacilityPatientModel> get patients => _patients;
   FacilityPatientModel? get selectedPatient => _selectedPatient;
   List<VisitModel> get selectedPatientVisits => _selectedPatientVisits;
+  List<Map<String, dynamic>> get activeVisits => _activeVisits;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -77,6 +79,89 @@ class FacilityPatientProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Loads today's active OPD Queue board for the whole facility --
+  /// waiting/triage/in_consultation (all statuses, no date bound; a
+  /// patient can sit "with doctor" across a shift boundary) plus
+  /// completed visits from TODAY only (bounded so the Completed tally
+  /// doesn't grow unboundedly over the facility's whole history).
+  /// 'registered' (a plain Patients-tab visit, no queue intent) and
+  /// 'cancelled' are deliberately excluded -- see
+  /// 021_opd_queue.sql's header comment. 2-query pattern (no embedded
+  /// joins), same convention as AdminFacilityProvider.loadFacilityAppointments.
+  Future<void> loadActiveVisits(String facilityId) async {
+    _error = null;
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+
+      // Date bound applies only to 'completed' (so the tally doesn't grow
+      // unboundedly across the facility's whole history) -- waiting/
+      // triage/in_consultation stay unbounded, since a visit can
+      // legitimately still be active from before midnight.
+      final rows = await _supabase
+          .from('visits')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .or('status.in.(waiting,triage,in_consultation),and(status.eq.completed,occurred_at.gte.$todayStart)')
+          .order('status_changed_at', ascending: true)
+          .limit(300);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isEmpty) {
+        _activeVisits = [];
+        notifyListeners();
+        return;
+      }
+
+      final patientIds = {for (final r in list) r['facility_patient_id'] as String}.toList();
+      final patientRows = await _supabase
+          .from('facility_patients')
+          .select('id, full_name, file_number')
+          .inFilter('id', patientIds);
+
+      final patientById = <String, Map<String, dynamic>>{
+        for (final p in (patientRows as List)) p['id'] as String: p as Map<String, dynamic>,
+      };
+
+      _activeVisits = list.map((v) {
+        final p = patientById[v['facility_patient_id']];
+        return {
+          ...v,
+          'patient_name': p?['full_name'] ?? 'Unknown',
+          'patient_file_number': p?['file_number'],
+        };
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Advances (or re-prioritizes) a queued visit via the checked RPC
+  /// (021_opd_queue.sql) -- deliberately does not reload here; the OPD
+  /// Queue screen already has facilityId in scope and calls
+  /// loadActiveVisits itself right after, so one stage-advance triggers
+  /// exactly one reload instead of two.
+  Future<bool> updateVisitStatus({
+    required String visitId,
+    required String newStatus,
+    String? newPriority,
+  }) async {
+    try {
+      await _supabase.rpc('facility_admin_update_visit_status', params: {
+        'target_visit_id': visitId,
+        'new_status': newStatus,
+        'new_priority': newPriority,
+      });
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Registers a facility-local walk-in via the checked RPC
   /// (020_facility_patients_and_visits.sql) -- RLS on facility_patients
   /// has no INSERT policy, so a raw insert would be rejected; the RPC is
@@ -118,11 +203,18 @@ class FacilityPatientProvider with ChangeNotifier {
 
   /// Registers a visit via the checked RPC, same reasoning as
   /// [registerPatient]. Reloads this patient's visit list on success.
+  /// [status]/[priority] are optional -- omitted, the RPC defaults to
+  /// 'registered'/'routine' (a plain visit, not queued). OPD Queue's
+  /// "add to queue" flow passes status: 'waiting' to put a new walk-in
+  /// straight on the board in one call, no separate updateVisitStatus
+  /// round trip needed.
   Future<bool> registerVisit({
     required String facilityPatientId,
     String? chiefComplaint,
     String? notes,
     String? providerId,
+    String? status,
+    String? priority,
   }) async {
     try {
       await _supabase.rpc('facility_admin_register_visit', params: {
@@ -130,6 +222,8 @@ class FacilityPatientProvider with ChangeNotifier {
         'visit_chief_complaint': chiefComplaint,
         'visit_notes': notes,
         'visit_provider_id': providerId,
+        'visit_status': status,
+        'visit_priority': priority,
       });
 
       await loadPatientDetail(facilityPatientId);
