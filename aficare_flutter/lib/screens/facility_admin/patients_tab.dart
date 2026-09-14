@@ -20,8 +20,11 @@ class PatientsTab extends StatefulWidget {
   State<PatientsTab> createState() => _PatientsTabState();
 }
 
+enum _PatientFilter { all, today, recent }
+
 class _PatientsTabState extends State<PatientsTab> {
   String? _selectedPatientId;
+  _PatientFilter _filter = _PatientFilter.all;
   final _searchCtl = TextEditingController();
 
   @override
@@ -45,52 +48,48 @@ class _PatientsTabState extends State<PatientsTab> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FacilityPatientProvider>();
+    final now = DateTime.now();
     final registeredToday = provider.patients.where((p) {
-      final now = DateTime.now();
       return p.createdAt.year == now.year && p.createdAt.month == now.month && p.createdAt.day == now.day;
     }).length;
 
+    final visiblePatients = switch (_filter) {
+      _PatientFilter.all => provider.patients,
+      _PatientFilter.today => provider.patients.where((p) {
+          return p.createdAt.year == now.year && p.createdAt.month == now.month && p.createdAt.day == now.day;
+        }).toList(),
+      _PatientFilter.recent => provider.patients.where((p) => now.difference(p.createdAt).inDays <= 7).toList(),
+    };
+
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 340,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Patients', style: Theme.of(context).textTheme.headlineSmall),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${provider.patients.length} record${provider.patients.length == 1 ? '' : 's'}'
-                            '${registeredToday > 0 ? ' · $registeredToday registered today' : ''}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
+                    Text('Patients', style: Theme.of(context).textTheme.headlineSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${provider.patients.length} record${provider.patients.length == 1 ? '' : 's'}'
+                      '${registeredToday > 0 ? ' · $registeredToday registered today' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                ElevatedButton.icon(
-                  onPressed: () => _showRegisterPatientDialog(context),
-                  icon: const Icon(Icons.person_add_alt, size: 18),
-                  label: const Text('New Patient'),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(42)),
-                ),
-                const SizedBox(height: 12),
-                TextField(
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 260,
+                child: TextField(
                   controller: _searchCtl,
                   decoration: InputDecoration(
-                    hintText: 'Search by name',
+                    hintText: 'Search by name, ID or phone',
                     isDense: true,
                     prefixIcon: const Icon(Icons.search, size: 20),
                     filled: true,
@@ -106,82 +105,155 @@ class _PatientsTabState extends State<PatientsTab> {
                   ),
                   onChanged: (v) => context.read<FacilityPatientProvider>().loadFacilityPatients(widget.facility.id, searchTerm: v),
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: provider.isLoading && provider.patients.isEmpty
-                      ? const Center(child: CircularProgressIndicator())
-                      : provider.patients.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 24),
-                              child: Text('No patients registered yet', style: Theme.of(context).textTheme.bodySmall),
-                            )
-                          : ListView.separated(
-                              itemCount: provider.patients.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 6),
-                              itemBuilder: (context, i) {
-                                final p = provider.patients[i];
-                                final selected = p.id == _selectedPatientId;
-                                return Material(
-                                  color: selected ? AppColors.tintNavyBg : AppColors.cardBackground,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: () => _selectPatient(p.id),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: selected ? AppColors.primaryNavy.withOpacity(0.25) : AppColors.borderSubtle),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () => _showRegisterPatientDialog(context),
+                icon: Icon(Icons.add, size: 18, color: AppColors.deepNavy),
+                label: Text(
+                  'New Patient',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.deepNavy, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.marigold,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _filterChip(context, 'All Patients', _PatientFilter.all),
+              const SizedBox(width: 8),
+              _filterChip(context, "Today's Patients", _PatientFilter.today),
+              const SizedBox(width: 8),
+              _filterChip(context, 'Recent Patients', _PatientFilter.recent),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 320,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                          child: Text('All patients', style: Theme.of(context).textTheme.titleMedium),
+                        ),
+                        Divider(height: 1, color: AppColors.borderSubtle),
+                        Expanded(
+                          child: provider.isLoading && provider.patients.isEmpty
+                              ? const Center(child: CircularProgressIndicator())
+                              : visiblePatients.isEmpty
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Text(
+                                        provider.patients.isEmpty ? 'No patients registered yet' : 'No patients in this filter',
+                                        style: Theme.of(context).textTheme.bodySmall,
                                       ),
-                                      child: Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 18,
-                                            backgroundColor: AppColors.tintNavyBg,
-                                            child: Text(
-                                              _initials(p.fullName),
-                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: AppColors.tintNavyFg,
+                                    )
+                                  : ListView.builder(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      itemCount: visiblePatients.length,
+                                      itemBuilder: (context, i) {
+                                        final p = visiblePatients[i];
+                                        final selected = p.id == _selectedPatientId;
+                                        return Material(
+                                          color: selected ? AppColors.tintNavyBg : Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () => _selectPatient(p.id),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                              child: Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 16,
+                                                    backgroundColor: AppColors.tintNavyBg,
+                                                    child: Text(
+                                                      _initials(p.fullName),
+                                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w700,
+                                                            color: AppColors.tintNavyFg,
+                                                          ),
+                                                    ),
                                                   ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(p.fullName, style: Theme.of(context).textTheme.titleSmall),
+                                                        const SizedBox(height: 2),
+                                                        Text(
+                                                          [
+                                                            if (p.fileNumber != null && p.fileNumber!.isNotEmpty) p.fileNumber!,
+                                                            if (p.age != null)
+                                                              '${p.age}${p.gender != null ? ' · ${p.gender![0].toUpperCase()}' : ''}',
+                                                          ].join(' · '),
+                                                          style: Theme.of(context).textTheme.labelSmall,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(p.fullName, style: Theme.of(context).textTheme.titleSmall),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  [
-                                                    if (p.fileNumber != null && p.fileNumber!.isNotEmpty) p.fileNumber!,
-                                                    if (p.age != null) '${p.age}${p.gender != null ? ' · ${p.gender![0].toUpperCase()}' : ''}',
-                                                  ].join(' · '),
-                                                  style: Theme.of(context).textTheme.labelSmall,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _selectedPatientId == null
+                      ? Center(child: Text('Select a patient', style: Theme.of(context).textTheme.bodyMedium))
+                      : _PatientDetail(facilityPatientId: _selectedPatientId!, initials: _initials),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: _selectedPatientId == null
-                ? Center(child: Text('Select a patient', style: Theme.of(context).textTheme.bodyMedium))
-                : _PatientDetail(facilityPatientId: _selectedPatientId!, initials: _initials),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _filterChip(BuildContext context, String label, _PatientFilter value) {
+    final selected = _filter == value;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => setState(() => _filter = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.tintNavyBg : AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? Colors.transparent : AppColors.borderSubtle),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: selected ? AppColors.tintNavyFg : AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
       ),
     );
   }

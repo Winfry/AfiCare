@@ -12,6 +12,7 @@ import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/stat_card.dart';
 import '../../utils/theme.dart';
+import '../../theme/app_colors.dart';
 import 'patients_tab.dart';
 
 /// Shell for a facility admin — front-desk/office staff scoped to one
@@ -66,6 +67,16 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
 
   void _onSelect(int i) => setState(() => _currentIndex = i);
 
+  void _goToPatients({String? searchTerm}) {
+    setState(() => _currentIndex = 1);
+    if (searchTerm != null && searchTerm.trim().isNotEmpty) {
+      final facility = context.read<FacilityAdminProvider>().myFacility;
+      if (facility != null) {
+        context.read<FacilityPatientProvider>().loadFacilityPatients(facility.id, searchTerm: searchTerm);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final facilityAdmin = context.watch<FacilityAdminProvider>();
@@ -98,7 +109,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
               : IndexedStack(
                   index: _currentIndex,
                   children: [
-                    _OverviewTab(facility: facility),
+                    _OverviewTab(facility: facility, onGoToPatients: _goToPatients),
                     PatientsTab(facility: facility),
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
@@ -110,35 +121,96 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
 }
 
 class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.facility});
+  const _OverviewTab({required this.facility, required this.onGoToPatients});
   final FacilityModel facility;
+  final void Function({String? searchTerm}) onGoToPatients;
+
+  static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _formattedDate() {
+    final now = DateTime.now();
+    return '${_weekdays[now.weekday - 1]}, ${now.day} ${_months[now.month - 1]} ${now.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final patientProvider = context.watch<FacilityPatientProvider>();
+    final adminProvider = context.watch<AdminFacilityProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    final firstName = authProvider.currentUser?.fullName.split(' ').first ?? 'there';
+    final now = DateTime.now();
+    final registeredToday = patientProvider.patients
+        .where((p) => p.createdAt.year == now.year && p.createdAt.month == now.month && p.createdAt.day == now.day)
+        .length;
+    final pendingAppointments = adminProvider.facilityAppointments.where((a) => a['status'] == 'pending').length;
+    final searchCtl = TextEditingController();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(facility.name, style: Theme.of(context).textTheme.headlineMedium),
-                    Text(
-                      [facility.type, facility.county].where((s) => s != null && s.isNotEmpty).join(' - '),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text('${_greeting()}, $firstName', style: Theme.of(context).textTheme.headlineSmall),
+                    const SizedBox(height: 2),
+                    Text('${_formattedDate()} · ${facility.name}', style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: () => _showEditFacilityForm(context, facility),
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit Profile'),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 240,
+                child: TextField(
+                  controller: searchCtl,
+                  decoration: InputDecoration(
+                    hintText: 'Search patient, ID, or file no.',
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    filled: true,
+                    fillColor: AppColors.cardBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.borderSubtle),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.borderSubtle),
+                    ),
+                  ),
+                  onSubmitted: (v) => onGoToPatients(searchTerm: v),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () => onGoToPatients(),
+                icon: Icon(Icons.add, size: 18, color: AppColors.deepNavy),
+                label: Text(
+                  'New Patient',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.deepNavy, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.marigold,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
               ),
             ],
           ),
@@ -151,18 +223,36 @@ class _OverviewTab extends StatelessWidget {
                 children: [
                   Expanded(
                     child: StatCard(
-                      label: 'Providers',
-                      value: '${stats['providers']}',
-                      icon: Icons.medical_services_outlined,
+                      label: 'Patients',
+                      value: '${patientProvider.patients.length}',
+                      icon: Icons.people_outline,
                       iconColor: AfiCareTheme.primaryBlue,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: StatCard(
-                      label: 'Departments',
-                      value: '${stats['departments']}',
-                      icon: Icons.apartment_outlined,
+                      label: 'Registered Today',
+                      value: '$registeredToday',
+                      icon: Icons.person_add_alt,
+                      iconColor: AppColors.sage,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: StatCard(
+                      label: 'Pending Appointments',
+                      value: '$pendingAppointments',
+                      icon: Icons.calendar_month_outlined,
+                      iconColor: AppColors.marigoldDark,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: StatCard(
+                      label: 'Providers',
+                      value: '${stats['providers']}',
+                      icon: Icons.medical_services_outlined,
                       iconColor: AfiCareTheme.adminColor,
                     ),
                   ),
@@ -171,9 +261,101 @@ class _OverviewTab extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
-          Card(
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _overviewCard(
+                    context,
+                    title: 'Recent Appointments',
+                    child: adminProvider.facilityAppointments.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text('No appointments yet', style: Theme.of(context).textTheme.bodySmall),
+                          )
+                        : Column(
+                            children: adminProvider.facilityAppointments.take(5).map((a) {
+                              final status = a['status'] as String? ?? 'pending';
+                              final color = switch (status) {
+                                'confirmed' => AppColors.sage,
+                                'completed' => AppColors.primaryNavy,
+                                'cancelled' => AppColors.clay,
+                                _ => AppColors.marigoldDark,
+                              };
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(a['patient_name'] as String? ?? 'Unknown', style: Theme.of(context).textTheme.titleSmall),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                                      child: Text(
+                                        status,
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: _overviewCard(
+                    context,
+                    title: 'Recent Patients',
+                    child: patientProvider.patients.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text('No patients registered yet', style: Theme.of(context).textTheme.bodySmall),
+                          )
+                        : Column(
+                            children: patientProvider.patients.take(5).map((p) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: AppColors.tintNavyBg,
+                                      child: Text(
+                                        p.fullName.isNotEmpty ? p.fullName[0].toUpperCase() : '?',
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.tintNavyFg, fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(p.fullName, style: Theme.of(context).textTheme.titleSmall),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _overviewCard(
+            context,
+            title: 'Facility Details',
+            action: OutlinedButton.icon(
+              onPressed: () => _showEditFacilityForm(context, facility),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Edit Profile'),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -185,6 +367,33 @@ class _OverviewTab extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overviewCard(BuildContext context, {required String title, required Widget child, Widget? action}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                if (action != null) action,
+              ],
+            ),
+          ),
+          Divider(height: 1, color: AppColors.borderSubtle),
+          child,
         ],
       ),
     );
