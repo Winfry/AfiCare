@@ -5,6 +5,11 @@ import '../../models/facility_model.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../theme/app_colors.dart';
 
+const _cardShadow = [
+  BoxShadow(color: Color(0x0D0D1B2A), blurRadius: 2, offset: Offset(0, 1)),
+  BoxShadow(color: Color(0x0F0D1B2A), blurRadius: 18, offset: Offset(0, 6)),
+];
+
 /// Facility-local patient register + visit history — step 1 of the
 /// facility-admin-as-HMS roadmap (OPD Queue and Billing/Clearance build on
 /// the same `visits` table next). Master-detail layout: a search + list on
@@ -145,6 +150,7 @@ class _PatientsTabState extends State<PatientsTab> {
                       color: AppColors.cardBackground,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.borderSubtle),
+                      boxShadow: _cardShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,6 +430,7 @@ class _PatientDetail extends StatelessWidget {
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.borderSubtle),
+              boxShadow: _cardShadow,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,6 +499,7 @@ class _PatientDetail extends StatelessWidget {
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.borderSubtle),
+              boxShadow: _cardShadow,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,6 +533,7 @@ class _PatientDetail extends StatelessWidget {
                     color: AppColors.cardBackground,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.borderSubtle),
+                    boxShadow: _cardShadow,
                   ),
                   child: Column(
                     children: provider.selectedPatientVisits.asMap().entries.map((entry) {

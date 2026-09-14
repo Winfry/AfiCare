@@ -10,8 +10,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/facility_admin_provider.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
-import '../../widgets/stat_card.dart';
-import '../../utils/theme.dart';
 import '../../theme/app_colors.dart';
 import 'patients_tab.dart';
 
@@ -154,6 +152,7 @@ class _OverviewTab extends StatelessWidget {
         .where((p) => p.createdAt.year == now.year && p.createdAt.month == now.month && p.createdAt.day == now.day)
         .length;
     final pendingAppointments = adminProvider.facilityAppointments.where((a) => a['status'] == 'pending').length;
+    final confirmedAppointments = adminProvider.facilityAppointments.where((a) => a['status'] == 'confirmed').length;
     final searchCtl = TextEditingController();
 
     return SingleChildScrollView(
@@ -222,38 +221,42 @@ class _OverviewTab extends StatelessWidget {
               return Row(
                 children: [
                   Expanded(
-                    child: StatCard(
+                    child: _kpiCard(
+                      context,
                       label: 'Patients',
                       value: '${patientProvider.patients.length}',
-                      icon: Icons.people_outline,
-                      iconColor: AfiCareTheme.primaryBlue,
+                      delta: registeredToday > 0 ? '+$registeredToday today' : 'No new patients today',
+                      deltaColor: registeredToday > 0 ? AppColors.sage : AppColors.textMuted,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: StatCard(
+                    child: _kpiCard(
+                      context,
                       label: 'Registered Today',
                       value: '$registeredToday',
-                      icon: Icons.person_add_alt,
-                      iconColor: AppColors.sage,
+                      delta: 'of ${patientProvider.patients.length} total',
+                      deltaColor: AppColors.textMuted,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: StatCard(
+                    child: _kpiCard(
+                      context,
                       label: 'Pending Appointments',
                       value: '$pendingAppointments',
-                      icon: Icons.calendar_month_outlined,
-                      iconColor: AppColors.marigoldDark,
+                      delta: '$confirmedAppointments confirmed',
+                      deltaColor: AppColors.steel,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: StatCard(
+                    child: _kpiCard(
+                      context,
                       label: 'Providers',
                       value: '${stats['providers']}',
-                      icon: Icons.medical_services_outlined,
-                      iconColor: AfiCareTheme.adminColor,
+                      delta: '${stats['departments']} departments',
+                      deltaColor: AppColors.adminColor,
                     ),
                   ),
                 ],
@@ -372,12 +375,45 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
+  static const _cardShadow = [
+    BoxShadow(color: Color(0x0D0D1B2A), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0F0D1B2A), blurRadius: 18, offset: Offset(0, 6)),
+  ];
+
+  Widget _kpiCard(BuildContext context, {required String label, required String value, String? delta, Color? deltaColor}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: _cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 8),
+          Text(value, style: Theme.of(context).textTheme.headlineMedium),
+          if (delta != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              delta,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: deltaColor, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _overviewCard(BuildContext context, {required String title, required Widget child, Widget? action}) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: _cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
