@@ -8,9 +8,11 @@ import '../../providers/admin_facility_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/facility_admin_provider.dart';
+import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/stat_card.dart';
 import '../../utils/theme.dart';
+import 'patients_tab.dart';
 
 /// Shell for a facility admin — front-desk/office staff scoped to one
 /// hospital. Deliberately small: mirrors CHWShell's minimal
@@ -30,6 +32,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
   static const _sidebarEntries = [
     SidebarGroupLabel('My Facility'),
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
+    SidebarNavItem(icon: Icons.people_outline, label: 'Patients'),
     SidebarNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     SidebarNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
@@ -37,6 +40,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
 
   static const _bottomNavItems = [
     BottomNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
+    BottomNavItem(icon: Icons.people_outline, label: 'Patients'),
     BottomNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     BottomNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
@@ -55,6 +59,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         admin.loadFacilityProviders(facility.id);
         admin.loadDepartments(facility.id);
         admin.loadFacilityAppointments(facility.id);
+        context.read<FacilityPatientProvider>().loadFacilityPatients(facility.id);
       }
     });
   }
@@ -94,6 +99,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                   index: _currentIndex,
                   children: [
                     _OverviewTab(facility: facility),
+                    PatientsTab(facility: facility),
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
                     _AppointmentsTab(facility: facility),
@@ -114,10 +120,27 @@ class _OverviewTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(facility.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text(
-            [facility.type, facility.county].where((s) => s != null && s.isNotEmpty).join(' - '),
-            style: TextStyle(color: Colors.grey[600]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(facility.name, style: Theme.of(context).textTheme.headlineMedium),
+                    Text(
+                      [facility.type, facility.county].where((s) => s != null && s.isNotEmpty).join(' - '),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showEditFacilityForm(context, facility),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit Profile'),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           FutureBuilder<Map<String, int>>(
@@ -154,10 +177,10 @@ class _OverviewTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _row('Address', facility.address ?? '-'),
-                  _row('Phone', facility.phone ?? '-'),
-                  _row('License', facility.licenseNo ?? '-'),
-                  _row('Status', facility.status),
+                  _row(context, 'Address', facility.address ?? '-'),
+                  _row(context, 'Phone', facility.phone ?? '-'),
+                  _row(context, 'License', facility.licenseNo ?? '-'),
+                  _row(context, 'Status', facility.status),
                 ],
               ),
             ),
@@ -167,16 +190,134 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String value) => Padding(
+  Widget _row(BuildContext context, String label, String value) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: TextStyle(color: Colors.grey[600])),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+            Text(value, style: Theme.of(context).textTheme.titleSmall),
           ],
         ),
       );
+
+  void _showEditFacilityForm(BuildContext context, FacilityModel facility) {
+    final nameCtl = TextEditingController(text: facility.name);
+    final countyCtl = TextEditingController(text: facility.county ?? '');
+    final subCountyCtl = TextEditingController(text: facility.subCounty ?? '');
+    final addressCtl = TextEditingController(text: facility.address ?? '');
+    final phoneCtl = TextEditingController(text: facility.phone ?? '');
+    final emailCtl = TextEditingController(text: facility.email ?? '');
+    final licenseCtl = TextEditingController(text: facility.licenseNo ?? '');
+    var selectedType = facility.type;
+    var submitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Edit Facility Profile'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameCtl,
+                    decoration: const InputDecoration(labelText: 'Facility Name', isDense: true),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: selectedType,
+                    isDense: true,
+                    decoration: const InputDecoration(labelText: 'Facility Type', isDense: true),
+                    items: const [
+                      DropdownMenuItem(value: 'hospital', child: Text('Hospital')),
+                      DropdownMenuItem(value: 'clinic', child: Text('Clinic')),
+                      DropdownMenuItem(value: 'lab', child: Text('Lab')),
+                      DropdownMenuItem(value: 'pharmacy', child: Text('Pharmacy')),
+                    ],
+                    onChanged: (v) => setState(() => selectedType = v ?? selectedType),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: countyCtl,
+                    decoration: const InputDecoration(labelText: 'County', isDense: true),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: subCountyCtl,
+                    decoration: const InputDecoration(labelText: 'Sub-County', isDense: true),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: addressCtl,
+                    decoration: const InputDecoration(labelText: 'Physical Address', isDense: true),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: phoneCtl,
+                    decoration: const InputDecoration(labelText: 'Phone', isDense: true),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: emailCtl,
+                    decoration: const InputDecoration(labelText: 'Email', isDense: true),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: licenseCtl,
+                    decoration: const InputDecoration(labelText: 'License Number', isDense: true),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (nameCtl.text.trim().isEmpty) return;
+                      setState(() => submitting = true);
+                      final provider = context.read<FacilityAdminProvider>();
+                      final ok = await provider.updateMyFacility(
+                        name: nameCtl.text.trim(),
+                        type: selectedType,
+                        county: countyCtl.text.trim(),
+                        subCounty: subCountyCtl.text.trim(),
+                        address: addressCtl.text.trim(),
+                        phone: phoneCtl.text.trim(),
+                        email: emailCtl.text.trim(),
+                        licenseNo: licenseCtl.text.trim(),
+                      );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(ok ? 'Facility profile updated' : 'Failed: ${provider.error}')),
+                        );
+                      }
+                    },
+              child: submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ProvidersTab extends StatelessWidget {
@@ -195,7 +336,7 @@ class _ProvidersTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Providers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Providers', style: Theme.of(context).textTheme.headlineSmall),
               ElevatedButton.icon(
                 onPressed: () => _showAddProviderDialog(context, provider),
                 icon: const Icon(Icons.person_add_alt),
@@ -206,7 +347,7 @@ class _ProvidersTab extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(
             child: provider.facilityProviders.isEmpty
-                ? const Center(child: Text('No providers linked yet', style: TextStyle(color: Colors.grey)))
+                ? Center(child: Text('No providers linked yet', style: Theme.of(context).textTheme.bodySmall))
                 : ListView(
                     children: provider.facilityProviders
                         .map((p) => Card(
@@ -261,9 +402,9 @@ class _ProvidersTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 if (p.providerSearchResults.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text('Type a name to search verified providers', style: TextStyle(color: Colors.grey)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text('Type a name to search verified providers', style: Theme.of(context).textTheme.bodySmall),
                   )
                 else
                   ConstrainedBox(
@@ -318,7 +459,7 @@ class _DepartmentsTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Departments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Departments', style: Theme.of(context).textTheme.headlineSmall),
               ElevatedButton.icon(
                 onPressed: () => _showDepartmentForm(context, provider),
                 icon: const Icon(Icons.add),
@@ -329,7 +470,7 @@ class _DepartmentsTab extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(
             child: provider.departments.isEmpty
-                ? const Center(child: Text('No departments yet', style: TextStyle(color: Colors.grey)))
+                ? Center(child: Text('No departments yet', style: Theme.of(context).textTheme.bodySmall))
                 : ListView(
                     children: provider.departments
                         .map((d) => Card(
@@ -407,16 +548,16 @@ class _AppointmentsTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Appointments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Appointments', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(
             'Who is booked, when, and with which provider. Not the clinical reason for the visit.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
           Expanded(
             child: appointments.isEmpty
-                ? const Center(child: Text('No appointments yet', style: TextStyle(color: Colors.grey)))
+                ? Center(child: Text('No appointments yet', style: Theme.of(context).textTheme.bodySmall))
                 : ListView(
                     children: appointments.map((a) => Card(
                       child: Padding(
@@ -432,7 +573,7 @@ class _AppointmentsTab extends StatelessWidget {
                               subtitle: Text(
                                 '${_formatDateTime(a['scheduled_at'] as String?)} with ${a['provider_name'] ?? 'Unknown'}',
                               ),
-                              trailing: _statusChip(a['status'] as String? ?? 'pending'),
+                              trailing: _statusChip(context, a['status'] as String? ?? 'pending'),
                             ),
                             Padding(
                               padding: const EdgeInsets.only(left: 8, right: 8, bottom: 4),
@@ -550,7 +691,7 @@ class _AppointmentsTab extends StatelessWidget {
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _statusChip(String status) {
+  Widget _statusChip(BuildContext context, String status) {
     final color = switch (status) {
       'confirmed' => const Color(0xFF43A047),
       'completed' => const Color(0xFF1D3557),
@@ -565,7 +706,7 @@ class _AppointmentsTab extends StatelessWidget {
       ),
       child: Text(
         status[0].toUpperCase() + status.substring(1),
-        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

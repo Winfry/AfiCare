@@ -26,6 +26,7 @@ import 'providers/admin_user_provider.dart';
 import 'providers/admin_facility_provider.dart';
 import 'providers/provider_verification_provider.dart';
 import 'providers/facility_admin_provider.dart';
+import 'providers/facility_patient_provider.dart';
 import 'providers/facility_admin_request_provider.dart';
 import 'providers/audit_log_provider.dart';
 import 'providers/system_settings_provider.dart';
@@ -129,6 +130,7 @@ class AfiCareApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminFacilityProvider()),
         ChangeNotifierProvider(create: (_) => ProviderVerificationProvider()),
         ChangeNotifierProvider(create: (_) => FacilityAdminProvider()),
+        ChangeNotifierProvider(create: (_) => FacilityPatientProvider()),
         ChangeNotifierProvider(create: (_) => FacilityAdminRequestProvider()),
         ChangeNotifierProvider(create: (_) => AuditLogProvider()),
         ChangeNotifierProvider(create: (_) => SystemSettingsProvider()),

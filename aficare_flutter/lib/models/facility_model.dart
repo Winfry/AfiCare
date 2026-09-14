@@ -57,6 +57,32 @@ class FacilityModel {
     };
   }
 
+  FacilityModel copyWith({
+    String? name,
+    String? type,
+    String? county,
+    String? subCounty,
+    String? address,
+    String? phone,
+    String? email,
+    String? licenseNo,
+    String? status,
+  }) {
+    return FacilityModel(
+      id: id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      county: county ?? this.county,
+      subCounty: subCounty ?? this.subCounty,
+      address: address ?? this.address,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      licenseNo: licenseNo ?? this.licenseNo,
+      status: status ?? this.status,
+      createdAt: createdAt,
+    );
+  }
+
   @override
   String toString() => name;
 }
