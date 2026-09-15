@@ -22,7 +22,7 @@ class PhonePrefixField extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF55708A),
+              color: Color(0xFF98917F),
             ),
           ),
         ),
@@ -32,7 +32,7 @@ class PhonePrefixField extends StatelessWidget {
           validator: validator,
           style: const TextStyle(
             fontSize: 14.5,
-            color: Color(0xFF152A45),
+            color: Color(0xFF1B1B18),
           ),
           decoration: InputDecoration(
             filled: true,
@@ -43,18 +43,18 @@ class PhonePrefixField extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(width: 14),
-                const Icon(Icons.phone_outlined, size: 19, color: Color(0xFF55708A)),
+                const Icon(Icons.phone_outlined, size: 19, color: Color(0xFF98917F)),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.only(right: 8),
                   decoration: const BoxDecoration(
-                    border: Border(right: BorderSide(color: Color(0xFFDCE3EA))),
+                    border: Border(right: BorderSide(color: Color(0xFFE4E1D8))),
                   ),
                   child: const Text(
                     '+254',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF55708A),
+                      color: Color(0xFF98917F),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -65,11 +65,11 @@ class PhonePrefixField extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+              borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+              borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

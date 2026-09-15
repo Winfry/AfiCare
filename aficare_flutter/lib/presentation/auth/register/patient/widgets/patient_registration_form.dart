@@ -92,7 +92,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
           const _FieldLabel(label: 'Full Name'),
           TextFormField(
             controller: _nameController,
-            style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
+            style: const TextStyle(fontSize: 14.5, color: Color(0xFF1B1B18)),
             decoration: _inputDecoration('Wanjiru Njoroge', Icons.person_outline),
             validator: (v) => v == null || v.trim().isEmpty ? 'Enter your full name' : null,
           ),
@@ -113,7 +113,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
             obscureText: _obscurePin,
             keyboardType: TextInputType.number,
             maxLength: 6,
-            style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
+            style: const TextStyle(fontSize: 14.5, color: Color(0xFF1B1B18)),
             decoration: _pinInputDecoration(
               'e.g. 123456',
               Icons.lock_outline,
@@ -135,7 +135,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
             obscureText: _obscurePinConfirm,
             keyboardType: TextInputType.number,
             maxLength: 6,
-            style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
+            style: const TextStyle(fontSize: 14.5, color: Color(0xFF1B1B18)),
             decoration: _pinInputDecoration(
               'Re-enter your PIN',
               Icons.lock_outline,
@@ -162,7 +162,7 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
               onTap: () => context.go('/login'),
               child: RichText(
                 text: const TextSpan(
-                  style: TextStyle(fontSize: 13.5, color: Color(0xFF55708A)),
+                  style: TextStyle(fontSize: 13.5, color: Color(0xFF98917F)),
                   children: [
                     TextSpan(text: "Already have an account? "),
                     TextSpan(
@@ -185,15 +185,15 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
       fillColor: Colors.white,
       hintText: hint,
       hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-      prefixIcon: Icon(icon, size: 19, color: const Color(0xFF55708A)),
+      prefixIcon: Icon(icon, size: 19, color: const Color(0xFF98917F)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -210,23 +210,23 @@ class _PatientRegistrationFormState extends State<PatientRegistrationForm> {
       hintText: hint,
       hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
       counterText: '',
-      prefixIcon: Icon(icon, size: 19, color: const Color(0xFF55708A)),
+      prefixIcon: Icon(icon, size: 19, color: const Color(0xFF98917F)),
       suffixIcon: IconButton(
         icon: Icon(
           obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
           size: 19,
-          color: const Color(0xFF55708A),
+          color: const Color(0xFF98917F),
         ),
         onPressed: onToggle,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -245,7 +245,7 @@ class _FieldLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF55708A)),
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF98917F)),
       ),
     );
   }

@@ -25,12 +25,12 @@ import 'expenses_screen.dart';
 
 // ── Palette ──────────────────────────────────────────────────────────
 
-const Color _ink = Color(0xFF152A45);
+const Color _ink = Color(0xFF1B1B18);
 const Color _navy = Color(0xFF1D3557);
 const Color _navy2 = Color(0xFF24456B);
-const Color _slate = Color(0xFF55708A);
-const Color _line = Color(0xFFDCE3EA);
-const Color _pageBg = Color(0xFFEEF2F7);
+const Color _slate = Color(0xFF98917F);
+const Color _line = Color(0xFFE4E1D8);
+const Color _pageBg = Color(0xFFFAF9F6);
 const Color _navyBg = Color(0xFFE8EDF3);
 const Color _softBlue = Color(0xFFEAF3FC);
 const Color _medBlue = Color(0xFF457B9D);

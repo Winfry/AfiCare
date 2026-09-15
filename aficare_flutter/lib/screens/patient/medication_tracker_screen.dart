@@ -67,7 +67,7 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEEF2F7),
+      backgroundColor: const Color(0xFFFAF9F6),
       body: Column(
         children: [
           _MedicationHero(firstName: firstName),
@@ -111,7 +111,7 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 9, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFEEF2F7),
+                                          color: const Color(0xFFFAF9F6),
                                           borderRadius:
                                               BorderRadius.circular(999),
                                         ),
@@ -345,7 +345,7 @@ class _ScoreCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFDCE3EA)),
+        border: Border.all(color: const Color(0xFFE4E1D8)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x15152A45),
@@ -397,7 +397,7 @@ class _ScoreCard extends StatelessWidget {
             height: 60,
             width: 1,
             margin: const EdgeInsets.symmetric(horizontal: 24),
-            color: const Color(0xFFDCE3EA),
+            color: const Color(0xFFE4E1D8),
           ),
           // Zone 2: Remaining + message
           Expanded(
@@ -448,7 +448,7 @@ class _ScoreCard extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF152A45))),
+                                color: Color(0xFF1B1B18))),
                       ],
                     ),
                   ),
@@ -511,9 +511,9 @@ class _DoseCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border(
           left: BorderSide(color: stripeColor, width: 4),
-          top: const BorderSide(color: Color(0xFFDCE3EA)),
-          right: const BorderSide(color: Color(0xFFDCE3EA)),
-          bottom: const BorderSide(color: Color(0xFFDCE3EA)),
+          top: const BorderSide(color: Color(0xFFE4E1D8)),
+          right: const BorderSide(color: Color(0xFFE4E1D8)),
+          bottom: const BorderSide(color: Color(0xFFE4E1D8)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -710,7 +710,7 @@ class _PastDosesToggleState extends State<_PastDosesToggle> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFDCE3EA)),
+              border: Border.all(color: const Color(0xFFE4E1D8)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -768,8 +768,8 @@ class _AddMedicationButton extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFFEEF2F7).withOpacity(0),
-            const Color(0xFFEEF2F7),
+            const Color(0xFFFAF9F6).withOpacity(0),
+            const Color(0xFFFAF9F6),
           ],
         ),
       ),
@@ -911,7 +911,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
               decoration: const BoxDecoration(
                 border: Border(
                     bottom:
-                        BorderSide(color: Color(0xFFDCE3EA), width: 1)),
+                        BorderSide(color: Color(0xFFE4E1D8), width: 1)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -925,7 +925,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEEF2F7),
+                        color: const Color(0xFFFAF9F6),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: const Icon(Icons.close,
@@ -964,7 +964,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                                 borderRadius: BorderRadius.all(
                                     Radius.circular(12)),
                                 borderSide: BorderSide(
-                                    color: Color(0xFFDCE3EA),
+                                    color: Color(0xFFE4E1D8),
                                     width: 1.5),
                               ),
                             ),
@@ -989,7 +989,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                                 borderRadius: BorderRadius.all(
                                     Radius.circular(12)),
                                 borderSide: BorderSide(
-                                    color: Color(0xFFDCE3EA),
+                                    color: Color(0xFFE4E1D8),
                                     width: 1.5),
                               ),
                             ),
@@ -1032,7 +1032,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                                           border: Border.all(
                                             color: _category == cat.$1
                                                 ? cat.$4
-                                                : const Color(0xFFDCE3EA),
+                                                : const Color(0xFFE4E1D8),
                                             width:
                                                 _category == cat.$1 ? 2 : 1.5,
                                           ),
@@ -1095,7 +1095,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                                           border: Border.all(
                                             color: _timesPerDay == i
                                                 ? const Color(0xFF1D3557)
-                                                : const Color(0xFFDCE3EA),
+                                                : const Color(0xFFE4E1D8),
                                             width: _timesPerDay == i ? 2 : 1.5,
                                           ),
                                         ),
@@ -1106,7 +1106,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                                                 fontWeight: FontWeight.w700,
                                                 color: _timesPerDay == i
                                                     ? Colors.white
-                                                    : const Color(0xFF152A45),
+                                                    : const Color(0xFF1B1B18),
                                               )),
                                         ),
                                       ),
@@ -1136,7 +1136,7 @@ class _AddMedicationScreenState extends State<_AddMedicationScreen> {
                                 borderRadius: BorderRadius.all(
                                     Radius.circular(12)),
                                 borderSide: BorderSide(
-                                    color: Color(0xFFDCE3EA),
+                                    color: Color(0xFFE4E1D8),
                                     width: 1.5),
                               ),
                             ),

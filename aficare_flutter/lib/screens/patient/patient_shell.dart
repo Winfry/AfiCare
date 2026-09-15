@@ -282,7 +282,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                     onPressed: _search,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFEEF2F7),
+                  fillColor: const Color(0xFFFAF9F6),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,

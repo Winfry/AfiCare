@@ -34,14 +34,14 @@ import 'appointments_screen.dart';
 
 /// Design tokens from the AfiCare dashboard prototype.
 class _C {
-  static const ink = Color(0xFF152A45);
+  static const ink = Color(0xFF1B1B18);
   static const canopy = Color(0xFF1D3557);
   static const canopy2 = Color(0xFF24456B);
   static const marigold = Color(0xFF64B5F6);
   static const sage = Color(0xFF2E7D32);
-  static const mist = Color(0xFFEEF2F7);
-  static const slate = Color(0xFF55708A);
-  static const line = Color(0xFFDCE3EA);
+  static const mist = Color(0xFFFAF9F6);
+  static const slate = Color(0xFF98917F);
+  static const line = Color(0xFFE4E1D8);
   static const danger = Color(0xFFB71C1C);
   static const white = Color(0xFFFFFFFF);
   static const lBlue = Color(0xFF1565C0);

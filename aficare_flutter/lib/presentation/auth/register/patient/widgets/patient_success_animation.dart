@@ -73,7 +73,7 @@ class _PatientSuccessAnimationState extends State<PatientSuccessAnimation>
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF152A45),
+                color: Color(0xFF1B1B18),
               ),
             ),
           ),
@@ -84,7 +84,7 @@ class _PatientSuccessAnimationState extends State<PatientSuccessAnimation>
               'Welcome to AfiCare MediLink',
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF55708A),
+                color: Color(0xFF98917F),
               ),
             ),
           ),

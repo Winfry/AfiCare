@@ -33,7 +33,7 @@ class _RoleCardState extends State<RoleCard> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _hovered ? Colors.transparent : const Color(0xFFDCE3EA),
+            color: _hovered ? Colors.transparent : const Color(0xFFE4E1D8),
             width: 1,
           ),
           boxShadow: [
@@ -92,7 +92,7 @@ class _RoleCardState extends State<RoleCard> {
                           style: const TextStyle(
                             fontSize: 12.5,
                             height: 1.45,
-                            color: Color(0xFF55708A),
+                            color: Color(0xFF98917F),
                           ),
                         ),
                       ],

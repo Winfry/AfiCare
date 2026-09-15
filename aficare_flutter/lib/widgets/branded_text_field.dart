@@ -57,7 +57,7 @@ class _BrandedTextFieldState extends State<BrandedTextField> {
           validator: widget.validator,
           textInputAction: widget.textInputAction,
           onFieldSubmitted: widget.onFieldSubmitted,
-          style: const TextStyle(fontSize: 14.5, color: Color(0xFF152A45)),
+          style: const TextStyle(fontSize: 14.5, color: Color(0xFF1B1B18)),
           decoration: InputDecoration(
             hintText: widget.hint,
             hintStyle: const TextStyle(color: Color(0xFF94A3B8)),

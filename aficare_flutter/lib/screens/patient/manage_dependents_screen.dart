@@ -40,7 +40,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
           decoration: const BoxDecoration(
             color: Colors.white,
             border:
-                Border(bottom: BorderSide(color: Color(0xFFDCE3EA), width: 1)),
+                Border(bottom: BorderSide(color: Color(0xFFE4E1D8), width: 1)),
           ),
           child: Row(
             children: [
@@ -114,14 +114,14 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF152A45),
+                color: Color(0xFF1B1B18),
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               'Add a child or family member to manage\ntheir health records under your account.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF55708A), fontSize: 14),
+              style: TextStyle(color: Color(0xFF98917F), fontSize: 14),
             ),
           ],
         ),
@@ -136,7 +136,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDCE3EA)),
+        border: Border.all(color: const Color(0xFFE4E1D8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,11 +414,11 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
       suffixIcon: suffixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFDCE3EA), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFE4E1D8), width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -454,7 +454,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
                   style: GoogleFonts.fraunces(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF152A45),
+                    color: const Color(0xFF1B1B18),
                   ),
                 ),
                 IconButton(

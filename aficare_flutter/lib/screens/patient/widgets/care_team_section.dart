@@ -29,9 +29,9 @@ class CareTeamSection extends StatefulWidget {
 
 class _CareTeamSectionState extends State<CareTeamSection> {
   static const _navy = Color(0xFF1D3557);
-  static const _slate = Color(0xFF55708A);
-  static const _line = Color(0xFFDCE3EA);
-  static const _ink = Color(0xFF152A45);
+  static const _slate = Color(0xFF98917F);
+  static const _line = Color(0xFFE4E1D8);
+  static const _ink = Color(0xFF1B1B18);
   static const _navyBg = Color(0xFFE8EDF3);
   static const _greyLight = Color(0xFFF1F3F5);
 
@@ -488,7 +488,7 @@ class _AddProviderSheet extends StatefulWidget {
 
 class _AddProviderSheetState extends State<_AddProviderSheet> {
   static const _navy = Color(0xFF1D3557);
-  static const _line = Color(0xFFDCE3EA);
+  static const _line = Color(0xFFE4E1D8);
 
   List<UserModel> _providers = [];
   UserModel? _selected;
@@ -608,7 +608,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
             const SizedBox(height: 4),
             const Text(
               'e.g. My Cardiologist, Family Doctor',
-              style: TextStyle(fontSize: 12, color: Color(0xFF55708A)),
+              style: TextStyle(fontSize: 12, color: Color(0xFF98917F)),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -626,7 +626,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet> {
                 : _providers.isEmpty
                     ? const Text(
                         'All providers are already in your care team.',
-                        style: TextStyle(color: Color(0xFF55708A)),
+                        style: TextStyle(color: Color(0xFF98917F)),
                       )
                     : DropdownButtonFormField<UserModel>(
                         value: _selected,

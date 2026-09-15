@@ -12,7 +12,7 @@ class TermsText extends StatelessWidget {
         text: const TextSpan(
           style: TextStyle(
             fontSize: 12,
-            color: Color(0xFF55708A),
+            color: Color(0xFF98917F),
             height: 1.4,
           ),
           children: [

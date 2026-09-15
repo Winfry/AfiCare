@@ -51,8 +51,8 @@ class _AvatarPickerSheet extends StatefulWidget {
 class _AvatarPickerSheetState extends State<_AvatarPickerSheet> {
   String? _selected;
 
-  static const _ink = Color(0xFF152A45);
-  static const _slate = Color(0xFF55708A);
+  static const _ink = Color(0xFF1B1B18);
+  static const _slate = Color(0xFF98917F);
 
   @override
   void initState() {
@@ -188,7 +188,7 @@ class _AvatarTileState extends State<_AvatarTile> {
   bool _hovered = false;
 
   static const _navy = Color(0xFF1D3557);
-  static const _line = Color(0xFFDCE3EA);
+  static const _line = Color(0xFFE4E1D8);
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +228,7 @@ class _AvatarTileState extends State<_AvatarTile> {
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFFE8EDF3),
                     child: const Icon(Icons.person,
-                        size: 32, color: Color(0xFF55708A)),
+                        size: 32, color: Color(0xFF98917F)),
                   ),
                 ),
                 // Checkmark overlay

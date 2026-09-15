@@ -142,7 +142,7 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
                 onTap: () => context.go('/login'),
                 child: RichText(
                   text: TextSpan(
-                    style: const TextStyle(fontSize: 13.5, color: Color(0xFF55708A)),
+                    style: const TextStyle(fontSize: 13.5, color: Color(0xFF98917F)),
                     children: [
                       const TextSpan(text: "Already have an account? "),
                       TextSpan(
@@ -183,7 +183,7 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: active ? _roleColor : const Color(0xFFDCE3EA),
+            color: active ? _roleColor : const Color(0xFFE4E1D8),
             width: active ? 1.5 : 1.5,
           ),
           color: active ? _roleColor.withOpacity(0.08) : Colors.white,
@@ -199,7 +199,7 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: active ? _roleColor : const Color(0xFF55708A),
+                  color: active ? _roleColor : const Color(0xFF98917F),
                 ),
               ),
             ),
@@ -288,7 +288,7 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
             Expanded(
               child: RichText(
                 text: const TextSpan(
-                  style: TextStyle(fontSize: 12.5, color: Color(0xFF55708A), height: 1.5),
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF98917F), height: 1.5),
                   children: [
                     TextSpan(text: 'I agree to the '),
                     TextSpan(

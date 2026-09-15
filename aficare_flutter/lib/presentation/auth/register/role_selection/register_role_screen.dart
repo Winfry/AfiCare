@@ -71,7 +71,7 @@ class RegisterRoleScreen extends StatelessWidget {
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Fraunces',
-                color: Color(0xFF152A45),
+                color: Color(0xFF1B1B18),
               ),
             ),
             const SizedBox(height: 20),

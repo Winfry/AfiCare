@@ -176,8 +176,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         icon = Icons.schedule;
         break;
       case AppointmentStatus.completed:
-        color = const Color(0xFF55708A);
-        bgColor = const Color(0xFFEEF2F7);
+        color = const Color(0xFF98917F);
+        bgColor = const Color(0xFFFAF9F6);
         label = 'COMPLETED';
         icon = Icons.done_all;
         break;
@@ -220,7 +220,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDCE3EA)),
+        border: Border.all(color: const Color(0xFFE4E1D8)),
       ),
       child: Row(
         children: [
@@ -236,7 +236,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 Text(label,
                     style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF55708A),
+                        color: Color(0xFF98917F),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5)),
                 const SizedBox(height: 4),
@@ -246,7 +246,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(subtitle,
-                      style: const TextStyle(color: Color(0xFF55708A))),
+                      style: const TextStyle(color: Color(0xFF98917F))),
                 ],
               ],
             ),
@@ -270,7 +270,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           const Text('REASON FOR VISIT',
               style: TextStyle(
                   fontSize: 11,
-                  color: Color(0xFF55708A),
+                  color: Color(0xFF98917F),
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5)),
           const SizedBox(height: 6),
@@ -299,7 +299,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDCE3EA)),
+        border: Border.all(color: const Color(0xFFE4E1D8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,7 +307,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           const Text('PROVIDER NOTES',
               style: TextStyle(
                   fontSize: 11,
-                  color: Color(0xFF55708A),
+                  color: Color(0xFF98917F),
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5)),
           const SizedBox(height: 8),

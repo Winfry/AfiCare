@@ -25,7 +25,7 @@ class DefaultAvatar {
     UserRole.doctor:     Color(0xFF1D3557),
     UserRole.nurse:      Color(0xFF2E7D32),
     UserRole.radiologist: Color(0xFF457B9D),
-    UserRole.admin:      Color(0xFF55708A),
+    UserRole.admin:      Color(0xFF98917F),
     UserRole.patient:    Color(0xFF1D3557),
   };
 
@@ -71,7 +71,7 @@ class DefaultAvatar {
   static Color foregroundColor(UserRole role) {
     final bg = backgroundColor(role);
     final luminance = bg.computeLuminance();
-    return luminance < 0.4 ? Colors.white : const Color(0xFF152A45);
+    return luminance < 0.4 ? Colors.white : const Color(0xFF1B1B18);
   }
 
   /// Short prefix for initials (e.g. "Dr" for doctors, "N" for nurses).

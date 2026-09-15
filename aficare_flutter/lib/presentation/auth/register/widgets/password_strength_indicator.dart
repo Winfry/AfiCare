@@ -22,13 +22,13 @@ class PasswordStrengthIndicator extends StatelessWidget {
   int get _level => password.isEmpty ? -1 : _score <= 1 ? 0 : _score <= 2 ? 1 : 2;
 
   Color _color(int index) {
-    if (password.isEmpty) return const Color(0xFFDCE3EA);
-    if (index > _level) return const Color(0xFFDCE3EA);
+    if (password.isEmpty) return const Color(0xFFE4E1D8);
+    if (index > _level) return const Color(0xFFE4E1D8);
     switch (_level) {
       case 0: return AppColors.clay;
       case 1: return const Color(0xFFFFA000);
       case 2: return AppColors.sage;
-      default: return const Color(0xFFDCE3EA);
+      default: return const Color(0xFFE4E1D8);
     }
   }
 
