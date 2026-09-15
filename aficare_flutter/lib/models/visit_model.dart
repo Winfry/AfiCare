@@ -11,6 +11,8 @@ class VisitModel {
   final DateTime statusChangedAt;
   final String? createdBy;
   final DateTime createdAt;
+  final String? payerType;
+  final String eligibilityStatus;
 
   VisitModel({
     required this.id,
@@ -25,6 +27,8 @@ class VisitModel {
     DateTime? statusChangedAt,
     this.createdBy,
     required this.createdAt,
+    this.payerType,
+    this.eligibilityStatus = 'pending',
   }) : statusChangedAt = statusChangedAt ?? occurredAt;
 
   factory VisitModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +47,8 @@ class VisitModel {
           : null,
       createdBy: json['created_by'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
+      payerType: json['payer_type'] as String?,
+      eligibilityStatus: json['eligibility_status'] as String? ?? 'pending',
     );
   }
 
@@ -60,6 +66,8 @@ class VisitModel {
       'status_changed_at': statusChangedAt.toIso8601String(),
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
+      'payer_type': payerType,
+      'eligibility_status': eligibilityStatus,
     };
   }
 }

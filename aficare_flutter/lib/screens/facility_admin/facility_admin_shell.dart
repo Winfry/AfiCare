@@ -11,6 +11,7 @@ import '../../providers/facility_admin_provider.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../theme/app_colors.dart';
+import 'billing_clearance_tab.dart';
 import 'opd_queue_tab.dart';
 import 'patients_tab.dart';
 
@@ -34,6 +35,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
     SidebarNavItem(icon: Icons.people_outline, label: 'Patients'),
     SidebarNavItem(icon: Icons.checklist_outlined, label: 'OPD Queue'),
+    SidebarNavItem(icon: Icons.receipt_long_outlined, label: 'Billing & Clearance'),
     SidebarNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     SidebarNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
@@ -43,6 +45,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     BottomNavItem(icon: Icons.dashboard_outlined, label: 'Overview'),
     BottomNavItem(icon: Icons.people_outline, label: 'Patients'),
     BottomNavItem(icon: Icons.checklist_outlined, label: 'OPD Queue'),
+    BottomNavItem(icon: Icons.receipt_long_outlined, label: 'Billing & Clearance'),
     BottomNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     BottomNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
@@ -64,6 +67,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         final patientProvider = context.read<FacilityPatientProvider>();
         patientProvider.loadFacilityPatients(facility.id);
         patientProvider.loadActiveVisits(facility.id);
+        patientProvider.loadClearanceVisits(facility.id);
       }
     });
   }
@@ -115,6 +119,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     _OverviewTab(facility: facility, onGoToPatients: _goToPatients),
                     PatientsTab(facility: facility),
                     OpdQueueTab(facility: facility),
+                    BillingClearanceTab(facility: facility),
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
                     _AppointmentsTab(facility: facility),

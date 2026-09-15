@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/clearance_row_model.dart';
 import '../models/facility_patient_model.dart';
 import '../models/queue_row_model.dart';
 import '../models/visit_model.dart';
@@ -18,6 +19,7 @@ class FacilityPatientProvider with ChangeNotifier {
   FacilityPatientModel? _selectedPatient;
   List<VisitModel> _selectedPatientVisits = [];
   List<QueueRowModel> _activeVisits = [];
+  List<ClearanceRowModel> _clearanceVisits = [];
   bool _isLoading = false;
   String? _error;
 
@@ -25,6 +27,7 @@ class FacilityPatientProvider with ChangeNotifier {
   FacilityPatientModel? get selectedPatient => _selectedPatient;
   List<VisitModel> get selectedPatientVisits => _selectedPatientVisits;
   List<QueueRowModel> get activeVisits => _activeVisits;
+  List<ClearanceRowModel> get clearanceVisits => _clearanceVisits;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -154,6 +157,83 @@ class FacilityPatientProvider with ChangeNotifier {
         'target_visit_id': visitId,
         'new_status': newStatus,
         'new_priority': newPriority,
+      });
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Loads today's Billing & Clearance ledger for the whole facility --
+  /// a flat list of today's visits (not restricted to queue-stage
+  /// statuses like loadActiveVisits), excluding cancelled. Every visit
+  /// already carries clearance state (eligibility_status defaults to
+  /// 'pending' -- see 022_billing_clearance.sql), so there is no
+  /// separate "add to billing" step. Same 2-query client-side join
+  /// pattern as loadActiveVisits.
+  Future<void> loadClearanceVisits(String facilityId) async {
+    _error = null;
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+
+      final rows = await _supabase
+          .from('visits')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .neq('status', 'cancelled')
+          .gte('occurred_at', todayStart)
+          .order('occurred_at', ascending: false)
+          .limit(300);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isEmpty) {
+        _clearanceVisits = [];
+        notifyListeners();
+        return;
+      }
+
+      final patientIds = {for (final r in list) r['facility_patient_id'] as String}.toList();
+      final patientRows = await _supabase
+          .from('facility_patients')
+          .select('id, full_name, file_number')
+          .inFilter('id', patientIds);
+
+      final patientById = <String, Map<String, dynamic>>{
+        for (final p in (patientRows as List)) p['id'] as String: p as Map<String, dynamic>,
+      };
+
+      _clearanceVisits = list.map((v) {
+        final p = patientById[v['facility_patient_id']];
+        return ClearanceRowModel.fromVisitJson(
+          v,
+          patientName: p?['full_name'] as String?,
+          patientFileNumber: p?['file_number'] as String?,
+        );
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Sets payer/eligibility on a visit via the checked RPC
+  /// (022_billing_clearance.sql) -- deliberately does not reload here,
+  /// same convention as updateVisitStatus (the Billing & Clearance
+  /// screen calls loadClearanceVisits itself right after).
+  Future<bool> updateVisitClearance({
+    required String visitId,
+    String? newPayerType,
+    String? newEligibilityStatus,
+  }) async {
+    try {
+      await _supabase.rpc('facility_admin_update_visit_clearance', params: {
+        'target_visit_id': visitId,
+        'new_payer_type': newPayerType,
+        'new_eligibility_status': newEligibilityStatus,
       });
       return true;
     } catch (e) {
