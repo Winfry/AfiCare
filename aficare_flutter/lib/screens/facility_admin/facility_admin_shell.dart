@@ -84,6 +84,10 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     }
   }
 
+  void _goToQueue() => setState(() => _currentIndex = 2);
+
+  void _goToBilling() => setState(() => _currentIndex = 3);
+
   @override
   Widget build(BuildContext context) {
     final facilityAdmin = context.watch<FacilityAdminProvider>();
@@ -116,7 +120,12 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
               : IndexedStack(
                   index: _currentIndex,
                   children: [
-                    _OverviewTab(facility: facility, onGoToPatients: _goToPatients),
+                    _OverviewTab(
+                      facility: facility,
+                      onGoToPatients: _goToPatients,
+                      onGoToQueue: _goToQueue,
+                      onGoToBilling: _goToBilling,
+                    ),
                     PatientsTab(facility: facility),
                     OpdQueueTab(facility: facility),
                     BillingClearanceTab(facility: facility),
@@ -130,9 +139,16 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
 }
 
 class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.facility, required this.onGoToPatients});
+  const _OverviewTab({
+    required this.facility,
+    required this.onGoToPatients,
+    required this.onGoToQueue,
+    required this.onGoToBilling,
+  });
   final FacilityModel facility;
   final void Function({String? searchTerm}) onGoToPatients;
+  final VoidCallback onGoToQueue;
+  final VoidCallback onGoToBilling;
 
   static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   static const _months = [
@@ -155,15 +171,12 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final patientProvider = context.watch<FacilityPatientProvider>();
-    final adminProvider = context.watch<AdminFacilityProvider>();
     final authProvider = context.watch<AuthProvider>();
     final firstName = authProvider.currentUser?.fullName.split(' ').first ?? 'there';
     final now = DateTime.now();
     final registeredToday = patientProvider.patients
         .where((p) => p.createdAt.year == now.year && p.createdAt.month == now.month && p.createdAt.day == now.day)
         .length;
-    final pendingAppointments = adminProvider.facilityAppointments.where((a) => a['status'] == 'pending').length;
-    final confirmedAppointments = adminProvider.facilityAppointments.where((a) => a['status'] == 'confirmed').length;
     final searchCtl = TextEditingController();
 
     return SingleChildScrollView(
@@ -225,28 +238,27 @@ class _OverviewTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
+          // KPI row -- 4 real, currently-computable metrics. Bed occupancy
+          // and Pending lab results (from the target mockup) are
+          // deliberately NOT shown here: both need Wards/Admissions and
+          // Laboratory tables that don't exist in this schema yet (future
+          // roadmap steps per facility_admin_hms_pivot memory) -- faking
+          // those numbers would break the real-data-only discipline this
+          // whole facility-admin build has followed.
           FutureBuilder<Map<String, int>>(
             future: context.read<AdminFacilityProvider>().getFacilityStats(facility.id),
             builder: (context, snapshot) {
               final stats = snapshot.data ?? const {'providers': 0, 'departments': 0};
+              final queueActive = patientProvider.activeVisits.where((v) => v.status != 'completed').length;
+              final pendingClearance = patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').length;
               return Row(
                 children: [
                   Expanded(
                     child: _kpiCard(
                       context,
-                      label: 'Patients',
-                      value: '${patientProvider.patients.length}',
-                      delta: registeredToday > 0 ? '+$registeredToday today' : 'No new patients today',
-                      deltaColor: registeredToday > 0 ? AppColors.sage : AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _kpiCard(
-                      context,
-                      label: 'Registered Today',
+                      label: 'Patients Today',
                       value: '$registeredToday',
-                      delta: 'of ${patientProvider.patients.length} total',
+                      delta: 'of ${patientProvider.patients.length} total records',
                       deltaColor: AppColors.textMuted,
                     ),
                   ),
@@ -254,10 +266,20 @@ class _OverviewTab extends StatelessWidget {
                   Expanded(
                     child: _kpiCard(
                       context,
-                      label: 'Pending Appointments',
-                      value: '$pendingAppointments',
-                      delta: '$confirmedAppointments confirmed',
-                      deltaColor: AppColors.steel,
+                      label: 'OPD Queue Active',
+                      value: '$queueActive',
+                      delta: 'waiting, triage or with doctor',
+                      deltaColor: AppColors.marigoldDark,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kpiCard(
+                      context,
+                      label: 'Pending Clearance',
+                      value: '$pendingClearance',
+                      delta: pendingClearance > 0 ? 'SHA / insurance verification' : 'All clear',
+                      deltaColor: pendingClearance > 0 ? AppColors.clay : AppColors.sage,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -283,41 +305,54 @@ class _OverviewTab extends StatelessWidget {
                   flex: 3,
                   child: _overviewCard(
                     context,
-                    title: 'Recent Appointments',
-                    child: adminProvider.facilityAppointments.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text('No appointments yet', style: Theme.of(context).textTheme.bodySmall),
-                          )
-                        : Column(
-                            children: adminProvider.facilityAppointments.take(5).map((a) {
-                              final status = a['status'] as String? ?? 'pending';
-                              final color = switch (status) {
-                                'confirmed' => AppColors.sage,
-                                'completed' => AppColors.primaryNavy,
-                                'cancelled' => AppColors.clay,
-                                _ => AppColors.marigoldDark,
-                              };
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(a['patient_name'] as String? ?? 'Unknown', style: Theme.of(context).textTheme.titleSmall),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                                      child: Text(
-                                        status,
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  ],
+                    title: 'OPD Queue — Live',
+                    action: GestureDetector(
+                      onTap: onGoToQueue,
+                      child: Text('View full queue →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+                    ),
+                    child: () {
+                      final queueRows = patientProvider.activeVisits.where((v) => v.status != 'completed').take(3).toList();
+                      if (queueRows.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text('No one in the queue right now', style: Theme.of(context).textTheme.bodySmall),
+                        );
+                      }
+                      return Column(
+                        children: queueRows.map((v) {
+                          final stageColor = switch (v.status) {
+                            'waiting' => AppColors.marigoldDark,
+                            'triage' => AppColors.steel,
+                            'in_consultation' => AppColors.adminColor,
+                            _ => AppColors.steel,
+                          };
+                          final stageLabel = switch (v.status) {
+                            'waiting' => 'Waiting',
+                            'triage' => 'Triage',
+                            'in_consultation' => 'With Doctor',
+                            _ => v.status,
+                          };
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(v.patientName, style: Theme.of(context).textTheme.titleSmall),
                                 ),
-                              );
-                            }).toList(),
-                          ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                  decoration: BoxDecoration(color: stageColor.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                                  child: Text(
+                                    stageLabel,
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: stageColor, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }(),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -325,35 +360,34 @@ class _OverviewTab extends StatelessWidget {
                   flex: 2,
                   child: _overviewCard(
                     context,
-                    title: 'Recent Patients',
-                    child: patientProvider.patients.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text('No patients registered yet', style: Theme.of(context).textTheme.bodySmall),
-                          )
-                        : Column(
-                            children: patientProvider.patients.take(5).map((p) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 14,
-                                      backgroundColor: AppColors.tintNavyBg,
-                                      child: Text(
-                                        p.fullName.isNotEmpty ? p.fullName[0].toUpperCase() : '?',
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.tintNavyFg, fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(p.fullName, style: Theme.of(context).textTheme.titleSmall),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
+                    title: 'Alerts',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(
+                            patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty
+                                ? Icons.check_circle_outline
+                                : Icons.receipt_long_outlined,
+                            size: 18,
+                            color: patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty ? AppColors.sage : AppColors.clay,
                           ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty
+                                  ? 'No visits pending clearance'
+                                  : '${patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').length} visits pending SHA/insurance clearance',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: onGoToBilling,
+                            child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],

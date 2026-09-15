@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/clearance_row_model.dart';
 import '../models/facility_patient_model.dart';
+import '../models/patient_appointment_row_model.dart';
 import '../models/queue_row_model.dart';
 import '../models/visit_model.dart';
 
@@ -18,6 +19,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<FacilityPatientModel> _patients = [];
   FacilityPatientModel? _selectedPatient;
   List<VisitModel> _selectedPatientVisits = [];
+  List<PatientAppointmentRowModel> _selectedPatientAppointments = [];
   List<QueueRowModel> _activeVisits = [];
   List<ClearanceRowModel> _clearanceVisits = [];
   bool _isLoading = false;
@@ -26,6 +28,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<FacilityPatientModel> get patients => _patients;
   FacilityPatientModel? get selectedPatient => _selectedPatient;
   List<VisitModel> get selectedPatientVisits => _selectedPatientVisits;
+  List<PatientAppointmentRowModel> get selectedPatientAppointments => _selectedPatientAppointments;
   List<QueueRowModel> get activeVisits => _activeVisits;
   List<ClearanceRowModel> get clearanceVisits => _clearanceVisits;
   bool get isLoading => _isLoading;
@@ -80,7 +83,61 @@ class FacilityPatientProvider with ChangeNotifier {
   void clearSelectedPatient() {
     _selectedPatient = null;
     _selectedPatientVisits = [];
+    _selectedPatientAppointments = [];
     notifyListeners();
+  }
+
+  /// Loads one patient's appointment history via the `appointments` table
+  /// (the app-account booking system) -- entirely separate from
+  /// `visits` (the facility-local walk-in log). Only works when this
+  /// facility_patient is linked to a real AfiCare account
+  /// (`linkedUserId` non-null); nothing in the app populates that link
+  /// yet (see 020_facility_patients_and_visits.sql's header comment), so
+  /// for virtually every patient today this returns an empty list
+  /// without querying -- deliberately called lazily (only when the
+  /// Appointments sub-tab is opened), not chained into loadPatientDetail,
+  /// so that near-universal null case never fires a wasted round trip.
+  Future<void> loadPatientAppointments(String facilityId, String? linkedUserId) async {
+    if (linkedUserId == null) {
+      _selectedPatientAppointments = [];
+      notifyListeners();
+      return;
+    }
+    _error = null;
+    try {
+      final rows = await _supabase
+          .from('appointments')
+          .select('id, provider_id, scheduled_at, status')
+          .eq('patient_id', linkedUserId)
+          .eq('facility_id', facilityId)
+          .order('scheduled_at', ascending: false)
+          .limit(100);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isEmpty) {
+        _selectedPatientAppointments = [];
+        notifyListeners();
+        return;
+      }
+
+      final providerIds = {for (final r in list) r['provider_id'] as String}.toList();
+      final providerRows = await _supabase
+          .from('users')
+          .select('id, full_name')
+          .inFilter('id', providerIds);
+
+      final nameById = <String, String>{
+        for (final u in (providerRows as List)) (u as Map<String, dynamic>)['id'] as String: u['full_name'] as String? ?? 'Unknown',
+      };
+
+      _selectedPatientAppointments = list
+          .map((r) => PatientAppointmentRowModel.fromJson(r, providerName: nameById[r['provider_id']]))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
   /// Loads today's active OPD Queue board for the whole facility --
@@ -296,6 +353,10 @@ class FacilityPatientProvider with ChangeNotifier {
     String? providerId,
     String? status,
     String? priority,
+    int? bpSystolic,
+    int? bpDiastolic,
+    double? weightKg,
+    double? temperatureC,
   }) async {
     try {
       await _supabase.rpc('facility_admin_register_visit', params: {
@@ -305,6 +366,10 @@ class FacilityPatientProvider with ChangeNotifier {
         'visit_provider_id': providerId,
         'visit_status': status,
         'visit_priority': priority,
+        'visit_bp_systolic': bpSystolic,
+        'visit_bp_diastolic': bpDiastolic,
+        'visit_weight_kg': weightKg,
+        'visit_temperature_c': temperatureC,
       });
 
       await loadPatientDetail(facilityPatientId);

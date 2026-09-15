@@ -13,6 +13,10 @@ class VisitModel {
   final DateTime createdAt;
   final String? payerType;
   final String eligibilityStatus;
+  final int? bpSystolic;
+  final int? bpDiastolic;
+  final double? weightKg;
+  final double? temperatureC;
 
   VisitModel({
     required this.id,
@@ -29,6 +33,10 @@ class VisitModel {
     required this.createdAt,
     this.payerType,
     this.eligibilityStatus = 'pending',
+    this.bpSystolic,
+    this.bpDiastolic,
+    this.weightKg,
+    this.temperatureC,
   }) : statusChangedAt = statusChangedAt ?? occurredAt;
 
   factory VisitModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +57,10 @@ class VisitModel {
       createdAt: DateTime.parse(json['created_at'] as String),
       payerType: json['payer_type'] as String?,
       eligibilityStatus: json['eligibility_status'] as String? ?? 'pending',
+      bpSystolic: json['bp_systolic'] as int?,
+      bpDiastolic: json['bp_diastolic'] as int?,
+      weightKg: (json['weight_kg'] as num?)?.toDouble(),
+      temperatureC: (json['temperature_c'] as num?)?.toDouble(),
     );
   }
 
@@ -68,6 +80,10 @@ class VisitModel {
       'created_at': createdAt.toIso8601String(),
       'payer_type': payerType,
       'eligibility_status': eligibilityStatus,
+      'bp_systolic': bpSystolic,
+      'bp_diastolic': bpDiastolic,
+      'weight_kg': weightKg,
+      'temperature_c': temperatureC,
     };
   }
 }

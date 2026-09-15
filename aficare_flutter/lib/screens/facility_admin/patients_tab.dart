@@ -240,7 +240,12 @@ class _PatientsTabState extends State<PatientsTab> {
                 Expanded(
                   child: _selectedPatientId == null
                       ? Center(child: Text('Select a patient', style: Theme.of(context).textTheme.bodyMedium))
-                      : _PatientDetail(facilityPatientId: _selectedPatientId!, initials: _initials),
+                      : _PatientDetail(
+                          key: ValueKey(_selectedPatientId),
+                          facilityPatientId: _selectedPatientId!,
+                          initials: _initials,
+                          facilityId: widget.facility.id,
+                        ),
                 ),
               ],
             ),
@@ -275,17 +280,61 @@ class _PatientsTabState extends State<PatientsTab> {
 
 }
 
-class _PatientDetail extends StatelessWidget {
-  const _PatientDetail({required this.facilityPatientId, required this.initials});
+const _payerLabel = {
+  'sha': 'SHA',
+  'insurance': 'Insurance',
+  'cash': 'Cash',
+};
+
+const _payerColor = {
+  'sha': AppColors.adminColor,
+  'insurance': AppColors.primaryNavy,
+  'cash': AppColors.steel,
+};
+
+const _eligibilityLabel = {
+  'pending': 'Pending',
+  'verified': 'Verified',
+  'rejected': 'Rejected',
+};
+
+const _eligibilityColor = {
+  'pending': AppColors.marigoldDark,
+  'verified': AppColors.tintSuccessFg,
+  'rejected': AppColors.tintUrgentFg,
+};
+
+enum _DetailTab { overview, appointments, billing }
+
+class _PatientDetail extends StatefulWidget {
+  const _PatientDetail({super.key, required this.facilityPatientId, required this.initials, required this.facilityId});
   final String facilityPatientId;
   final String Function(String) initials;
+  final String facilityId;
+
+  @override
+  State<_PatientDetail> createState() => _PatientDetailState();
+}
+
+class _PatientDetailState extends State<_PatientDetail> {
+  _DetailTab _tab = _DetailTab.overview;
+  bool _appointmentsLoaded = false;
+
+  void _selectTab(_DetailTab tab) {
+    setState(() => _tab = tab);
+    if (tab == _DetailTab.appointments && !_appointmentsLoaded) {
+      _appointmentsLoaded = true;
+      final provider = context.read<FacilityPatientProvider>();
+      provider.loadPatientAppointments(widget.facilityId, provider.selectedPatient?.linkedUserId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FacilityPatientProvider>();
     final patient = provider.selectedPatient;
 
-    if (patient == null || patient.id != facilityPatientId) {
+    if (patient == null || patient.id != widget.facilityPatientId) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -308,7 +357,7 @@ class _PatientDetail extends StatelessWidget {
                   radius: 28,
                   backgroundColor: AppColors.tintNavyBg,
                   child: Text(
-                    initials(patient.fullName),
+                    widget.initials(patient.fullName),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -379,71 +428,314 @@ class _PatientDetail extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Recent Visits', style: Theme.of(context).textTheme.titleLarge),
-              OutlinedButton.icon(
-                onPressed: () => _showRegisterVisitDialog(context, facilityPatientId),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Register Visit'),
-              ),
+              _tabButton(context, 'Overview', _DetailTab.overview),
+              const SizedBox(width: 8),
+              _tabButton(context, 'Appointments', _DetailTab.appointments),
+              const SizedBox(width: 8),
+              _tabButton(context, 'Billing & Clearance', _DetailTab.billing),
             ],
           ),
-          const SizedBox(height: 10),
-          provider.selectedPatientVisits.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('No visits recorded yet', style: Theme.of(context).textTheme.bodySmall),
-                )
-              : Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.borderSubtle),
-                    boxShadow: _cardShadow,
-                  ),
+          const SizedBox(height: 16),
+          switch (_tab) {
+            _DetailTab.overview => _overviewPanel(context, provider),
+            _DetailTab.appointments => _appointmentsPanel(context, provider),
+            _DetailTab.billing => _billingPanel(context, provider),
+          },
+        ],
+      ),
+    );
+  }
+
+  Widget _tabButton(BuildContext context, String label, _DetailTab value) {
+    final selected = _tab == value;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => _selectTab(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.tintNavyBg : AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? Colors.transparent : AppColors.borderSubtle),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: selected ? AppColors.tintNavyFg : AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ),
+    );
+  }
+
+  Widget _overviewPanel(BuildContext context, FacilityPatientProvider provider) {
+    final visits = provider.selectedPatientVisits;
+    final latest = visits.isNotEmpty ? visits.first : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _vitalBox(
+                context,
+                'Blood pressure',
+                latest == null || latest.bpSystolic == null || latest.bpDiastolic == null
+                    ? '—'
+                    : '${latest.bpSystolic}/${latest.bpDiastolic}',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _vitalBox(context, 'Weight', latest?.weightKg == null ? '—' : '${latest!.weightKg} kg'),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _vitalBox(context, 'Temp', latest?.temperatureC == null ? '—' : '${latest!.temperatureC}°C'),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _vitalBox(context, 'Last visit', latest == null ? '—' : _formatDate(latest.occurredAt)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Recent Visits', style: Theme.of(context).textTheme.titleLarge),
+            OutlinedButton.icon(
+              onPressed: () => _showRegisterVisitDialog(context, widget.facilityPatientId),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Register Visit'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        visits.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('No visits recorded yet', style: Theme.of(context).textTheme.bodySmall),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.borderSubtle),
+                  boxShadow: _cardShadow,
+                ),
+                child: Column(
+                  children: visits.asMap().entries.map((entry) {
+                    final isLast = entry.key == visits.length - 1;
+                    final v = entry.value;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: isLast ? null : Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(top: 5),
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(color: AppColors.primaryNavy, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  v.chiefComplaint?.isNotEmpty == true ? v.chiefComplaint! : 'Visit',
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(_formatDateTime(v.occurredAt), style: Theme.of(context).textTheme.labelSmall),
+                              ],
+                            ),
+                          ),
+                          _statusChip(context, v.status),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+        const SizedBox(height: 10),
+        Text(
+          'Full clinical detail (diagnosis, prescriptions, lab orders) lives in the provider\'s EMR view, not here.',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontStyle: FontStyle.italic, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+
+  Widget _vitalBox(BuildContext context, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: _cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: 4),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
+
+  Widget _appointmentsPanel(BuildContext context, FacilityPatientProvider provider) {
+    final linkedUserId = provider.selectedPatient?.linkedUserId;
+    final appointments = provider.selectedPatientAppointments;
+
+    if (linkedUserId == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          'No linked AfiCare account — appointments booked through the app aren\'t available for this patient yet.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      );
+    }
+
+    if (appointments.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text('No appointments booked yet.', style: Theme.of(context).textTheme.bodySmall),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: _cardShadow,
+      ),
+      child: Column(
+        children: appointments.asMap().entries.map((entry) {
+          final isLast = entry.key == appointments.length - 1;
+          final a = entry.value;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              border: isLast ? null : Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
                   child: Column(
-                    children: provider.selectedPatientVisits.asMap().entries.map((entry) {
-                      final isLast = entry.key == provider.selectedPatientVisits.length - 1;
-                      final v = entry.value;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          border: isLast ? null : Border(bottom: BorderSide(color: AppColors.borderSubtle)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(top: 5),
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(color: AppColors.primaryNavy, shape: BoxShape.circle),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    v.chiefComplaint?.isNotEmpty == true ? v.chiefComplaint! : 'Visit',
-                                    style: Theme.of(context).textTheme.titleSmall,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(_formatDateTime(v.occurredAt), style: Theme.of(context).textTheme.labelSmall),
-                                ],
-                              ),
-                            ),
-                            _statusChip(context, v.status),
-                          ],
-                        ),
-                      );
-                    }).toList(),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_formatDateTime(a.scheduledAt), style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 2),
+                      Text('with ${a.providerName}', style: Theme.of(context).textTheme.labelSmall),
+                    ],
                   ),
                 ),
-        ],
+                _appointmentStatusChip(context, a.status),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _appointmentStatusChip(BuildContext context, String status) {
+    final color = switch (status) {
+      'confirmed' => const Color(0xFF43A047),
+      'completed' => const Color(0xFF1D3557),
+      'cancelled' => const Color(0xFFE53935),
+      _ => const Color(0xFFFB8C00),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status.isEmpty ? status : status[0].toUpperCase() + status.substring(1),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _billingPanel(BuildContext context, FacilityPatientProvider provider) {
+    final visits = provider.selectedPatientVisits;
+
+    if (visits.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text('No visits recorded yet', style: Theme.of(context).textTheme.bodySmall),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: _cardShadow,
+      ),
+      child: Column(
+        children: visits.asMap().entries.map((entry) {
+          final isLast = entry.key == visits.length - 1;
+          final v = entry.value;
+          final payer = v.payerType;
+          final eligibility = v.eligibilityStatus;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              border: isLast ? null : Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        v.chiefComplaint?.isNotEmpty == true ? v.chiefComplaint! : 'Visit',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(_formatDateTime(v.occurredAt), style: Theme.of(context).textTheme.labelSmall),
+                    ],
+                  ),
+                ),
+                _chip(context, payer != null ? _payerLabel[payer] ?? payer : 'No payer', payer != null ? _payerColor[payer] ?? AppColors.steel : AppColors.steel),
+                const SizedBox(width: 6),
+                _chip(context, _eligibilityLabel[eligibility] ?? eligibility, _eligibilityColor[eligibility] ?? AppColors.steel),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _chip(BuildContext context, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -464,6 +756,8 @@ class _PatientDetail extends StatelessWidget {
   String _formatDateTime(DateTime dt) =>
       '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+  String _formatDate(DateTime dt) => '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
   Widget _statusChip(BuildContext context, String status) {
     final color = switch (status) {
@@ -489,6 +783,10 @@ class _PatientDetail extends StatelessWidget {
   void _showRegisterVisitDialog(BuildContext context, String facilityPatientId) {
     final complaintCtl = TextEditingController();
     final notesCtl = TextEditingController();
+    final systolicCtl = TextEditingController();
+    final diastolicCtl = TextEditingController();
+    final weightCtl = TextEditingController();
+    final tempCtl = TextEditingController();
     var submitting = false;
 
     showDialog(
@@ -497,20 +795,65 @@ class _PatientDetail extends StatelessWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           title: const Text('Register Visit'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: complaintCtl,
-                decoration: const InputDecoration(labelText: 'Chief Complaint', isDense: true),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: notesCtl,
-                decoration: const InputDecoration(labelText: 'Notes', isDense: true),
-                maxLines: 2,
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: complaintCtl,
+                  decoration: const InputDecoration(labelText: 'Chief Complaint', isDense: true),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesCtl,
+                  decoration: const InputDecoration(labelText: 'Notes', isDense: true),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                Text('Vitals (optional)', style: Theme.of(ctx).textTheme.labelLarge),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: systolicCtl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'BP Systolic', isDense: true),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: diastolicCtl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'BP Diastolic', isDense: true),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: weightCtl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(labelText: 'Weight (kg)', isDense: true),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: tempCtl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(labelText: 'Temp (°C)', isDense: true),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -527,6 +870,10 @@ class _PatientDetail extends StatelessWidget {
                         facilityPatientId: facilityPatientId,
                         chiefComplaint: complaintCtl.text.trim().isEmpty ? null : complaintCtl.text.trim(),
                         notes: notesCtl.text.trim().isEmpty ? null : notesCtl.text.trim(),
+                        bpSystolic: int.tryParse(systolicCtl.text.trim()),
+                        bpDiastolic: int.tryParse(diastolicCtl.text.trim()),
+                        weightKg: double.tryParse(weightCtl.text.trim()),
+                        temperatureC: double.tryParse(tempCtl.text.trim()),
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (context.mounted) {
