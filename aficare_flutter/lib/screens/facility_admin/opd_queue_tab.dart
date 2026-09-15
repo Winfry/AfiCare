@@ -11,8 +11,8 @@ import '../../theme/app_colors.dart';
 import '../../widgets/register_patient_dialog.dart';
 
 const _cardShadow = [
-  BoxShadow(color: Color(0x0D0D1B2A), blurRadius: 2, offset: Offset(0, 1)),
-  BoxShadow(color: Color(0x0F0D1B2A), blurRadius: 18, offset: Offset(0, 6)),
+  BoxShadow(color: Color(0x0D1B1B18), blurRadius: 2, offset: Offset(0, 1)),
+  BoxShadow(color: Color(0x0F1B1B18), blurRadius: 18, offset: Offset(0, 6)),
 ];
 
 const _stageLabel = {

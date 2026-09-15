@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 class AfiCareTheme {
   AfiCareTheme._();
 
-  // ─── Color Palette (Navy Blue Hybrid) ───────────────────────────────
+  // ─── Color Palette (Warm Navy Hybrid) ────────────────────────────────
   // Core brand
-  static const Color ink = Color(0xFF0D1B2A);        // Near-black navy (primary text)
+  static const Color ink = Color(0xFF1B1B18);         // Warm near-black (primary text)
   static const Color canopy = Color(0xFF1D3557);      // Navy Blue (primary brand)
   static const Color canopy2 = Color(0xFF264A73);     // Medium navy (hover/secondary)
   static const Color canopyDark = Color(0xFF152A45);  // Deep navy (dark surfaces)
@@ -20,13 +20,13 @@ class AfiCareTheme {
   static const Color sage = Color(0xFF7FA98D);        // Muted sage (positive indicators)
 
   // Surfaces
-  static const Color mist = Color(0xFFF1F4F8);        // Light blue-grey (app background)
-  static const Color paper = Color(0xFFFBFCFD);       // Cool white (page background)
+  static const Color mist = Color(0xFFF4F3EF);        // Warm cream (app background)
+  static const Color paper = Color(0xFFFAF9F6);       // Warm off-white (page background)
   static const Color white = Color(0xFFFFFFFF);       // Pure white (cards)
 
   // Text
-  static const Color slate = Color(0xFF5B6B7B);       // Blue-grey (secondary text)
-  static const Color line = Color(0xFFDCE3ED);        // Light blue-grey (borders)
+  static const Color slate = Color(0xFF5A564E);       // Warm grey (secondary text)
+  static const Color line = Color(0xFFE4E1D8);        // Warm beige (borders)
 
   // Backward-compat aliases (old code references these)
   static const Color primaryGreen = canopy;

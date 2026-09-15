@@ -60,23 +60,23 @@ class AppColors {
   static const Color steelBg    = Color(0xFFE6EDF4);
 
   // ── Text hierarchy ──────────────────────────────────────────────────
-  static const Color textPrimary   = Color(0xFF152A45);
-  static const Color textSecondary = Color(0xFF445566);
-  static const Color textMuted     = Color(0xFF55708A);
+  static const Color textPrimary   = Color(0xFF1B1B18);
+  static const Color textSecondary = Color(0xFF5A564E);
+  static const Color textMuted     = Color(0xFF98917F);
   static const Color textInverse   = Color(0xFFFFFFFF);
   static const Color textOnCanopy  = Color(0xFFFFFFFF);
 
   // ── Surfaces (light theme) ──────────────────────────────────────────
-  static const Color pageBackground = Color(0xFFF8FAFC);
+  static const Color pageBackground = Color(0xFFF4F3EF);
   static const Color cardBackground = Color(0xFFFFFFFF);
-  static const Color mistBackground = Color(0xFFEEF2F7);
+  static const Color mistBackground = Color(0xFFFAF9F6);
   static const Color overlay        = Color(0xCC000000);
-  static const Color shadow         = Color(0x1A152A45);
+  static const Color shadow         = Color(0x1A1B1B18);
 
   // ── Input / form ────────────────────────────────────────────────────
-  static const Color inputFill     = Color(0xFFF5F5F5);
+  static const Color inputFill     = Color(0xFFFAF9F6);
   static const Color inputFillDark = Color(0xFF1E2D42);
-  static const Color borderSubtle  = Color(0xFFDCE3EA);
+  static const Color borderSubtle  = Color(0xFFE4E1D8);
 
   // ── Dark theme surfaces ─────────────────────────────────────────────
   static const Color darkAppBar    = Color(0xFF212121);
