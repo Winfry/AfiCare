@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/facility_patient_model.dart';
+import '../models/queue_row_model.dart';
 import '../models/visit_model.dart';
 
 /// Facility-local patient register and visit history — step 1 of the
@@ -16,14 +17,14 @@ class FacilityPatientProvider with ChangeNotifier {
   List<FacilityPatientModel> _patients = [];
   FacilityPatientModel? _selectedPatient;
   List<VisitModel> _selectedPatientVisits = [];
-  List<Map<String, dynamic>> _activeVisits = [];
+  List<QueueRowModel> _activeVisits = [];
   bool _isLoading = false;
   String? _error;
 
   List<FacilityPatientModel> get patients => _patients;
   FacilityPatientModel? get selectedPatient => _selectedPatient;
   List<VisitModel> get selectedPatientVisits => _selectedPatientVisits;
-  List<Map<String, dynamic>> get activeVisits => _activeVisits;
+  List<QueueRowModel> get activeVisits => _activeVisits;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -125,11 +126,11 @@ class FacilityPatientProvider with ChangeNotifier {
 
       _activeVisits = list.map((v) {
         final p = patientById[v['facility_patient_id']];
-        return {
-          ...v,
-          'patient_name': p?['full_name'] ?? 'Unknown',
-          'patient_file_number': p?['file_number'],
-        };
+        return QueueRowModel.fromVisitJson(
+          v,
+          patientName: p?['full_name'] as String?,
+          patientFileNumber: p?['file_number'] as String?,
+        );
       }).toList();
       notifyListeners();
     } catch (e) {

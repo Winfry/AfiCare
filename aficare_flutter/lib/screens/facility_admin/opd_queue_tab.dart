@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/facility_model.dart';
 import '../../models/facility_patient_model.dart';
+import '../../models/queue_row_model.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/register_patient_dialog.dart';
@@ -97,12 +98,12 @@ class _OpdQueueTabState extends State<OpdQueueTab> {
     final provider = context.watch<FacilityPatientProvider>();
     final visits = provider.activeVisits;
 
-    final waiting = visits.where((v) => v['status'] == 'waiting').length;
-    final triage = visits.where((v) => v['status'] == 'triage').length;
-    final withDoctor = visits.where((v) => v['status'] == 'in_consultation').length;
-    final completed = visits.where((v) => v['status'] == 'completed').length;
+    final waiting = visits.where((v) => v.status == 'waiting').length;
+    final triage = visits.where((v) => v.status == 'triage').length;
+    final withDoctor = visits.where((v) => v.status == 'in_consultation').length;
+    final completed = visits.where((v) => v.status == 'completed').length;
 
-    final queueList = visits.where((v) => v['status'] != 'completed').toList();
+    final queueList = visits.where((v) => v.status != 'completed').toList();
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -177,14 +178,14 @@ class _OpdQueueTabState extends State<OpdQueueTab> {
     );
   }
 
-  Widget _queueRow(BuildContext context, Map<String, dynamic> v) {
-    final status = v['status'] as String? ?? 'waiting';
-    final priority = v['priority'] as String? ?? 'routine';
-    final name = v['patient_name'] as String? ?? 'Unknown';
-    final fileNumber = v['patient_file_number'] as String?;
-    final complaint = v['chief_complaint'] as String?;
-    final statusChangedAt = DateTime.parse(v['status_changed_at'] as String);
-    final visitId = v['id'] as String;
+  Widget _queueRow(BuildContext context, QueueRowModel v) {
+    final status = v.status;
+    final priority = v.priority;
+    final name = v.patientName;
+    final fileNumber = v.patientFileNumber;
+    final complaint = v.chiefComplaint;
+    final statusChangedAt = v.statusChangedAt;
+    final visitId = v.visitId;
     final facilityId = widget.facility.id;
 
     return Container(
