@@ -141,13 +141,16 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
-    final mutedColor = isDark ? const Color(0xFFB7C2CC) : AppColors.textMuted;
+    // The sidebar is always the dark-navy brand rail regardless of `isDark`
+    // (which only affects the main content area) -- matches the target
+    // workspace design's permanent dark sidebar, not a togglable dark mode.
+    const borderColor = Colors.white24;
+    const groupLabelColor = Color(0xFF8AA0BC);
 
     return Container(
       width: 236,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkAppBar : Colors.white,
+      decoration: const BoxDecoration(
+        color: AppColors.deepNavy,
         border: Border(right: BorderSide(color: borderColor)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
@@ -160,11 +163,11 @@ class _Sidebar extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              children: _buildNavTiles(mutedColor),
+              children: _buildNavTiles(groupLabelColor),
             ),
           ),
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: borderColor)),
             ),
             padding: const EdgeInsets.only(top: 10),
@@ -173,14 +176,13 @@ class _Sidebar extends StatelessWidget {
               label: 'Log out',
               selected: false,
               onTap: onLogout ?? () {},
-              isDark: isDark,
             ),
           ),
         ],
       ),
     );
   }
-  List<Widget> _buildNavTiles(Color mutedColor) {
+  List<Widget> _buildNavTiles(Color groupLabelColor) {
     final tiles = <Widget>[];
     var navIndex = -1;
     for (final entry in entries) {
@@ -193,7 +195,7 @@ class _Sidebar extends StatelessWidget {
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
               letterSpacing: .8,
-              color: mutedColor,
+              color: groupLabelColor,
             ),
           ),
         ));
@@ -204,7 +206,6 @@ class _Sidebar extends StatelessWidget {
           label: entry.label,
           selected: idx == selectedIndex,
           onTap: () => onSelect?.call(idx),
-          isDark: isDark,
         ));
       }
     }
@@ -218,20 +219,23 @@ class _SidebarTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.isDark = false,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final bool isDark;
+
+  // Always the light-on-navy palette -- the sidebar itself is permanently
+  // dark, not a light/dark togglable surface (see _Sidebar.build).
+  static const _activeColor = AppColors.adminColor; // accent purple: only
+  // this stands out against the navy sidebar bg -- the previous navy
+  // active-pill relied on contrast with a WHITE sidebar and would vanish
+  // here.
+  static const _mutedColor = Color(0xFFD6DFEA);
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = Theme.of(context).colorScheme.primary;
-    final mutedColor = isDark ? const Color(0xFFB7C2CC) : AppColors.textMuted;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
@@ -239,41 +243,26 @@ class _SidebarTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: onTap,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              if (selected)
-                Positioned(
-                  left: -14,
-                  top: 8,
-                  bottom: 8,
-                  child: Container(width: 3, decoration: BoxDecoration(
-                    color: AppColors.lightBlue,
-                    borderRadius: BorderRadius.circular(2),
-                  )),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? _activeColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: selected ? Colors.white : _mutedColor),
+                const SizedBox(width: 11),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    color: selected ? Colors.white : _mutedColor,
+                  ),
                 ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: selected ? activeColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 18, color: selected ? Colors.white : mutedColor),
-                    const SizedBox(width: 11),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                        color: selected ? Colors.white : mutedColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -292,20 +281,23 @@ class _BrandMark extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.primaryNavy, AppColors.deepNavy]),
+            // Solid accent purple, not a navy gradient -- against the
+            // sidebar's own navy background a navy-on-navy mark would
+            // vanish (see _SidebarTile for the same reasoning).
+            color: AppColors.adminColor,
             borderRadius: BorderRadius.circular(9),
           ),
           alignment: Alignment.center,
           child: const Text('A',
-              style: TextStyle(color: AppColors.lightBlue, fontWeight: FontWeight.w700, fontSize: 15)),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
         ),
         const SizedBox(width: 10),
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('AfiCare', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
+            Text('AfiCare', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5, color: Colors.white)),
             Text('MEDILINK',
-                style: TextStyle(fontSize: 9.5, letterSpacing: 1.2, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                style: TextStyle(fontSize: 9.5, letterSpacing: 1.2, color: Color(0xFFA9B8CC), fontWeight: FontWeight.w500)),
           ],
         ),
       ],
