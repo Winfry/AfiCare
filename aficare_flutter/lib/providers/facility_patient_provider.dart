@@ -28,6 +28,11 @@ class FacilityPatientProvider with ChangeNotifier {
   List<LabOrderRowModel> _labOrders = [];
   List<PrescriptionRowModel> _prescriptions = [];
   List<AdmissionRowModel> _admissions = [];
+  List<FacilityPatientModel> _reportPatients = [];
+  List<VisitModel> _reportVisits = [];
+  List<LabOrderRowModel> _reportLabOrders = [];
+  List<PrescriptionRowModel> _reportPrescriptions = [];
+  List<AdmissionRowModel> _reportAdmissions = [];
   bool _isLoading = false;
   String? _error;
 
@@ -40,6 +45,11 @@ class FacilityPatientProvider with ChangeNotifier {
   List<LabOrderRowModel> get labOrders => _labOrders;
   List<PrescriptionRowModel> get prescriptions => _prescriptions;
   List<AdmissionRowModel> get admissions => _admissions;
+  List<FacilityPatientModel> get reportPatients => _reportPatients;
+  List<VisitModel> get reportVisits => _reportVisits;
+  List<LabOrderRowModel> get reportLabOrders => _reportLabOrders;
+  List<PrescriptionRowModel> get reportPrescriptions => _reportPrescriptions;
+  List<AdmissionRowModel> get reportAdmissions => _reportAdmissions;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -719,6 +729,132 @@ class FacilityPatientProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Loads everything the Reports tab needs for one period (This Week/
+  /// Month/Quarter), all bounded by [periodStart]. Deliberately writes
+  /// into its own `_report*` fields rather than the live `_clearanceVisits`/
+  /// `_labOrders`/`_prescriptions`/`_admissions` fields -- those stay
+  /// "today only"/"current only" for the live Billing/Laboratory/
+  /// Pharmacy/Admissions boards, which remain mounted in the same
+  /// IndexedStack and must not have their state silently replaced by a
+  /// wider reporting query. Capped at 1000 rows (vs. 200-300 on the live
+  /// boards) since "This Quarter" can span ~90 days.
+  ///
+  /// Patients/visits/lab orders/prescriptions are single-query, no-join
+  /// loads: none of their row models need a patient/provider display
+  /// name for aggregation-only reporting, and LabOrderRowModel/
+  /// PrescriptionRowModel's name parameters are optional (default
+  /// 'Unknown'/'Unassigned', simply unused here). Admissions is the one
+  /// exception -- AdmissionRowModel requires patientName/patientFileNumber/
+  /// wardName -- so it reuses the same 3-query join shape as
+  /// [loadAdmissions] itself, just with a wider filter (no
+  /// `discharged_at IS NULL` restriction, since reports need discharged
+  /// admissions too) writing into `_reportAdmissions` instead.
+  Future<void> loadReportsData(String facilityId, DateTime periodStart) async {
+    _error = null;
+    try {
+      final since = periodStart.toIso8601String();
+
+      final patientRows = await _supabase
+          .from('facility_patients')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('created_at', since)
+          .limit(1000);
+      _reportPatients = (patientRows as List)
+          .map((r) => FacilityPatientModel.fromJson(r as Map<String, dynamic>))
+          .toList();
+
+      final visitRows = await _supabase
+          .from('visits')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('occurred_at', since)
+          .limit(1000);
+      _reportVisits = (visitRows as List)
+          .map((r) => VisitModel.fromJson(r as Map<String, dynamic>))
+          .toList();
+
+      final labRows = await _supabase
+          .from('visit_lab_orders')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('ordered_at', since)
+          .limit(1000);
+      _reportLabOrders = (labRows as List)
+          .map((r) => LabOrderRowModel.fromJson(r as Map<String, dynamic>))
+          .toList();
+
+      final rxRows = await _supabase
+          .from('visit_prescriptions')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('prescribed_at', since)
+          .limit(1000);
+      _reportPrescriptions = (rxRows as List)
+          .map((r) => PrescriptionRowModel.fromJson(r as Map<String, dynamic>))
+          .toList();
+
+      final admissionRows = await _supabase
+          .from('visit_admissions')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('admitted_at', since)
+          .limit(1000);
+      final admissionList = (admissionRows as List).cast<Map<String, dynamic>>();
+      if (admissionList.isEmpty) {
+        _reportAdmissions = [];
+      } else {
+        final patientIds = {for (final r in admissionList) r['facility_patient_id'] as String}.toList();
+        final patientLookup = await _supabase
+            .from('facility_patients')
+            .select('id, full_name, file_number')
+            .inFilter('id', patientIds);
+        final patientById = <String, Map<String, dynamic>>{
+          for (final p in (patientLookup as List)) p['id'] as String: p as Map<String, dynamic>,
+        };
+
+        final wardIds = {for (final r in admissionList) r['ward_id'] as String}.toList();
+        final wardRows = await _supabase
+            .from('wards')
+            .select('id, name')
+            .inFilter('id', wardIds);
+        final wardNameById = <String, String>{
+          for (final w in (wardRows as List)) (w as Map<String, dynamic>)['id'] as String: w['name'] as String? ?? 'Unknown',
+        };
+
+        final providerIds = {for (final r in admissionList) if (r['provider_id'] != null) r['provider_id'] as String}.toList();
+        final nameByProviderId = <String, String>{};
+        if (providerIds.isNotEmpty) {
+          final providerRows = await _supabase
+              .from('users')
+              .select('id, full_name')
+              .inFilter('id', providerIds);
+          for (final u in (providerRows as List)) {
+            final m = u as Map<String, dynamic>;
+            nameByProviderId[m['id'] as String] = m['full_name'] as String? ?? 'Unknown';
+          }
+        }
+
+        _reportAdmissions = admissionList.map((r) {
+          final p = patientById[r['facility_patient_id']];
+          return AdmissionRowModel.fromJson(
+            r,
+            patientName: p?['full_name'] as String? ?? 'Unknown',
+            patientFileNumber: p?['file_number'] as String? ?? '',
+            wardName: wardNameById[r['ward_id']] ?? 'Unknown',
+            attendingProviderName: r['provider_id'] == null ? 'Unassigned' : nameByProviderId[r['provider_id']],
+            eligibilityStatus: null,
+          );
+        }).toList();
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
     }
   }
 }

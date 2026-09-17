@@ -466,4 +466,144 @@ void main() {
       expect(provider.error, contains('billing clearance'));
     });
   });
+
+  group('FacilityPatientProvider.loadReportsData', () {
+    test('maps all 5 lists from period-filtered fixtures', () async {
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1', fullName: 'Jane Walkin')]);
+      fake.routeJson('/rest/v1/visits', [visitRow(id: 'v1', facilityPatientId: 'fp1', status: 'completed')]);
+      fake.routeJson('/rest/v1/visit_lab_orders', [
+        {
+          'id': 'lo1',
+          'facility_id': 'f1',
+          'visit_id': 'v1',
+          'facility_patient_id': 'fp1',
+          'provider_id': null,
+          'test_name': 'CBC',
+          'status': 'completed',
+          'ordered_at': '2026-01-02T09:00:00.000Z',
+          'status_changed_at': '2026-01-02T10:00:00.000Z',
+          'created_by': null,
+          'created_at': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+      fake.routeJson('/rest/v1/visit_prescriptions', [
+        {
+          'id': 'rx1',
+          'facility_id': 'f1',
+          'visit_id': 'v1',
+          'facility_patient_id': 'fp1',
+          'provider_id': null,
+          'drug_stock_id': 'ds1',
+          'medication_label': 'Metformin 1000mg BD',
+          'status': 'dispensed',
+          'prescribed_at': '2026-01-02T09:00:00.000Z',
+          'status_changed_at': '2026-01-02T09:30:00.000Z',
+          'created_by': null,
+          'created_at': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+      fake.routeJson('/rest/v1/visit_admissions', [
+        {
+          'id': 'ad1',
+          'facility_id': 'f1',
+          'visit_id': 'v1',
+          'facility_patient_id': 'fp1',
+          'ward_id': 'w1',
+          'provider_id': 'u1',
+          'bed_number': 'Bed 4',
+          'admitted_at': '2026-01-02T09:00:00.000Z',
+          'discharged_at': null,
+          'created_by': null,
+          'created_at': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+      fake.routeJson('/rest/v1/wards', [
+        {'id': 'w1', 'name': 'Ward A — Maternity'},
+      ]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'u1', 'full_name': 'Dr. Achieng'},
+      ]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadReportsData('f1', DateTime.parse('2026-01-01T00:00:00.000Z'));
+
+      expect(provider.error, isNull);
+      expect(provider.reportPatients, hasLength(1));
+      expect(provider.reportPatients.first.fullName, 'Jane Walkin');
+      expect(provider.reportVisits, hasLength(1));
+      expect(provider.reportVisits.first.status, 'completed');
+      expect(provider.reportLabOrders, hasLength(1));
+      expect(provider.reportLabOrders.first.testName, 'CBC');
+      expect(provider.reportPrescriptions, hasLength(1));
+      expect(provider.reportPrescriptions.first.medicationLabel, 'Metformin 1000mg BD');
+      expect(provider.reportAdmissions, hasLength(1));
+      expect(provider.reportAdmissions.first.patientName, 'Jane Walkin');
+      expect(provider.reportAdmissions.first.wardName, 'Ward A — Maternity');
+      expect(provider.reportAdmissions.first.attendingProviderName, 'Dr. Achieng');
+    });
+
+    test('lab orders and prescriptions load without joining facility_patients/users a second time', () async {
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1')]);
+      fake.routeJson('/rest/v1/visits', <Map<String, dynamic>>[]);
+      fake.routeJson('/rest/v1/visit_lab_orders', [
+        {
+          'id': 'lo1',
+          'facility_id': 'f1',
+          'visit_id': 'v1',
+          'facility_patient_id': 'fp1',
+          'provider_id': null,
+          'test_name': 'CBC',
+          'status': 'pending',
+          'ordered_at': '2026-01-02T09:00:00.000Z',
+          'status_changed_at': '2026-01-02T09:00:00.000Z',
+          'created_by': null,
+          'created_at': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+      fake.routeJson('/rest/v1/visit_prescriptions', [
+        {
+          'id': 'rx1',
+          'facility_id': 'f1',
+          'visit_id': 'v1',
+          'facility_patient_id': 'fp1',
+          'provider_id': null,
+          'drug_stock_id': 'ds1',
+          'medication_label': 'X',
+          'status': 'pending',
+          'prescribed_at': '2026-01-02T09:00:00.000Z',
+          'status_changed_at': '2026-01-02T09:00:00.000Z',
+          'created_by': null,
+          'created_at': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+      fake.routeJson('/rest/v1/visit_admissions', <Map<String, dynamic>>[]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadReportsData('f1', DateTime.parse('2026-01-01T00:00:00.000Z'));
+
+      // Only 1 facility_patients call (the reportPatients load itself) --
+      // lab orders/prescriptions must NOT trigger their own join query,
+      // and there's no admissions row here to trigger a second one.
+      expect(fake.requestsTo('GET', '/facility_patients'), hasLength(1));
+      expect(fake.requestsTo('GET', '/users'), isEmpty);
+      expect(provider.reportLabOrders.first.patientName, 'Unknown');
+      expect(provider.reportPrescriptions.first.patientName, 'Unknown');
+    });
+
+    test('does not clobber the live today-only/current-only board state', () async {
+      fake.routeJson('/rest/v1/visits', [visitRow(id: 'v-live', status: 'waiting')]);
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1')]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadClearanceVisits('f1');
+      expect(provider.clearanceVisits.single.visitId, 'v-live');
+
+      fake.routeJson('/rest/v1/visits', [visitRow(id: 'v-report', status: 'completed')]);
+      await provider.loadReportsData('f1', DateTime.parse('2026-01-01T00:00:00.000Z'));
+
+      expect(provider.reportVisits.single.id, 'v-report');
+      // The live Billing & Clearance board's own state must be untouched.
+      expect(provider.clearanceVisits.single.visitId, 'v-live');
+    });
+  });
 }
