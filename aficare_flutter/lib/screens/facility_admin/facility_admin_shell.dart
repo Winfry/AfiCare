@@ -12,6 +12,7 @@ import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../theme/app_colors.dart';
 import 'billing_clearance_tab.dart';
+import 'laboratory_tab.dart';
 import 'opd_queue_tab.dart';
 import 'patients_tab.dart';
 
@@ -39,6 +40,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     SidebarNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
+    SidebarNavItem(icon: Icons.biotech_outlined, label: 'Laboratory'),
   ];
 
   static const _bottomNavItems = [
@@ -49,6 +51,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     BottomNavItem(icon: Icons.medical_services_outlined, label: 'Providers'),
     BottomNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
+    BottomNavItem(icon: Icons.biotech_outlined, label: 'Laboratory'),
   ];
 
   @override
@@ -68,6 +71,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         patientProvider.loadFacilityPatients(facility.id);
         patientProvider.loadActiveVisits(facility.id);
         patientProvider.loadClearanceVisits(facility.id);
+        patientProvider.loadLabOrders(facility.id);
       }
     });
   }
@@ -87,6 +91,8 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
   void _goToQueue() => setState(() => _currentIndex = 2);
 
   void _goToBilling() => setState(() => _currentIndex = 3);
+
+  void _goToLab() => setState(() => _currentIndex = 7);
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +131,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                       onGoToPatients: _goToPatients,
                       onGoToQueue: _goToQueue,
                       onGoToBilling: _goToBilling,
+                      onGoToLab: _goToLab,
                     ),
                     PatientsTab(facility: facility),
                     OpdQueueTab(facility: facility),
@@ -132,6 +139,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     _ProvidersTab(facility: facility),
                     _DepartmentsTab(facility: facility),
                     _AppointmentsTab(facility: facility),
+                    LaboratoryTab(facility: facility),
                   ],
                 ),
     );
@@ -144,11 +152,13 @@ class _OverviewTab extends StatelessWidget {
     required this.onGoToPatients,
     required this.onGoToQueue,
     required this.onGoToBilling,
+    required this.onGoToLab,
   });
   final FacilityModel facility;
   final void Function({String? searchTerm}) onGoToPatients;
   final VoidCallback onGoToQueue;
   final VoidCallback onGoToBilling;
+  final VoidCallback onGoToLab;
 
   static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   static const _months = [
@@ -238,19 +248,22 @@ class _OverviewTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // KPI row -- 4 real, currently-computable metrics. Bed occupancy
-          // and Pending lab results (from the target mockup) are
-          // deliberately NOT shown here: both need Wards/Admissions and
-          // Laboratory tables that don't exist in this schema yet (future
-          // roadmap steps per facility_admin_hms_pivot memory) -- faking
-          // those numbers would break the real-data-only discipline this
-          // whole facility-admin build has followed.
+          // KPI row -- 5 real, currently-computable metrics. Bed occupancy
+          // (from the target mockup) is deliberately NOT shown here: it
+          // needs a Wards/Admissions table that doesn't exist in this
+          // schema yet (future roadmap step per facility_admin_hms_pivot
+          // memory) -- faking that number would break the real-data-only
+          // discipline this whole facility-admin build has followed.
           FutureBuilder<Map<String, int>>(
             future: context.read<AdminFacilityProvider>().getFacilityStats(facility.id),
             builder: (context, snapshot) {
               final stats = snapshot.data ?? const {'providers': 0, 'departments': 0};
               final queueActive = patientProvider.activeVisits.where((v) => v.status != 'completed').length;
               final pendingClearance = patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').length;
+              final pendingLab = patientProvider.labOrders.where((o) => o.status != 'completed').length;
+              final overdueLab = patientProvider.labOrders
+                  .where((o) => o.status != 'completed' && DateTime.now().difference(o.orderedAt) > const Duration(hours: 2))
+                  .length;
               return Row(
                 children: [
                   Expanded(
@@ -280,6 +293,16 @@ class _OverviewTab extends StatelessWidget {
                       value: '$pendingClearance',
                       delta: pendingClearance > 0 ? 'SHA / insurance verification' : 'All clear',
                       deltaColor: pendingClearance > 0 ? AppColors.clay : AppColors.sage,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kpiCard(
+                      context,
+                      label: 'Pending Lab Results',
+                      value: '$pendingLab',
+                      delta: overdueLab > 0 ? '$overdueLab overdue' : 'On track',
+                      deltaColor: overdueLab > 0 ? AppColors.emergency : AppColors.sage,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -361,32 +384,68 @@ class _OverviewTab extends StatelessWidget {
                   child: _overviewCard(
                     context,
                     title: 'Alerts',
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Row(
-                        children: [
-                          Icon(
-                            patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty
-                                ? Icons.check_circle_outline
-                                : Icons.receipt_long_outlined,
-                            size: 18,
-                            color: patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty ? AppColors.sage : AppColors.clay,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(
+                                patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty
+                                    ? Icons.check_circle_outline
+                                    : Icons.receipt_long_outlined,
+                                size: 18,
+                                color: patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty ? AppColors.sage : AppColors.clay,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty
+                                      ? 'No visits pending clearance'
+                                      : '${patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').length} visits pending SHA/insurance clearance',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: onGoToBilling,
+                                child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').isEmpty
-                                  ? 'No visits pending clearance'
-                                  : '${patientProvider.clearanceVisits.where((v) => v.eligibilityStatus == 'pending').length} visits pending SHA/insurance clearance',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(
+                                patientProvider.labOrders.where((o) => o.status != 'completed' && DateTime.now().difference(o.orderedAt) > const Duration(hours: 2)).isEmpty
+                                    ? Icons.check_circle_outline
+                                    : Icons.biotech_outlined,
+                                size: 18,
+                                color: patientProvider.labOrders.where((o) => o.status != 'completed' && DateTime.now().difference(o.orderedAt) > const Duration(hours: 2)).isEmpty
+                                    ? AppColors.sage
+                                    : AppColors.clay,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Builder(builder: (context) {
+                                  final overdueLabCount = patientProvider.labOrders
+                                      .where((o) => o.status != 'completed' && DateTime.now().difference(o.orderedAt) > const Duration(hours: 2))
+                                      .length;
+                                  return Text(
+                                    overdueLabCount == 0 ? 'No lab orders overdue' : '$overdueLabCount lab orders overdue (>2h)',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  );
+                                }),
+                              ),
+                              GestureDetector(
+                                onTap: onGoToLab,
+                                child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
                           ),
-                          GestureDetector(
-                            onTap: onGoToBilling,
-                            child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

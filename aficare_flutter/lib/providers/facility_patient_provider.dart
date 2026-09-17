@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/clearance_row_model.dart';
 import '../models/facility_patient_model.dart';
+import '../models/lab_order_row_model.dart';
 import '../models/patient_appointment_row_model.dart';
 import '../models/queue_row_model.dart';
 import '../models/visit_model.dart';
@@ -22,6 +23,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<PatientAppointmentRowModel> _selectedPatientAppointments = [];
   List<QueueRowModel> _activeVisits = [];
   List<ClearanceRowModel> _clearanceVisits = [];
+  List<LabOrderRowModel> _labOrders = [];
   bool _isLoading = false;
   String? _error;
 
@@ -31,6 +33,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<PatientAppointmentRowModel> get selectedPatientAppointments => _selectedPatientAppointments;
   List<QueueRowModel> get activeVisits => _activeVisits;
   List<ClearanceRowModel> get clearanceVisits => _clearanceVisits;
+  List<LabOrderRowModel> get labOrders => _labOrders;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -291,6 +294,118 @@ class FacilityPatientProvider with ChangeNotifier {
         'target_visit_id': visitId,
         'new_payer_type': newPayerType,
         'new_eligibility_status': newEligibilityStatus,
+      });
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Loads today's Laboratory board for the whole facility -- a flat
+  /// ledger of today's lab orders (all statuses, like loadClearanceVisits,
+  /// not filtered to "active" like loadActiveVisits), oldest-first so the
+  /// most overdue-prone orders surface first. 3-query pattern (one more
+  /// than the other boards): visit_lab_orders, then facility_patients for
+  /// names, then users for the ordering provider's name (same pattern
+  /// loadPatientAppointments already uses for provider names) -- needed
+  /// because facility_id/facility_patient_id/provider_id are denormalized
+  /// snapshots on visit_lab_orders itself (see 024_visit_lab_orders.sql),
+  /// so no join through `visits` is required.
+  Future<void> loadLabOrders(String facilityId) async {
+    _error = null;
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+
+      final rows = await _supabase
+          .from('visit_lab_orders')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('ordered_at', todayStart)
+          .order('ordered_at', ascending: true)
+          .limit(300);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isEmpty) {
+        _labOrders = [];
+        notifyListeners();
+        return;
+      }
+
+      final patientIds = {for (final r in list) r['facility_patient_id'] as String}.toList();
+      final patientRows = await _supabase
+          .from('facility_patients')
+          .select('id, full_name, file_number')
+          .inFilter('id', patientIds);
+
+      final patientById = <String, Map<String, dynamic>>{
+        for (final p in (patientRows as List)) p['id'] as String: p as Map<String, dynamic>,
+      };
+
+      final providerIds = {for (final r in list) if (r['provider_id'] != null) r['provider_id'] as String}.toList();
+      final nameByProviderId = <String, String>{};
+      if (providerIds.isNotEmpty) {
+        final providerRows = await _supabase
+            .from('users')
+            .select('id, full_name')
+            .inFilter('id', providerIds);
+        for (final u in (providerRows as List)) {
+          final m = u as Map<String, dynamic>;
+          nameByProviderId[m['id'] as String] = m['full_name'] as String? ?? 'Unknown';
+        }
+      }
+
+      _labOrders = list.map((r) {
+        final p = patientById[r['facility_patient_id']];
+        return LabOrderRowModel.fromJson(
+          r,
+          patientName: p?['full_name'] as String?,
+          patientFileNumber: p?['file_number'] as String?,
+          orderedByName: r['provider_id'] == null ? 'Unassigned' : nameByProviderId[r['provider_id']],
+        );
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Places a lab order for a visit via the checked RPC
+  /// (024_visit_lab_orders.sql) -- deliberately does not reload here,
+  /// same convention as registerVisit/updateVisitClearance (the
+  /// Laboratory screen calls loadLabOrders itself right after). Returns
+  /// the new lab order's id, or null on failure.
+  Future<String?> placeLabOrder({
+    required String visitId,
+    required String testName,
+  }) async {
+    try {
+      final newId = await _supabase.rpc('facility_admin_place_lab_order', params: {
+        'target_visit_id': visitId,
+        'order_test_name': testName,
+      }) as String;
+      return newId;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Advances a lab order's status via the checked RPC
+  /// (024_visit_lab_orders.sql) -- deliberately does not reload here,
+  /// same convention as updateVisitStatus.
+  Future<bool> updateLabOrderStatus({
+    required String labOrderId,
+    required String newStatus,
+  }) async {
+    try {
+      await _supabase.rpc('facility_admin_update_lab_order_status', params: {
+        'target_lab_order_id': labOrderId,
+        'new_status': newStatus,
       });
       return true;
     } catch (e) {

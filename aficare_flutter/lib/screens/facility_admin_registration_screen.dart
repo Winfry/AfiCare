@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../presentation/auth/widgets/auth_form_container.dart';
+import '../presentation/auth/widgets/auth_page_header.dart';
+import '../presentation/auth/widgets/auth_split_layout.dart';
 import '../providers/facility_admin_request_provider.dart';
-import '../utils/theme.dart';
 
 /// "Register your facility + name who should administer it" flow. No
 /// account is created here -- an applicant only has a name/email on
@@ -132,17 +134,21 @@ class _FacilityAdminRegistrationScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Register Your Facility'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AfiCareTheme.primaryGreen,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: _submitted ? _buildSubmittedView() : _buildForm(),
+    return AuthSplitLayout(
+      brandHeadline: 'Onboard your hospital or clinic.',
+      brandSubtitle: 'Register your facility and nominate an administrator -- your team gets one connected record system across every provider.',
+      brandPhotoUrl: 'assets/images/AdminRegisterScreen.webp',
+      child: AuthFormContainer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AuthPageHeader(
+              title: 'Register your facility',
+              subtitle: 'Tell us about your facility and who should administer it.',
+              onBack: () => context.go('/register'),
+            ),
+            _submitted ? _buildSubmittedView() : _buildForm(),
+          ],
         ),
       ),
     );
@@ -187,15 +193,7 @@ class _FacilityAdminRegistrationScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Register your facility',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AfiCareTheme.primaryGreen,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Tell us about your facility and who should administer it. An "
+            "An "
             "AfiCare admin will review and approve the request -- the "
             "nominated admin gets a real invite email to activate their "
             "account once approved. No account is created until then.",
@@ -360,11 +358,6 @@ class _FacilityAdminRegistrationScreenState
                     ),
                   )
                 : const Text('Submit for Review'),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () => context.go('/register'),
-            child: const Text('Back to Registration'),
           ),
         ],
       ),
