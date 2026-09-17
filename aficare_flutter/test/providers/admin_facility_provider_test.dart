@@ -448,4 +448,101 @@ void main() {
       expect(provider.error, contains('Insufficient stock'));
     });
   });
+
+  Map<String, dynamic> wardRow({
+    String id = 'w1',
+    String facilityId = 'f1',
+    String name = 'Ward A — Maternity',
+    int totalBeds = 20,
+  }) {
+    return {
+      'id': id,
+      'facility_id': facilityId,
+      'name': name,
+      'total_beds': totalBeds,
+      'created_by': null,
+      'created_at': '2026-01-01T09:00:00.000Z',
+      'updated_at': '2026-01-01T09:00:00.000Z',
+    };
+  }
+
+  group('AdminFacilityProvider.loadWards', () {
+    test('maps rows for a facility', () async {
+      fake.routeJson('/rest/v1/wards', [wardRow()]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadWards('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.wards, hasLength(1));
+      expect(provider.wards.first.name, 'Ward A — Maternity');
+      expect(provider.wards.first.totalBeds, 20);
+    });
+
+    test('empty facility has no wards, no crash', () async {
+      fake.routeJson('/rest/v1/wards', <Map<String, dynamic>>[]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadWards('f1');
+
+      expect(provider.wards, isEmpty);
+    });
+  });
+
+  group('AdminFacilityProvider.addWard', () {
+    test('calls facility_admin_add_ward, not a raw insert', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_add_ward', 'w1');
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.addWard(facilityId: 'f1', name: 'Ward A', totalBeds: 20);
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_add_ward').single;
+      expect(rpcCall.body, contains('"target_facility_id":"f1"'));
+      expect(rpcCall.body, contains('"ward_name":"Ward A"'));
+      expect(rpcCall.body, contains('"ward_total_beds":20'));
+      expect(fake.requestsTo('POST', '/wards'), isEmpty);
+    });
+
+    test('RPC failure surfaces the error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_add_ward',
+        http.Response('{"message":"Only an admin of this facility can add a ward"}', 400),
+      );
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.addWard(facilityId: 'f2', name: 'X', totalBeds: 1);
+
+      expect(ok, isFalse);
+      expect(provider.error, isNotNull);
+    });
+  });
+
+  group('AdminFacilityProvider.updateWard', () {
+    test('calls facility_admin_update_ward, not a raw update', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_update_ward', null);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.updateWard(wardId: 'w1', name: 'Ward A', totalBeds: 25);
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_update_ward').single;
+      expect(rpcCall.body, contains('"target_ward_id":"w1"'));
+      expect(rpcCall.body, contains('"ward_total_beds":25'));
+      expect(fake.requestsTo('PATCH', '/wards'), isEmpty);
+    });
+
+    test('capacity-shrink-rejection failure surfaces via provider.error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_update_ward',
+        http.Response('{"message":"Cannot reduce capacity below currently occupied beds (5 occupied)"}', 400),
+      );
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.updateWard(wardId: 'w1', name: 'Ward A', totalBeds: 1);
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('occupied beds'));
+    });
+  });
 }

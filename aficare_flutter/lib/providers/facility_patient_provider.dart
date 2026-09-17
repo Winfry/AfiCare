@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/admission_row_model.dart';
 import '../models/clearance_row_model.dart';
 import '../models/facility_patient_model.dart';
 import '../models/lab_order_row_model.dart';
@@ -26,6 +27,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<ClearanceRowModel> _clearanceVisits = [];
   List<LabOrderRowModel> _labOrders = [];
   List<PrescriptionRowModel> _prescriptions = [];
+  List<AdmissionRowModel> _admissions = [];
   bool _isLoading = false;
   String? _error;
 
@@ -37,6 +39,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<ClearanceRowModel> get clearanceVisits => _clearanceVisits;
   List<LabOrderRowModel> get labOrders => _labOrders;
   List<PrescriptionRowModel> get prescriptions => _prescriptions;
+  List<AdmissionRowModel> get admissions => _admissions;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -580,6 +583,137 @@ class FacilityPatientProvider with ChangeNotifier {
       });
 
       await loadPatientDetail(facilityPatientId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Loads the current inpatient list for the whole facility --
+  /// deliberately CURRENT admissions only (discharged_at IS NULL), no
+  /// date bound, since an admission can legitimately span many days (see
+  /// 026_admissions_wards.sql's header comment) -- unlike Lab/Pharmacy's
+  /// today-only boards. 5-query pattern (one more than Lab/Pharmacy's 3):
+  /// visit_admissions, then facility_patients (names), wards (names --
+  /// queried independently here rather than read from
+  /// AdminFacilityProvider.wards, preserving no-cross-provider-reach),
+  /// users (attending provider names), and finally visits
+  /// (id, eligibility_status) -- clearance must stay LIVE (Billing can
+  /// verify it after admission), so it is pulled fresh here rather than
+  /// frozen onto visit_admissions at admission time.
+  Future<void> loadAdmissions(String facilityId) async {
+    _error = null;
+    try {
+      final rows = await _supabase
+          .from('visit_admissions')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .isFilter('discharged_at', null)
+          .order('admitted_at', ascending: true)
+          .limit(300);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isEmpty) {
+        _admissions = [];
+        notifyListeners();
+        return;
+      }
+
+      final patientIds = {for (final r in list) r['facility_patient_id'] as String}.toList();
+      final patientRows = await _supabase
+          .from('facility_patients')
+          .select('id, full_name, file_number')
+          .inFilter('id', patientIds);
+      final patientById = <String, Map<String, dynamic>>{
+        for (final p in (patientRows as List)) p['id'] as String: p as Map<String, dynamic>,
+      };
+
+      final wardIds = {for (final r in list) r['ward_id'] as String}.toList();
+      final wardRows = await _supabase
+          .from('wards')
+          .select('id, name')
+          .inFilter('id', wardIds);
+      final wardNameById = <String, String>{
+        for (final w in (wardRows as List)) (w as Map<String, dynamic>)['id'] as String: w['name'] as String? ?? 'Unknown',
+      };
+
+      final providerIds = {for (final r in list) if (r['provider_id'] != null) r['provider_id'] as String}.toList();
+      final nameByProviderId = <String, String>{};
+      if (providerIds.isNotEmpty) {
+        final providerRows = await _supabase
+            .from('users')
+            .select('id, full_name')
+            .inFilter('id', providerIds);
+        for (final u in (providerRows as List)) {
+          final m = u as Map<String, dynamic>;
+          nameByProviderId[m['id'] as String] = m['full_name'] as String? ?? 'Unknown';
+        }
+      }
+
+      final visitIds = {for (final r in list) r['visit_id'] as String}.toList();
+      final visitRows = await _supabase
+          .from('visits')
+          .select('id, eligibility_status')
+          .inFilter('id', visitIds);
+      final eligibilityByVisitId = <String, String?>{
+        for (final v in (visitRows as List)) (v as Map<String, dynamic>)['id'] as String: v['eligibility_status'] as String?,
+      };
+
+      _admissions = list.map((r) {
+        final p = patientById[r['facility_patient_id']];
+        return AdmissionRowModel.fromJson(
+          r,
+          patientName: p?['full_name'] as String? ?? 'Unknown',
+          patientFileNumber: p?['file_number'] as String? ?? '',
+          wardName: wardNameById[r['ward_id']] ?? 'Unknown',
+          attendingProviderName: r['provider_id'] == null ? 'Unassigned' : nameByProviderId[r['provider_id']],
+          eligibilityStatus: eligibilityByVisitId[r['visit_id']],
+        );
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Admits a visit into a ward/bed via the checked RPC
+  /// (026_admissions_wards.sql) -- rejects if the ward is at capacity or
+  /// the visit is already admitted. Deliberately does not reload here,
+  /// same convention as placeLabOrder/placePrescription (the Admissions
+  /// & Wards screen calls loadAdmissions itself right after). Returns
+  /// the new admission's id, or null on failure.
+  Future<String?> admitPatient({
+    required String visitId,
+    required String wardId,
+    required String bedNumber,
+  }) async {
+    try {
+      final newId = await _supabase.rpc('facility_admin_admit_patient', params: {
+        'target_visit_id': visitId,
+        'target_ward_id': wardId,
+        'admission_bed_number': bedNumber,
+      }) as String;
+      return newId;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Discharges an admitted patient via the checked RPC -- hard-blocked
+  /// at the database level until the visit's billing clearance is
+  /// 'verified' (confirmed with the user; see 026's header comment).
+  /// Deliberately does not reload here, same convention as the rest of
+  /// this file.
+  Future<bool> dischargePatient(String admissionId) async {
+    try {
+      await _supabase.rpc('facility_admin_discharge_patient', params: {
+        'target_admission_id': admissionId,
+      });
       return true;
     } catch (e) {
       _error = e.toString();

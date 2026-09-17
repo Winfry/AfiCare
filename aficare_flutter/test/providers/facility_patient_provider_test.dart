@@ -342,4 +342,128 @@ void main() {
       expect(provider.error, isNotNull);
     });
   });
+
+  Map<String, dynamic> admissionRow({
+    String id = 'ad1',
+    String visitId = 'v1',
+    String facilityPatientId = 'fp1',
+    String wardId = 'w1',
+    String? providerId = 'u1',
+    String bedNumber = 'Bed 4',
+    String? dischargedAt,
+  }) {
+    return {
+      'id': id,
+      'facility_id': 'f1',
+      'visit_id': visitId,
+      'facility_patient_id': facilityPatientId,
+      'ward_id': wardId,
+      'provider_id': providerId,
+      'bed_number': bedNumber,
+      'admitted_at': '2026-01-02T09:00:00.000Z',
+      'discharged_at': dischargedAt,
+      'created_by': null,
+      'created_at': '2026-01-02T09:00:00.000Z',
+    };
+  }
+
+  group('FacilityPatientProvider.loadAdmissions', () {
+    test('maps rows with patient, ward, provider names and live eligibility', () async {
+      fake.routeJson('/rest/v1/visit_admissions', [admissionRow()]);
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1', fullName: 'Jane Walkin')]);
+      fake.routeJson('/rest/v1/wards', [
+        {'id': 'w1', 'name': 'Ward A — Maternity'},
+      ]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'u1', 'full_name': 'Dr. Achieng'},
+      ]);
+      fake.routeJson('/rest/v1/visits', [
+        {'id': 'v1', 'eligibility_status': 'verified'},
+      ]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadAdmissions('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.admissions, hasLength(1));
+      final a = provider.admissions.first;
+      expect(a.patientName, 'Jane Walkin');
+      expect(a.wardName, 'Ward A — Maternity');
+      expect(a.attendingProviderName, 'Dr. Achieng');
+      expect(a.eligibilityStatus, 'verified');
+      expect(a.isDischarged, isFalse);
+
+      final req = fake.requestsTo('GET', '/visit_admissions').single;
+      expect(req.url.queryParameters['discharged_at'], 'is.null');
+    });
+
+    test('empty facility has no admissions, no crash, no downstream lookups', () async {
+      fake.routeJson('/rest/v1/visit_admissions', <Map<String, dynamic>>[]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadAdmissions('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.admissions, isEmpty);
+      expect(fake.requestsTo('GET', '/facility_patients'), isEmpty);
+      expect(fake.requestsTo('GET', '/wards'), isEmpty);
+      expect(fake.requestsTo('GET', '/visits'), isEmpty);
+    });
+  });
+
+  group('FacilityPatientProvider.admitPatient', () {
+    test('calls facility_admin_admit_patient, not a raw insert', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_admit_patient', 'ad1');
+
+      final provider = FacilityPatientProvider();
+      final newId = await provider.admitPatient(visitId: 'v1', wardId: 'w1', bedNumber: 'Bed 4');
+
+      expect(newId, 'ad1');
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_admit_patient').single;
+      expect(rpcCall.body, contains('"target_visit_id":"v1"'));
+      expect(rpcCall.body, contains('"target_ward_id":"w1"'));
+      expect(rpcCall.body, contains('"admission_bed_number":"Bed 4"'));
+      expect(fake.requestsTo('POST', '/visit_admissions'), isEmpty);
+    });
+
+    test('ward-at-capacity RPC failure surfaces the error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_admit_patient',
+        http.Response('{"message":"Ward is at full capacity (20/20 beds occupied)"}', 400),
+      );
+
+      final provider = FacilityPatientProvider();
+      final newId = await provider.admitPatient(visitId: 'v1', wardId: 'w1', bedNumber: 'Bed 21');
+
+      expect(newId, isNull);
+      expect(provider.error, contains('full capacity'));
+    });
+  });
+
+  group('FacilityPatientProvider.dischargePatient', () {
+    test('calls facility_admin_discharge_patient, not a raw update', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_discharge_patient', null);
+
+      final provider = FacilityPatientProvider();
+      final ok = await provider.dischargePatient('ad1');
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_discharge_patient').single;
+      expect(rpcCall.body, contains('"target_admission_id":"ad1"'));
+      expect(fake.requestsTo('PATCH', '/visit_admissions'), isEmpty);
+    });
+
+    test('unverified-clearance RPC failure surfaces the error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_discharge_patient',
+        http.Response('{"message":"Cannot discharge until billing clearance is verified (currently pending)"}', 400),
+      );
+
+      final provider = FacilityPatientProvider();
+      final ok = await provider.dischargePatient('ad1');
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('billing clearance'));
+    });
+  });
 }

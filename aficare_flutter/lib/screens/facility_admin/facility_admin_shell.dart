@@ -11,6 +11,7 @@ import '../../providers/facility_admin_provider.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
 import '../../theme/app_colors.dart';
+import 'admissions_wards_tab.dart';
 import 'billing_clearance_tab.dart';
 import 'laboratory_tab.dart';
 import 'opd_queue_tab.dart';
@@ -43,6 +44,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
     SidebarNavItem(icon: Icons.biotech_outlined, label: 'Laboratory'),
     SidebarNavItem(icon: Icons.medication_outlined, label: 'Pharmacy & Stock'),
+    SidebarNavItem(icon: Icons.local_hotel_outlined, label: 'Admissions & Wards'),
   ];
 
   static const _bottomNavItems = [
@@ -55,6 +57,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
     BottomNavItem(icon: Icons.biotech_outlined, label: 'Laboratory'),
     BottomNavItem(icon: Icons.medication_outlined, label: 'Pharmacy & Stock'),
+    BottomNavItem(icon: Icons.local_hotel_outlined, label: 'Admissions & Wards'),
   ];
 
   @override
@@ -77,6 +80,8 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         patientProvider.loadLabOrders(facility.id);
         admin.loadDrugStock(facility.id);
         patientProvider.loadPrescriptions(facility.id);
+        admin.loadWards(facility.id);
+        patientProvider.loadAdmissions(facility.id);
       }
     });
   }
@@ -100,6 +105,8 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
   void _goToLab() => setState(() => _currentIndex = 7);
 
   void _goToPharmacy() => setState(() => _currentIndex = 8);
+
+  void _goToAdmissions() => setState(() => _currentIndex = 9);
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +147,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                       onGoToBilling: _goToBilling,
                       onGoToLab: _goToLab,
                       onGoToPharmacy: _goToPharmacy,
+                      onGoToAdmissions: _goToAdmissions,
                     ),
                     PatientsTab(facility: facility),
                     OpdQueueTab(facility: facility),
@@ -149,6 +157,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     _AppointmentsTab(facility: facility),
                     LaboratoryTab(facility: facility),
                     PharmacyStockTab(facility: facility),
+                    AdmissionsWardsTab(facility: facility),
                   ],
                 ),
     );
@@ -163,6 +172,7 @@ class _OverviewTab extends StatelessWidget {
     required this.onGoToBilling,
     required this.onGoToLab,
     required this.onGoToPharmacy,
+    required this.onGoToAdmissions,
   });
   final FacilityModel facility;
   final void Function({String? searchTerm}) onGoToPatients;
@@ -170,6 +180,7 @@ class _OverviewTab extends StatelessWidget {
   final VoidCallback onGoToBilling;
   final VoidCallback onGoToLab;
   final VoidCallback onGoToPharmacy;
+  final VoidCallback onGoToAdmissions;
 
   static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   static const _months = [
@@ -260,12 +271,10 @@ class _OverviewTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // KPI row -- 5 real, currently-computable metrics. Bed occupancy
-          // (from the target mockup) is deliberately NOT shown here: it
-          // needs a Wards/Admissions table that doesn't exist in this
-          // schema yet (future roadmap step per facility_admin_hms_pivot
-          // memory) -- faking that number would break the real-data-only
-          // discipline this whole facility-admin build has followed.
+          // KPI row -- 5 cards, unchanged since Wards/Admissions landed:
+          // the row has no responsive wrap, so bed occupancy surfaces in
+          // the Alerts card's 4th row (wards at/near capacity) instead of
+          // a 6th KPI card.
           FutureBuilder<Map<String, int>>(
             future: context.read<AdminFacilityProvider>().getFacilityStats(facility.id),
             builder: (context, snapshot) {
@@ -484,6 +493,38 @@ class _OverviewTab extends StatelessWidget {
                               ),
                             ],
                           ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Builder(builder: (context) {
+                            final occupiedByWard = <String, int>{};
+                            for (final a in patientProvider.admissions) {
+                              occupiedByWard[a.wardId] = (occupiedByWard[a.wardId] ?? 0) + 1;
+                            }
+                            final nearCapacityCount = adminProvider.wards
+                                .where((w) => w.totalBeds > 0 && (occupiedByWard[w.id] ?? 0) / w.totalBeds >= 0.9)
+                                .length;
+                            return Row(
+                              children: [
+                                Icon(
+                                  nearCapacityCount == 0 ? Icons.check_circle_outline : Icons.local_hotel_outlined,
+                                  size: 18,
+                                  color: nearCapacityCount == 0 ? AppColors.sage : AppColors.clay,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    nearCapacityCount == 0 ? 'No wards at or near capacity' : '$nearCapacityCount wards at or near capacity',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: onGoToAdmissions,
+                                  child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+                                ),
+                              ],
+                            );
+                          }),
                         ),
                       ],
                     ),

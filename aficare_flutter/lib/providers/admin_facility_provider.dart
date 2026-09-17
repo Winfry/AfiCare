@@ -5,6 +5,7 @@ import '../models/facility_model.dart';
 import '../models/department_model.dart';
 import '../models/drug_stock_model.dart';
 import '../models/provider_facility_model.dart';
+import '../models/ward_model.dart';
 
 class AdminFacilityProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -12,6 +13,7 @@ class AdminFacilityProvider with ChangeNotifier {
   List<FacilityModel> _facilities = [];
   List<DepartmentModel> _departments = [];
   List<DrugStockModel> _drugStock = [];
+  List<WardModel> _wards = [];
   List<ProviderFacilityModel> _facilityProviders = [];
   List<Map<String, dynamic>> _providerSearchResults = [];
   List<Map<String, dynamic>> _facilityAdmins = [];
@@ -25,6 +27,7 @@ class AdminFacilityProvider with ChangeNotifier {
   List<FacilityModel> get facilities => _facilities;
   List<DepartmentModel> get departments => _departments;
   List<DrugStockModel> get drugStock => _drugStock;
+  List<WardModel> get wards => _wards;
   List<ProviderFacilityModel> get facilityProviders => _facilityProviders;
   List<Map<String, dynamic>> get providerSearchResults => _providerSearchResults;
   List<Map<String, dynamic>> get facilityAdmins => _facilityAdmins;
@@ -290,6 +293,73 @@ class AdminFacilityProvider with ChangeNotifier {
       await _supabase.rpc('facility_admin_dispense_prescription', params: {
         'target_prescription_id': prescriptionId,
         'dispensed_quantity': dispensedQuantity,
+      });
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Loads a facility's wards -- a facility-wide catalog (like
+  /// `departments`), NOT visit-derived, so it lives here. Single query,
+  /// no join -- occupancy is an aggregate over OTHER rows
+  /// (visit_admissions, owned by FacilityPatientProvider), so it is
+  /// deliberately not computed here; the screen combines this list with
+  /// FacilityPatientProvider.admissions itself rather than either
+  /// provider reaching into the other's state.
+  Future<void> loadWards(String facilityId) async {
+    try {
+      final response = await _supabase
+          .from('wards')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .order('name');
+      _wards = (response as List)
+          .map((json) => WardModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Adds a ward via the checked RPC (026_admissions_wards.sql).
+  /// Deliberately does not reload here, same convention as every other
+  /// write in this codebase (the caller reloads).
+  Future<bool> addWard({
+    required String facilityId,
+    required String name,
+    required int totalBeds,
+  }) async {
+    try {
+      await _supabase.rpc('facility_admin_add_ward', params: {
+        'target_facility_id': facilityId,
+        'ward_name': name,
+        'ward_total_beds': totalBeds,
+      });
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Updates a ward via the checked RPC -- rejects shrinking capacity
+  /// below current occupancy. Caller reloads on success.
+  Future<bool> updateWard({
+    required String wardId,
+    required String name,
+    required int totalBeds,
+  }) async {
+    try {
+      await _supabase.rpc('facility_admin_update_ward', params: {
+        'target_ward_id': wardId,
+        'ward_name': name,
+        'ward_total_beds': totalBeds,
       });
       return true;
     } catch (e) {
