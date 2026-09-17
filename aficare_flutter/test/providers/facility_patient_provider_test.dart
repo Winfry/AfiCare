@@ -50,10 +50,12 @@ void main() {
       'facility_id': 'f1',
       'facility_patient_id': facilityPatientId,
       'status': status,
+      'priority': 'routine',
       'provider_id': null,
       'chief_complaint': 'Fever',
       'notes': null,
       'occurred_at': '2026-01-02T09:00:00.000Z',
+      'status_changed_at': '2026-01-02T09:00:00.000Z',
       'created_by': null,
       'created_at': '2026-01-02T09:00:00.000Z',
     };
@@ -196,8 +198,8 @@ void main() {
 
       expect(provider.error, isNull);
       expect(provider.activeVisits, hasLength(1));
-      expect(provider.activeVisits.first['patient_name'], 'Jane Walkin');
-      expect(provider.activeVisits.first['patient_file_number'], 'OP-001');
+      expect(provider.activeVisits.first.patientName, 'Jane Walkin');
+      expect(provider.activeVisits.first.patientFileNumber, 'OP-001');
     });
 
     test('requests only queue-relevant statuses, not registered/cancelled', () async {
@@ -255,6 +257,88 @@ void main() {
       final ok = await provider.updateVisitStatus(visitId: 'v1', newStatus: 'triage');
 
       expect(ok, isFalse);
+      expect(provider.error, isNotNull);
+    });
+  });
+
+  group('FacilityPatientProvider.loadPrescriptions', () {
+    test('maps rows with patient and prescribing-provider names', () async {
+      fake.routeJson('/rest/v1/visit_prescriptions', [
+        {
+          'id': 'rx1',
+          'facility_id': 'f1',
+          'visit_id': 'v1',
+          'facility_patient_id': 'fp1',
+          'provider_id': 'u1',
+          'drug_stock_id': 'ds1',
+          'medication_label': 'Metformin 1000mg BD',
+          'status': 'pending',
+          'prescribed_at': '2026-01-02T09:00:00.000Z',
+          'status_changed_at': '2026-01-02T09:00:00.000Z',
+          'created_by': null,
+          'created_at': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+      fake.routeJson('/rest/v1/facility_patients', [patientRow(id: 'fp1', fullName: 'Jane Walkin')]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'u1', 'full_name': 'Dr. Achieng'},
+      ]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadPrescriptions('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.prescriptions, hasLength(1));
+      expect(provider.prescriptions.first.patientName, 'Jane Walkin');
+      expect(provider.prescriptions.first.prescribedByName, 'Dr. Achieng');
+      expect(provider.prescriptions.first.medicationLabel, 'Metformin 1000mg BD');
+    });
+
+    test('empty facility has no prescriptions, no crash', () async {
+      fake.routeJson('/rest/v1/visit_prescriptions', <Map<String, dynamic>>[]);
+
+      final provider = FacilityPatientProvider();
+      await provider.loadPrescriptions('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.prescriptions, isEmpty);
+      expect(fake.requestsTo('GET', '/facility_patients'), isEmpty);
+    });
+  });
+
+  group('FacilityPatientProvider.placePrescription', () {
+    test('calls facility_admin_place_prescription, not a raw insert', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_place_prescription', 'rx1');
+
+      final provider = FacilityPatientProvider();
+      final newId = await provider.placePrescription(
+        visitId: 'v1',
+        drugStockId: 'ds1',
+        medicationLabel: 'Metformin 1000mg BD',
+      );
+
+      expect(newId, 'rx1');
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_place_prescription').single;
+      expect(rpcCall.body, contains('"target_visit_id":"v1"'));
+      expect(rpcCall.body, contains('"target_drug_stock_id":"ds1"'));
+      expect(rpcCall.body, contains('"new_medication_label":"Metformin 1000mg BD"'));
+      expect(fake.requestsTo('POST', '/visit_prescriptions'), isEmpty);
+    });
+
+    test('RPC failure (e.g. drug not in this facility) surfaces the error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_place_prescription',
+        http.Response('{"message":"Selected drug is not in this facility\'s stock"}', 400),
+      );
+
+      final provider = FacilityPatientProvider();
+      final newId = await provider.placePrescription(
+        visitId: 'v1',
+        drugStockId: 'ds-other-facility',
+        medicationLabel: 'X',
+      );
+
+      expect(newId, isNull);
       expect(provider.error, isNotNull);
     });
   });

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/facility_model.dart';
 import '../models/department_model.dart';
+import '../models/drug_stock_model.dart';
 import '../models/provider_facility_model.dart';
 
 class AdminFacilityProvider with ChangeNotifier {
@@ -10,6 +11,7 @@ class AdminFacilityProvider with ChangeNotifier {
 
   List<FacilityModel> _facilities = [];
   List<DepartmentModel> _departments = [];
+  List<DrugStockModel> _drugStock = [];
   List<ProviderFacilityModel> _facilityProviders = [];
   List<Map<String, dynamic>> _providerSearchResults = [];
   List<Map<String, dynamic>> _facilityAdmins = [];
@@ -22,6 +24,7 @@ class AdminFacilityProvider with ChangeNotifier {
 
   List<FacilityModel> get facilities => _facilities;
   List<DepartmentModel> get departments => _departments;
+  List<DrugStockModel> get drugStock => _drugStock;
   List<ProviderFacilityModel> get facilityProviders => _facilityProviders;
   List<Map<String, dynamic>> get providerSearchResults => _providerSearchResults;
   List<Map<String, dynamic>> get facilityAdmins => _facilityAdmins;
@@ -212,6 +215,82 @@ class AdminFacilityProvider with ChangeNotifier {
         'department_description': description,
       });
       await loadDepartments(facilityId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Loads a facility's drug inventory -- a facility-wide catalog, NOT
+  /// visit-derived (unlike everything in FacilityPatientProvider), so it
+  /// lives here alongside `departments`, the other facility-wide catalog.
+  /// Single query, no join needed -- a stock row has no patient dimension
+  /// to attach a display name from (see DrugStockModel's own doc comment).
+  Future<void> loadDrugStock(String facilityId) async {
+    try {
+      final response = await _supabase
+          .from('facility_drug_stock')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .order('drug_name');
+      _drugStock = (response as List)
+          .map((json) => DrugStockModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Receives stock via the checked RPC (025_pharmacy_stock.sql), which
+  /// increments an existing drug's quantity (case-insensitive name match)
+  /// or creates a new row -- deliberately does not reload here, same
+  /// convention as every other write in this codebase (the caller
+  /// reloads). Returns the drug_stock_id (new or existing), or null on
+  /// failure.
+  Future<String?> receiveStock({
+    required String facilityId,
+    required String drugName,
+    required int quantity,
+    String? batchNumber,
+    DateTime? expiryDate,
+  }) async {
+    try {
+      final id = await _supabase.rpc('facility_admin_receive_stock', params: {
+        'target_facility_id': facilityId,
+        'new_drug_name': drugName,
+        'received_quantity': quantity,
+        'new_batch_number': batchNumber,
+        'new_expiry_date': expiryDate?.toIso8601String().split('T').first,
+      }) as String;
+      return id;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Dispenses a prescription via the checked RPC
+  /// (025_pharmacy_stock.sql) -- atomically decrements the linked stock
+  /// row and marks the prescription dispensed, rejecting if that would
+  /// take stock negative. Deliberately does not reload here: this action
+  /// affects BOTH this provider's drugStock AND
+  /// FacilityPatientProvider's prescriptions, so the Pharmacy screen
+  /// reloads both itself after a successful call, rather than either
+  /// provider reaching into the other's state.
+  Future<bool> dispensePrescription({
+    required String prescriptionId,
+    int dispensedQuantity = 1,
+  }) async {
+    try {
+      await _supabase.rpc('facility_admin_dispense_prescription', params: {
+        'target_prescription_id': prescriptionId,
+        'dispensed_quantity': dispensedQuantity,
+      });
       return true;
     } catch (e) {
       _error = e.toString();

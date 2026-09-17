@@ -4,6 +4,7 @@ import '../models/clearance_row_model.dart';
 import '../models/facility_patient_model.dart';
 import '../models/lab_order_row_model.dart';
 import '../models/patient_appointment_row_model.dart';
+import '../models/prescription_row_model.dart';
 import '../models/queue_row_model.dart';
 import '../models/visit_model.dart';
 
@@ -24,6 +25,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<QueueRowModel> _activeVisits = [];
   List<ClearanceRowModel> _clearanceVisits = [];
   List<LabOrderRowModel> _labOrders = [];
+  List<PrescriptionRowModel> _prescriptions = [];
   bool _isLoading = false;
   String? _error;
 
@@ -34,6 +36,7 @@ class FacilityPatientProvider with ChangeNotifier {
   List<QueueRowModel> get activeVisits => _activeVisits;
   List<ClearanceRowModel> get clearanceVisits => _clearanceVisits;
   List<LabOrderRowModel> get labOrders => _labOrders;
+  List<PrescriptionRowModel> get prescriptions => _prescriptions;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -412,6 +415,95 @@ class FacilityPatientProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Loads today's Pharmacy & Stock "Prescriptions" board for the whole
+  /// facility -- a flat ledger of today's prescriptions (pending +
+  /// dispensed), oldest-first. Same 3-query pattern as loadLabOrders:
+  /// visit_prescriptions, then facility_patients for names, then users
+  /// for the prescribing provider's name.
+  Future<void> loadPrescriptions(String facilityId) async {
+    _error = null;
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+
+      final rows = await _supabase
+          .from('visit_prescriptions')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .gte('prescribed_at', todayStart)
+          .order('prescribed_at', ascending: true)
+          .limit(300);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isEmpty) {
+        _prescriptions = [];
+        notifyListeners();
+        return;
+      }
+
+      final patientIds = {for (final r in list) r['facility_patient_id'] as String}.toList();
+      final patientRows = await _supabase
+          .from('facility_patients')
+          .select('id, full_name, file_number')
+          .inFilter('id', patientIds);
+
+      final patientById = <String, Map<String, dynamic>>{
+        for (final p in (patientRows as List)) p['id'] as String: p as Map<String, dynamic>,
+      };
+
+      final providerIds = {for (final r in list) if (r['provider_id'] != null) r['provider_id'] as String}.toList();
+      final nameByProviderId = <String, String>{};
+      if (providerIds.isNotEmpty) {
+        final providerRows = await _supabase
+            .from('users')
+            .select('id, full_name')
+            .inFilter('id', providerIds);
+        for (final u in (providerRows as List)) {
+          final m = u as Map<String, dynamic>;
+          nameByProviderId[m['id'] as String] = m['full_name'] as String? ?? 'Unknown';
+        }
+      }
+
+      _prescriptions = list.map((r) {
+        final p = patientById[r['facility_patient_id']];
+        return PrescriptionRowModel.fromJson(
+          r,
+          patientName: p?['full_name'] as String?,
+          patientFileNumber: p?['file_number'] as String?,
+          prescribedByName: r['provider_id'] == null ? 'Unassigned' : nameByProviderId[r['provider_id']],
+        );
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Places a prescription for a visit via the checked RPC
+  /// (025_pharmacy_stock.sql) -- deliberately does not reload here, same
+  /// convention as placeLabOrder (the Pharmacy screen calls
+  /// loadPrescriptions itself right after). Returns the new
+  /// prescription's id, or null on failure.
+  Future<String?> placePrescription({
+    required String visitId,
+    required String drugStockId,
+    required String medicationLabel,
+  }) async {
+    try {
+      final newId = await _supabase.rpc('facility_admin_place_prescription', params: {
+        'target_visit_id': visitId,
+        'target_drug_stock_id': drugStockId,
+        'new_medication_label': medicationLabel,
+      }) as String;
+      return newId;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
     }
   }
 

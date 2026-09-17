@@ -342,4 +342,110 @@ void main() {
       expect(provider.facilityAppointments, isEmpty);
     });
   });
+
+  Map<String, dynamic> drugStockRow({
+    String id = 'ds1',
+    String facilityId = 'f1',
+    String drugName = 'Amoxicillin 250mg',
+    int quantityOnHand = 8,
+    int reorderThreshold = 20,
+  }) {
+    return {
+      'id': id,
+      'facility_id': facilityId,
+      'drug_name': drugName,
+      'batch_number': 'B123',
+      'expiry_date': '2027-03-01',
+      'quantity_on_hand': quantityOnHand,
+      'reorder_threshold': reorderThreshold,
+      'created_by': null,
+      'created_at': '2026-01-01T09:00:00.000Z',
+      'updated_at': '2026-01-01T09:00:00.000Z',
+    };
+  }
+
+  group('AdminFacilityProvider.loadDrugStock', () {
+    test('maps rows for a facility', () async {
+      fake.routeJson('/rest/v1/facility_drug_stock', [drugStockRow()]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadDrugStock('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.drugStock, hasLength(1));
+      expect(provider.drugStock.first.drugName, 'Amoxicillin 250mg');
+      expect(provider.drugStock.first.stockLevelStatus, 'warning');
+    });
+
+    test('empty facility has no stock, no crash', () async {
+      fake.routeJson('/rest/v1/facility_drug_stock', <Map<String, dynamic>>[]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadDrugStock('f1');
+
+      expect(provider.drugStock, isEmpty);
+    });
+  });
+
+  group('AdminFacilityProvider.receiveStock', () {
+    test('calls facility_admin_receive_stock, not a raw insert', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_receive_stock', 'ds1');
+
+      final provider = AdminFacilityProvider();
+      final id = await provider.receiveStock(
+        facilityId: 'f1',
+        drugName: 'Amoxicillin 250mg',
+        quantity: 50,
+      );
+
+      expect(id, 'ds1');
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_receive_stock').single;
+      expect(rpcCall.body, contains('"target_facility_id":"f1"'));
+      expect(rpcCall.body, contains('"new_drug_name":"Amoxicillin 250mg"'));
+      expect(rpcCall.body, contains('"received_quantity":50'));
+      expect(fake.requestsTo('POST', '/facility_drug_stock'), isEmpty);
+    });
+
+    test('RPC failure surfaces the error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_receive_stock',
+        http.Response('{"message":"Only an admin of this facility can receive stock here"}', 400),
+      );
+
+      final provider = AdminFacilityProvider();
+      final id = await provider.receiveStock(facilityId: 'f2', drugName: 'X', quantity: 1);
+
+      expect(id, isNull);
+      expect(provider.error, isNotNull);
+    });
+  });
+
+  group('AdminFacilityProvider.dispensePrescription', () {
+    test('calls facility_admin_dispense_prescription, not a raw update', () async {
+      fake.routeJson('/rest/v1/rpc/facility_admin_dispense_prescription', null);
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.dispensePrescription(prescriptionId: 'rx1');
+
+      expect(ok, isTrue);
+      final rpcCall = fake.requestsTo('POST', 'rpc/facility_admin_dispense_prescription').single;
+      expect(rpcCall.body, contains('"target_prescription_id":"rx1"'));
+      expect(rpcCall.body, contains('"dispensed_quantity":1'));
+      expect(fake.requestsTo('PATCH', '/facility_drug_stock'), isEmpty);
+      expect(fake.requestsTo('PATCH', '/visit_prescriptions'), isEmpty);
+    });
+
+    test('insufficient-stock RPC failure surfaces via provider.error', () async {
+      fake.routeRaw(
+        '/rest/v1/rpc/facility_admin_dispense_prescription',
+        http.Response('{"message":"Insufficient stock: only 0 unit(s) on hand"}', 400),
+      );
+
+      final provider = AdminFacilityProvider();
+      final ok = await provider.dispensePrescription(prescriptionId: 'rx1');
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('Insufficient stock'));
+    });
+  });
 }

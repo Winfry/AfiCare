@@ -15,6 +15,7 @@ import 'billing_clearance_tab.dart';
 import 'laboratory_tab.dart';
 import 'opd_queue_tab.dart';
 import 'patients_tab.dart';
+import 'pharmacy_stock_tab.dart';
 
 /// Shell for a facility admin — front-desk/office staff scoped to one
 /// hospital. Deliberately small: mirrors CHWShell's minimal
@@ -41,6 +42,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     SidebarNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
     SidebarNavItem(icon: Icons.biotech_outlined, label: 'Laboratory'),
+    SidebarNavItem(icon: Icons.medication_outlined, label: 'Pharmacy & Stock'),
   ];
 
   static const _bottomNavItems = [
@@ -52,6 +54,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     BottomNavItem(icon: Icons.apartment_outlined, label: 'Departments'),
     BottomNavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
     BottomNavItem(icon: Icons.biotech_outlined, label: 'Laboratory'),
+    BottomNavItem(icon: Icons.medication_outlined, label: 'Pharmacy & Stock'),
   ];
 
   @override
@@ -72,6 +75,8 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         patientProvider.loadActiveVisits(facility.id);
         patientProvider.loadClearanceVisits(facility.id);
         patientProvider.loadLabOrders(facility.id);
+        admin.loadDrugStock(facility.id);
+        patientProvider.loadPrescriptions(facility.id);
       }
     });
   }
@@ -93,6 +98,8 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
   void _goToBilling() => setState(() => _currentIndex = 3);
 
   void _goToLab() => setState(() => _currentIndex = 7);
+
+  void _goToPharmacy() => setState(() => _currentIndex = 8);
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +139,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                       onGoToQueue: _goToQueue,
                       onGoToBilling: _goToBilling,
                       onGoToLab: _goToLab,
+                      onGoToPharmacy: _goToPharmacy,
                     ),
                     PatientsTab(facility: facility),
                     OpdQueueTab(facility: facility),
@@ -140,6 +148,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     _DepartmentsTab(facility: facility),
                     _AppointmentsTab(facility: facility),
                     LaboratoryTab(facility: facility),
+                    PharmacyStockTab(facility: facility),
                   ],
                 ),
     );
@@ -153,12 +162,14 @@ class _OverviewTab extends StatelessWidget {
     required this.onGoToQueue,
     required this.onGoToBilling,
     required this.onGoToLab,
+    required this.onGoToPharmacy,
   });
   final FacilityModel facility;
   final void Function({String? searchTerm}) onGoToPatients;
   final VoidCallback onGoToQueue;
   final VoidCallback onGoToBilling;
   final VoidCallback onGoToLab;
+  final VoidCallback onGoToPharmacy;
 
   static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   static const _months = [
@@ -181,6 +192,7 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final patientProvider = context.watch<FacilityPatientProvider>();
+    final adminProvider = context.watch<AdminFacilityProvider>();
     final authProvider = context.watch<AuthProvider>();
     final firstName = authProvider.currentUser?.fullName.split(' ').first ?? 'there';
     final now = DateTime.now();
@@ -440,6 +452,34 @@ class _OverviewTab extends StatelessWidget {
                               ),
                               GestureDetector(
                                 onTap: onGoToLab,
+                                child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(
+                                adminProvider.drugStock.where((d) => d.quantityOnHand <= d.reorderThreshold).isEmpty
+                                    ? Icons.check_circle_outline
+                                    : Icons.medication_outlined,
+                                size: 18,
+                                color: adminProvider.drugStock.where((d) => d.quantityOnHand <= d.reorderThreshold).isEmpty ? AppColors.sage : AppColors.clay,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Builder(builder: (context) {
+                                  final lowStockCount = adminProvider.drugStock.where((d) => d.quantityOnHand <= d.reorderThreshold).length;
+                                  return Text(
+                                    lowStockCount == 0 ? 'No low stock items' : '$lowStockCount drugs low or out of stock',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  );
+                                }),
+                              ),
+                              GestureDetector(
+                                onTap: onGoToPharmacy,
                                 child: Text('View →', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
                               ),
                             ],
