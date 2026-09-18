@@ -6,6 +6,7 @@ import '../models/department_model.dart';
 import '../models/drug_stock_model.dart';
 import '../models/provider_facility_model.dart';
 import '../models/ward_model.dart';
+import '../models/audit_log_entry_model.dart';
 
 class AdminFacilityProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -14,6 +15,7 @@ class AdminFacilityProvider with ChangeNotifier {
   List<DepartmentModel> _departments = [];
   List<DrugStockModel> _drugStock = [];
   List<WardModel> _wards = [];
+  List<AuditLogEntryModel> _recentActivity = [];
   List<ProviderFacilityModel> _facilityProviders = [];
   List<Map<String, dynamic>> _providerSearchResults = [];
   List<Map<String, dynamic>> _facilityAdmins = [];
@@ -28,6 +30,7 @@ class AdminFacilityProvider with ChangeNotifier {
   List<DepartmentModel> get departments => _departments;
   List<DrugStockModel> get drugStock => _drugStock;
   List<WardModel> get wards => _wards;
+  List<AuditLogEntryModel> get recentActivity => _recentActivity;
   List<ProviderFacilityModel> get facilityProviders => _facilityProviders;
   List<Map<String, dynamic>> get providerSearchResults => _providerSearchResults;
   List<Map<String, dynamic>> get facilityAdmins => _facilityAdmins;
@@ -366,6 +369,32 @@ class AdminFacilityProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Loads a facility-scoped "recent activity" feed from the EXISTING
+  /// audit_log table -- every facility-admin RPC already writes to it
+  /// (registrations, status changes, dispensing, admissions, etc.), so
+  /// this needs no new table. audit_log has no facility_id COLUMN --
+  /// it's nested in the JSONB `details`, so this filters on that path
+  /// directly (027_facility_audit_notifications.sql's new RLS policy is
+  /// the real security boundary either way; this client-side filter is
+  /// just this codebase's usual double-safety convention).
+  Future<void> loadRecentActivity(String facilityId, {int limit = 50}) async {
+    try {
+      final rows = await _supabase
+          .from('audit_log')
+          .select('*')
+          .eq('details->>facility_id', facilityId)
+          .order('timestamp', ascending: false)
+          .limit(limit);
+      _recentActivity = (rows as List)
+          .map((r) => AuditLogEntryModel.fromJson(r as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
     }
   }
 

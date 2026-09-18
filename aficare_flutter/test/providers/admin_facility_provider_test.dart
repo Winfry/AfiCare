@@ -545,4 +545,51 @@ void main() {
       expect(provider.error, contains('occupied beds'));
     });
   });
+
+  group('AdminFacilityProvider.loadRecentActivity', () {
+    test('maps rows for a facility', () async {
+      fake.routeJson('/rest/v1/audit_log', [
+        {
+          'id': 'al1',
+          'action': 'patient_admitted',
+          'user_id': 'u1',
+          'details': {'facility_id': 'f1', 'visit_id': 'v1', 'admission_id': 'ad1', 'ward_id': 'w1'},
+          'timestamp': '2026-01-02T09:00:00.000Z',
+        },
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadRecentActivity('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.recentActivity, hasLength(1));
+      expect(provider.recentActivity.first.action, 'patient_admitted');
+      expect(provider.recentActivity.first.details['ward_id'], 'w1');
+
+      final req = fake.requestsTo('GET', 'audit_log').single;
+      expect(req.url.queryParameters['details->>facility_id'], 'eq.f1');
+    });
+
+    test('empty facility has no activity, no crash', () async {
+      fake.routeJson('/rest/v1/audit_log', <Map<String, dynamic>>[]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadRecentActivity('f1');
+
+      expect(provider.error, isNull);
+      expect(provider.recentActivity, isEmpty);
+    });
+
+    test('server error records error', () async {
+      fake.routeRaw(
+        '/rest/v1/audit_log',
+        http.Response('{"message":"boom"}', 500),
+      );
+
+      final provider = AdminFacilityProvider();
+      await provider.loadRecentActivity('f1');
+
+      expect(provider.error, isNotNull);
+    });
+  });
 }

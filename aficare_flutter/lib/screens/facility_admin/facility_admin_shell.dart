@@ -14,6 +14,7 @@ import '../../theme/app_colors.dart';
 import 'admissions_wards_tab.dart';
 import 'billing_clearance_tab.dart';
 import 'laboratory_tab.dart';
+import 'notifications_tab.dart';
 import 'opd_queue_tab.dart';
 import 'patients_tab.dart';
 import 'pharmacy_stock_tab.dart';
@@ -47,6 +48,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.medication_outlined, label: 'Pharmacy & Stock'),
     SidebarNavItem(icon: Icons.local_hotel_outlined, label: 'Admissions & Wards'),
     SidebarNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+    SidebarNavItem(icon: Icons.notifications_outlined, label: 'Notifications'),
   ];
 
   static const _bottomNavItems = [
@@ -61,6 +63,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     BottomNavItem(icon: Icons.medication_outlined, label: 'Pharmacy & Stock'),
     BottomNavItem(icon: Icons.local_hotel_outlined, label: 'Admissions & Wards'),
     BottomNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+    BottomNavItem(icon: Icons.notifications_outlined, label: 'Notifications'),
   ];
 
   @override
@@ -87,6 +90,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         patientProvider.loadAdmissions(facility.id);
         final now = DateTime.now();
         patientProvider.loadReportsData(facility.id, DateTime(now.year, now.month, 1));
+        admin.loadRecentActivity(facility.id);
       }
     });
   }
@@ -113,10 +117,23 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
 
   void _goToAdmissions() => setState(() => _currentIndex = 9);
 
+  void _goToNotifications() => setState(() => _currentIndex = 11);
+
   @override
   Widget build(BuildContext context) {
     final facilityAdmin = context.watch<FacilityAdminProvider>();
     final facility = facilityAdmin.myFacility;
+
+    final patientProvider = context.watch<FacilityPatientProvider>();
+    final adminProvider = context.watch<AdminFacilityProvider>();
+    final occupiedByWard = <String, int>{};
+    for (final a in patientProvider.admissions) {
+      occupiedByWard[a.wardId] = (occupiedByWard[a.wardId] ?? 0) + 1;
+    }
+    final hasActiveAlerts = patientProvider.clearanceVisits.any((v) => v.eligibilityStatus == 'pending') ||
+        patientProvider.labOrders.any((o) => o.status != 'completed' && DateTime.now().difference(o.orderedAt) > const Duration(hours: 2)) ||
+        adminProvider.drugStock.any((d) => d.stockLevelStatus != 'ok') ||
+        adminProvider.wards.any((w) => w.totalBeds > 0 && (occupiedByWard[w.id] ?? 0) / w.totalBeds >= 0.9);
 
     return AppShell(
       sidebarEntries: _sidebarEntries,
@@ -126,6 +143,8 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
       onBottomNavSelect: _onSelect,
       searchHint: 'Search...',
       avatarLabel: 'FA',
+      showNotificationDot: hasActiveAlerts,
+      onNotificationTap: _goToNotifications,
       onLogout: () async {
         await context.read<AuthProvider>().signOut();
         if (context.mounted) context.go('/login');
@@ -164,6 +183,13 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                     PharmacyStockTab(facility: facility),
                     AdmissionsWardsTab(facility: facility),
                     ReportsTab(facility: facility),
+                    NotificationsTab(
+                      facility: facility,
+                      onGoToBilling: _goToBilling,
+                      onGoToLab: _goToLab,
+                      onGoToPharmacy: _goToPharmacy,
+                      onGoToAdmissions: _goToAdmissions,
+                    ),
                   ],
                 ),
     );

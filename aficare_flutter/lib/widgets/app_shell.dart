@@ -40,6 +40,7 @@ class AppShell extends StatelessWidget {
     this.onLogout,
     this.isDark = false,
     this.onSearch,
+    this.onNotificationTap,
   });
 
   final List<SidebarEntry> sidebarEntries;
@@ -58,6 +59,7 @@ class AppShell extends StatelessWidget {
   final VoidCallback? onLogout;
   final VoidCallback? onSearch;
   final bool isDark;
+  final VoidCallback? onNotificationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +91,7 @@ class AppShell extends StatelessWidget {
                       isWide: isWide,
                       isDark: isDark,
                       onSearch: onSearch,
+                      onNotificationTap: onNotificationTap,
                     ),
                     Expanded(
                       child: Padding(
@@ -315,6 +318,7 @@ class _TopBar extends StatelessWidget {
     this.avatarColor,
     this.isDark = false,
     this.onSearch,
+    this.onNotificationTap,
   });
 
   final String searchHint;
@@ -325,6 +329,7 @@ class _TopBar extends StatelessWidget {
   final bool isWide;
   final bool isDark;
   final VoidCallback? onSearch;
+  final VoidCallback? onNotificationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +409,7 @@ class _TopBar extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                onPressed: () {},
+                onPressed: onNotificationTap ?? () {},
                 icon: const Icon(Icons.notifications_none_rounded),
                 style: IconButton.styleFrom(
                   backgroundColor: chipBg,
