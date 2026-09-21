@@ -19,6 +19,7 @@ import 'opd_queue_tab.dart';
 import 'patients_tab.dart';
 import 'pharmacy_stock_tab.dart';
 import 'reports_tab.dart';
+import 'settings_tab.dart';
 
 /// Shell for a facility admin — front-desk/office staff scoped to one
 /// hospital. Deliberately small: mirrors CHWShell's minimal
@@ -49,6 +50,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     SidebarNavItem(icon: Icons.local_hotel_outlined, label: 'Admissions & Wards'),
     SidebarNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
     SidebarNavItem(icon: Icons.notifications_outlined, label: 'Notifications'),
+    SidebarNavItem(icon: Icons.settings_outlined, label: 'Settings'),
   ];
 
   static const _bottomNavItems = [
@@ -64,6 +66,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
     BottomNavItem(icon: Icons.local_hotel_outlined, label: 'Admissions & Wards'),
     BottomNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
     BottomNavItem(icon: Icons.notifications_outlined, label: 'Notifications'),
+    BottomNavItem(icon: Icons.settings_outlined, label: 'Settings'),
   ];
 
   @override
@@ -91,6 +94,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
         final now = DateTime.now();
         patientProvider.loadReportsData(facility.id, DateTime(now.year, now.month, 1));
         admin.loadRecentActivity(facility.id);
+        admin.loadFacilityAdmins(facility.id);
       }
     });
   }
@@ -190,6 +194,7 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
                       onGoToPharmacy: _goToPharmacy,
                       onGoToAdmissions: _goToAdmissions,
                     ),
+                    SettingsTab(facility: facility),
                   ],
                 ),
     );
