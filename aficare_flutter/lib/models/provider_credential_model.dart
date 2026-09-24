@@ -3,9 +3,10 @@ enum VerificationStatus { pending, verified, rejected }
 class ProviderCredentialModel {
   final String id;
   final String providerId;
-  final String licenseNumber;
+  final String? licenseNumber;
   final String? specialty;
   final String requestedRole;
+  final bool isProvisional;
   final VerificationStatus verificationStatus;
   final String? verifiedBy;
   final DateTime? verifiedAt;
@@ -18,9 +19,10 @@ class ProviderCredentialModel {
   const ProviderCredentialModel({
     required this.id,
     required this.providerId,
-    required this.licenseNumber,
+    this.licenseNumber,
     this.specialty,
     required this.requestedRole,
+    this.isProvisional = false,
     this.verificationStatus = VerificationStatus.pending,
     this.verifiedBy,
     this.verifiedAt,
@@ -34,9 +36,10 @@ class ProviderCredentialModel {
     return ProviderCredentialModel(
       id: json['id'] as String,
       providerId: json['provider_id'] as String,
-      licenseNumber: json['license_number'] as String,
+      licenseNumber: json['license_number'] as String?,
       specialty: json['specialty'] as String?,
       requestedRole: json['requested_role'] as String,
+      isProvisional: json['is_provisional'] as bool? ?? false,
       verificationStatus: VerificationStatus.values.firstWhere(
         (s) => s.name == json['verification_status'],
         orElse: () => VerificationStatus.pending,
@@ -59,6 +62,7 @@ class ProviderCredentialModel {
       'license_number': licenseNumber,
       'specialty': specialty,
       'requested_role': requestedRole,
+      'is_provisional': isProvisional,
       'verification_status': verificationStatus.name,
       'verified_by': verifiedBy,
       'verified_at': verifiedAt?.toIso8601String(),
@@ -75,6 +79,7 @@ class ProviderCredentialModel {
     String? licenseNumber,
     String? specialty,
     String? requestedRole,
+    bool? isProvisional,
     VerificationStatus? verificationStatus,
     String? verifiedBy,
     DateTime? verifiedAt,
@@ -89,6 +94,7 @@ class ProviderCredentialModel {
       licenseNumber: licenseNumber ?? this.licenseNumber,
       specialty: specialty ?? this.specialty,
       requestedRole: requestedRole ?? this.requestedRole,
+      isProvisional: isProvisional ?? this.isProvisional,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       verifiedBy: verifiedBy ?? this.verifiedBy,
       verifiedAt: verifiedAt ?? this.verifiedAt,

@@ -38,7 +38,7 @@ class ProviderVerificationProvider with ChangeNotifier {
       result = result.where((r) =>
         (r.providerName?.toLowerCase().contains(q) ?? false) ||
         (r.providerEmail?.toLowerCase().contains(q) ?? false) ||
-        r.licenseNumber.toLowerCase().contains(q)
+        (r.licenseNumber?.toLowerCase().contains(q) ?? false)
       ).toList();
     }
     return result;
@@ -153,10 +153,24 @@ class ProviderVerificationProvider with ChangeNotifier {
   /// Self-service: submits (or resubmits, after a rejection) a
   /// verification request. RLS enforces this can only ever be inserted
   /// as the caller's own row, in 'pending' status.
+  /// [licenseNumber] is optional only when [isProvisional] is true --
+  /// KMPDC genuinely publishes no registration number for interns, so
+  /// the DB CHECK (license_number_required_unless_provisional,
+  /// 031_provisional_provider_verification.sql) only allows a null
+  /// license number in that case.
+  ///
+  /// Uses `.upsert()`, not `.insert()` -- provider_id is UNIQUE, so a
+  /// rejected applicant resubmitting hits the same row. The explicit
+  /// `verification_status: 'pending'` here matters: Postgrest's upsert
+  /// only SETs the columns present in this payload on the ON CONFLICT
+  /// UPDATE path, so omitting it would leave the row at 'rejected' and
+  /// fail the new resubmit RLS policy's WITH CHECK (which requires the
+  /// resulting row to be 'pending').
   Future<bool> submitRequest({
-    required String licenseNumber,
+    String? licenseNumber,
     String? specialty,
     required String requestedRole,
+    bool isProvisional = false,
   }) async {
     final uid = _supabase.auth.currentUser?.id;
     if (uid == null) {
@@ -166,12 +180,15 @@ class ProviderVerificationProvider with ChangeNotifier {
     }
 
     try {
-      await _supabase.from('provider_credentials').insert({
+      await _supabase.from('provider_credentials').upsert({
         'provider_id': uid,
         'license_number': licenseNumber,
         'specialty': specialty,
         'requested_role': requestedRole,
-      });
+        'is_provisional': isProvisional,
+        'verification_status': 'pending',
+        'rejection_reason': null,
+      }, onConflict: 'provider_id');
       await loadMyRequest();
       return true;
     } catch (e) {

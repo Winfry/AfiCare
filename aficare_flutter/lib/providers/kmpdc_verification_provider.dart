@@ -47,7 +47,7 @@ class KmpdcVerificationProvider with ChangeNotifier {
           .from('kmpdc_practitioners')
           .select('*')
           .ilike('full_name', '%${name.trim()}%')
-          .inFilter('cadre', ['medical_doctor', 'dentist'])
+          .inFilter('cadre', ['medical_doctor', 'dentist', 'medical_intern', 'dental_intern'])
           .limit(50);
 
       var list = (rows as List).map((r) => KmpdcPractitionerModel.fromJson(r as Map<String, dynamic>)).toList();

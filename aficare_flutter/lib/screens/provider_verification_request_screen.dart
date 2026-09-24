@@ -21,6 +21,7 @@ class _ProviderVerificationRequestScreenState extends State<ProviderVerification
   final _specialtyController = TextEditingController();
   String _selectedRole = 'doctor';
   bool _isSubmitting = false;
+  bool _isProvisional = false;
 
   static const _roles = ['doctor', 'nurse', 'chw', 'radiologist'];
 
@@ -45,9 +46,10 @@ class _ProviderVerificationRequestScreenState extends State<ProviderVerification
 
     final provider = context.read<ProviderVerificationProvider>();
     final ok = await provider.submitRequest(
-      licenseNumber: _licenseController.text.trim(),
+      licenseNumber: _licenseController.text.trim().isEmpty ? null : _licenseController.text.trim(),
       specialty: _specialtyController.text.trim().isEmpty ? null : _specialtyController.text.trim(),
       requestedRole: _selectedRole,
+      isProvisional: _isProvisional,
     );
 
     if (!mounted) return;
@@ -114,7 +116,9 @@ class _ProviderVerificationRequestScreenState extends State<ProviderVerification
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('License #: ${request.licenseNumber}'),
+                if (request.isProvisional)
+                  Text('Status: Provisional / Intern', style: TextStyle(color: Colors.grey[600])),
+                Text('License #: ${request.licenseNumber ?? 'Not applicable (provisional)'}'),
                 if (request.specialty != null && request.specialty!.isNotEmpty)
                   Text('Specialty: ${request.specialty}'),
                 Text('Requested role: ${_capitalize(request.requestedRole)}'),
@@ -164,13 +168,24 @@ class _ProviderVerificationRequestScreenState extends State<ProviderVerification
             ),
           ],
           const SizedBox(height: 24),
+          CheckboxListTile(
+            value: _isProvisional,
+            onChanged: (v) => setState(() => _isProvisional = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: const Text("I'm a medical/dental intern (provisional — not yet fully licensed)"),
+            subtitle: const Text(
+              'KMPDC does not issue a full registration number until after internship, so this is not required for you.',
+            ),
+          ),
+          const SizedBox(height: 8),
           TextFormField(
             controller: _licenseController,
-            decoration: const InputDecoration(
-              labelText: 'License / registration number *',
-              prefixIcon: Icon(Icons.badge_outlined),
+            decoration: InputDecoration(
+              labelText: _isProvisional ? 'Internship index number (optional)' : 'License / registration number *',
+              prefixIcon: const Icon(Icons.badge_outlined),
             ),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'License number is required' : null,
+            validator: (v) => (!_isProvisional && (v == null || v.trim().isEmpty)) ? 'License number is required' : null,
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(

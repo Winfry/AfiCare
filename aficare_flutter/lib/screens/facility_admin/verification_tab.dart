@@ -175,7 +175,15 @@ class _VerificationTabState extends State<VerificationTab> {
     );
   }
 
+  static const _cadreLabels = {
+    'medical_doctor': 'Medical Doctor',
+    'dentist': 'Dentist',
+    'medical_intern': 'Medical Intern (Provisional)',
+    'dental_intern': 'Dental Intern (Provisional)',
+  };
+
   Widget _resultRow(BuildContext context, KmpdcVerificationProvider provider, KmpdcPractitionerModel r, String licenseText) {
+    final isIntern = r.cadre == 'medical_intern' || r.cadre == 'dental_intern';
     final active = (r.status ?? '').toUpperCase() == 'ACTIVE';
     final hasLicenseInput = licenseText.isNotEmpty;
     final patternMatches = hasLicenseInput && provider.matchesLicensePattern(r, licenseText);
@@ -194,19 +202,30 @@ class _VerificationTabState extends State<VerificationTab> {
           Row(
             children: [
               Expanded(child: Text(r.fullName, style: Theme.of(context).textTheme.titleSmall)),
-              _chip(context, r.status ?? 'Unknown', active ? AppColors.sage : AppColors.emergency),
+              if (isIntern)
+                _chip(context, 'Interning', AppColors.steel)
+              else
+                _chip(context, r.status ?? 'Unknown', active ? AppColors.sage : AppColors.emergency),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            '${r.cadre == 'dentist' ? 'Dentist' : 'Medical Doctor'} · Reg. No. ${r.maskedRegistrationNo} · ${r.licenseType ?? 'Unknown license type'}',
+            isIntern
+                ? (_cadreLabels[r.cadre] ?? r.cadre)
+                : '${_cadreLabels[r.cadre] ?? r.cadre} · Reg. No. ${r.maskedRegistrationNo ?? 'Unknown'} · ${r.licenseType ?? 'Unknown license type'}',
             style: Theme.of(context).textTheme.labelSmall,
           ),
           if (r.qualifications != null && r.qualifications!.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(r.qualifications!, style: Theme.of(context).textTheme.labelSmall),
           ],
-          if (hasLicenseInput) ...[
+          if (isIntern) ...[
+            const SizedBox(height: 8),
+            Text(
+              "KMPDC does not publish a registration number for interns — matched by name only.",
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(fontStyle: FontStyle.italic),
+            ),
+          ] else if (hasLicenseInput) ...[
             const SizedBox(height: 8),
             _chip(
               context,
