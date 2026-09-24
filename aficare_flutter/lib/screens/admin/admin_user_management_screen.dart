@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/admin_user_provider.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
+import '../../widgets/provider_avatar.dart';
 
 class AdminUserManagementScreen extends StatefulWidget {
   const AdminUserManagementScreen({super.key});
@@ -243,13 +244,12 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             flex: 2,
             child: Row(
               children: [
-                CircleAvatar(
+                ProviderAvatarSmall(
+                  name: user.fullName,
+                  role: user.role,
+                  gender: user.gender,
+                  photoUrl: user.photoUrl,
                   radius: 16,
-                  backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
-                  child: Text(
-                    user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
                 ),
                 const SizedBox(width: 8),
                 Flexible(child: Text(user.fullName, overflow: TextOverflow.ellipsis)),

@@ -433,6 +433,33 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Uploads a real profile photo for the current user (see
+  /// 030_provider_photos.sql). Uses a STABLE per-user filename (not a
+  /// random one, unlike receipt_upload_screen.dart's pattern) so
+  /// re-uploading overwrites in place via `upsert: true` rather than
+  /// accumulating orphaned files -- and appends a cache-busting query
+  /// param to the stored URL, since a stable filename would otherwise
+  /// keep showing the browser's cached OLD image after a re-upload.
+  Future<bool> uploadProfilePhoto(Uint8List bytes, String fileExt) async {
+    if (_currentUser == null) return false;
+    try {
+      final path = 'provider-photos/${_currentUser!.id}/photo.$fileExt';
+      await _supabase.storage.from('provider-photos').uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
+          );
+      final publicUrl = _supabase.storage.from('provider-photos').getPublicUrl(path);
+      final bustedUrl = '$publicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+      await _supabase.from('users').update({'photo_url': bustedUrl}).eq('id', _currentUser!.id);
+      await _loadUserProfile(_currentUser!.id);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    }
+  }
+
   // ── Reset Password ──────────────────────────────────────────────────
 
   Future<bool> resetPassword(String email) async {

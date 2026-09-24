@@ -7,6 +7,8 @@ class ProviderFacilityModel {
   // Denormalized from a join with users/facilities.
   final String? providerName;
   final String? facilityName;
+  final String? providerGender;
+  final String? providerPhotoUrl;
 
   const ProviderFacilityModel({
     required this.providerId,
@@ -16,6 +18,8 @@ class ProviderFacilityModel {
     required this.createdAt,
     this.providerName,
     this.facilityName,
+    this.providerGender,
+    this.providerPhotoUrl,
   });
 
   factory ProviderFacilityModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +31,8 @@ class ProviderFacilityModel {
       createdAt: DateTime.parse(json['created_at'] as String),
       providerName: json['provider_name'] as String?,
       facilityName: json['facility_name'] as String?,
+      providerGender: json['provider_gender'] as String?,
+      providerPhotoUrl: json['provider_photo_url'] as String?,
     );
   }
 
@@ -39,6 +45,8 @@ class ProviderFacilityModel {
       'created_at': createdAt.toIso8601String(),
       'provider_name': providerName,
       'facility_name': facilityName,
+      'provider_gender': providerGender,
+      'provider_photo_url': providerPhotoUrl,
     };
   }
 
@@ -50,6 +58,8 @@ class ProviderFacilityModel {
     DateTime? createdAt,
     String? providerName,
     String? facilityName,
+    String? providerGender,
+    String? providerPhotoUrl,
   }) {
     return ProviderFacilityModel(
       providerId: providerId ?? this.providerId,
@@ -59,6 +69,8 @@ class ProviderFacilityModel {
       createdAt: createdAt ?? this.createdAt,
       providerName: providerName ?? this.providerName,
       facilityName: facilityName ?? this.facilityName,
+      providerGender: providerGender ?? this.providerGender,
+      providerPhotoUrl: providerPhotoUrl ?? this.providerPhotoUrl,
     );
   }
 }

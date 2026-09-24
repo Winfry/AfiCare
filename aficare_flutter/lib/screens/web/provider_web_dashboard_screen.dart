@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models/user_model.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import '../../utils/snackbar_utils.dart';
+import '../../widgets/provider_avatar.dart';
 import '../provider/patient_search_screen.dart';
 import '../provider/provider_inbox_screen.dart';
 import '../provider/referral_tracker_screen.dart';
@@ -251,13 +253,12 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
                   Text('Here is your practice overview', style: TextStyle(color: Colors.grey[600])),
                 ],
               ),
-              CircleAvatar(
+              ProviderAvatar(
+                name: user?.fullName ?? 'Provider',
+                role: user?.role ?? UserRole.doctor,
+                gender: user?.gender,
+                photoUrl: user?.photoUrl,
                 radius: 24,
-                backgroundColor: AfiCareTheme.primaryBlue,
-                child: Text(
-                  user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'P',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
               ),
             ],
           ),

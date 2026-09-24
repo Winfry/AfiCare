@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
+import '../../widgets/provider_avatar.dart';
 import '../common/notifications_screen.dart';
 import 'patient_access.dart';
 
@@ -32,6 +35,25 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     });
   }
 
+  Future<void> _pickAndUploadPhoto(AuthProvider auth) async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    final ext = picked.path.split('.').last;
+    final bytes = await picked.readAsBytes();
+    final ok = await auth.uploadProfilePhoto(bytes, ext);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Photo updated' : 'Upload failed: ${auth.error}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -52,19 +74,14 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  ProviderAvatar(
+                    name: user?.fullName ?? 'Provider',
+                    role: user?.role ?? UserRole.doctor,
+                    gender: user?.gender,
+                    photoUrl: user?.photoUrl,
                     radius: 30,
-                    backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.15),
-                    child: Text(
-                      user?.fullName.isNotEmpty == true
-                          ? user!.fullName[0].toUpperCase()
-                          : 'P',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AfiCareTheme.primaryBlue,
-                      ),
-                    ),
+                    alwaysAllowChoose: true,
+                    onChooseAvatar: () => _pickAndUploadPhoto(auth),
                   ),
                   const SizedBox(width: 16),
                   Expanded(

@@ -12,6 +12,7 @@ class UserModel {
   final String? facilityId;
   final String? department;
   final String? gender;
+  final String? photoUrl;
   final UserStatus status;
   final DateTime createdAt;
   final Map<String, dynamic>? metadata;
@@ -26,6 +27,7 @@ class UserModel {
     this.facilityId,
     this.department,
     this.gender,
+    this.photoUrl,
     this.status = UserStatus.active,
     required this.createdAt,
     this.metadata,
@@ -45,6 +47,7 @@ class UserModel {
       facilityId: json['facility_id'] as String? ?? json['hospital_id'] as String?,
       department: json['department'] as String?,
       gender: json['gender'] as String?,
+      photoUrl: json['photo_url'] as String?,
       status: _statusFromString(json['status'] as String? ?? 'active'),
       createdAt: DateTime.parse(json['created_at'] as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
@@ -62,6 +65,7 @@ class UserModel {
       'facility_id': facilityId,
       'department': department,
       'gender': gender,
+      'photo_url': photoUrl,
       'status': _statusToString(status),
       'created_at': createdAt.toIso8601String(),
       'metadata': metadata,

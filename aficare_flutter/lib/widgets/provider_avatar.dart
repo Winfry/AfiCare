@@ -45,6 +45,7 @@ class ProviderAvatar extends StatefulWidget {
     this.showBorder = false,
     this.borderColor,
     this.onChooseAvatar,
+    this.alwaysAllowChoose = false,
   });
 
   final String name;
@@ -56,6 +57,15 @@ class ProviderAvatar extends StatefulWidget {
   final double radius;
   final bool showBorder;
   final Color? borderColor;
+
+  /// By default the "choose" icon hides once a real [photoUrl] exists --
+  /// this widget is normally used by a PATIENT picking a cartoon
+  /// stand-in, and a patient shouldn't be able to override a provider's
+  /// real uploaded photo with one. Set true when [onChooseAvatar] instead
+  /// lets the provider re-upload their OWN real photo (e.g. their own
+  /// settings screen) -- there, the edit affordance must stay available
+  /// even after a photo already exists.
+  final bool alwaysAllowChoose;
 
   /// When non-null, a small "choose" icon appears allowing the patient
   /// to pick an avatar from the gallery. Awaited so this widget can
@@ -111,7 +121,7 @@ class _ProviderAvatarState extends State<ProviderAvatar> {
     final hasPhoto =
         widget.photoUrl != null && widget.photoUrl!.isNotEmpty;
     final hasSaved = _loaded && _savedAvatar != null;
-    final canChoose = widget.onChooseAvatar != null && !hasPhoto;
+    final canChoose = widget.onChooseAvatar != null && (!hasPhoto || widget.alwaysAllowChoose);
 
     // Determine the image provider
     ImageProvider? image;

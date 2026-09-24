@@ -49,7 +49,7 @@ class CareTeamProvider extends ChangeNotifier {
       }
       final usersResponse = await Supabase.instance.client
           .from('users')
-          .select('id, full_name, role, department, gender')
+          .select('id, full_name, role, department, gender, photo_url')
           .inFilter('id', providerIds);
 
       final userMap = <String, Map<String, dynamic>>{};
@@ -66,6 +66,7 @@ class CareTeamProvider extends ChangeNotifier {
           'provider_role': u['role'] ?? 'doctor',
           'provider_department': u['department'],
           'provider_gender': u['gender'],
+          'provider_photo_url': u['photo_url'],
         });
       }).toList();
     } catch (e) {

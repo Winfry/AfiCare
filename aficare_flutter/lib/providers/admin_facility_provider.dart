@@ -438,16 +438,22 @@ class AdminFacilityProvider with ChangeNotifier {
       final providerIds = rows.map((r) => r['provider_id'] as String).toSet().toList();
       final users = await _supabase
           .from('users')
-          .select('id, full_name')
+          .select('id, full_name, gender, photo_url')
           .inFilter('id', providerIds);
 
-      final nameById = <String, String>{
-        for (final u in users as List) u['id'] as String: u['full_name'] as String? ?? 'Unknown',
+      final userById = <String, Map<String, dynamic>>{
+        for (final u in users as List) u['id'] as String: u as Map<String, dynamic>,
       };
 
       _facilityProviders = rows
-          .map((r) => ProviderFacilityModel.fromJson(r as Map<String, dynamic>)
-              .copyWith(providerName: nameById[r['provider_id']]))
+          .map((r) {
+            final u = userById[r['provider_id']];
+            return ProviderFacilityModel.fromJson(r as Map<String, dynamic>).copyWith(
+              providerName: u?['full_name'] as String? ?? 'Unknown',
+              providerGender: u?['gender'] as String?,
+              providerPhotoUrl: u?['photo_url'] as String?,
+            );
+          })
           .toList();
       notifyListeners();
     } catch (e) {
