@@ -244,13 +244,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             flex: 2,
             child: Row(
               children: [
-                ProviderAvatarSmall(
-                  name: user.fullName,
-                  role: user.role,
-                  gender: user.gender,
-                  photoUrl: user.photoUrl,
-                  radius: 16,
-                ),
+                _avatarFor(user, radius: 16),
                 const SizedBox(width: 8),
                 Flexible(child: Text(user.fullName, overflow: TextOverflow.ellipsis)),
               ],
@@ -302,14 +296,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
               value: provider.selectedIds.contains(user.id),
               onChanged: (_) => provider.toggleSelection(user.id),
             ),
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
-              child: Text(
-                user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
+            _avatarFor(user, radius: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -347,6 +334,34 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Real photo / gendered illustration only for provider-shaped roles
+  /// or a user who actually has a photo -- ProviderAvatar's default
+  /// illustration always wins over initials once loaded (see
+  /// DefaultAvatar.assetPath's `default: return generic`), so blindly
+  /// using it for every role here would replace patients'/admins'/
+  /// CHWs' existing color-coded initials with a plain generic picture.
+  Widget _avatarFor(UserModel user, {required double radius}) {
+    const providerRoles = {UserRole.doctor, UserRole.nurse, UserRole.radiologist};
+    final hasPhoto = user.photoUrl != null && user.photoUrl!.isNotEmpty;
+    if (hasPhoto || providerRoles.contains(user.role)) {
+      return ProviderAvatarSmall(
+        name: user.fullName,
+        role: providerRoles.contains(user.role) ? user.role : UserRole.doctor,
+        gender: user.gender,
+        photoUrl: user.photoUrl,
+        radius: radius,
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
+      child: Text(
+        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+        style: TextStyle(fontSize: radius - 2, fontWeight: FontWeight.bold),
       ),
     );
   }

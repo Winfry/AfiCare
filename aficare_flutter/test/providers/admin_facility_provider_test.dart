@@ -169,10 +169,10 @@ void main() {
       };
     }
 
-    test('loadFacilityProviders merges provider_facilities with user names', () async {
+    test('loadFacilityProviders merges provider_facilities with user names, gender and photo', () async {
       fake.routeJson('/rest/v1/provider_facilities', [linkRow()]);
       fake.routeJson('/rest/v1/users', [
-        {'id': 'p1', 'full_name': 'Dr. Mwangi'},
+        {'id': 'p1', 'full_name': 'Dr. Mwangi', 'gender': 'female', 'photo_url': 'https://example.com/p1.jpg'},
       ]);
 
       final provider = AdminFacilityProvider();
@@ -181,6 +181,8 @@ void main() {
       expect(provider.facilityProviders, hasLength(1));
       expect(provider.facilityProviders.first.providerName, 'Dr. Mwangi');
       expect(provider.facilityProviders.first.specialty, 'Cardiology');
+      expect(provider.facilityProviders.first.providerGender, 'female');
+      expect(provider.facilityProviders.first.providerPhotoUrl, 'https://example.com/p1.jpg');
     });
 
     test('searchVerifiedProviders keeps only verified candidates', () async {

@@ -74,6 +74,7 @@ class _ProviderShellState extends State<ProviderShell> {
       onBottomNavSelect: (i) => setState(() => _currentIndex = i),
       searchHint: 'Search patients, records...',
       avatarLabel: 'DR',
+      avatarPhotoUrl: context.watch<AuthProvider>().currentUser?.photoUrl,
       onLogout: () async {
         await context.read<AuthProvider>().signOut();
         if (context.mounted) context.go('/login');

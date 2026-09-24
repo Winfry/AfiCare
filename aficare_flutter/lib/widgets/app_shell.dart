@@ -41,6 +41,7 @@ class AppShell extends StatelessWidget {
     this.isDark = false,
     this.onSearch,
     this.onNotificationTap,
+    this.avatarPhotoUrl,
   });
 
   final List<SidebarEntry> sidebarEntries;
@@ -60,6 +61,12 @@ class AppShell extends StatelessWidget {
   final VoidCallback? onSearch;
   final bool isDark;
   final VoidCallback? onNotificationTap;
+
+  /// When set, the top-bar account badge shows this photo instead of
+  /// [avatarLabel]'s initials -- e.g. a provider's own uploaded photo
+  /// (030_provider_photos.sql). Optional/nullable so every shell that
+  /// doesn't pass it keeps today's exact initials-badge behavior.
+  final String? avatarPhotoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +93,7 @@ class AppShell extends StatelessWidget {
                       searchHint: searchHint,
                       avatarLabel: avatarLabel,
                       avatarColor: avatarColor,
+                      avatarPhotoUrl: avatarPhotoUrl,
                       showNotificationDot: showNotificationDot,
                       trailingActions: trailingActions,
                       isWide: isWide,
@@ -316,6 +324,7 @@ class _TopBar extends StatelessWidget {
     required this.trailingActions,
     required this.isWide,
     this.avatarColor,
+    this.avatarPhotoUrl,
     this.isDark = false,
     this.onSearch,
     this.onNotificationTap,
@@ -324,6 +333,7 @@ class _TopBar extends StatelessWidget {
   final String searchHint;
   final String avatarLabel;
   final Color? avatarColor;
+  final String? avatarPhotoUrl;
   final bool showNotificationDot;
   final List<Widget> trailingActions;
   final bool isWide;
@@ -436,10 +446,13 @@ class _TopBar extends StatelessWidget {
           CircleAvatar(
             radius: 18,
             backgroundColor: avatarColor ?? AppColors.lightBlue,
-            child: Text(
-              avatarLabel,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.deepNavy),
-            ),
+            backgroundImage: (avatarPhotoUrl != null && avatarPhotoUrl!.isNotEmpty) ? NetworkImage(avatarPhotoUrl!) : null,
+            child: (avatarPhotoUrl != null && avatarPhotoUrl!.isNotEmpty)
+                ? null
+                : Text(
+                    avatarLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.deepNavy),
+                  ),
           ),
         ],
       ),

@@ -2,9 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/message_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../utils/theme.dart';
+import '../../widgets/provider_avatar.dart';
+
+/// True when a real photo should be preferred over plain initials --
+/// either the counterpart genuinely has one uploaded, or their role is
+/// provider-shaped (ProviderAvatar's default illustration always wins
+/// over initials once loaded, so this is skipped for patient/admin/chw
+/// counterparts who have no photo, preserving their existing initials).
+bool _prefersIllustratedAvatar(String? roleName, UserModel? cached) {
+  const providerRoleNames = {'doctor', 'nurse', 'radiologist'};
+  final hasPhoto = cached?.photoUrl != null && cached!.photoUrl!.isNotEmpty;
+  return hasPhoto || providerRoleNames.contains(roleName ?? cached?.role.name);
+}
 
 /// B18 — Messages (Conversations List)
 class MessagesScreen extends StatefulWidget {
@@ -159,24 +172,33 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Widget _row(ConversationSummary c, {required bool isWide}) {
     final selected = isWide && _selected?.counterpartId == c.counterpartId;
+    final cached = context.read<MessageProvider>().cachedUser(c.counterpartId);
     return ListTile(
       selected: selected,
       selectedTileColor: AfiCareTheme.primaryGreen.withOpacity(0.08),
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: CircleAvatar(
-        radius: 26,
-        backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-        child: Text(
-          c.counterpartName.isNotEmpty
-              ? c.counterpartName[0].toUpperCase()
-              : '?',
-          style: TextStyle(
-              color: AfiCareTheme.primaryGreen,
-              fontWeight: FontWeight.bold,
-              fontSize: 20),
-        ),
-      ),
+      leading: _prefersIllustratedAvatar(c.counterpartRole, cached)
+          ? ProviderAvatarSmall(
+              name: c.counterpartName,
+              role: cached?.role ?? UserRole.doctor,
+              gender: cached?.gender,
+              photoUrl: cached?.photoUrl,
+              radius: 26,
+            )
+          : CircleAvatar(
+              radius: 26,
+              backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
+              child: Text(
+                c.counterpartName.isNotEmpty
+                    ? c.counterpartName[0].toUpperCase()
+                    : '?',
+                style: TextStyle(
+                    color: AfiCareTheme.primaryGreen,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20),
+              ),
+            ),
       title: Text(c.counterpartName,
           style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(c.lastMessage,
@@ -360,20 +382,29 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
+    final cached = context.read<MessageProvider>().cachedUser(widget.counterpartId);
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.white24,
-              child: Text(
-                widget.counterpartName.isNotEmpty
-                    ? widget.counterpartName[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
+            _prefersIllustratedAvatar(null, cached)
+                ? ProviderAvatarSmall(
+                    name: widget.counterpartName,
+                    role: cached?.role ?? UserRole.doctor,
+                    gender: cached?.gender,
+                    photoUrl: cached?.photoUrl,
+                    radius: 18,
+                  )
+                : CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white24,
+                    child: Text(
+                      widget.counterpartName.isNotEmpty
+                          ? widget.counterpartName[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(widget.counterpartName,
@@ -391,23 +422,32 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _paneHeader() {
+    final cached = context.read<MessageProvider>().cachedUser(widget.counterpartId);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       color: Colors.white,
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-            child: Text(
-              widget.counterpartName.isNotEmpty
-                  ? widget.counterpartName[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                  color: AfiCareTheme.primaryGreen,
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
+          _prefersIllustratedAvatar(null, cached)
+              ? ProviderAvatarSmall(
+                  name: widget.counterpartName,
+                  role: cached?.role ?? UserRole.doctor,
+                  gender: cached?.gender,
+                  photoUrl: cached?.photoUrl,
+                  radius: 18,
+                )
+              : CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
+                  child: Text(
+                    widget.counterpartName.isNotEmpty
+                        ? widget.counterpartName[0].toUpperCase()
+                        : '?',
+                    style: TextStyle(
+                        color: AfiCareTheme.primaryGreen,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(widget.counterpartName,

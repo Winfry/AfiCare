@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/facility_admin_provider.dart';
 import '../../providers/facility_patient_provider.dart';
 import '../../widgets/app_shell.dart';
+import '../../widgets/provider_avatar.dart';
 import '../../theme/app_colors.dart';
 import 'admissions_wards_tab.dart';
 import 'billing_clearance_tab.dart';
@@ -862,7 +863,12 @@ class _ProvidersTab extends StatelessWidget {
                     children: provider.facilityProviders
                         .map((p) => Card(
                               child: ListTile(
-                                leading: const Icon(Icons.medical_services_outlined),
+                                leading: ProviderAvatarSmall(
+                                  name: p.providerName ?? 'Unknown',
+                                  gender: p.providerGender,
+                                  photoUrl: p.providerPhotoUrl,
+                                  radius: 18,
+                                ),
                                 title: Text(p.providerName ?? 'Unknown'),
                                 subtitle: Text([
                                   if (p.specialty != null && p.specialty!.isNotEmpty) p.specialty!,
