@@ -188,9 +188,7 @@ class _CareTeamSectionState extends State<CareTeamSection> {
                     context: context,
                     patientId: widget.patientId,
                     providerId: m.providerId,
-                  ).then((_) {
-                    if (mounted) setState(() {});
-                  }),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 // Name

@@ -126,6 +126,40 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
 
   void _goToNotifications() => setState(() => _currentIndex = 11);
 
+  /// The top bar's search chip had no handler wired at all (AppShell's
+  /// `onSearch` was never passed for this shell) -- tapping it did
+  /// nothing. This reuses the exact same navigation Overview's own
+  /// inline patient search already does, rather than building a whole
+  /// new search surface.
+  void _openSearchDialog() {
+    final ctl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Search Patients'),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Name, ID, or file no.'),
+          onSubmitted: (v) {
+            Navigator.pop(ctx);
+            _goToPatients(searchTerm: v);
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _goToPatients(searchTerm: ctl.text);
+            },
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final facilityAdmin = context.watch<FacilityAdminProvider>();
@@ -148,10 +182,11 @@ class _FacilityAdminShellState extends State<FacilityAdminShell> {
       selectedIndex: _currentIndex,
       onSelect: _onSelect,
       onBottomNavSelect: _onSelect,
-      searchHint: 'Search...',
+      searchHint: 'Search patients...',
       avatarLabel: 'FA',
       showNotificationDot: hasActiveAlerts,
       onNotificationTap: _goToNotifications,
+      onSearch: _openSearchDialog,
       onLogout: () async {
         await context.read<AuthProvider>().signOut();
         if (context.mounted) context.go('/login');
@@ -279,7 +314,11 @@ class _OverviewTab extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: 'Search patient, ID, or file no.',
                     isDense: true,
-                    prefixIcon: const Icon(Icons.search, size: 20),
+                    prefixIcon: IconButton(
+                      icon: const Icon(Icons.search, size: 20),
+                      tooltip: 'Search',
+                      onPressed: () => onGoToPatients(searchTerm: searchCtl.text),
+                    ),
                     filled: true,
                     fillColor: AppColors.cardBackground,
                     border: OutlineInputBorder(

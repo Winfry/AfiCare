@@ -1385,9 +1385,7 @@ class _CareTeamSidebarCardState extends State<_CareTeamSidebarCard> {
                   context: context,
                   patientId: widget.patientId,
                   providerId: m.providerId,
-                ).then((_) {
-                  if (mounted) setState(() {});
-                }),
+                ),
               ),
               const SizedBox(height: 8),
               Text(

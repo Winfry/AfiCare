@@ -58,8 +58,13 @@ class ProviderAvatar extends StatefulWidget {
   final Color? borderColor;
 
   /// When non-null, a small "choose" icon appears allowing the patient
-  /// to pick an avatar from the gallery.
-  final VoidCallback? onChooseAvatar;
+  /// to pick an avatar from the gallery. Awaited so this widget can
+  /// reload the saved choice the moment the picker closes -- without
+  /// this, the newly picked avatar wouldn't show until the widget was
+  /// torn down and rebuilt from scratch (e.g. leaving and reopening the
+  /// screen), since AvatarStorage lives outside the widget tree and a
+  /// plain parent `setState` doesn't by itself make this State refetch.
+  final Future<void> Function()? onChooseAvatar;
 
   @override
   State<ProviderAvatar> createState() => _ProviderAvatarState();
@@ -138,7 +143,10 @@ class _ProviderAvatarState extends State<ProviderAvatar> {
           bottom: 0,
           right: 0,
           child: GestureDetector(
-            onTap: widget.onChooseAvatar,
+            onTap: () async {
+              await widget.onChooseAvatar!();
+              if (mounted) _loadSaved();
+            },
             child: Container(
               width: widget.radius * 0.65,
               height: widget.radius * 0.65,
@@ -193,7 +201,7 @@ class ProviderAvatarSmall extends StatelessWidget {
   final String? patientId;
   final String? providerId;
   final double radius;
-  final VoidCallback? onChooseAvatar;
+  final Future<void> Function()? onChooseAvatar;
 
   @override
   Widget build(BuildContext context) {
