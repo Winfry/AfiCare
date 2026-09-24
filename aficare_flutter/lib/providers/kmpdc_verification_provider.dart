@@ -43,10 +43,16 @@ class KmpdcVerificationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Collapse repeated whitespace defensively -- KMPDC's own source
+      // data has had real double-space artifacts (fixed at sync time,
+      // see sync-kmpdc-register), and a user could paste/type extra
+      // spaces too; either way an exact-substring ILIKE would otherwise
+      // silently miss a real match over nothing but spacing.
+      final normalizedName = name.trim().replaceAll(RegExp(r'\s+'), ' ');
       final rows = await _supabase
           .from('kmpdc_practitioners')
           .select('*')
-          .ilike('full_name', '%${name.trim()}%')
+          .ilike('full_name', '%$normalizedName%')
           .inFilter('cadre', ['medical_doctor', 'dentist', 'medical_intern', 'dental_intern'])
           .limit(50);
 

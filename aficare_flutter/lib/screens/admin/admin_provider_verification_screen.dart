@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/provider_verification_provider.dart';
+import '../../providers/kmpdc_verification_provider.dart';
 import '../../models/provider_credential_model.dart';
+import '../../models/kmpdc_practitioner_model.dart';
 import '../../utils/theme.dart';
 
 class AdminProviderVerificationScreen extends StatefulWidget {
@@ -147,17 +149,34 @@ class _AdminProviderVerificationScreenState extends State<AdminProviderVerificat
                     ],
                   ),
                 ),
-                _statusChip(request.verificationStatus),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _statusChip(request.verificationStatus),
+                    if (request.isProvisional) ...[
+                      const SizedBox(height: 4),
+                      _provisionalChip(),
+                    ],
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 10),
             _detailRow('Requested role', _capitalize(request.requestedRole)),
-            _detailRow('License #', request.licenseNumber),
+            _detailRow('License #', request.licenseNumber ?? 'Not applicable (provisional)'),
             if (request.specialty != null && request.specialty!.isNotEmpty)
               _detailRow('Specialty', request.specialty!),
             _detailRow('Submitted', _formatDate(request.createdAt)),
             if (request.verificationStatus == VerificationStatus.rejected && request.rejectionReason != null)
               _detailRow('Rejection reason', request.rejectionReason!),
+            if (request.isProvisional) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _checkKmpdcInternRegister(context, request),
+                icon: const Icon(Icons.fact_check_outlined, size: 18),
+                label: const Text('Check KMPDC Intern Register'),
+              ),
+            ],
             if (request.verificationStatus == VerificationStatus.pending) ...[
               const SizedBox(height: 12),
               Row(
@@ -196,6 +215,80 @@ class _AdminProviderVerificationScreenState extends State<AdminProviderVerificat
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
         ],
       ),
+    );
+  }
+
+  Widget _provisionalChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text('Provisional', style: TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  /// Cross-references a provisional applicant's self-reported name
+  /// against KMPDC's real intern register (kmpdc_practitioners,
+  /// sync-kmpdc-register) -- the actual "verified against KMPDC's
+  /// intern register" this feature is about. Purely informational: the
+  /// Approve/Reject buttons below still call the same unchanged
+  /// admin_verify_provider_license RPC regardless of what's found here.
+  void _checkKmpdcInternRegister(BuildContext context, ProviderCredentialModel request) {
+    final kmpdc = context.read<KmpdcVerificationProvider>();
+    kmpdc.search(name: request.providerName ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('KMPDC check: ${request.providerName ?? 'Unknown'}'),
+        content: SizedBox(
+          width: 420,
+          child: Consumer<KmpdcVerificationProvider>(
+            builder: (ctx, p, _) {
+              if (p.isSearching) {
+                return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+              }
+              if (p.results.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No match found on KMPDC\'s public register (checked doctors, dentists and interns).'),
+                );
+              }
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: p.results.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) => _kmpdcResultTile(p.results[i]),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  Widget _kmpdcResultTile(KmpdcPractitionerModel r) {
+    const cadreLabels = {
+      'medical_doctor': 'Medical Doctor',
+      'dentist': 'Dentist',
+      'medical_intern': 'Medical Intern (Provisional)',
+      'dental_intern': 'Dental Intern (Provisional)',
+    };
+    return ListTile(
+      dense: true,
+      title: Text(r.fullName),
+      subtitle: Text([
+        cadreLabels[r.cadre] ?? r.cadre,
+        if (r.qualifications != null && r.qualifications!.isNotEmpty) r.qualifications!,
+        if (r.status != null) r.status!,
+      ].join(' · ')),
     );
   }
 

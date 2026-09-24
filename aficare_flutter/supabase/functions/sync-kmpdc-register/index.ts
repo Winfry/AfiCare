@@ -149,7 +149,12 @@ function parseCadrePage(html: string, config: CadreConfig): ParsedRow[] {
     const cells: string[] = [];
     let tdMatch: RegExpExecArray | null;
     while ((tdMatch = tdRegex.exec(trMatch[1])) !== null) {
-      cells.push(decodeEntities(tdMatch[1].replace(/<[^>]*>/g, "")).trim());
+      // Collapse runs of whitespace to one space -- KMPDC's own source
+      // data has real double-space artifacts (confirmed: 2,047 existing
+      // rows had them, e.g. "BRENDA  KERUBO OKEMWA"), which silently
+      // broke a normal single-spaced name search even though the person
+      // was genuinely in the register the whole time.
+      cells.push(decodeEntities(tdMatch[1].replace(/<[^>]*>/g, "")).replace(/\s+/g, " ").trim());
     }
     if (cells.length < config.minCells) continue; // skip malformed/empty rows
 
