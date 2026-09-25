@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/provider_verification_provider.dart';
 import '../../providers/kmpdc_verification_provider.dart';
+import '../../providers/nck_verification_provider.dart';
 import '../../models/provider_credential_model.dart';
 import '../../models/kmpdc_practitioner_model.dart';
+import '../../models/nck_nurse_model.dart';
 import '../../utils/theme.dart';
 
 class AdminProviderVerificationScreen extends StatefulWidget {
@@ -172,9 +174,11 @@ class _AdminProviderVerificationScreenState extends State<AdminProviderVerificat
             if (request.isProvisional) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
-                onPressed: () => _checkKmpdcInternRegister(context, request),
+                onPressed: () => request.requestedRole == 'nurse'
+                    ? _checkNckRegister(context, request)
+                    : _checkKmpdcInternRegister(context, request),
                 icon: const Icon(Icons.fact_check_outlined, size: 18),
-                label: const Text('Check KMPDC Intern Register'),
+                label: Text(request.requestedRole == 'nurse' ? 'Check NCK Register' : 'Check KMPDC Intern Register'),
               ),
             ],
             if (request.verificationStatus == VerificationStatus.pending) ...[
