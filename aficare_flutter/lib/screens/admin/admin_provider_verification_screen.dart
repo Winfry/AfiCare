@@ -278,6 +278,62 @@ class _AdminProviderVerificationScreenState extends State<AdminProviderVerificat
     );
   }
 
+  /// Cross-references a provisional NURSE applicant's self-reported name
+  /// against NCK's live public register (verify-nck-register) -- the
+  /// nurse counterpart to _checkKmpdcInternRegister above. Same
+  /// boundary: purely informational, Approve/Reject below still call the
+  /// same unchanged admin_verify_provider_license RPC regardless.
+  void _checkNckRegister(BuildContext context, ProviderCredentialModel request) {
+    final nck = context.read<NckVerificationProvider>();
+    nck.search(name: request.providerName ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('NCK check: ${request.providerName ?? 'Unknown'}'),
+        content: SizedBox(
+          width: 420,
+          child: Consumer<NckVerificationProvider>(
+            builder: (ctx, p, _) {
+              if (p.isSearching) {
+                return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+              }
+              if (p.results.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No match found on NCK\'s public register.'),
+                );
+              }
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: p.results.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) => _nckResultTile(p.results[i]),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  Widget _nckResultTile(NckNurseModel r) {
+    return ListTile(
+      dense: true,
+      title: Text(r.fullName),
+      subtitle: Text([
+        'License No. ${r.licenseNumber}',
+        if (r.status != null) r.status!,
+        if (r.validTill != null) 'Valid till ${r.validTill}',
+      ].join(' · ')),
+    );
+  }
+
   Widget _kmpdcResultTile(KmpdcPractitionerModel r) {
     const cadreLabels = {
       'medical_doctor': 'Medical Doctor',

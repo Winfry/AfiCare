@@ -173,9 +173,9 @@ class _ProviderVerificationRequestScreenState extends State<ProviderVerification
             onChanged: (v) => setState(() => _isProvisional = v ?? false),
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
-            title: const Text("I'm a medical/dental intern (provisional — not yet fully licensed)"),
+            title: const Text("I'm provisional — not yet fully licensed (e.g. an intern, or awaiting full registration)"),
             subtitle: const Text(
-              'KMPDC does not issue a full registration number until after internship, so this is not required for you.',
+              'A full license/registration number is not issued until after internship or full registration, so this is not required for you.',
             ),
           ),
           const SizedBox(height: 8),
