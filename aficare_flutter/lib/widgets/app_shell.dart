@@ -23,6 +23,54 @@ class BottomNavItem {
   final String label;
 }
 
+/// Per-role restyling for [AppShell]. Every field is nullable and falls
+/// back to the shell's original look, so a role that passes no theme
+/// (provider, facility admin) renders exactly as it did before this was
+/// introduced. Added for the patient redesign, which needs a different
+/// rail, top bar and page ground without dragging the other roles along.
+class AppShellTheme {
+  const AppShellTheme({
+    this.pageBackground,
+    this.contentMaxWidth,
+    this.collapseWidth,
+    this.railWidth,
+    this.railDecoration,
+    this.railPadding,
+    this.railActiveColor,
+    this.railItemColor,
+    this.railItemRadius,
+    this.railItemStyle,
+    this.railGroupStyle,
+    this.topBarHeight,
+    this.topBarBottomBorder,
+    this.searchFill,
+    this.searchRadius,
+    this.searchMaxWidth,
+    this.bottomNavActiveColor,
+  });
+
+  final Color? pageBackground;
+  final double? contentMaxWidth;
+  final double? collapseWidth;
+
+  final double? railWidth;
+  final Decoration? railDecoration;
+  final EdgeInsetsGeometry? railPadding;
+  final Color? railActiveColor;
+  final Color? railItemColor;
+  final double? railItemRadius;
+  final TextStyle? railItemStyle;
+  final TextStyle? railGroupStyle;
+
+  final double? topBarHeight;
+  final BorderSide? topBarBottomBorder;
+  final Color? searchFill;
+  final double? searchRadius;
+  final double? searchMaxWidth;
+
+  final Color? bottomNavActiveColor;
+}
+
 class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
@@ -42,6 +90,10 @@ class AppShell extends StatelessWidget {
     this.onSearch,
     this.onNotificationTap,
     this.avatarPhotoUrl,
+    this.shellTheme,
+    this.brandMark,
+    this.sidebarFooter,
+    this.onAvatarTap,
   });
 
   final List<SidebarEntry> sidebarEntries;
@@ -68,14 +120,31 @@ class AppShell extends StatelessWidget {
   /// doesn't pass it keeps today's exact initials-badge behavior.
   final String? avatarPhotoUrl;
 
+  /// Optional per-role restyling; see [AppShellTheme].
+  final AppShellTheme? shellTheme;
+
+  /// Replaces the default "AfiCare / MEDILINK" rail header when given.
+  final Widget? brandMark;
+
+  /// Replaces the rail's default log-out tile when given (the patient
+  /// shell puts an account/profile-switcher button here instead).
+  final Widget? sidebarFooter;
+
+  /// Makes the top-bar account badge tappable (patient: opens the
+  /// profile switcher).
+  final VoidCallback? onAvatarTap;
+
   @override
   Widget build(BuildContext context) {
+    final t = shellTheme;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= AppBreakpoints.sidebarCollapse;
+        final isWide = constraints.maxWidth >= (t?.collapseWidth ?? AppBreakpoints.sidebarCollapse);
 
         return Scaffold(
-          backgroundColor: isDark ? AppColors.darkScaffold : AppColors.mistBackground,
+          backgroundColor:
+              t?.pageBackground ?? (isDark ? AppColors.darkScaffold : AppColors.mistBackground),
           body: Row(
             children: [
               if (isWide)
@@ -85,6 +154,9 @@ class AppShell extends StatelessWidget {
                   onSelect: onSelect,
                   onLogout: onLogout,
                   isDark: isDark,
+                  theme: t,
+                  brandMark: brandMark,
+                  footer: sidebarFooter,
                 ),
               Expanded(
                 child: Column(
@@ -100,6 +172,8 @@ class AppShell extends StatelessWidget {
                       isDark: isDark,
                       onSearch: onSearch,
                       onNotificationTap: onNotificationTap,
+                      onAvatarTap: onAvatarTap,
+                      theme: t,
                     ),
                     Expanded(
                       child: Padding(
@@ -111,7 +185,7 @@ class AppShell extends StatelessWidget {
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1300),
+                            constraints: BoxConstraints(maxWidth: t?.contentMaxWidth ?? 1300),
                             child: body,
                           ),
                         ),
@@ -128,6 +202,7 @@ class AppShell extends StatelessWidget {
                   items: bottomNavItems,
                   selectedIndex: selectedIndex,
                   onSelect: onBottomNavSelect,
+                  activeColor: t?.bottomNavActiveColor,
                 ),
         );
       },
@@ -142,6 +217,9 @@ class _Sidebar extends StatelessWidget {
     this.onSelect,
     this.onLogout,
     this.isDark = false,
+    this.theme,
+    this.brandMark,
+    this.footer,
   });
 
   final List<SidebarEntry> entries;
@@ -149,6 +227,9 @@ class _Sidebar extends StatelessWidget {
   final ValueChanged<int>? onSelect;
   final VoidCallback? onLogout;
   final bool isDark;
+  final AppShellTheme? theme;
+  final Widget? brandMark;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -159,41 +240,46 @@ class _Sidebar extends StatelessWidget {
     const groupLabelColor = Color(0xFF8AA0BC);
 
     return Container(
-      width: 236,
-      decoration: const BoxDecoration(
-        color: AppColors.deepNavy,
-        border: Border(right: BorderSide(color: borderColor)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
+      width: theme?.railWidth ?? 236,
+      decoration: theme?.railDecoration ??
+          const BoxDecoration(
+            color: AppColors.deepNavy,
+            border: Border(right: BorderSide(color: borderColor)),
+          ),
+      padding: theme?.railPadding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(10, 0, 10, 22),
-            child: _BrandMark(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 22),
+            child: brandMark ?? const _BrandMark(),
           ),
           Expanded(
             child: ListView(
-              children: _buildNavTiles(groupLabelColor),
+              children: _buildNavTiles(theme?.railGroupStyle == null ? groupLabelColor : null),
             ),
           ),
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: borderColor)),
+          if (footer != null)
+            footer!
+          else
+            Container(
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor)),
+              ),
+              padding: const EdgeInsets.only(top: 10),
+              child: _SidebarTile(
+                icon: Icons.logout,
+                label: 'Log out',
+                selected: false,
+                onTap: onLogout ?? () {},
+                theme: theme,
+              ),
             ),
-            padding: const EdgeInsets.only(top: 10),
-            child: _SidebarTile(
-              icon: Icons.logout,
-              label: 'Log out',
-              selected: false,
-              onTap: onLogout ?? () {},
-            ),
-          ),
         ],
       ),
     );
   }
-  List<Widget> _buildNavTiles(Color groupLabelColor) {
+  List<Widget> _buildNavTiles(Color? groupLabelColor) {
     final tiles = <Widget>[];
     var navIndex = -1;
     for (final entry in entries) {
@@ -202,12 +288,13 @@ class _Sidebar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
           child: Text(
             entry.label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              letterSpacing: .8,
-              color: groupLabelColor,
-            ),
+            style: theme?.railGroupStyle ??
+                TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: .8,
+                  color: groupLabelColor,
+                ),
           ),
         ));
       } else if (entry is SidebarNavItem) {
@@ -217,6 +304,7 @@ class _Sidebar extends StatelessWidget {
           label: entry.label,
           selected: idx == selectedIndex,
           onTap: () => onSelect?.call(idx),
+          theme: theme,
         ));
       }
     }
@@ -230,12 +318,14 @@ class _SidebarTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.theme,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final AppShellTheme? theme;
 
   // Always the light-on-navy palette -- the sidebar itself is permanently
   // dark, not a light/dark togglable surface (see _Sidebar.build).
@@ -247,29 +337,39 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = theme?.railItemRadius ?? 8;
+    final muted = theme?.railItemColor ?? _mutedColor;
+    final active = theme?.railActiveColor ?? _activeColor;
+    final baseStyle = theme?.railItemStyle;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(radius),
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: selected ? _activeColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              color: selected ? active : Colors.transparent,
+              borderRadius: BorderRadius.circular(radius),
             ),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: selected ? Colors.white : _mutedColor),
+                Icon(icon, size: 18, color: selected ? Colors.white : muted),
                 const SizedBox(width: 11),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: selected ? Colors.white : _mutedColor,
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: (baseStyle ?? const TextStyle(fontSize: 14)).copyWith(
+                      fontWeight: selected
+                          ? FontWeight.w600
+                          : (baseStyle?.fontWeight ?? FontWeight.w500),
+                      color: selected ? Colors.white : muted,
+                    ),
                   ),
                 ),
               ],
@@ -328,6 +428,8 @@ class _TopBar extends StatelessWidget {
     this.isDark = false,
     this.onSearch,
     this.onNotificationTap,
+    this.onAvatarTap,
+    this.theme,
   });
 
   final String searchHint;
@@ -340,79 +442,32 @@ class _TopBar extends StatelessWidget {
   final bool isDark;
   final VoidCallback? onSearch;
   final VoidCallback? onNotificationTap;
+  final VoidCallback? onAvatarTap;
+  final AppShellTheme? theme;
 
   @override
   Widget build(BuildContext context) {
     final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
-    final chipBg = isDark ? Colors.white.withOpacity(.07) : AppColors.mistBackground;
+    final chipBg = theme?.searchFill ?? (isDark ? Colors.white.withOpacity(.07) : AppColors.mistBackground);
     final mutedColor = isDark ? const Color(0xFFC7D2DC) : AppColors.textMuted;
+    final searchRadius = theme?.searchRadius ?? 999;
 
     return Container(
-      height: 66,
+      height: theme?.topBarHeight ?? 66,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkAppBar : Colors.white,
-        border: Border(bottom: BorderSide(color: borderColor)),
+        border: Border(bottom: theme?.topBarBottomBorder ?? BorderSide(color: borderColor)),
       ),
       child: Row(
         children: [
           if (isWide)
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Material(
-                color: chipBg,
-                borderRadius: BorderRadius.circular(999),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onSearch,
-                  child: Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, size: 17, color: mutedColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            searchHint,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.5, color: mutedColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              constraints: BoxConstraints(maxWidth: theme?.searchMaxWidth ?? 420),
+              child: _searchChip(chipBg, mutedColor, searchRadius),
             )
           else
-            Expanded(
-              child: Material(
-                color: chipBg,
-                borderRadius: BorderRadius.circular(999),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onSearch,
-                  child: Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, size: 17, color: mutedColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            searchHint,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.5, color: mutedColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: _searchChip(chipBg, mutedColor, searchRadius)),
           const SizedBox(width: 16),
           ...trailingActions,
           Stack(
@@ -443,33 +498,100 @@ class _TopBar extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 10),
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: avatarColor ?? AppColors.lightBlue,
-            backgroundImage: (avatarPhotoUrl != null && avatarPhotoUrl!.isNotEmpty) ? NetworkImage(avatarPhotoUrl!) : null,
-            child: (avatarPhotoUrl != null && avatarPhotoUrl!.isNotEmpty)
-                ? null
-                : Text(
-                    avatarLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.deepNavy),
-                  ),
+          _Avatar(
+            label: avatarLabel,
+            color: avatarColor,
+            photoUrl: avatarPhotoUrl,
+            onTap: onAvatarTap,
           ),
         ],
       ),
     );
   }
+
+  Widget _searchChip(Color bg, Color muted, double radius) {
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onSearch,
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: theme == null
+              ? null
+              : BoxDecoration(
+                  border: Border.all(color: AppColors.borderSubtle),
+                  borderRadius: BorderRadius.circular(radius),
+                ),
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 17, color: muted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  searchHint,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13.5, color: muted),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.label, this.color, this.photoUrl, this.onTap});
+
+  final String label;
+  final Color? color;
+  final String? photoUrl;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
+    final avatar = CircleAvatar(
+      radius: 18,
+      backgroundColor: color ?? AppColors.lightBlue,
+      backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
+      child: hasPhoto
+          ? null
+          : Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.deepNavy),
+            ),
+    );
+
+    if (onTap == null) return avatar;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: avatar,
+    );
+  }
 }
 
 class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.items, required this.selectedIndex, this.onSelect});
+  const _BottomNav({
+    required this.items,
+    required this.selectedIndex,
+    this.onSelect,
+    this.activeColor,
+  });
 
   final List<BottomNavItem> items;
   final int selectedIndex;
   final ValueChanged<int>? onSelect;
+  final Color? activeColor;
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = Theme.of(context).colorScheme.primary;
+    final activeColor = this.activeColor ?? Theme.of(context).colorScheme.primary;
     final clampedIndex = selectedIndex < items.length ? selectedIndex : 0;
 
     return Container(

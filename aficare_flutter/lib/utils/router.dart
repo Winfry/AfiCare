@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../providers/auth_provider.dart';
+import '../providers/dependent_provider.dart';
 import '../models/user_model.dart';
 import '../screens/landing_screen.dart';
 import '../screens/login_screen.dart';
@@ -32,6 +35,10 @@ import '../screens/patient/medication_cost_screen.dart';
 import '../screens/patient/insurance_claims_screen.dart';
 import '../screens/patient/accessibility_settings_screen.dart';
 import '../screens/patient/referral_screen.dart';
+import '../screens/patient/lab_results_screen.dart';
+import '../screens/patient/adherence_log_screen.dart';
+import '../screens/patient/care_team_screen.dart';
+import '../screens/patient/pwd_tab.dart';
 import '../screens/chw/chw_shell.dart';
 import '../screens/chw/chw_new_visit_screen.dart';
 import '../screens/chw/chw_patient_search.dart';
@@ -364,6 +371,26 @@ final appRouter = GoRouter(
         GoRoute(
           path: 'referrals',
           builder: (context, state) => const PatientReferralScreen(),
+        ),
+        GoRoute(
+          path: 'labs',
+          builder: (context, state) => const LabResultsScreen(),
+        ),
+        GoRoute(
+          path: 'adherence',
+          builder: (context, state) => const AdherenceLogScreen(),
+        ),
+        GoRoute(
+          path: 'care-team',
+          builder: (context, state) => const CareTeamScreen(),
+        ),
+        GoRoute(
+          path: 'pwd',
+          builder: (context, state) {
+            final dep = context.read<DependentProvider>();
+            final id = dep.activePatientId ?? context.read<AuthProvider>().currentUser?.id ?? '';
+            return PwdTab(patientId: id);
+          },
         ),
         GoRoute(
           path: 'profile',
