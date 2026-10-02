@@ -1,20 +1,28 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/adherence_model.dart';
 import '../../providers/adherence_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
-import '../../utils/theme.dart';
+import '../../theme/patient_tokens.dart';
+import 'widgets/patient_ui.dart';
 
-/// B13 — Medication Adherence Log (History)
+/// Adherence Log — which doses were taken, skipped or missed.
+///
+/// The centrepiece is the week grid from the spec: one row per
+/// medication, one column per day. A dose left unmarked past its
+/// scheduled time counts as missed, which is the same rule
+/// [AdherenceProvider.missedDoses] already applies.
 class AdherenceLogScreen extends StatefulWidget {
   const AdherenceLogScreen({super.key});
 
   @override
   State<AdherenceLogScreen> createState() => _AdherenceLogScreenState();
 }
+
+enum _Cell { taken, partial, due, skipped, missed, none }
 
 class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
   bool _isLoading = true;
@@ -39,297 +47,228 @@ class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Adherence Log'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: _rangeToggle(),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Consumer<AdherenceProvider>(
-              builder: (context, ad, _) {
-                final bars = ad.weeklyBars(days: _range == 7 ? 7 : 30);
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _streakCard(ad),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _statCard('ADHERENCE',
-                                '${ad.historyRate}%', 'this period')),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _statCard('DOSES TAKEN',
-                                '${ad.historyTaken}/${ad.historyTotal}', 'total')),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Text('Overview',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    _chart(bars),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Text('Missed Doses',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                        const Spacer(),
-                        if (ad.missedDoses.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text('NEEDS ATTENTION',
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (ad.missedDoses.isEmpty)
-                      _noMissed()
-                    else
-                      ...ad.missedDoses.map(_missedCard),
-                  ],
-                );
-              },
-            ),
-    );
-  }
-
-  Widget _rangeToggle() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [7, 30].map((r) {
-          final selected = _range == r;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _range = r);
-              _load();
+    return PDetailScaffold(
+      eyebrow: 'Clinical',
+      title: 'Adherence Log',
+      subtitle: 'See which doses were taken, skipped or missed.',
+      children: [
+        PTabs(
+          tabs: const ['Last 7 days', 'Last 30 days'],
+          selected: _range == 7 ? 0 : 1,
+          onSelect: (i) {
+            setState(() => _range = i == 0 ? 7 : 30);
+            _load();
+          },
+        ),
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 50),
+            child: Center(child: CircularProgressIndicator(color: PT.teal)),
+          )
+        else
+          Consumer<AdherenceProvider>(
+            builder: (context, ad, _) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PGrid(
+                    columns: 3,
+                    children: [
+                      PMetric(
+                        label: 'Adherence',
+                        value: '${ad.historyRate}%',
+                        note: _range == 7 ? 'over the last 7 days' : 'over the last 30 days',
+                      ),
+                      PMetric(
+                        label: 'Doses taken',
+                        value: '${ad.historyTaken}/${ad.historyTotal}',
+                        note: 'in this period',
+                      ),
+                      PMetric(
+                        label: 'Active streak',
+                        value: '${ad.streak}',
+                        note: ad.streak > 0 ? 'days in a row 🔥' : 'start one today',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _weekGrid(ad),
+                  const SizedBox(height: 20),
+                  _missedSection(ad),
+                ],
+              );
             },
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text('$r-day',
-                  style: TextStyle(
-                      color: selected
-                          ? AfiCareTheme.primaryGreen
-                          : Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12)),
-            ),
-          );
-        }).toList(),
-      ),
+          ),
+      ],
     );
   }
 
-  Widget _streakCard(AdherenceProvider ad) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AfiCareTheme.primaryGreen,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('ACTIVE STREAK',
-              style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1)),
-          const SizedBox(height: 6),
-          Text('${ad.streak}-day streak 🔥',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          const Text('Keep it up! Consistency is key.',
-              style: TextStyle(color: Colors.white70)),
-        ],
-      ),
-    );
-  }
+  // ── Week grid ─────────────────────────────────────────────────────────
 
-  Widget _statCard(String label, String value, String sub) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
+  Widget _weekGrid(AdherenceProvider ad) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+
+    final meds = <String>{
+      for (final d in ad.history) d.medicationName ?? 'Medication',
+    }.toList()
+      ..sort();
+
+    return PCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5)),
-          const SizedBox(height: 8),
-          RichText(
-            text: TextSpan(
+          const PCardTitle('Last 7 days'),
+          if (meds.isEmpty)
+            const PEmpty(
+              emoji: '💊',
+              title: 'Nothing scheduled yet',
+              body: 'Once you have medications with a schedule, your week shows up here.',
+            )
+          else ...[
+            Row(
               children: [
-                TextSpan(
-                    text: value,
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AfiCareTheme.primaryGreen)),
-                TextSpan(
-                    text: '  $sub',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey[600])),
+                const SizedBox(width: 112),
+                for (final d in days)
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(DateFormat('EEE').format(d),
+                            style: PT.rowSub().copyWith(
+                                fontSize: 11, fontWeight: FontWeight.w800, height: 1.2)),
+                        if (d == today)
+                          Text('today',
+                              style: PT.rowSub().copyWith(fontSize: 10, color: PT.teal)),
+                      ],
+                    ),
+                  ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            for (final m in meds) _gridRow(ad, m, days),
+            const SizedBox(height: 12),
+            Text(
+              '✓ all taken · ◐ some still due · ○ due · – skipped · ✕ missed',
+              style: PT.rowSub().copyWith(fontSize: 12),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _chart(List<double> bars) {
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    return Container(
-      height: 220,
-      padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: BarChart(
-        BarChartData(
-          maxY: 1,
-          barTouchData: BarTouchData(enabled: false),
-          titlesData: FlTitlesData(
-            leftTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final i = value.toInt();
-                  final label = (bars.length <= 7 && i < dayLabels.length)
-                      ? dayLabels[i]
-                      : '${i + 1}';
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(label,
-                        style: const TextStyle(fontSize: 11)),
-                  );
-                },
+  Widget _gridRow(AdherenceProvider ad, String med, List<DateTime> days) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(med,
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: PT.rowTitle()),
+          ),
+          for (final d in days)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: _cell(_stateFor(ad, med, d)),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  _Cell _stateFor(AdherenceProvider ad, String med, DateTime day) {
+    final now = DateTime.now();
+    final doses = ad.history.where((d) =>
+        (d.medicationName ?? 'Medication') == med &&
+        DateUtils.isSameDay(d.scheduledTime, day));
+
+    if (doses.isEmpty) return _Cell.none;
+
+    var taken = 0, skipped = 0, due = 0, missed = 0;
+    for (final d in doses) {
+      switch (d.status) {
+        case AdherenceStatus.taken:
+          taken++;
+        case AdherenceStatus.skipped:
+          skipped++;
+        case AdherenceStatus.pending:
+          // Unmarked past its scheduled time counts as missed.
+          if (d.scheduledTime.isBefore(now)) {
+            missed++;
+          } else {
+            due++;
+          }
+      }
+    }
+
+    if (missed > 0) return _Cell.missed;
+    if (skipped > 0) return _Cell.skipped;
+    if (due > 0 && taken > 0) return _Cell.partial;
+    if (due > 0) return _Cell.due;
+    if (taken > 0) return _Cell.taken;
+    return _Cell.none;
+  }
+
+  Widget _cell(_Cell state) {
+    final (bg, fg, glyph, tip) = switch (state) {
+      _Cell.taken => (const Color(0xFFE4F5EC), const Color(0xFF2D8A5C), '✓', 'All taken'),
+      _Cell.partial => (const Color(0xFFEAF4FB), const Color(0xFF2C7299), '◐', 'Some doses still due'),
+      _Cell.due => (PT.white, PT.muted, '○', 'Due'),
+      _Cell.skipped => (const Color(0xFFFFF7E8), const Color(0xFF9A6A16), '–', 'Skipped'),
+      _Cell.missed => (const Color(0xFFFFF0F1), const Color(0xFFB43A43), '✕', 'Missed'),
+      _Cell.none => (const Color(0xFFF0F4F4), PT.muted, '·', 'Nothing scheduled'),
+    };
+
+    return Tooltip(
+      message: tip,
+      child: Container(
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(9),
+          border: state == _Cell.due ? Border.all(color: const Color(0xFFCFDADD)) : null,
+        ),
+        child: Text(glyph,
+            style: PT.body().copyWith(fontWeight: FontWeight.w800, fontSize: 13, color: fg)),
+      ),
+    );
+  }
+
+  // ── Missed doses ──────────────────────────────────────────────────────
+
+  Widget _missedSection(AdherenceProvider ad) {
+    final missed = ad.missedDoses;
+
+    return PCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PCardTitle(
+            'Missed doses',
+            trailing: missed.isEmpty
+                ? const PBadge('All caught up', tone: PTone.ok)
+                : PBadge('${missed.length}', tone: PTone.red),
           ),
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          barGroups: List.generate(bars.length, (i) {
-            return BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: bars[i],
-                  color: AfiCareTheme.primaryGreen,
-                  width: bars.length <= 7 ? 18 : 6,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ],
-            );
-          }),
-        ),
+          if (missed.isEmpty)
+            const PEmpty(
+              emoji: '🎉',
+              title: 'No missed doses',
+              body: 'Everything scheduled in this period was marked.',
+            )
+          else
+            for (final d in missed)
+              PRow(
+                leadingEmoji: '✕',
+                title: d.medicationName ?? 'Medication',
+                subtitle: DateFormat('EEEE, d MMM · HH:mm').format(d.scheduledTime),
+                trailing: const [PBadge('Missed', tone: PTone.red)],
+              ),
+        ],
       ),
     );
-  }
-
-  Widget _missedCard(AdherenceLogModel d) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AfiCareTheme.primaryGreen.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-            left: BorderSide(color: Colors.red.shade400, width: 4)),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(Icons.event_busy, color: Colors.red),
-        ),
-        title: Text(d.medicationName ?? 'Medication',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(_dateTime(d.scheduledTime)),
-        trailing: const Icon(Icons.more_vert),
-      ),
-    );
-  }
-
-  Widget _noMissed() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 30),
-      child: Center(
-        child: Column(
-          children: [
-            const Text('🎉', style: TextStyle(fontSize: 40)),
-            const SizedBox(height: 8),
-            Text('No missed doses!',
-                style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _dateTime(DateTime dt) {
-    const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday'
-    ];
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final amPm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '${days[dt.weekday - 1]}, ${months[dt.month - 1]} ${dt.day} • $hour:${dt.minute.toString().padLeft(2, '0')} $amPm';
   }
 }

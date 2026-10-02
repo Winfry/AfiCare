@@ -121,21 +121,21 @@ class _ReturningBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PGrid(
           columns: 3,
-          children: const [
+          children: [
             _AdherenceMetric(),
             _NextAppointmentMetric(),
             _ActiveMedicationsMetric(),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         PGrid(
           columns: 2,
-          children: const [
+          children: [
             _QuickActionsCard(),
             _RecentActivityCard(),
           ],
@@ -181,7 +181,6 @@ class _NextAppointmentMetric extends StatefulWidget {
 
 class _NextAppointmentMetricState extends State<_NextAppointmentMetric> {
   String? _providerName;
-  String? _providerDept;
   String? _loadedForId;
 
   AppointmentModel? _next(BuildContext context) {
@@ -202,14 +201,11 @@ class _NextAppointmentMetricState extends State<_NextAppointmentMetric> {
     try {
       final row = await Supabase.instance.client
           .from('users')
-          .select('full_name, department')
+          .select('full_name')
           .eq('id', providerId)
           .maybeSingle();
       if (!mounted) return;
-      setState(() {
-        _providerName = row?['full_name'] as String?;
-        _providerDept = row?['department'] as String?;
-      });
+      setState(() => _providerName = row?['full_name'] as String?);
     } catch (e) {
       debugPrint('patient_home_screen: loading provider name failed: $e');
     }

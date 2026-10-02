@@ -84,26 +84,6 @@ class BrandPanel extends StatelessWidget {
             ),
           ),
           content,
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'PLACEHOLDER PHOTO',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ),
         ],
       );
     }

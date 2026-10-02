@@ -34,54 +34,35 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
     final ct = context.watch<CareTeamProvider>();
     final members = ct.members;
 
-    return Scaffold(
-      backgroundColor: PT.page,
-      appBar: AppBar(
-        backgroundColor: PT.page,
-        surfaceTintColor: PT.page,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
-          onPressed: () => context.go('/patient'),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 60),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: PT.maxContentWidth),
-            child: PScreen(
-              eyebrow: 'Your care',
-              title: 'Care Team',
-              subtitle: 'People involved in your care.',
-              children: [
-                if (ct.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(child: CircularProgressIndicator(color: PT.teal)),
-                  )
-                else if (members.isEmpty)
-                  PCard(
-                    child: PEmpty(
-                      emoji: '👩🏾‍⚕️',
-                      title: 'No care team yet',
-                      body: 'Providers you see will appear here so you can message or book with them quickly.',
-                      action: PButton(
-                        'Book an appointment',
-                        onPressed: () => context.go('/patient/appointments'),
-                      ),
-                    ),
-                  )
-                else
-                  PGrid(
-                    columns: 2,
-                    children: [for (final m in members) _memberCard(m)],
-                  ),
-              ],
+    return PDetailScaffold(
+      eyebrow: 'Your care',
+      title: 'Care Team',
+      subtitle: 'People involved in your care.',
+      onBack: () => context.go('/patient'),
+      children: [
+        if (ct.isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(child: CircularProgressIndicator(color: PT.teal)),
+          )
+        else if (members.isEmpty)
+          PCard(
+            child: PEmpty(
+              emoji: '👩🏾‍⚕️',
+              title: 'No care team yet',
+              body: 'Providers you see will appear here so you can message or book with them quickly.',
+              action: PButton(
+                'Book an appointment',
+                onPressed: () => context.go('/patient/appointments'),
+              ),
             ),
+          )
+        else
+          PGrid(
+            columns: 2,
+            children: [for (final m in members) _memberCard(m)],
           ),
-        ),
-      ),
+      ],
     );
   }
 

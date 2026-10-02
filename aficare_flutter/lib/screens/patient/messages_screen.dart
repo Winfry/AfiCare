@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/message_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/message_provider.dart';
-import '../../utils/theme.dart';
+import '../../theme/patient_tokens.dart';
 import '../../widgets/provider_avatar.dart';
+import 'widgets/patient_ui.dart';
 
 /// True when a real photo should be preferred over plain initials --
 /// either the counterpart genuinely has one uploaded, or their role is
@@ -19,7 +21,9 @@ bool _prefersIllustratedAvatar(String? roleName, UserModel? cached) {
   return hasPhoto || providerRoleNames.contains(roleName ?? cached?.role.name);
 }
 
-/// B18 — Messages (Conversations List)
+/// Messages — conversation list beside the open thread on wide screens,
+/// list-then-push on narrow ones. Rendered inside the patient shell, so
+/// it carries no app bar of its own.
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
 
@@ -31,8 +35,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
   bool _isLoading = true;
   String _search = '';
   ConversationSummary? _selected;
-
-  static const double _wideBreakpoint = 820;
 
   @override
   void initState() {
@@ -51,252 +53,206 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Messages')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Consumer<MessageProvider>(
-              builder: (context, mp, _) {
-                final convos = mp.conversations
-                    .where((c) => c.counterpartName
-                        .toLowerCase()
-                        .contains(_search.toLowerCase()))
-                    .toList();
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= _wideBreakpoint;
-                    return isWide
-                        ? _buildWide(convos)
-                        : _buildNarrow(convos);
-                  },
-                );
-              },
-            ),
-    );
-  }
+    final isWide = !PT.isTablet(context);
 
-  Widget _buildNarrow(List<ConversationSummary> convos) {
     return Column(
-      children: [
-        _searchField(),
-        Expanded(
-          child: convos.isEmpty
-              ? _empty()
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    itemCount: convos.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, indent: 80),
-                    itemBuilder: (_, i) => _row(convos[i], isWide: false),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWide(List<ConversationSummary> convos) {
-    return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 340,
-          child: Column(
-            children: [
-              _searchField(),
-              Expanded(
-                child: convos.isEmpty
-                    ? _empty()
-                    : ListView.separated(
-                        itemCount: convos.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, indent: 80),
-                        itemBuilder: (_, i) =>
-                            _row(convos[i], isWide: true),
-                      ),
-              ),
-            ],
-          ),
+        const PScreenHead(
+          eyebrow: 'Your care',
+          title: 'Messages',
+          subtitle: 'Keep conversations with your care team in one place.',
         ),
-        const VerticalDivider(width: 1),
         Expanded(
-          child: _selected == null
-              ? _selectPlaceholder()
-              : ChatScreen(
-                  key: ValueKey(_selected!.counterpartId),
-                  embedded: true,
-                  counterpartId: _selected!.counterpartId,
-                  counterpartName: _selected!.counterpartName,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: PT.teal))
+              : Consumer<MessageProvider>(
+                  builder: (context, mp, _) {
+                    final convos = mp.conversations
+                        .where((c) =>
+                            c.counterpartName.toLowerCase().contains(_search.toLowerCase()))
+                        .toList();
+
+                    if (!isWide) return _conversationsCard(convos, isWide: false);
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 2, child: _conversationsCard(convos, isWide: true)),
+                        const SizedBox(width: 16),
+                        Expanded(flex: 3, child: _chatPane()),
+                      ],
+                    );
+                  },
                 ),
         ),
       ],
     );
   }
 
-  Widget _searchField() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        onChanged: (v) => setState(() => _search = v),
-        decoration: InputDecoration(
-          hintText: 'Search messages…',
-          prefixIcon: const Icon(Icons.search),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+  Widget _conversationsCard(List<ConversationSummary> convos, {required bool isWide}) {
+    return PCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const PCardTitle('Conversations'),
+          TextField(
+            onChanged: (v) => setState(() => _search = v),
+            decoration: pInput(hint: 'Search messages…').copyWith(
+              prefixIcon: const Icon(Icons.search, size: 18, color: PT.muted),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: convos.isEmpty
+                ? const PEmpty(
+                    emoji: '💬',
+                    title: 'No messages yet',
+                    body: 'Conversations with your care team will appear here.',
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: convos.length,
+                      itemBuilder: (_, i) => _conversationRow(convos[i], isWide: isWide),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _conversationRow(ConversationSummary c, {required bool isWide}) {
+    final selected = isWide && _selected?.counterpartId == c.counterpartId;
+    final cached = context.read<MessageProvider>().cachedUser(c.counterpartId);
+
+    final avatar = _prefersIllustratedAvatar(c.counterpartRole, cached)
+        ? ProviderAvatarSmall(
+            name: c.counterpartName,
+            role: cached?.role ?? UserRole.doctor,
+            gender: cached?.gender,
+            photoUrl: cached?.photoUrl,
+            radius: 20,
+          )
+        : PAvatar(
+            initials: c.counterpartName.isNotEmpty ? c.counterpartName[0].toUpperCase() : '?',
+            size: 40,
+          );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: selected ? PT.calloutBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(PT.rRow),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(PT.rRow),
+          onTap: () async {
+            if (isWide) {
+              setState(() => _selected = c);
+            } else {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatScreen(
+                    counterpartId: c.counterpartId,
+                    counterpartName: c.counterpartName,
+                  ),
+                ),
+              );
+              _load();
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: selected ? PT.teal.withOpacity(.35) : PT.line),
+              borderRadius: BorderRadius.circular(PT.rRow),
+            ),
+            child: Row(
+              children: [
+                avatar,
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(c.counterpartName,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: PT.rowTitle()),
+                      const SizedBox(height: 3),
+                      Text(c.lastMessage,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: PT.rowSub()),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(_shortTime(c.lastMessageAt),
+                        style: PT.rowSub().copyWith(
+                          fontSize: 11,
+                          color: c.unreadCount > 0 ? PT.teal : PT.muted,
+                          fontWeight: c.unreadCount > 0 ? FontWeight.w700 : FontWeight.w400,
+                        )),
+                    const SizedBox(height: 5),
+                    if (c.unreadCount > 0)
+                      PBadge('${c.unreadCount}', tone: PTone.blue)
+                    else
+                      const SizedBox(height: 20),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _selectPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.forum_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text('Select a conversation',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600])),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(ConversationSummary c, {required bool isWide}) {
-    final selected = isWide && _selected?.counterpartId == c.counterpartId;
-    final cached = context.read<MessageProvider>().cachedUser(c.counterpartId);
-    return ListTile(
-      selected: selected,
-      selectedTileColor: AfiCareTheme.primaryGreen.withOpacity(0.08),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: _prefersIllustratedAvatar(c.counterpartRole, cached)
-          ? ProviderAvatarSmall(
-              name: c.counterpartName,
-              role: cached?.role ?? UserRole.doctor,
-              gender: cached?.gender,
-              photoUrl: cached?.photoUrl,
-              radius: 26,
-            )
-          : CircleAvatar(
-              radius: 26,
-              backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-              child: Text(
-                c.counterpartName.isNotEmpty
-                    ? c.counterpartName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                    color: AfiCareTheme.primaryGreen,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20),
-              ),
-            ),
-      title: Text(c.counterpartName,
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(c.lastMessage,
-          maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(_shortTime(c.lastMessageAt),
-              style: TextStyle(
-                  color: c.unreadCount > 0
-                      ? AfiCareTheme.primaryGreen
-                      : Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          if (c.unreadCount > 0)
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AfiCareTheme.primaryGreen,
-                shape: BoxShape.circle,
-              ),
-              child: Text('${c.unreadCount}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold)),
-            )
-          else
-            const SizedBox(height: 18),
-        ],
-      ),
-      onTap: () async {
-        if (isWide) {
-          setState(() => _selected = c);
-        } else {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatScreen(
-                counterpartId: c.counterpartId,
-                counterpartName: c.counterpartName,
-              ),
-            ),
-          );
-          _load();
-        }
-      },
-    );
-  }
-
-  Widget _empty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text('No messages yet',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600])),
-        ],
-      ),
+  Widget _chatPane() {
+    if (_selected == null) {
+      return const PCard(
+        child: Center(
+          child: PEmpty(
+            emoji: '💬',
+            title: 'Select a conversation',
+            body: 'Choose someone on the left to read and reply to your messages.',
+          ),
+        ),
+      );
+    }
+    return ChatScreen(
+      key: ValueKey(_selected!.counterpartId),
+      embedded: true,
+      counterpartId: _selected!.counterpartId,
+      counterpartName: _selected!.counterpartName,
     );
   }
 
   String _shortTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inDays == 0) {
-      final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-      final amPm = dt.hour >= 12 ? 'AM' : 'AM';
-      final ap = dt.hour >= 12 ? 'PM' : amPm;
-      return '$hour:${dt.minute.toString().padLeft(2, '0')} $ap';
-    } else if (diff.inDays == 1) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      return days[dt.weekday - 1];
-    }
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${months[dt.month - 1]} ${dt.day}';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) return DateFormat('HH:mm').format(dt);
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return DateFormat('EEE').format(dt);
+    return DateFormat('d MMM').format(dt);
   }
 }
 
-/// B18 — Individual Chat
+// ═══════════════════════════════════════════════════════════════════════
+// Individual chat
+// ═══════════════════════════════════════════════════════════════════════
+
 class ChatScreen extends StatefulWidget {
   final String counterpartId;
   final String counterpartName;
 
   /// When true, renders without its own Scaffold/AppBar so it can be
-  /// embedded inside a split-pane layout.
+  /// embedded inside the split-pane layout.
   final bool embedded;
 
   const ChatScreen({
@@ -372,89 +328,66 @@ class _ChatScreenState extends State<ChatScreen> {
     final myId = auth.currentUser?.id;
 
     if (widget.embedded) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _paneHeader(),
-          const Divider(height: 1),
-          Expanded(child: _chatBody(myId)),
-        ],
+      return PCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _paneHeader(),
+            const Divider(height: 1, color: PT.line),
+            Expanded(child: _chatBody(myId)),
+          ],
+        ),
       );
     }
 
-    final cached = context.read<MessageProvider>().cachedUser(widget.counterpartId);
     return Scaffold(
+      backgroundColor: PT.page,
       appBar: AppBar(
+        backgroundColor: PT.page,
+        surfaceTintColor: PT.page,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
+          onPressed: () => Navigator.maybePop(context),
+        ),
         title: Row(
           children: [
-            _prefersIllustratedAvatar(null, cached)
-                ? ProviderAvatarSmall(
-                    name: widget.counterpartName,
-                    role: cached?.role ?? UserRole.doctor,
-                    gender: cached?.gender,
-                    photoUrl: cached?.photoUrl,
-                    radius: 18,
-                  )
-                : CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white24,
-                    child: Text(
-                      widget.counterpartName.isNotEmpty
-                          ? widget.counterpartName[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
+            _avatar(18),
             const SizedBox(width: 10),
-            Expanded(
-              child: Text(widget.counterpartName,
-                  style: const TextStyle(fontSize: 18)),
-            ),
+            Expanded(child: Text(widget.counterpartName, style: PT.h3())),
           ],
         ),
-        actions: [
-          IconButton(icon: const Icon(Icons.videocam), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.call), onPressed: () {}),
-        ],
       ),
       body: _chatBody(myId),
     );
   }
 
-  Widget _paneHeader() {
+  Widget _avatar(double radius) {
     final cached = context.read<MessageProvider>().cachedUser(widget.counterpartId);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.white,
+    return _prefersIllustratedAvatar(null, cached)
+        ? ProviderAvatarSmall(
+            name: widget.counterpartName,
+            role: cached?.role ?? UserRole.doctor,
+            gender: cached?.gender,
+            photoUrl: cached?.photoUrl,
+            radius: radius,
+          )
+        : PAvatar(
+            initials:
+                widget.counterpartName.isNotEmpty ? widget.counterpartName[0].toUpperCase() : '?',
+            size: radius * 2,
+          );
+  }
+
+  Widget _paneHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 14),
       child: Row(
         children: [
-          _prefersIllustratedAvatar(null, cached)
-              ? ProviderAvatarSmall(
-                  name: widget.counterpartName,
-                  role: cached?.role ?? UserRole.doctor,
-                  gender: cached?.gender,
-                  photoUrl: cached?.photoUrl,
-                  radius: 18,
-                )
-              : CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-                  child: Text(
-                    widget.counterpartName.isNotEmpty
-                        ? widget.counterpartName[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                        color: AfiCareTheme.primaryGreen,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(widget.counterpartName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          ),
-          IconButton(icon: const Icon(Icons.videocam_outlined), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.call_outlined), onPressed: () {}),
+          _avatar(18),
+          const SizedBox(width: 11),
+          Expanded(child: Text(widget.counterpartName, style: PT.h3())),
         ],
       ),
     );
@@ -465,13 +398,12 @@ class _ChatScreenState extends State<ChatScreen> {
       children: [
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: PT.teal))
               : Consumer<MessageProvider>(
                   builder: (context, mp, _) {
                     if (mp.thread.isEmpty) {
                       return Center(
-                        child: Text('Start the conversation',
-                            style: TextStyle(color: Colors.grey[600])),
+                        child: Text('Start the conversation', style: PT.sub()),
                       );
                     }
                     return ListView.builder(
@@ -497,10 +429,9 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.72),
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
         decoration: BoxDecoration(
-          color: mine ? AfiCareTheme.primaryGreen : Colors.grey.shade200,
+          color: mine ? PT.teal : PT.calloutBg,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -509,19 +440,20 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
         child: Column(
-          crossAxisAlignment:
-              mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Text(m.content,
-                style: TextStyle(
-                    color: mine ? Colors.white : Colors.black87,
-                    fontSize: 15,
-                    height: 1.3)),
+            Text(
+              m.content,
+              style: PT.body().copyWith(color: mine ? Colors.white : PT.ink, fontSize: 15),
+            ),
             const SizedBox(height: 4),
-            Text(_time(m.createdAt),
-                style: TextStyle(
-                    color: mine ? Colors.white70 : Colors.grey[600],
-                    fontSize: 10)),
+            Text(
+              DateFormat('HH:mm').format(m.createdAt),
+              style: PT.rowSub().copyWith(
+                fontSize: 10,
+                color: mine ? Colors.white70 : PT.muted,
+              ),
+            ),
           ],
         ),
       ),
@@ -531,57 +463,43 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _inputBar() {
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: PT.line)),
         ),
         child: Row(
           children: [
-            IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: () {}),
             Expanded(
               child: TextField(
                 controller: _controller,
                 minLines: 1,
                 maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Type a message…',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                onSubmitted: (_) => _sending ? null : _send(),
+                decoration: pInput(hint: 'Type a message…'),
               ),
             ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: AfiCareTheme.primaryGreen,
-              child: IconButton(
-                icon: _sending
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send, color: Colors.white),
-                onPressed: _sending ? null : _send,
+            const SizedBox(width: 10),
+            Material(
+              color: PT.navy,
+              borderRadius: BorderRadius.circular(PT.rButton),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(PT.rButton),
+                onTap: _sending ? null : _send,
+                child: SizedBox(
+                  width: 46,
+                  height: 42,
+                  child: _sending
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.send_rounded, color: Colors.white, size: 19),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _time(DateTime dt) {
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final amPm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:${dt.minute.toString().padLeft(2, '0')} $amPm';
   }
 }

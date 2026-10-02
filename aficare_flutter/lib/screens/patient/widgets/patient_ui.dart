@@ -98,6 +98,63 @@ class PScreenHead extends StatelessWidget {
   }
 }
 
+/// The outer chrome every pushed patient screen shares: page ground, a
+/// minimal back bar, centred max-width column, and a [PScreen] head.
+/// Replaces the hand-rolled `Scaffold` → `CustomScrollView` →
+/// `SliverAppBar` block that was copy-pasted across ~9 screens.
+class PDetailScaffold extends StatelessWidget {
+  const PDetailScaffold({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    this.subtitle,
+    this.action,
+    required this.children,
+    this.onBack,
+    this.floatingActionButton,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+  final List<Widget> children;
+  final VoidCallback? onBack;
+  final Widget? floatingActionButton;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: PT.page,
+      floatingActionButton: floatingActionButton,
+      appBar: AppBar(
+        backgroundColor: PT.page,
+        surfaceTintColor: PT.page,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
+          onPressed: onBack ?? () => Navigator.maybePop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 60),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: PT.maxContentWidth),
+            child: PScreen(
+              eyebrow: eyebrow,
+              title: title,
+              subtitle: subtitle,
+              action: action,
+              children: children,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Plain section heading used above a list inside a screen (not a card).
 class PHeading extends StatelessWidget {
   const PHeading(this.text, {super.key, this.action});

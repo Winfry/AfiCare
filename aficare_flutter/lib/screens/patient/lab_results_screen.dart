@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/lab_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/lab_provider.dart';
-import '../../utils/theme.dart';
+import '../../theme/patient_tokens.dart';
+import 'widgets/patient_ui.dart';
 
-/// B17 — Lab Results (Patient View)
+/// Lab Results — patient view. Shows readable status first; the detailed
+/// values open on demand so the landing view doesn't read like a
+/// laboratory spreadsheet.
 class LabResultsScreen extends StatefulWidget {
   const LabResultsScreen({super.key});
 
@@ -35,46 +39,6 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Lab Results')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Consumer<LabProvider>(
-              builder: (context, lab, _) {
-                final list = _apply(lab);
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Text(
-                        'Review your clinical reports and diagnostic history.',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ),
-                    _filterTabs(),
-                    Expanded(
-                      child: list.isEmpty
-                          ? _empty()
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              child: ListView.builder(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                                itemCount: list.length,
-                                itemBuilder: (_, i) => _card(list[i]),
-                              ),
-                            ),
-                    ),
-                  ],
-                );
-              },
-            ),
-    );
-  }
-
   List<LabOrderModel> _apply(LabProvider lab) {
     switch (_filter) {
       case 1:
@@ -88,222 +52,180 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
     }
   }
 
-  Widget _filterTabs() {
-    final labels = ['All', 'Pending', 'Completed', 'Critical'];
-    return SizedBox(
-      height: 46,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: labels.length,
-        itemBuilder: (_, i) {
-          final selected = _filter == i;
-          return Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: ChoiceChip(
-              label: Text(labels[i]),
-              selected: selected,
-              onSelected: (_) => setState(() => _filter = i),
-              selectedColor: AfiCareTheme.primaryGreen,
-              labelStyle: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
-              ),
-              backgroundColor: Colors.grey.shade200,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _card(LabOrderModel o) {
-    final critical = o.isCritical;
-    final completed = o.isCompleted;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: critical ? Colors.red : Colors.grey.shade200,
-            width: critical ? 1.5 : 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (critical) ...[
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Colors.red, size: 18),
-                  const SizedBox(width: 6),
-                  const Text('CRITICAL RESULT',
-                      style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
-                ] else
-                  _statusChip(o),
-                const Spacer(),
-                if (o.result != null) _flagBadge(o.result!.flag),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(o.testName,
-                style: const TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(_dateTime(o.orderedAt),
-                style: TextStyle(color: Colors.grey[600])),
-            if (o.isPending && !completed) ...[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: o.status == LabOrderStatus.processing ? 0.6 : 0.25,
-                  minHeight: 6,
-                  backgroundColor: Colors.grey.shade200,
-                  color: AfiCareTheme.primaryGreen,
-                ),
-              ),
-            ],
-            const Divider(height: 24),
-            InkWell(
-              onTap: () => _showDetail(o),
-              child: Row(
-                children: [
-                  if (critical) ...[
-                    const Icon(Icons.notifications_active,
-                        color: Colors.red, size: 18),
-                    const SizedBox(width: 6),
-                    const Expanded(
-                      child: Text('Requires Immediate Action',
-                          style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ] else
-                    const Expanded(child: Text('View details')),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statusChip(LabOrderModel o) {
-    final completed = o.isCompleted;
-    return Row(
+  @override
+  Widget build(BuildContext context) {
+    return PDetailScaffold(
+      eyebrow: 'Clinical',
+      title: 'Lab Results',
+      subtitle: 'Results shared with your AfiCare record.',
       children: [
-        Icon(completed ? Icons.check_circle : Icons.schedule,
-            size: 16,
-            color: completed ? Colors.green : AfiCareTheme.primaryGreen),
-        const SizedBox(width: 4),
-        Text(
-          completed
-              ? 'Completed'
-              : o.status == LabOrderStatus.processing
-                  ? 'Processing'
-                  : 'Pending',
-          style: TextStyle(
-              color:
-                  completed ? Colors.green : AfiCareTheme.primaryGreen,
-              fontWeight: FontWeight.w600),
+        PTabs(
+          tabs: const ['All', 'Pending', 'Completed', 'Critical'],
+          selected: _filter,
+          onSelect: (i) => setState(() => _filter = i),
         ),
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 50),
+            child: Center(child: CircularProgressIndicator(color: PT.teal)),
+          )
+        else
+          Consumer<LabProvider>(
+            builder: (context, lab, _) {
+              // Copy before sorting: LabProvider.orders hands back its
+              // own internal list, and sorting it in place would mutate
+              // provider state from inside build.
+              final list = List<LabOrderModel>.from(_apply(lab))
+                ..sort((a, b) => _at(b).compareTo(_at(a)));
+
+              if (list.isEmpty) {
+                return PCard(
+                  child: PEmpty(
+                    emoji: '🧪',
+                    title: 'No lab results',
+                    body: _filter == 0
+                        ? 'Tests ordered for you will appear here once a facility shares them.'
+                        : 'Nothing matches this filter right now.',
+                  ),
+                );
+              }
+
+              final latest = list.first;
+              final previous = list.skip(1).toList();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _latestCard(latest),
+                  if (previous.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    PCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const PCardTitle('Previous results'),
+                          for (final o in previous)
+                            PRow(
+                              leadingEmoji: '🧪',
+                              title: o.testName,
+                              subtitle:
+                                  '${o.testCategory} · ${DateFormat('d MMM yyyy').format(_at(o))}',
+                              trailing: [_statusBadge(o)],
+                              onTap: () => _showDetail(o),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
       ],
     );
   }
 
-  Widget _flagBadge(LabResultFlag flag) {
-    Color color;
-    String label;
-    switch (flag) {
-      case LabResultFlag.critical:
-        color = Colors.red;
-        label = 'CRITICAL';
-        break;
-      case LabResultFlag.abnormal:
-        color = Colors.orange;
-        label = 'ABNORMAL';
-        break;
-      case LabResultFlag.normal:
-        color = Colors.grey;
-        label = 'NORMAL';
-        break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
+  Widget _latestCard(LabOrderModel o) {
+    final hasResult = o.result != null;
+    return PCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PCardTitle('Latest result', trailing: _statusBadge(o)),
+          PRow(
+            leadingEmoji: o.isCritical ? '⚠️' : (hasResult ? '✓' : '⏳'),
+            title: '${o.testName} · ${DateFormat('d MMM yyyy').format(_at(o))}',
+            subtitle: _summaryLine(o),
+            trailing: [
+              PButton(
+                hasResult ? 'View result' : 'Details',
+                dense: true,
+                onPressed: () => _showDetail(o),
+              ),
+            ],
+          ),
+          if (o.isCritical) ...[
+            const SizedBox(height: 8),
+            const PCallout(
+              title: 'Requires immediate action',
+              body: 'This result was flagged critical. Contact your care team as soon as you can.',
+              tone: PTone.red,
+            ),
+          ],
+        ],
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 
+  String _summaryLine(LabOrderModel o) {
+    final r = o.result;
+    if (r == null) {
+      switch (o.status) {
+        case LabOrderStatus.processing:
+          return 'Sample is being processed';
+        case LabOrderStatus.collected:
+          return 'Sample collected, awaiting processing';
+        case LabOrderStatus.cancelled:
+          return 'This test was cancelled';
+        default:
+          return 'Ordered, awaiting sample collection';
+      }
+    }
+    switch (r.flag) {
+      case LabResultFlag.critical:
+        return 'Critical value — needs urgent review';
+      case LabResultFlag.abnormal:
+        return 'Some values outside the normal range';
+      case LabResultFlag.normal:
+        return 'All values within normal range';
+    }
+  }
+
+  Widget _statusBadge(LabOrderModel o) {
+    final r = o.result;
+    if (r != null) {
+      return switch (r.flag) {
+        LabResultFlag.critical => const PBadge('Critical', tone: PTone.red),
+        LabResultFlag.abnormal => const PBadge('Abnormal', tone: PTone.warn),
+        LabResultFlag.normal => const PBadge('Normal', tone: PTone.ok),
+      };
+    }
+    return switch (o.status) {
+      LabOrderStatus.processing => const PBadge('Processing', tone: PTone.blue),
+      LabOrderStatus.collected => const PBadge('Collected', tone: PTone.blue),
+      LabOrderStatus.cancelled => const PBadge('Cancelled', tone: PTone.gray),
+      _ => const PBadge('Pending', tone: PTone.gray),
+    };
+  }
+
+  /// Results are ordered by when the patient could actually see them.
+  DateTime _at(LabOrderModel o) => o.result?.resultedAt ?? o.orderedAt;
+
   void _showDetail(LabOrderModel o) {
-    showModalBottomSheet(
+    final r = o.result;
+    showPModal<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(o.testName,
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text('${o.testCategory} • ${_dateTime(o.orderedAt)}',
-                style: TextStyle(color: Colors.grey[600])),
-            const Divider(height: 28),
-            if (o.result != null) ...[
-              _detailRow('Result',
-                  '${o.result!.resultValue ?? '—'} ${o.result!.resultUnit ?? ''}'),
-              _detailRow('Reference Range', o.result!.referenceRange),
-              _detailRow('Flag', o.result!.flag.name.toUpperCase()),
-              if (o.result!.performedBy != null)
-                _detailRow('Performed By', o.result!.performedBy!),
-              if (o.result!.notes != null)
-                _detailRow('Notes', o.result!.notes!),
-            ] else
-              Text('Results are not yet available for this test.',
-                  style: TextStyle(color: Colors.grey[600])),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-            ),
+      title: o.testName,
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${o.testCategory} · ${DateFormat('d MMM yyyy · HH:mm').format(_at(o))}',
+            style: PT.sub(),
+          ),
+          const SizedBox(height: 16),
+          if (r == null)
+            const PCallout(body: 'Results are not yet available for this test.')
+          else ...[
+            _detailRow('Result', '${r.resultValue ?? '—'} ${r.resultUnit ?? ''}'.trim()),
+            _detailRow('Reference range', r.referenceRange),
+            _detailRow('Flag', r.flag.name.toUpperCase()),
+            if (r.performedBy != null) _detailRow('Performed by', r.performedBy!),
+            if (r.notes != null) _detailRow('Notes', r.notes!),
           ],
-        ),
+          const SizedBox(height: 18),
+          PButton('Close', onPressed: () => Navigator.pop(ctx)),
+        ],
       ),
     );
   }
@@ -314,45 +236,10 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 130,
-            child: Text(label,
-                style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600)),
-          ),
-          Expanded(
-              child: Text(value,
-                  style: const TextStyle(fontWeight: FontWeight.w600))),
+          SizedBox(width: 140, child: Text(label, style: PT.label())),
+          Expanded(child: Text(value, style: PT.rowTitle())),
         ],
       ),
     );
-  }
-
-  Widget _empty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.science_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text('No lab results',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600])),
-        ],
-      ),
-    );
-  }
-
-  String _dateTime(DateTime dt) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final amPm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year} • $hour:${dt.minute.toString().padLeft(2, '0')} $amPm';
   }
 }
