@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/dependent_profile_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/appointment_provider.dart';
@@ -77,6 +78,10 @@ const _navGroups = <String, List<_Dest>>{
     _Dest(icon: Icons.credit_card_outlined, label: 'Medication Costs', route: '/patient/medication-costs'),
     _Dest(icon: Icons.receipt_long_outlined, label: 'Receipts', route: '/patient/receipt-upload'),
     _Dest(icon: Icons.shield_outlined, label: 'Insurance', route: '/patient/insurance-claims'),
+    // Not in the design's sidebar, but the redesign removed the only two
+    // links into this screen (Home's old quick actions and the
+    // Appointments sidebar card), which would have stranded it.
+    _Dest(icon: Icons.account_balance_wallet_outlined, label: 'Expenses', route: '/patient/expenses'),
   ],
   'Access': [
     _Dest(icon: Icons.handshake_outlined, label: 'Caregiver Access', route: '/patient/caregiver-portal', adultOnly: true),
@@ -297,7 +302,7 @@ class _PatientShellState extends State<PatientShell> {
             sheetContext: sheetContext,
             initials: _initials(d.fullName),
             name: d.fullName,
-            sub: '${d.relationship} · ${d.medilinkId}',
+            sub: _dependentSub(d),
             selected: activeId == d.id,
             isDependent: true,
             onTap: () => _switchTo(d.id),
@@ -488,7 +493,7 @@ class _PatientShellState extends State<PatientShell> {
     final ownName = auth.currentUser?.fullName ?? 'My profile';
     final displayName = isDependent ? (activeDependent?.fullName ?? 'Dependent') : ownName;
     final displaySub = isDependent
-        ? '${activeDependent?.relationship ?? 'Dependent'} · ${activeDependent?.medilinkId ?? ''}'
+        ? _dependentSub(activeDependent)
         : 'Patient · ${auth.currentUser?.medilinkId ?? ''}';
 
     return AppShell(
@@ -586,6 +591,32 @@ class _PatientShellState extends State<PatientShell> {
     if (parts.isEmpty) return 'P';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  /// Sub-line under a dependant's name in the switcher, e.g. "Child · 4
+  /// years". Falls back to the MediLink ID for dependants added before
+  /// the wizard started asking for a date of birth.
+  String _dependentSub(DependentProfileModel? d) {
+    if (d == null) return 'Dependent';
+    final raw = d.relationship.trim();
+    final rel = raw.isEmpty
+        ? 'Dependent'
+        : '${raw[0].toUpperCase()}${raw.substring(1).toLowerCase()}';
+    final dob = d.dateOfBirth;
+    final mlId = d.medilinkId ?? '';
+    if (dob == null) return mlId.isEmpty ? rel : '$rel · $mlId';
+    return '$rel · ${_ageLabel(dob)}';
+  }
+
+  String _ageLabel(DateTime dob) {
+    final now = DateTime.now();
+    var years = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) years--;
+    if (years < 1) {
+      final months = (now.difference(dob).inDays / 30.44).floor();
+      return '$months month${months == 1 ? '' : 's'}';
+    }
+    return '$years year${years == 1 ? '' : 's'}';
   }
 
   void _openSearch() {

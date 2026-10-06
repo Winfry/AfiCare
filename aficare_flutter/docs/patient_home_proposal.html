@@ -1,0 +1,880 @@
+<title>AfiCare Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700;800&display=swap">
+
+<style>
+:root{
+  --ground:#fbfdff; --surface:#ffffff; --surface-2:#edf4fc; --surface-3:#f7fbff;
+  --ink:#16293d; --ink-2:#2e4a68; --muted:#64798f;
+  --line:#e0eaf6; --line-2:#edf3fa;
+  --blue:#2f6ea5; --blue-deep:#1d3557; --blue-ink:#152a45; --blue-soft:#e6f0fa; --blue-lit:#64b5f6;
+  --sand:#b3771f; --sand-soft:#fbf1dc;
+  --good:#2d7f62; --good-soft:#e2f1ec;
+  --due:#b0751d; --due-soft:#fcf1dc;
+  --alert:#b0453f; --alert-soft:#fbe9e7;
+  --shadow:0 16px 44px rgba(21,42,69,.13);
+  --shadow-sm:0 2px 5px rgba(21,42,69,.045),0 8px 22px rgba(21,42,69,.055);
+  --r-lg:24px; --r-md:16px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0b1726; --surface:#132337; --surface-2:#1a2e46; --surface-3:#0f1d2e;
+    --ink:#e8f0f9; --ink-2:#c4d6e9; --muted:#8ea4bc;
+    --line:#223851; --line-2:#1a2d43;
+    --blue:#6fa8dc; --blue-deep:#1d3557; --blue-ink:#dbe9f7; --blue-soft:#17304b; --blue-lit:#8cc5f8;
+    --sand:#e0ab63; --sand-soft:#2e2514;
+    --good:#5cbd94; --good-soft:#12322a;
+    --due:#dda65a; --due-soft:#322611;
+    --alert:#e08880; --alert-soft:#351f1d;
+    --shadow:0 14px 40px rgba(0,0,0,.45);
+    --shadow-sm:0 3px 14px rgba(0,0,0,.32);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0b1726; --surface:#132337; --surface-2:#1a2e46; --surface-3:#0f1d2e;
+  --ink:#e8f0f9; --ink-2:#c4d6e9; --muted:#8ea4bc;
+  --line:#223851; --line-2:#1a2d43;
+  --blue:#6fa8dc; --blue-deep:#1d3557; --blue-ink:#dbe9f7; --blue-soft:#17304b; --blue-lit:#8cc5f8;
+  --sand:#e0ab63; --sand-soft:#2e2514;
+  --good:#5cbd94; --good-soft:#12322a;
+  --due:#dda65a; --due-soft:#322611;
+  --alert:#e08880; --alert-soft:#351f1d;
+  --shadow:0 14px 40px rgba(0,0,0,.45);
+  --shadow-sm:0 3px 14px rgba(0,0,0,.32);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:Figtree,ui-sans-serif,system-ui,"Segoe UI",sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--blue);outline-offset:2px;border-radius:6px}
+h1,h2,h3,h4{margin:0;text-wrap:balance}
+.fr{font-family:Fraunces,Georgia,serif;font-variation-settings:"opsz" 40;font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+
+.app{display:flex;min-height:100vh}
+.rail{width:252px;flex:none;position:fixed;inset:0 auto 0 0;z-index:20;background:linear-gradient(176deg,#1d3557,#13243c);color:#e9f1fb;padding:22px 14px 16px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 10px 22px}
+.brand .mark{width:38px;height:38px;border-radius:13px;background:#fff;display:grid;place-items:center;flex:none}
+.brand b{font-size:19px;letter-spacing:-.01em}
+.brand small{display:block;font-size:10.5px;opacity:.64;letter-spacing:.09em;text-transform:uppercase;margin-top:1px}
+.navlabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9ab6d6;padding:14px 11px 6px;font-weight:700}
+.navitem{display:flex;align-items:center;gap:11px;width:100%;border:0;background:transparent;color:#dce9f8;text-align:left;padding:10px 11px;border-radius:11px;font-weight:500;transition:background .16s ease}
+.navitem:hover{background:#ffffff14}
+.navitem[aria-current="page"]{background:#ffffff1f;color:#fff;font-weight:700}
+.navitem svg{flex:none;opacity:.92}
+.railfoot{margin-top:auto;padding-top:12px;border-top:1px solid #ffffff22;display:grid;gap:4px}
+.profilebtn{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:#fff;padding:9px 10px;border-radius:12px;text-align:left}
+.profilebtn:hover{background:#ffffff14}
+.ava{width:36px;height:36px;border-radius:50%;background:#d7e7f7;color:#1d3557;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.ava.child{background:var(--sand);color:#3b2a0e}
+.profilebtn b{font-size:13.5px;display:block}
+.profilebtn small{font-size:11px;opacity:.66}
+
+.main{flex:1;min-width:0;margin-left:252px}
+.topbar{position:sticky;top:0;z-index:15;height:70px;display:flex;align-items:center;gap:10px;padding:0 28px;background:color-mix(in srgb,var(--ground) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-2)}
+.search{flex:1;max-width:430px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 13px;color:var(--ink);font:inherit}
+.search::placeholder{color:var(--muted)}
+.iconbtn{width:42px;height:42px;border:1px solid var(--line);background:var(--surface);border-radius:12px;display:grid;place-items:center;color:var(--ink-2);transition:border-color .16s ease,transform .16s ease}
+.iconbtn:hover{border-color:var(--blue);transform:translateY(-1px)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 28px 70px}
+
+.page{display:none}
+.page.on{display:block;animation:rise .3s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.phead{margin-bottom:20px}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:800;margin-bottom:6px}
+.phead h1{font-size:clamp(25px,3.4vw,33px);letter-spacing:-.02em}
+.phead p{margin:5px 0 0;color:var(--muted);max-width:62ch}
+
+.guardian{display:none;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--sand-soft);border:1px solid color-mix(in srgb,var(--sand) 42%,transparent);color:var(--ink);padding:11px 15px;border-radius:14px;margin-bottom:18px;font-size:14px}
+.guardian.on{display:flex}
+
+.hero{position:relative;overflow:hidden;border-radius:var(--r-lg);background:linear-gradient(135deg,#1d3557 0%,#2d5d8d 56%,#457b9d 100%);color:#eaf3fb;box-shadow:var(--shadow)}
+.hero-top{display:flex;gap:26px;justify-content:space-between;align-items:flex-start;padding:26px 28px 6px;flex-wrap:wrap}
+.hero h2{font-size:clamp(23px,3vw,30px);letter-spacing:-.015em;color:#fff}
+.hero .date{margin:6px 0 0;color:#b6d4ef;font-size:13.5px}
+.nextline{margin:16px 0 0;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.nextline .pulse{width:9px;height:9px;border-radius:50%;background:var(--sand);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(224,171,99,.6)}70%{box-shadow:0 0 0 11px rgba(224,171,99,0)}100%{box-shadow:0 0 0 0 rgba(224,171,99,0)}}
+.nextline strong{font-size:16.5px;color:#fff;font-weight:600}
+.cta{border:0;border-radius:12px;background:#fff;color:#1b3a5c;padding:12px 18px;font-weight:800;font-size:14.5px;box-shadow:0 6px 18px rgba(0,0,0,.16);transition:transform .16s ease,box-shadow .16s ease;white-space:nowrap}
+.cta:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.cta.ghost{background:#ffffff1f;color:#fff;box-shadow:none;border:1px solid #ffffff3d}
+.cta.ghost:hover{background:#ffffff2e}
+.arcwrap{padding:0 10px 10px}
+.arc{display:block;width:100%;height:auto}
+.arclegend{display:flex;gap:16px;flex-wrap:wrap;padding:0 28px 22px;color:#c3dcf2;font-size:12px}
+.arclegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+.allergystrip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 0;padding:11px 15px;border:1px solid var(--line);background:var(--surface);border-radius:14px;box-shadow:var(--shadow-sm)}
+.allergystrip .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--alert-soft);color:var(--alert)}
+.chip.blue{background:var(--blue-soft);color:var(--blue)}
+
+.sect{margin:30px 0 13px;display:flex;align-items:baseline;justify-content:space-between;gap:14px}
+.sect h3{font-size:16.5px;letter-spacing:-.01em}
+.link{border:0;background:transparent;color:var(--blue);font-weight:700;font-size:13.5px;padding:4px 2px}
+.link:hover{text-decoration:underline}
+.two{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+.quad{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:19px;box-shadow:var(--shadow-sm)}
+.panel h4{font-size:14px;margin-bottom:3px}
+.panel .say{color:var(--muted);font-size:13.5px}
+.statlbl{font-size:12px;color:var(--muted)}
+.statval{font-family:Fraunces,Georgia,serif;font-variation-settings:"opsz" 90;font-weight:600;font-size:30px;line-height:1.1;color:var(--blue-ink);margin:5px 0 2px}
+
+.week{display:flex;align-items:flex-end;gap:9px;height:86px;margin:15px 0 9px}
+.week div{flex:1;border-radius:7px 7px 3px 3px;background:var(--blue-soft);transition:transform .2s ease}
+.week div.hi{background:var(--blue)}
+.week div:hover{transform:translateY(-3px)}
+.weekdays{display:flex;gap:9px;color:var(--muted);font-size:11px}
+.weekdays span{flex:1;text-align:center}
+
+.apptmini{display:flex;gap:14px;align-items:center;margin-top:12px}
+.daytile{width:58px;flex:none;text-align:center;background:var(--blue-soft);border-radius:13px;padding:9px 4px}
+.daytile b{display:block;font-size:22px;line-height:1.05;color:var(--blue-ink)}
+.daytile span{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--blue)}
+
+.qtile{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.qtile:hover{transform:translateY(-3px);border-color:var(--blue);box-shadow:var(--shadow)}
+.qtile .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);margin-bottom:11px}
+.qtile b{display:block;font-size:14.5px}
+.qtile span{color:var(--muted);font-size:12.5px}
+
+.tl{position:relative;padding-left:22px;margin-top:4px}
+.tl:before{content:"";position:absolute;left:5px;top:9px;bottom:9px;width:2px;background:var(--line)}
+.tlrow{position:relative;display:flex;gap:12px;align-items:flex-start;padding:11px 0}
+.tlrow:before{content:"";position:absolute;left:-21px;top:17px;width:10px;height:10px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px var(--ground)}
+.tlrow .t{margin-left:auto;color:var(--muted);font-size:12.5px;white-space:nowrap}
+.tlrow b{font-size:14.5px}
+.tlrow small{display:block;color:var(--muted);font-size:13px}
+
+.doses{display:grid;gap:10px}
+.dose{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;box-shadow:var(--shadow-sm);transition:border-color .18s ease,opacity .25s ease}
+.dose.done{opacity:.62}
+.dose.due{border-color:color-mix(in srgb,var(--due) 48%,transparent);background:var(--due-soft)}
+.dosetime{width:54px;flex:none;font-weight:800;color:var(--ink-2);font-size:13.5px}
+.dose b{display:block;font-size:15px}
+.dose small{color:var(--muted);font-size:13px}
+.tick{margin-left:auto;border:1.6px solid var(--blue);background:transparent;color:var(--blue);border-radius:999px;padding:8px 15px;font-weight:700;font-size:13px;white-space:nowrap;transition:background .16s ease,color .16s ease}
+.tick:hover{background:var(--blue);color:#fff}
+.tick[disabled]{border-color:var(--good);color:var(--good);background:var(--good-soft);cursor:default}
+
+.rows{display:grid;gap:11px}
+.row{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:15px 17px;box-shadow:var(--shadow-sm)}
+.row b{font-size:15px}
+.row small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.row .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;background:var(--good-soft);color:var(--good);white-space:nowrap}
+.badge.due{background:var(--due-soft);color:var(--due)}
+.badge.red{background:var(--alert-soft);color:var(--alert)}
+.badge.flat{background:var(--surface-2);color:var(--muted)}
+.badge.blue{background:var(--blue-soft);color:var(--blue)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 13px;font-weight:700;font-size:13px;color:var(--blue);transition:border-color .16s ease;white-space:nowrap}
+.btn:hover{border-color:var(--blue)}
+.btn.solid{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.solid:hover{background:var(--blue-deep);border-color:var(--blue-deep)}
+.btn.danger{background:var(--alert);border-color:var(--alert);color:#fff}
+
+.tabs{display:inline-flex;gap:5px;background:var(--surface-2);padding:4px;border-radius:13px;margin:0 0 17px}
+.tab{border:0;background:transparent;padding:8px 15px;border-radius:10px;color:var(--muted);font-weight:600;font-size:13.5px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:800;box-shadow:var(--shadow-sm)}
+
+.metric{font-family:Fraunces,Georgia,serif;font-variation-settings:"opsz" 90;font-weight:600;font-size:40px;line-height:1;color:var(--blue-ink)}
+.bar{height:9px;background:var(--surface-2);border-radius:999px;overflow:hidden;margin:13px 0 7px}
+.bar i{display:block;height:100%;background:var(--blue);border-radius:999px;transition:width .5s cubic-bezier(.3,1,.4,1)}
+.qr{display:grid;place-items:center;background:var(--surface-2);border-radius:14px;padding:22px;margin:13px 0}
+
+.sosbanner{background:linear-gradient(135deg,#1d3557,#7d3038);color:#fff;border-radius:var(--r-lg);padding:24px;display:flex;gap:18px;justify-content:space-between;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
+.sosbanner h3{font-size:22px}
+.sosbanner p{margin:6px 0 0;color:#f3d6d4;max-width:46ch;font-size:14px}
+.callout{background:var(--blue-soft);border-radius:14px;padding:14px 16px;font-size:13.5px;color:var(--ink-2)}
+.callout.warn{background:var(--due-soft)}
+.callout.red{background:var(--alert-soft)}
+.callout b{display:block;margin-bottom:3px;color:var(--ink)}
+
+.sw{width:44px;height:26px;border-radius:999px;background:var(--line);border:0;position:relative;flex:none;padding:0;transition:background .18s ease}
+.sw:after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s ease;box-shadow:0 1px 3px #0003}
+.sw.on{background:var(--blue)}
+.sw.on:after{left:21px}
+
+.scrim{position:fixed;inset:0;background:#0b172699;backdrop-filter:blur(2px);z-index:40;display:none}
+.scrim.on{display:block}
+.more{position:fixed;z-index:45;right:20px;top:80px;width:min(380px,calc(100vw - 40px));background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 26px 60px rgba(10,26,45,.3);padding:18px;display:none;max-height:calc(100vh - 105px);overflow:auto}
+.more.on{display:block;animation:rise .22s ease both}
+.more header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.more h3{font-size:18px}
+.more .note{color:var(--muted);font-size:13px;margin:7px 0 4px}
+.mgroup h4{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px;padding-left:4px}
+.mitem{display:flex;align-items:center;gap:11px;width:100%;border:0;background:transparent;border-radius:11px;padding:10px 11px;text-align:left;font-size:14px;transition:background .14s ease}
+.mitem:hover{background:var(--surface-2)}
+.mitem .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--surface-2);color:var(--blue);flex:none}
+.mitem .ch{margin-left:auto;color:var(--muted);display:flex}
+
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:#0b172699}
+.modal.on{display:flex}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;width:min(520px,100%);box-shadow:var(--shadow);max-height:90vh;overflow:auto}
+.sheet h3{font-size:20px}
+.sheet .say{color:var(--muted);font-size:13.5px;margin-top:5px}
+.field{margin-top:14px}
+.field label{display:block;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
+.field select,.field input{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.foot{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);z-index:80;background:var(--blue-deep);color:#eaf3fb;padding:12px 18px;border-radius:13px;font-size:14px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease;max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.bottomnav{display:none}
+
+@media(max-width:900px){
+  .rail{display:none}
+  .main{margin-left:0}
+  .topbar{height:62px;padding:0 16px}
+  .wrap{padding:18px 16px 96px}
+  .two,.quad,.trio{grid-template-columns:1fr}
+  .hero-top{padding:22px 20px 4px}
+  .arclegend{padding:0 20px 18px}
+  .row{align-items:flex-start;flex-wrap:wrap}
+  .row .right{margin-left:0;width:100%}
+  .bottomnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;bottom:0;left:0;right:0;z-index:35;background:var(--surface);border-top:1px solid var(--line);padding:7px 6px;padding-bottom:calc(7px + env(safe-area-inset-bottom))}
+  .bottomnav button{border:0;background:transparent;color:var(--muted);font-size:10.5px;font-weight:600;display:grid;justify-items:center;gap:3px;padding:6px 2px;border-radius:10px}
+  .bottomnav button[aria-current="page"]{color:var(--blue);font-weight:800}
+  .more{right:12px;left:12px;top:70px;width:auto}
+  .sosbanner{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:420px){.week{height:66px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.6 12 4l8.5 6.6V20a1 1 0 0 1-1 1h-5v-6h-5v6h-5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.3" y="5.2" width="17.4" height="15.3" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.3 10h17.4M8 3.3v3.6M16 3.3v3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-pill" viewBox="0 0 24 24"><rect x="2.6" y="8.4" width="18.8" height="7.2" rx="3.6" transform="rotate(-42 12 12)" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.6 8.6 15.4 15.4" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="i-rec" viewBox="0 0 24 24"><path d="M6 3.4h8.2L19 8v12.6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13.8 3.6V8.4H18.8M8.4 13h7.2M8.4 16.6h4.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20.4 12.2c0 4-3.8 7.2-8.4 7.2a9.8 9.8 0 0 1-2.6-.35L4.6 20.5l1.2-3.5A6.9 6.9 0 0 1 3.6 12.2C3.6 8.2 7.4 5 12 5s8.4 3.2 8.4 7.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8.4" r="3.3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.4 20c.5-3.4 2.9-5.4 5.6-5.4s5.1 2 5.6 5.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.6a3 3 0 0 1 0 5.8M17.4 14.9c2 .7 3.3 2.5 3.6 5.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="17.6" cy="6.2" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6.4" cy="12" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17.6" cy="17.8" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.9 10.7 15.1 7.5M8.9 13.3l6.2 3.2" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><path d="M4 9V5.4a1.4 1.4 0 0 1 1.4-1.4H9M15 4h3.6A1.4 1.4 0 0 1 20 5.4V9M20 15v3.6a1.4 1.4 0 0 1-1.4 1.4H15M9 20H5.4A1.4 1.4 0 0 1 4 18.6V15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 12h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 15.4V11a6 6 0 1 0-12 0v4.4L4.4 18h15.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20.4a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.4S3.6 15.2 3.6 9.6a4.6 4.6 0 0 1 8.4-2.6 4.6 4.6 0 0 1 8.4 2.6c0 5.6-8.4 10.8-8.4 10.8z" fill="currentColor"/></symbol>
+<symbol id="i-sos" viewBox="0 0 24 24"><path d="M12 3.2 20.6 19H3.4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.6v4M12 16.3v.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.3 19.4 6v6.1c0 4.3-3 7.5-7.4 8.8-4.4-1.3-7.4-4.5-7.4-8.8V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.4v9.2M14.6 9.6a2.8 2.8 0 0 0-2.6-1.4c-1.5 0-2.6.8-2.6 2s1 1.7 2.6 2.1 2.8.9 2.8 2.1-1.2 2-2.8 2a3 3 0 0 1-2.7-1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-access" viewBox="0 0 24 24"><circle cx="12" cy="4.9" r="1.9" fill="currentColor"/><path d="M5.4 8.6h13.2M12 8.9V15M12 15l-3.6 5.4M12 15l3.6 5.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-text" viewBox="0 0 24 24"><path d="M4.6 19 9.8 5.4h1.6L16.6 19M6.8 14.6h8M17.4 19l2.6-6.6h.4L23 19M18.4 16.9h3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-baby" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 10.4v.1M15 10.4v.1M9.4 14.6a3.4 3.4 0 0 0 5.2 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+</defs></svg>
+
+<div class="app">
+<aside class="rail">
+  <div class="brand">
+    <div class="mark"><svg width="21" height="21" style="color:#2f6ea5"><use href="#i-heart"/></svg></div>
+    <div><b>AfiCare</b><small>MediLink</small></div>
+  </div>
+  <div class="navlabel">My care</div>
+  <button class="navitem" data-go="home" aria-current="page"><svg width="19" height="19"><use href="#i-home"/></svg><span>Home</span></button>
+  <button class="navitem" data-go="appts"><svg width="19" height="19"><use href="#i-cal"/></svg><span>Appointments</span></button>
+  <button class="navitem" data-go="meds"><svg width="19" height="19"><use href="#i-pill"/></svg><span>Medications</span></button>
+  <button class="navitem" data-go="records"><svg width="19" height="19"><use href="#i-rec"/></svg><span>Health Records</span></button>
+  <div class="navlabel">Stay connected</div>
+  <button class="navitem" data-go="messages"><svg width="19" height="19"><use href="#i-chat"/></svg><span>Messages</span></button>
+  <button class="navitem" data-go="team"><svg width="19" height="19"><use href="#i-team"/></svg><span>Care Team</span></button>
+  <button class="navitem" data-go="share"><svg width="19" height="19"><use href="#i-share"/></svg><span>Share Records</span></button>
+  <div class="railfoot">
+    <button class="navitem" id="railMore"><svg width="19" height="19"><use href="#i-more"/></svg><span>Everything else</span></button>
+    <button class="profilebtn" id="railProfile">
+      <div class="ava" id="avaRail">WN</div>
+      <div><b id="nameRail">Winfry Nyarangi</b><small id="subRail">ML-NBO-4821</small></div>
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <input class="search" id="search" placeholder="Search your care…" aria-label="Search your care">
+    <button class="iconbtn" id="btnScan" aria-label="Scan a QR code"><svg width="19" height="19"><use href="#i-qr"/></svg></button>
+    <button class="iconbtn" id="btnBell" aria-label="Notifications"><svg width="19" height="19"><use href="#i-bell"/></svg></button>
+    <button class="iconbtn" id="btnProfile" aria-label="Switch profile"><span id="avaTop" style="font-weight:800;font-size:12.5px">WN</span></button>
+  </header>
+
+  <div class="wrap">
+    <div class="guardian" id="guardian">
+      <span>You're viewing <b>Amani's</b> record as guardian. Adult-only sections are hidden.</span>
+      <button class="btn" id="switchBack">Switch back to mine</button>
+    </div>
+
+    <section class="page on" id="home">
+      <div class="hero">
+        <div class="hero-top">
+          <div style="min-width:min(100%,290px)">
+            <h2 class="fr" id="greet">Good morning, Winfry</h2>
+            <p class="date" id="today">Monday, 6 October</p>
+            <div class="nextline"><span class="pulse" id="pulse"></span><strong id="nextText">Metformin is due now</strong></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:4px">
+            <button class="cta" id="heroPrimary">Mark it taken</button>
+            <button class="cta ghost" data-open="book">Book a visit</button>
+          </div>
+        </div>
+        <div class="arcwrap">
+          <svg class="arc" viewBox="0 0 620 168" role="img" aria-labelledby="arcTitle">
+            <title id="arcTitle">Your day from 6am to 10pm, with today's doses marked along it</title>
+            <defs><linearGradient id="arcg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#bcd9f2" stop-opacity=".28"/><stop offset=".5" stop-color="#dcecfb" stop-opacity=".88"/><stop offset="1" stop-color="#bcd9f2" stop-opacity=".28"/>
+            </linearGradient></defs>
+            <path id="arcPath" d="M46 136 C 150 34, 470 34, 574 136" fill="none" stroke="url(#arcg)" stroke-width="2.6" stroke-linecap="round"/>
+            <g id="arcMarks"></g>
+            <g id="sunGroup"><circle id="sunGlow" cx="46" cy="136" r="17" fill="#f6d79a" opacity=".22"/><circle id="sun" cx="46" cy="136" r="9" fill="#f6d79a"/></g>
+            <text x="46" y="158" fill="#b9d6ef" font-size="11" text-anchor="middle" font-family="Figtree,sans-serif">6am</text>
+            <text x="310" y="158" fill="#b9d6ef" font-size="11" text-anchor="middle" font-family="Figtree,sans-serif">2pm</text>
+            <text x="574" y="158" fill="#b9d6ef" font-size="11" text-anchor="middle" font-family="Figtree,sans-serif">10pm</text>
+          </svg>
+        </div>
+        <div class="arclegend">
+          <span><i style="background:#74c7a8"></i>Taken</span>
+          <span><i style="background:#f0b659"></i>Due now</span>
+          <span><i style="background:#9bb8d4"></i>Still to come</span>
+        </div>
+      </div>
+
+      <div class="allergystrip">
+        <span class="lbl">Allergies on file</span>
+        <span class="chip">Peanuts</span><span class="chip">Penicillin</span>
+        <button class="link" data-go="records" style="margin-left:auto">Manage</button>
+      </div>
+
+      <div class="sect"><h3>How this week is going</h3></div>
+      <div class="two">
+        <div class="panel">
+          <h4>Medicines taken</h4>
+          <div class="say">You've kept up on 6 of the last 7 days. That's the part that matters.</div>
+          <div class="week" id="weekBars"></div>
+          <div class="weekdays"><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Today</span></div>
+        </div>
+        <div class="panel">
+          <h4>Coming up</h4>
+          <div class="say">Your next visit is this Friday.</div>
+          <div class="apptmini">
+            <div class="daytile"><b class="num">16</b><span>OCT</span></div>
+            <div><b style="font-size:15px">Dr. Achieng</b>
+              <small style="color:var(--muted);display:block;font-size:13px">General Medicine · Tamia Hospital</small>
+              <small style="color:var(--muted);display:block;font-size:13px">10:00 · In person</small></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" data-go="appts">Manage</button><button class="btn" data-go="messages">Message</button></div>
+        </div>
+      </div>
+
+      <div class="sect"><h3>What do you need?</h3></div>
+      <div class="quad">
+        <button class="qtile" data-open="book"><div class="ic"><svg width="19" height="19"><use href="#i-cal"/></svg></div><b>Book a visit</b><span>Find a doctor and time</span></button>
+        <button class="qtile" data-go="meds"><div class="ic"><svg width="19" height="19"><use href="#i-pill"/></svg></div><b>My medicines</b><span>Today's doses</span></button>
+        <button class="qtile" data-go="records"><div class="ic"><svg width="19" height="19"><use href="#i-rec"/></svg></div><b>My records</b><span>Results and visits</span></button>
+        <button class="qtile" data-go="messages"><div class="ic"><svg width="19" height="19"><use href="#i-chat"/></svg></div><b>Message the team</b><span>2 unread</span></button>
+      </div>
+
+      <div class="sect"><h3>Recent activity</h3><button class="link" data-go="records">View all</button></div>
+      <div class="tl">
+        <div class="tlrow"><div><b>Your blood test result is ready</b><small>Full blood count · all values normal</small></div><span class="t">2h ago</span></div>
+        <div class="tlrow"><div><b>Dr. Achieng confirmed Friday</b><small>16 October, 10:00 · Tamia Hospital</small></div><span class="t">5h ago</span></div>
+        <div class="tlrow"><div><b>Prescription updated</b><small>Metformin 500mg · twice daily</small></div><span class="t">Yesterday</span></div>
+      </div>
+    </section>
+
+    <section class="page" id="appts">
+      <div class="phead"><div class="eyebrow">My care</div><h1 class="fr">Appointments</h1><p>Your visits, all in one place.</p></div>
+      <button class="btn solid" data-open="book" style="margin-bottom:6px">Book an appointment</button>
+      <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true">Upcoming</button><button class="tab" role="tab" aria-selected="false">Past</button><button class="tab" role="tab" aria-selected="false">Cancelled</button></div>
+      <div class="rows">
+        <div class="row"><div class="daytile"><b class="num">16</b><span>OCT</span></div>
+          <div><b>Dr. Achieng · General Medicine</b><small>Friday, 16 October · 10:00 · In person · Tamia Hospital</small></div>
+          <div class="right"><span class="badge">Confirmed</span><button class="btn" data-toast="Opening your appointment">Manage</button></div></div>
+        <div class="row"><div class="daytile"><b class="num">22</b><span>OCT</span></div>
+          <div><b>Follow-up · Dr. Achieng</b><small>Wednesday, 22 October · 14:30 · Telehealth</small></div>
+          <div class="right"><span class="badge due">Awaiting confirmation</span><button class="btn" data-toast="Opening your appointment">Manage</button></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="meds">
+      <div class="phead"><div class="eyebrow">My care</div><h1 class="fr">Medications</h1><p>Know what to take, and when.</p></div>
+      <div class="two">
+        <div class="panel"><h4>Today's progress</h4><div class="metric num" id="medMetric">1 / 3</div><div class="say">doses taken today</div>
+          <div class="bar"><i id="medBar" style="width:33%"></i></div><div class="say">7 days in a row — your best run yet.</div></div>
+        <div class="panel"><h4>Keep your list current</h4><div class="say">If a clinic adds something new, record it here so your care team sees the full picture.</div>
+          <button class="btn solid" style="margin-top:14px" data-toast="Add medication form opened">Add a medication</button></div>
+      </div>
+      <div class="sect"><h3>Today's doses</h3><button class="link" data-toast="Opening your full history">See history</button></div>
+      <div class="doses" id="doseList"></div>
+    </section>
+
+    <section class="page" id="records">
+      <div class="phead"><div class="eyebrow">My care</div><h1 class="fr">Health Records</h1><p>A clear picture of your health, without digging for it.</p></div>
+      <div class="two">
+        <div class="panel"><h4>Blood pressure, last five visits</h4><div class="say">Steady, and within the normal range.</div>
+          <svg viewBox="0 0 320 140" style="width:100%;height:auto;margin-top:12px" role="img" aria-label="Blood pressure across the last five visits, falling from 132 to 120 systolic">
+            <line x1="34" y1="104" x2="312" y2="104" stroke="var(--line)" stroke-width="1"/>
+            <line x1="34" y1="62" x2="312" y2="62" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 4"/>
+            <text x="28" y="107" fill="var(--muted)" font-size="10" text-anchor="end" font-family="Figtree,sans-serif">110</text>
+            <text x="28" y="65" fill="var(--muted)" font-size="10" text-anchor="end" font-family="Figtree,sans-serif">135</text>
+            <polyline points="56,66 118,78 180,74 242,92 304,96" fill="none" stroke="var(--blue)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="56" cy="66" r="3.6" fill="var(--blue)"/><circle cx="118" cy="78" r="3.6" fill="var(--blue)"/><circle cx="180" cy="74" r="3.6" fill="var(--blue)"/><circle cx="242" cy="92" r="3.6" fill="var(--blue)"/>
+            <circle cx="304" cy="96" r="9" fill="var(--blue)" opacity=".18"/><circle cx="304" cy="96" r="5.4" fill="var(--blue)"/>
+            <text x="304" y="84" fill="var(--ink)" font-size="11" font-weight="700" text-anchor="end" font-family="Figtree,sans-serif">120/78</text>
+            <text x="56" y="122" fill="var(--muted)" font-size="10" text-anchor="middle" font-family="Figtree,sans-serif">Jun</text>
+            <text x="180" y="122" fill="var(--muted)" font-size="10" text-anchor="middle" font-family="Figtree,sans-serif">Aug</text>
+            <text x="304" y="122" fill="var(--muted)" font-size="10" text-anchor="middle" font-family="Figtree,sans-serif">Oct</text>
+          </svg></div>
+        <div class="panel"><h4>Jump to</h4>
+          <div class="rows" style="margin-top:12px;gap:8px">
+            <button class="mitem" data-toast="Opening lab results"><div class="ic"><svg width="16" height="16"><use href="#i-rec"/></svg></div>Lab results<span class="ch"><svg width="15" height="15"><use href="#i-chev"/></svg></span></button>
+            <button class="mitem" data-toast="Opening prescriptions"><div class="ic"><svg width="16" height="16"><use href="#i-pill"/></svg></div>Prescriptions<span class="ch"><svg width="15" height="15"><use href="#i-chev"/></svg></span></button>
+            <button class="mitem" data-toast="Opening visit history"><div class="ic"><svg width="16" height="16"><use href="#i-cal"/></svg></div>Visit history<span class="ch"><svg width="15" height="15"><use href="#i-chev"/></svg></span></button>
+          </div>
+          <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:13px">
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700">Allergies</div>
+            <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap"><span class="chip">Peanuts</span><span class="chip">Penicillin</span></div>
+          </div></div>
+      </div>
+    </section>
+
+    <section class="page" id="messages">
+      <div class="phead"><div class="eyebrow">Stay connected</div><h1 class="fr">Messages</h1><p>Talk to the people involved in your care.</p></div>
+      <div class="rows">
+        <div class="row"><div class="ava">DA</div><div><b>Dr. Achieng</b><small>Your test results look good — let's review on Friday.</small></div><div class="right"><span class="badge blue">2 new</span></div></div>
+        <div class="row"><div class="ava">NW</div><div><b>Nurse Wanjiku</b><small>Remember to come fasting for the blood test.</small></div><div class="right"><span style="color:var(--muted);font-size:12.5px">5h</span></div></div>
+        <div class="row"><div class="ava">LT</div><div><b>Tamia Lab</b><small>Your full blood count report is ready to view.</small></div><div class="right"><span style="color:var(--muted);font-size:12.5px">1d</span></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="team">
+      <div class="phead"><div class="eyebrow">Stay connected</div><h1 class="fr">Care Team</h1><p>The people looking after you.</p></div>
+      <div class="rows">
+        <div class="row"><div class="ava">DA</div><div><b>Dr. Achieng</b><small>General Medicine · Tamia Hospital</small></div><div class="right"><span class="badge">Primary</span><button class="btn" data-go="messages">Message</button></div></div>
+        <div class="row"><div class="ava">NW</div><div><b>Nurse Wanjiku</b><small>Care nurse · Tamia Hospital</small></div><div class="right"><button class="btn" data-go="messages">Message</button></div></div>
+        <div class="row"><div class="ava">DO</div><div><b>Dr. Otieno</b><small>Cardiology · Kenyatta National Hospital</small></div><div class="right"><button class="btn" data-go="messages">Message</button></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="share">
+      <div class="phead"><div class="eyebrow">Stay connected</div><h1 class="fr">Share Records</h1><p>You decide who sees your health information, and for how long.</p></div>
+      <div class="two">
+        <div class="panel"><h4>Your MediLink QR</h4><div class="say">Show this at a facility. Nothing is shared until you approve it.</div>
+          <div class="qr"><svg width="132" height="132" viewBox="0 0 33 33" shape-rendering="crispEdges" role="img" aria-label="MediLink QR code for ML-NBO-4821">
+            <rect width="33" height="33" fill="#fff"/><g fill="#1d3557">
+            <path d="M2 2h7v7H2zm1 1v5h5V3z"/><rect x="4.5" y="4.5" width="2" height="2"/>
+            <path d="M24 2h7v7h-7zm1 1v5h5V3z"/><rect x="26.5" y="4.5" width="2" height="2"/>
+            <path d="M2 24h7v7H2zm1 1v5h5v-5z"/><rect x="4.5" y="26.5" width="2" height="2"/>
+            <rect x="11" y="2" width="1" height="1"/><rect x="13" y="2" width="1" height="1"/><rect x="15" y="3" width="1" height="1"/><rect x="12" y="4" width="1" height="1"/><rect x="14" y="5" width="1" height="1"/><rect x="11" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/><rect x="13" y="7" width="1" height="1"/><rect x="15" y="8" width="1" height="1"/>
+            <rect x="2" y="11" width="1" height="1"/><rect x="4" y="12" width="1" height="1"/><rect x="6" y="11" width="1" height="1"/><rect x="3" y="13" width="1" height="1"/><rect x="7" y="14" width="1" height="1"/><rect x="5" y="15" width="1" height="1"/><rect x="2" y="16" width="1" height="1"/><rect x="8" y="17" width="1" height="1"/><rect x="4" y="18" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/>
+            <rect x="11" y="11" width="2" height="2"/><rect x="15" y="12" width="1" height="1"/><rect x="18" y="11" width="1" height="1"/><rect x="13" y="14" width="1" height="1"/><rect x="16" y="15" width="2" height="2"/><rect x="20" y="13" width="1" height="1"/><rect x="12" y="17" width="1" height="1"/><rect x="19" y="18" width="1" height="1"/><rect x="14" y="19" width="1" height="1"/><rect x="17" y="20" width="1" height="1"/><rect x="11" y="21" width="1" height="1"/><rect x="21" y="16" width="1" height="1"/><rect x="22" y="19" width="1" height="1"/>
+            <rect x="24" y="11" width="1" height="1"/><rect x="26" y="12" width="1" height="1"/><rect x="29" y="11" width="1" height="1"/><rect x="25" y="14" width="1" height="1"/><rect x="28" y="15" width="1" height="1"/><rect x="30" y="13" width="1" height="1"/><rect x="24" y="17" width="1" height="1"/><rect x="27" y="18" width="1" height="1"/><rect x="30" y="17" width="1" height="1"/><rect x="26" y="20" width="1" height="1"/><rect x="29" y="21" width="1" height="1"/>
+            <rect x="11" y="24" width="1" height="1"/><rect x="14" y="25" width="1" height="1"/><rect x="12" y="27" width="1" height="1"/><rect x="16" y="24" width="1" height="1"/><rect x="18" y="26" width="1" height="1"/><rect x="15" y="28" width="1" height="1"/><rect x="11" y="30" width="1" height="1"/><rect x="20" y="29" width="1" height="1"/><rect x="17" y="30" width="1" height="1"/>
+            <rect x="24" y="24" width="1" height="1"/><rect x="27" y="25" width="1" height="1"/><rect x="30" y="24" width="1" height="1"/><rect x="25" y="27" width="1" height="1"/><rect x="28" y="28" width="1" height="1"/><rect x="24" y="30" width="1" height="1"/><rect x="30" y="29" width="1" height="1"/><rect x="22" y="23" width="1" height="1"/>
+            </g></svg></div>
+          <div style="text-align:center;font-weight:800;letter-spacing:.06em" class="num">ML-NBO-4821</div></div>
+        <div class="panel"><h4>Create a temporary share</h4><div class="say">Pick what to include and how long it lasts. You can revoke it at any time.</div>
+          <button class="btn solid" style="margin-top:14px" data-open="shareM">New share</button>
+          <div style="border-top:1px solid var(--line);margin-top:17px;padding-top:14px">
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:9px">Active right now</div>
+            <div class="row" style="padding:12px 13px"><div><b style="font-size:14px">Tamia Hospital</b><small>Visit summary and allergies · expires in 19 hours</small></div><div class="right"><button class="btn" data-toast="Share revoked">Revoke</button></div></div>
+          </div></div>
+      </div>
+    </section>
+
+    <div id="genPages"></div>
+  </div>
+</div>
+</div>
+
+<nav class="bottomnav" aria-label="Main">
+  <button data-go="home" aria-current="page"><svg width="20" height="20"><use href="#i-home"/></svg>Home</button>
+  <button data-go="appts"><svg width="20" height="20"><use href="#i-cal"/></svg>Visits</button>
+  <button data-go="meds"><svg width="20" height="20"><use href="#i-pill"/></svg>Meds</button>
+  <button id="navMore"><svg width="20" height="20"><use href="#i-more"/></svg>More</button>
+</nav>
+
+<div class="scrim" id="scrim"></div>
+<div class="more" id="more" role="dialog" aria-label="Everything else">
+  <header><h3 class="fr">Everything else</h3><button class="iconbtn" id="moreClose" aria-label="Close" style="width:34px;height:34px">✕</button></header>
+  <p class="note">Still here — just not competing with your everyday care.</p>
+  <div id="moreList"></div>
+</div>
+
+<div class="modal" id="book"><div class="sheet">
+  <h3 class="fr">Book an appointment</h3><p class="say">Let's find a visit that works for you.</p>
+  <div class="field"><label for="f1">Facility</label><select id="f1"><option>Tamia Hospital — Nairobi</option><option>AfiCare Clinic — Westlands</option><option>Kenyatta National Hospital</option></select></div>
+  <div class="field"><label for="f2">Who would you like to see?</label><select id="f2"><option>Dr. Achieng — General Medicine</option><option>Dr. Otieno — Cardiology</option><option>Any available provider</option></select></div>
+  <div class="field"><label for="f3">Date</label><input id="f3" type="date" value="2026-10-16"></div>
+  <div class="field"><label for="f4">How would you like to be seen?</label><select id="f4"><option>In person</option><option>Telehealth</option></select></div>
+  <div class="foot"><button class="btn" data-close="book">Cancel</button><button class="btn solid" data-close="book" data-toast="Appointment requested — Dr. Achieng will confirm">Request appointment</button></div>
+</div></div>
+
+<div class="modal" id="shareM"><div class="sheet">
+  <h3 class="fr">Create a share</h3><p class="say">You stay in control. It expires on its own, and you can revoke it sooner.</p>
+  <div class="field"><label for="s1">What to include</label><select id="s1"><option>Visit summary</option><option>Medications and allergies</option><option>Full health record</option></select></div>
+  <div class="field"><label for="s2">How long it lasts</label><select id="s2"><option>1 hour</option><option selected>24 hours</option><option>7 days</option></select></div>
+  <div class="foot"><button class="btn" data-close="shareM">Cancel</button><button class="btn solid" data-close="shareM" data-toast="Share created — QR is ready">Create share</button></div>
+</div></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)},
+    $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+
+/* ══ screens behind "Everything else" ══ */
+var GROUPS=[
+ {name:"Health and care", items:[
+  {id:"sos",   icon:"i-sos",   label:"Emergency SOS"},
+  {id:"mind",  icon:"i-heart", label:"Mental Health", adult:true},
+  {id:"vacc",  icon:"i-pill",  label:"Vaccinations"},
+  {id:"remind",icon:"i-bell",  label:"Med Reminders"},
+  {id:"drugs", icon:"i-pill",  label:"Drug Checker"},
+  {id:"anc",   icon:"i-baby",  label:"Maternal Care", adult:true},
+  {id:"mens",  icon:"i-heart", label:"Men's Health",  adult:true}
+ ]},
+ {name:"Money and cover", items:[
+  {id:"costs",   icon:"i-coin",  label:"Medication Costs"},
+  {id:"receipts",icon:"i-rec",   label:"Receipts"},
+  {id:"cover",   icon:"i-shield",label:"Insurance and SHA"},
+  {id:"spend",   icon:"i-coin",  label:"Expenses"}
+ ]},
+ {name:"Access and settings", items:[
+  {id:"refer",  icon:"i-share", label:"Referrals"},
+  {id:"care",   icon:"i-team",  label:"Caregiver Access", adult:true},
+  {id:"pwd",    icon:"i-access",label:"Disability and access needs"},
+  {id:"display",icon:"i-text",  label:"Text size and contrast"},
+  {id:"profile",icon:"i-team",  label:"Profile and MediLink"}
+ ]}
+];
+
+var SCREENS={
+ sos:{eye:"Health and care",title:"Emergency SOS",sub:"The things a stranger would need to know, ready in one tap.",blocks:[
+   {t:"sos"},
+   {t:"stats",items:[{l:"Blood type",v:"O+"},{l:"Known conditions",v:"Asthma"},{l:"Allergies",v:"2 on file"}]},
+   {t:"rows",h:"Emergency contacts",items:[
+     {b:"Mary Achieng",s:"Sister · +254 712 345 678",badge:"Primary",btn:"Call"},
+     {b:"Dr. Achieng",s:"Tamia Hospital · +254 20 271 0000",btn:"Call"}]}
+ ]},
+ mind:{eye:"Health and care",title:"Mental Health",sub:"Private check-ins. Only you see these unless you choose to share.",blocks:[
+   {t:"note",tone:"",h:"A screening is not a diagnosis",p:"These are the same questionnaires a clinician would use to start a conversation. Your answers stay on your record."},
+   {t:"rows",h:"Check in",items:[
+     {b:"PHQ-9 · How you've been feeling",s:"9 questions · about 5 minutes",btn:"Start"},
+     {b:"GAD-7 · Worry and anxiety",s:"7 questions · about 4 minutes",btn:"Start"}]},
+   {t:"rows",h:"Your mood this week",items:[
+     {b:"Feeling okay",s:"Today, 09:15",badge:"Steady"},
+     {b:"Calm",s:"Yesterday, 20:40",badge:"Steady"},
+     {b:"Low",s:"Saturday, 11:02",badge:"Noted",tone:"due"}]}
+ ]},
+ vacc:{eye:"Health and care",title:"Vaccinations",sub:"What you've had, and what's due — against the Kenya EPI schedule.",blocks:[
+   {t:"note",tone:"warn",h:"One vaccine needs attention",p:"Your tetanus booster (Td) is overdue. Any clinic can give it — no appointment needed."},
+   {t:"rows",h:"Your schedule",items:[
+     {b:"Tetanus / Td booster",s:"Was due 12 August 2026",badge:"Overdue",tone:"red",btn:"Find a clinic"},
+     {b:"Pentavalent",s:"Next scheduled item",badge:"Due soon",tone:"due"},
+     {b:"BCG",s:"Given at birth",badge:"Done"},
+     {b:"OPV",s:"Course completed",badge:"Done"}]}
+ ]},
+ remind:{eye:"Health and care",title:"Med Reminders",sub:"Nudges on your phone, set to the times you actually take things.",blocks:[
+   {t:"toggles",h:"Today",items:[
+     {b:"Amoxicillin 500mg",s:"08:00 · after food",on:true},
+     {b:"Metformin 500mg",s:"13:00 · with lunch",on:true},
+     {b:"Vitamin D 1,000 IU",s:"20:00",on:false}]},
+   {t:"note",h:"Notifications are on",p:"AfiCare can send these even when the app is closed. You can turn any of them off without removing the medicine."}
+ ]},
+ drugs:{eye:"Health and care",title:"Drug Checker",sub:"A quick reference for common interactions. It does not replace your pharmacist.",blocks:[
+   {t:"note",tone:"warn",h:"Use this as a prompt, not an answer",p:"If something here worries you, speak to a pharmacist or your doctor before changing anything."},
+   {t:"rows",h:"Common pairs to watch",items:[
+     {b:"Warfarin + Ibuprofen",s:"Raises bleeding risk",badge:"Avoid",tone:"red"},
+     {b:"Metformin + Alcohol",s:"Can affect blood sugar control",badge:"Caution",tone:"due"},
+     {b:"Ciprofloxacin + Antacids",s:"Antacids reduce absorption — space them apart",badge:"Caution",tone:"due"},
+     {b:"Amoxicillin + Paracetamol",s:"No known interaction",badge:"Fine"}]}
+ ]},
+ anc:{eye:"Health and care",title:"Maternal Care",sub:"Your pregnancy, week by week.",blocks:[
+   {t:"preg"},
+   {t:"note",tone:"red",h:"When to seek care straight away",p:"Severe headache or blurred vision, bleeding, severe abdominal pain, reduced movement, or difficulty breathing."},
+   {t:"rows",h:"Recent visits",items:[
+     {b:"12 August 2026",s:"BP 110/70 · Weight 66kg · Hb 11.2 · FHR 148",badge:"Normal"},
+     {b:"10 July 2026",s:"BP 112/72 · Weight 64kg · Hb 11.5 · FHR 151",badge:"Normal"}]}
+ ]},
+ mens:{eye:"Health and care",title:"Men's Health",sub:"Private screening tools and your past results.",blocks:[
+   {t:"rows",h:"Available now",items:[
+     {b:"Cardiovascular risk",s:"Blood pressure, smoking, activity · 8 questions",btn:"Start"},
+     {b:"Prostate health (IPSS)",s:"Urinary symptom score · 7 questions",btn:"Start"}]},
+   {t:"rows",h:"Not ready yet",items:[
+     {b:"Lifestyle and wellness",s:"Question set still being written",badge:"Coming soon",tone:"flat"},
+     {b:"Sexual health (IIEF-5)",s:"Question set still being written",badge:"Coming soon",tone:"flat"},
+     {b:"Metabolic syndrome",s:"Question set still being written",badge:"Coming soon",tone:"flat"}]},
+   {t:"rows",h:"Your results",items:[
+     {b:"Cardiovascular risk",s:"12 August 2026 · score 6",badge:"Low risk"},
+     {b:"Prostate health",s:"5 July 2026 · score 12",badge:"Moderate",tone:"due"}]}
+ ]},
+ costs:{eye:"Money and cover",title:"Medication Costs",sub:"What your medicines are costing you this month.",blocks:[
+   {t:"stats",items:[{l:"Spent this month",v:"KES 3,250"},{l:"Monthly budget",v:"KES 10,000"},{l:"Purchases",v:"5"}]},
+   {t:"progress",label:"33% of your budget used",pct:33},
+   {t:"rows",h:"Recent purchases",items:[
+     {b:"Amoxicillin 500mg",s:"Goodlife Pharmacy · 12 October",badge:"KES 450",tone:"flat"},
+     {b:"Metformin 500mg",s:"Tamia Hospital Pharmacy · 6 October",badge:"KES 1,200",tone:"flat"},
+     {b:"Vitamin D 1,000 IU",s:"Goodlife Pharmacy · 1 October",badge:"KES 600",tone:"flat"}]}
+ ]},
+ receipts:{eye:"Money and cover",title:"Receipts",sub:"Photograph a receipt and it stays with your record.",blocks:[
+   {t:"stats",items:[{l:"Total tracked",v:"KES 8,740"},{l:"Receipts stored",v:"12"},{l:"This month",v:"KES 1,950"}]},
+   {t:"rows",h:"Recent",items:[
+     {b:"Consultation fee",s:"Tamia Hospital · 12 October",badge:"KES 1,500",tone:"flat",btn:"View"},
+     {b:"Medication purchase",s:"Goodlife Pharmacy · 8 October",badge:"KES 450",tone:"flat",btn:"View"}]},
+   {t:"note",h:"Why keep them?",p:"Receipts make insurance claims far easier, and let you see what care actually costs you over a year."}
+ ]},
+ cover:{eye:"Money and cover",title:"Insurance and SHA",sub:"Your own record of claims. AfiCare does not yet talk to SHA directly.",blocks:[
+   {t:"note",tone:"warn",h:"This is your own log",p:"For official cover and claim status, check with SHA or your insurer. What you record here is for your reference."},
+   {t:"rows",h:"Your claims",items:[
+     {b:"General consultation",s:"12 October · KES 1,500",badge:"Pending",tone:"due"},
+     {b:"Lab test",s:"5 August · KES 850",badge:"Approved"},
+     {b:"Medication",s:"20 July · KES 620",badge:"Rejected",tone:"red"}]}
+ ]},
+ spend:{eye:"Money and cover",title:"Expenses",sub:"Everything your care costs, in one place.",blocks:[
+   {t:"stats",items:[{l:"This year",v:"KES 41,300"},{l:"This month",v:"KES 4,750"},{l:"Biggest category",v:"Consultations"}]},
+   {t:"rows",h:"By category",items:[
+     {b:"Consultations",s:"8 visits",badge:"KES 14,200",tone:"flat"},
+     {b:"Medicines",s:"23 purchases",badge:"KES 12,800",tone:"flat"},
+     {b:"Lab and imaging",s:"6 tests",badge:"KES 9,100",tone:"flat"},
+     {b:"Transport to care",s:"logged manually",badge:"KES 5,200",tone:"flat"}]}
+ ]},
+ refer:{eye:"Access and settings",title:"Referrals",sub:"When one facility sends you to another, follow it here.",blocks:[
+   {t:"timeline",h:"Cardiology · Kenyatta National Hospital",items:[
+     {b:"Referral requested",s:"12 September, 10:20 · by Dr. Achieng"},
+     {b:"Facility received it",s:"12 September, 13:05"},
+     {b:"Waiting for an appointment",s:"They will contact you directly"}]},
+   {t:"note",h:"What happens next",p:"Kenyatta National Hospital has your referral. You'll get a message here as soon as they respond."}
+ ]},
+ care:{eye:"Access and settings",title:"Caregiver Access",sub:"Let someone you trust see parts of your record.",blocks:[
+   {t:"rows",h:"People with access",items:[
+     {b:"Mary Achieng",s:"Sister · everything except mental health",badge:"Active",btn:"Manage"},
+     {b:"James Kimani",s:"Can see visits and appointments only",badge:"Active",btn:"Manage"}]},
+   {t:"note",h:"You stay in control",p:"You can change what each person sees, or remove their access entirely, at any time. They are told when you do."}
+ ]},
+ pwd:{eye:"Access and settings",title:"Disability and access needs",sub:"Tell facilities what you need before you arrive.",blocks:[
+   {t:"note",h:"Why record this",p:"Facilities can prepare — an interpreter, step-free access, extra time. You decide who sees it."},
+   {t:"toggles",h:"Your needs",items:[
+     {b:"Step-free access needed",s:"Wheelchair user",on:true},
+     {b:"Kenyan Sign Language interpreter",s:"Request at booking",on:true},
+     {b:"Large print materials",s:"Where available",on:false}]},
+   {t:"rows",h:"On file",items:[{b:"NCPWD registration",s:"Not added yet",btn:"Add"}]}
+ ]},
+ display:{eye:"Access and settings",title:"Text size and contrast",sub:"Make AfiCare easier to read on this device.",blocks:[
+   {t:"toggles",h:"Display",items:[
+     {b:"Larger text",s:"Increases text size across the app",on:false},
+     {b:"High contrast",s:"Stronger colours and borders",on:false},
+     {b:"Read aloud",s:"Speaks your daily summary",on:true}]},
+   {t:"note",tone:"warn",h:"These stay on this device",p:"If you sign in on a new phone you'll need to set them again. We're working on syncing them to your account."}
+ ]},
+ profile:{eye:"Access and settings",title:"Profile and MediLink",sub:"Who you are on AfiCare.",blocks:[
+   {t:"stats",items:[{l:"MediLink ID",v:"ML-NBO-4821"},{l:"Date of birth",v:"12 Jan 1990"},{l:"Blood type",v:"O+"}]},
+   {t:"rows",h:"Personal details",items:[
+     {b:"Phone",s:"+254 712 345 678",btn:"Edit"},
+     {b:"Emergency contact",s:"Mary Achieng · +254 712 345 678",btn:"Edit"},
+     {b:"Home facility",s:"Tamia Hospital, Nairobi",btn:"Edit"}]},
+   {t:"rows",h:"Profiles you manage",items:[
+     {b:"Amani Nyarangi",s:"Daughter, 4 years · ML-DEP-0917",badge:"Child",btn:"Open"}]}
+ ]}
+};
+
+/* ── render generated screens ── */
+function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML}
+function badge(txt,tone){return '<span class="badge '+(tone||"")+'">'+esc(txt)+'</span>'}
+
+function block(b){
+ if(b.t==="sos") return '<div class="sosbanner"><div><h3 class="fr">Need urgent help?</h3>'+
+   '<p>This calls Kenya emergency services and shares your blood type, allergies and location with them.</p></div>'+
+   '<button class="btn danger" style="padding:13px 20px;font-size:15px" data-toast="Calling emergency services…">Call 999</button></div>';
+
+ if(b.t==="stats") return '<div class="trio" style="margin-top:16px">'+b.items.map(function(s){
+   return '<div class="panel"><div class="statlbl">'+esc(s.l)+'</div><div class="statval num">'+esc(s.v)+'</div></div>'}).join("")+'</div>';
+
+ if(b.t==="progress") return '<div class="panel" style="margin-top:16px"><div class="bar"><i style="width:'+b.pct+'%"></i></div>'+
+   '<div class="say">'+esc(b.label)+'</div></div>';
+
+ if(b.t==="note") return '<div class="callout '+(b.tone||"")+'" style="margin-top:16px"><b>'+esc(b.h)+'</b>'+esc(b.p)+'</div>';
+
+ if(b.t==="rows") return (b.h?'<div class="sect"><h3>'+esc(b.h)+'</h3></div>':'')+'<div class="rows">'+
+   b.items.map(function(r){
+     return '<div class="row"><div><b>'+esc(r.b)+'</b><small>'+esc(r.s)+'</small></div><div class="right">'+
+     (r.badge?badge(r.badge,r.tone):"")+(r.btn?'<button class="btn" data-toast="'+esc(r.btn)+' — '+esc(r.b)+'">'+esc(r.btn)+'</button>':"")+
+     '</div></div>'}).join("")+'</div>';
+
+ if(b.t==="toggles") return '<div class="sect"><h3>'+esc(b.h)+'</h3></div><div class="rows">'+
+   b.items.map(function(r){
+     return '<div class="row"><div><b>'+esc(r.b)+'</b><small>'+esc(r.s)+'</small></div>'+
+     '<div class="right"><button class="sw'+(r.on?" on":"")+'" role="switch" aria-checked="'+(!!r.on)+'" aria-label="'+esc(r.b)+'"></button></div></div>'}).join("")+'</div>';
+
+ if(b.t==="timeline") return '<div class="sect"><h3>'+esc(b.h)+'</h3></div><div class="panel"><div class="tl">'+
+   b.items.map(function(r){return '<div class="tlrow"><div><b>'+esc(r.b)+'</b><small>'+esc(r.s)+'</small></div></div>'}).join("")+'</div></div>';
+
+ if(b.t==="preg") return '<div class="panel" style="margin-top:16px;background:linear-gradient(135deg,#1d3557,#3f6f9e);color:#eaf3fb;border:0">'+
+   '<div class="eyebrow" style="color:#bcd9f2">Pregnancy progress</div>'+
+   '<h3 class="fr" style="font-size:26px;color:#fff;margin:4px 0 12px">Week 24 · second trimester</h3>'+
+   '<div class="bar" style="background:#ffffff2e"><i style="width:60%;background:#f6d79a"></i></div>'+
+   '<div class="trio" style="margin-top:16px">'+
+     '<div><div style="font-size:12px;color:#bcd9f2">Due date</div><b class="num" style="font-size:17px">15 Feb 2027</b></div>'+
+     '<div><div style="font-size:12px;color:#bcd9f2">Days to go</div><b class="num" style="font-size:17px">135</b></div>'+
+     '<div><div style="font-size:12px;color:#bcd9f2">Visits</div><b class="num" style="font-size:17px">3 of 8</b></div>'+
+   '</div></div>';
+ return "";
+}
+
+(function build(){
+ var host=$("#genPages"), html="";
+ Object.keys(SCREENS).forEach(function(id){
+   var s=SCREENS[id];
+   html+='<section class="page" id="'+id+'"><div class="phead"><div class="eyebrow">'+esc(s.eye)+'</div>'+
+     '<h1 class="fr">'+esc(s.title)+'</h1><p>'+esc(s.sub)+'</p></div>'+
+     s.blocks.map(block).join("")+'</section>';
+ });
+ host.innerHTML=html;
+
+ var list=$("#moreList"), mh="";
+ GROUPS.forEach(function(g){
+   mh+='<div class="mgroup"><h4>'+esc(g.name)+'</h4>';
+   g.items.forEach(function(it){
+     mh+='<button class="mitem'+(it.adult?" adult":"")+'" data-go="'+it.id+'" data-more="1">'+
+         '<div class="ic"><svg width="16" height="16"><use href="#'+it.icon+'"/></svg></div>'+esc(it.label)+
+         '<span class="ch"><svg width="15" height="15"><use href="#i-chev"/></svg></span></button>';
+   });
+   mh+='</div>';
+ });
+ list.innerHTML=mh;
+})();
+
+/* ── doses ── */
+var doses=[
+ {name:"Amoxicillin 500mg",note:"1 capsule, after food",h:8,taken:true},
+ {name:"Metformin 500mg",note:"1 tablet, with lunch",h:13,taken:false},
+ {name:"Vitamin D 1,000 IU",note:"1 tablet",h:20,taken:false}
+];
+var START=6,END=22;
+function nowH(){var d=new Date();return d.getHours()+d.getMinutes()/60}
+function fmt(h){var hh=Math.floor(h),m=Math.round((h-hh)*60);return String(hh).padStart(2,"0")+":"+String(m).padStart(2,"0")}
+function state(d){return d.taken?"taken":(d.h<=nowH()?"due":"later")}
+
+var path=$("#arcPath"),marks=$("#arcMarks"),sun=$("#sun"),glow=$("#sunGlow");
+function at(f){var L=path.getTotalLength();return path.getPointAtLength(Math.max(0,Math.min(1,f))*L)}
+function drawArc(){
+ marks.textContent="";
+ doses.forEach(function(d,i){
+  var p=at((d.h-START)/(END-START)),st=state(d);
+  var fill=st==="taken"?"#74c7a8":st==="due"?"#f0b659":"none";
+  var ring=st==="later"?"#9bb8d4":(st==="taken"?"#74c7a8":"#f0b659");
+  var g=document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.setAttribute("tabindex","0");g.setAttribute("role","button");g.style.cursor="pointer";
+  g.setAttribute("aria-label",d.name+" at "+fmt(d.h)+", "+(st==="taken"?"taken":st==="due"?"due now":"still to come")+". Activate to mark taken.");
+  g.innerHTML='<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(st==="due"?10:8)+'" fill="'+fill+'" stroke="'+ring+'" stroke-width="2.4"/>'+
+   (st==="taken"?'<path d="M'+(p.x-3.4)+' '+p.y+' l2.4 2.5 l4.6-5" fill="none" stroke="#10402f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>':'')+
+   '<text x="'+p.x+'" y="'+(p.y-19)+'" fill="#dceaf8" font-size="11" font-weight="700" text-anchor="middle" font-family="Figtree,sans-serif">'+fmt(d.h)+'</text>';
+  g.addEventListener("click",function(){mark(i)});
+  g.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();mark(i)}});
+  marks.appendChild(g);
+ });
+ var sp=at((nowH()-START)/(END-START));
+ sun.setAttribute("cx",sp.x);sun.setAttribute("cy",sp.y);
+ glow.setAttribute("cx",sp.x);glow.setAttribute("cy",sp.y);
+}
+
+var childMode=false;
+function refresh(){
+ var pend=doses.filter(function(d){return !d.taken}),due=pend.filter(function(d){return d.h<=nowH()}),txt,label,act;
+ if(!pend.length){txt="Everything's taken for today. Nicely done.";label="Book a visit";act="book";$("#pulse").style.background="#74c7a8"}
+ else if(due.length){txt=due[0].name.split(" ")[0]+" is due now";label="Mark it taken";act="mark";$("#pulse").style.background="#f0b659"}
+ else{var nx=pend[0],mins=Math.round((nx.h-nowH())*60),h=Math.floor(mins/60),m=mins%60;
+      txt="Next dose in "+(h?h+"h ":"")+m+"m — "+nx.name.split(" ")[0];label="Mark it taken";act="mark";$("#pulse").style.background="#9bb8d4"}
+ $("#nextText").textContent=txt;
+ var btn=$("#heroPrimary");btn.textContent=label;btn.dataset.act=act;
+ var taken=doses.filter(function(d){return d.taken}).length;
+ $("#medMetric").textContent=taken+" / "+doses.length;
+ $("#medBar").style.width=Math.round(taken/doses.length*100)+"%";
+ var hr=new Date().getHours();
+ $("#greet").textContent=(hr<12?"Good morning":hr<17?"Good afternoon":"Good evening")+", "+(childMode?"you're with Amani":"Winfry");
+ $("#today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+ drawDoses();drawArc();
+}
+function mark(i){if(doses[i].taken)return;doses[i].taken=true;toast(doses[i].name.split(" ")[0]+" marked as taken");refresh()}
+function drawDoses(){
+ var box=$("#doseList");box.textContent="";
+ doses.forEach(function(d,i){
+  var st=state(d),el=document.createElement("div");
+  el.className="dose"+(st==="taken"?" done":st==="due"?" due":"");
+  var t=document.createElement("div");t.className="dosetime num";t.textContent=fmt(d.h);
+  var mid=document.createElement("div");mid.innerHTML="<b></b><small></small>";
+  mid.querySelector("b").textContent=d.name;mid.querySelector("small").textContent=d.note;
+  var b=document.createElement("button");b.className="tick";
+  if(st==="taken"){b.textContent="Taken";b.disabled=true}
+  else{b.textContent="Mark taken";b.addEventListener("click",function(){mark(i)})}
+  el.appendChild(t);el.appendChild(mid);el.appendChild(b);box.appendChild(el);
+ });
+}
+(function(){var vals=[100,100,67,100,100,33,33],box=$("#weekBars");
+ vals.forEach(function(v,i){var d=document.createElement("div");d.style.height=Math.max(14,v)+"%";
+ if(i===vals.length-1)d.className="hi";d.title=v+"% taken";box.appendChild(d)})})();
+
+/* ── navigation ── */
+function go(id){
+ var found=false;
+ $$(".page").forEach(function(p){var on=p.id===id;p.classList.toggle("on",on);if(on)found=true});
+ if(!found){$("#home").classList.add("on")}
+ $$("[data-go]").forEach(function(b){
+  if(b.dataset.go===id)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+document.addEventListener("click",function(e){
+ var g=e.target.closest("[data-go]");
+ if(g){ go(g.dataset.go); if(g.dataset.more) closeMore(); return }
+ var sw=e.target.closest(".sw");
+ if(sw){ sw.classList.toggle("on"); var on=sw.classList.contains("on");
+         sw.setAttribute("aria-checked",String(on));
+         toast(sw.getAttribute("aria-label")+(on?" turned on":" turned off")); return }
+ var o=e.target.closest("[data-open]"); if(o){ $("#"+o.dataset.open).classList.add("on"); return }
+ var c=e.target.closest("[data-close]"); if(c){ $("#"+c.dataset.close).classList.remove("on") }
+ var t=e.target.closest("[data-toast]"); if(t){ toast(t.dataset.toast) }
+});
+
+function openMore(){$("#more").classList.add("on");$("#scrim").classList.add("on")}
+function closeMore(){$("#more").classList.remove("on");$("#scrim").classList.remove("on")}
+$("#railMore").addEventListener("click",openMore);
+$("#navMore").addEventListener("click",openMore);
+$("#moreClose").addEventListener("click",closeMore);
+$("#scrim").addEventListener("click",closeMore);
+$$(".modal").forEach(function(m){m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("on")})});
+document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;$$(".modal.on").forEach(function(m){m.classList.remove("on")});closeMore()});
+
+var tTimer;
+function toast(msg){var t=$("#toast");t.textContent=msg;t.classList.add("on");clearTimeout(tTimer);tTimer=setTimeout(function(){t.classList.remove("on")},2400)}
+$("#btnScan").addEventListener("click",function(){toast("Point your camera at the facility's QR code")});
+$("#btnBell").addEventListener("click",function(){toast("You're all caught up")});
+$("#search").addEventListener("keydown",function(e){if(e.key==="Enter"&&this.value.trim())toast('Searching for "'+this.value.trim()+'"')});
+$("#heroPrimary").addEventListener("click",function(){
+ if(this.dataset.act==="book"){$("#book").classList.add("on");return}
+ var i=-1;doses.forEach(function(d,k){if(i<0&&!d.taken)i=k});if(i>=0)mark(i);
+});
+
+function setProfile(child){
+ childMode=child;
+ $("#guardian").classList.toggle("on",child);
+ $("#avaRail").textContent=child?"AM":"WN";$("#avaRail").classList.toggle("child",child);
+ $("#avaTop").textContent=child?"AM":"WN";
+ $("#nameRail").textContent=child?"Amani Nyarangi":"Winfry Nyarangi";
+ $("#subRail").textContent=child?"Child · ML-DEP-0917":"ML-NBO-4821";
+ $$(".adult").forEach(function(x){x.style.display=child?"none":""});
+ if(child && ["mind","anc","mens","care"].indexOf(currentPage())>-1) go("home");
+ toast(child?"Now viewing Amani's record":"Back to your own record");
+ refresh();
+}
+function currentPage(){var p=document.querySelector(".page.on");return p?p.id:"home"}
+$("#railProfile").addEventListener("click",function(){setProfile(!childMode)});
+$("#btnProfile").addEventListener("click",function(){setProfile(!childMode)});
+$("#switchBack").addEventListener("click",function(){setProfile(false)});
+
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(refresh)}
+refresh();
+window.addEventListener("resize",drawArc);
+})();
+</script>

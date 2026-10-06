@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,35 +15,18 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/care_team_provider.dart';
 import '../../providers/dependent_provider.dart';
+import '../../theme/patient_tokens.dart';
 import '../../utils/snackbar_utils.dart';
-import '../../widgets/avatar_picker.dart';
 import '../../widgets/provider_avatar.dart';
 import 'appointment_detail_screen.dart';
-import 'share_records.dart';
-import 'expenses_screen.dart';
+import 'widgets/patient_ui.dart';
 
-// ── Palette ──────────────────────────────────────────────────────────
-
-const Color _ink = Color(0xFF1B1B18);
-const Color _navy = Color(0xFF1D3557);
-const Color _navy2 = Color(0xFF24456B);
-const Color _slate = Color(0xFF98917F);
-const Color _line = Color(0xFFE4E1D8);
-const Color _pageBg = Color(0xFFFAF9F6);
-const Color _navyBg = Color(0xFFE8EDF3);
-const Color _softBlue = Color(0xFFEAF3FC);
-const Color _medBlue = Color(0xFF457B9D);
-const Color _success = Color(0xFF2E7D32);
-const Color _successLight = Color(0xFFEAF6EE);
-const Color _warning = Color(0xFFE65100);
-const Color _warningLight = Color(0xFFFDEEE3);
-const Color _grey = Color(0xFF9AA5B1);
-const Color _greyLight = Color(0xFFF1F3F5);
-const Color _heroDeep = Color(0xFF102B4E);
-const Color _white = Color(0xFFFFFFFF);
-
-// ── Screen ───────────────────────────────────────────────────────────
-
+/// Appointments — book, manage and understand visits. Rendered inside
+/// the patient shell, so it carries no app bar of its own.
+///
+/// Everything here is scoped to [DependentProvider.activePatientId], so a
+/// guardian viewing a child books and manages that child's visits rather
+/// than their own.
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
 
@@ -54,7 +36,9 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
   bool _isLoading = true;
+  int _tab = 0; // 0 = Upcoming, 1 = Past, 2 = Cancelled
   Map<String, String> _providerNames = {};
+  Map<String, String> _facilityNames = {};
 
   @override
   void initState() {
@@ -62,14 +46,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  String get _activeId {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final dep = Provider.of<DependentProvider>(context, listen: false);
+    return dep.activePatientId ?? auth.currentUser?.id ?? '';
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final depProvider =
-        Provider.of<DependentProvider>(context, listen: false);
     final apt = Provider.of<AppointmentProvider>(context, listen: false);
-    final activeId = depProvider.activePatientId ?? auth.currentUser?.id;
-    if (activeId != null) await apt.loadAppointments(activeId);
+    final activeId = _activeId;
+    if (activeId.isNotEmpty) await apt.loadAppointments(activeId);
 
     try {
       final provResp = await Supabase.instance.client
@@ -78,269 +65,411 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           .inFilter('role', ['doctor', 'nurse']);
       if (mounted) {
         _providerNames = {
-          for (final p in provResp as List)
-            p['id'] as String: p['full_name'] as String,
+          for (final p in provResp as List) p['id'] as String: p['full_name'] as String,
         };
       }
     } catch (e) {
       debugPrint('appointments_screen: loading providers failed: $e');
-      showErrorSnackBar(context, 'Could not load appointments');
+      if (mounted) showErrorSnackBar(context, 'Could not load appointments');
+    }
+
+    if (!mounted) return;
+    try {
+      final facilities = Provider.of<AdminFacilityProvider>(context, listen: false);
+      await facilities.loadFacilities();
+      if (mounted) {
+        _facilityNames = {for (final f in facilities.facilities) f.id: f.name};
+      }
+    } catch (e) {
+      debugPrint('appointments_screen: loading facilities failed: $e');
     }
 
     if (mounted) {
-      final ct =
-          Provider.of<CareTeamProvider>(context, listen: false);
-      if (activeId != null) await ct.loadCareTeam(activeId);
-      setState(() => _isLoading = false);
+      final ct = Provider.of<CareTeamProvider>(context, listen: false);
+      if (activeId.isNotEmpty) await ct.loadCareTeam(activeId);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _refresh() {
+    if (!mounted) return;
+    final activeId = _activeId;
+    if (activeId.isNotEmpty) {
+      Provider.of<AppointmentProvider>(context, listen: false).loadAppointments(activeId);
+    }
+    setState(() {});
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final depProvider =
-        Provider.of<DependentProvider>(context, listen: false);
-    final activeId =
-        depProvider.activePatientId ?? auth.currentUser?.id ?? '';
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PScreenHead(
+            eyebrow: 'Clinical',
+            title: 'Appointments',
+            subtitle: 'Book, manage and understand your visits.',
+            action: PButton(
+              '+ Book appointment',
+              onPressed: () => _openBookingSheet(_activeId),
+            ),
+          ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 60),
+              child: Center(child: CircularProgressIndicator(color: PT.teal)),
+            )
+          else
+            Consumer2<AppointmentProvider, DependentProvider>(
+              builder: (context, apt, dep, _) {
+                final now = DateTime.now();
+                final all = apt.appointments;
 
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: _pageBg,
-        body: Center(
-          child: CircularProgressIndicator(color: _navy, strokeWidth: 2.5),
-        ),
-      );
-    }
+                final upcoming = all
+                    .where((a) =>
+                        a.scheduledAt.isAfter(now) &&
+                        a.status != AppointmentStatus.cancelled &&
+                        a.status != AppointmentStatus.completed)
+                    .toList()
+                  ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
-    return Consumer2<AppointmentProvider, DependentProvider>(
-      builder: (context, aptProvider, depProv, _) {
-        final now = DateTime.now();
-        final upcoming = aptProvider.appointments
-            .where((a) =>
-                a.scheduledAt.isAfter(now) &&
-                a.status != AppointmentStatus.cancelled &&
-                a.status != AppointmentStatus.completed)
-            .toList()
-          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-        final past = aptProvider.appointments
-            .where((a) =>
-                a.scheduledAt.isBefore(now) ||
-                a.status == AppointmentStatus.cancelled ||
-                a.status == AppointmentStatus.completed)
-            .toList()
-          ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
-        final next = upcoming.isNotEmpty ? upcoming.first : null;
+                final past = all
+                    .where((a) =>
+                        a.status != AppointmentStatus.cancelled &&
+                        (a.scheduledAt.isBefore(now) ||
+                            a.status == AppointmentStatus.completed))
+                    .toList()
+                  ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
 
-        final screenW = MediaQuery.sizeOf(context).width;
-        final isDesktop = screenW > 800;
+                final cancelled = all
+                    .where((a) => a.status == AppointmentStatus.cancelled)
+                    .toList()
+                  ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
 
-        return Scaffold(
-          backgroundColor: _pageBg,
-          body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Hero banner ──
-                _HeroBanner(),
-
-                // ── Content ──
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    isDesktop ? 28 : 16,
-                    24,
-                    isDesktop ? 28 : 16,
-                    40,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(maxWidth: 1200),
-                      child: isDesktop
-                          ? _desktopLayout(next, upcoming, past, activeId)
-                          : _mobileLayout(
-                              next, upcoming, past, activeId),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PTabs(
+                      tabs: const ['Upcoming', 'Past', 'Cancelled'],
+                      selected: _tab,
+                      onSelect: (i) => setState(() => _tab = i),
                     ),
-                  ),
+                    if (_tab == 0) ..._upcomingTab(upcoming),
+                    if (_tab == 1)
+                      _listCard(
+                        title: 'Past appointments',
+                        items: past,
+                        emptyEmoji: '🗓️',
+                        emptyTitle: 'No past appointments',
+                        emptyBody: 'Visits you have completed will be listed here.',
+                      ),
+                    if (_tab == 2)
+                      _listCard(
+                        title: 'Cancelled appointments',
+                        items: cancelled,
+                        emptyEmoji: '🗓️',
+                        emptyTitle: 'Nothing cancelled',
+                        emptyBody: 'Appointments you cancel will appear here.',
+                      ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _upcomingTab(List<AppointmentModel> upcoming) {
+    final next = upcoming.isEmpty ? null : upcoming.first;
+    return [
+      PGrid(
+        columns: 2,
+        children: [
+          _nextCard(next),
+          _careTeamCard(),
+        ],
+      ),
+      const SizedBox(height: 16),
+      _listCard(
+        title: 'Upcoming appointments',
+        items: upcoming,
+        emptyEmoji: '🗓️',
+        emptyTitle: 'No upcoming appointments',
+        emptyBody: 'Book your first appointment to get started.',
+        emptyAction: PButton(
+          '+ Book appointment',
+          onPressed: () => _openBookingSheet(_activeId),
+        ),
+        showManage: true,
+      ),
+    ];
+  }
+
+  // ── Next appointment ──────────────────────────────────────────────────
+
+  Widget _nextCard(AppointmentModel? next) {
+    return PCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PCardTitle(
+            'Next appointment',
+            trailing: next == null ? null : _statusBadge(next.status),
+          ),
+          if (next == null)
+            const PEmpty(
+              emoji: '🗓️',
+              title: 'Nothing scheduled',
+              body: 'When you book, your next visit shows up here.',
+            )
+          else
+            PRow(
+              leading: _dateTile(next.scheduledAt),
+              title: _providerNames[next.providerId] ?? 'Provider',
+              subtitle: _facilityLine(next),
+              extraSubtitle:
+                  '${DateFormat('HH:mm').format(next.scheduledAt)} · ${_typeLabel(next.type)}',
+              trailing: [
+                PButton(
+                  'Details',
+                  kind: PButtonKind.alt,
+                  dense: true,
+                  onPressed: () => _openDetails(next),
                 ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dateTile(DateTime at) {
+    return Container(
+      width: 52,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: PT.calloutBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Text('${at.day}',
+              style: PT.h3().copyWith(fontSize: 21, height: 1.1, color: PT.navy)),
+          Text(DateFormat('MMM').format(at).toUpperCase(),
+              style: PT.rowSub().copyWith(
+                  fontSize: 10, fontWeight: FontWeight.w800, color: PT.teal, letterSpacing: .8)),
+        ],
+      ),
+    );
+  }
+
+  // ── Care team ─────────────────────────────────────────────────────────
+
+  Widget _careTeamCard() {
+    return Consumer<CareTeamProvider>(
+      builder: (context, ct, _) {
+        final members = ct.members;
+        return PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PCardTitle(
+                'Your care team',
+                trailing: PButton(
+                  'View all',
+                  kind: PButtonKind.alt,
+                  dense: true,
+                  onPressed: () => context.go('/patient/care-team'),
+                ),
+              ),
+              if (ct.isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator(color: PT.teal)),
+                )
+              else if (members.isEmpty)
+                const PEmpty(
+                  emoji: '👩🏾‍⚕️',
+                  title: 'No care team yet',
+                  body: 'Providers you see will appear here.',
+                )
+              else
+                for (final m in members.take(3)) _careTeamRow(m),
+            ],
           ),
         );
       },
     );
   }
 
-  // ── Desktop 2-column layout ──────────────────────────────────────
+  Widget _careTeamRow(CareTeamMemberModel m) {
+    final name = m.providerName.trim().isEmpty
+        ? (m.specialtyLabel ?? 'Care team member')
+        : m.providerName;
+    final specialty = m.specialtyLabel ?? m.providerDepartment ?? m.providerRole;
 
-  Widget _desktopLayout(
-    AppointmentModel? next,
-    List<AppointmentModel> upcoming,
-    List<AppointmentModel> past,
-    String activeId,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Main column
-        Expanded(
-          flex: 145,
-          child: _mainColumn(next, upcoming, past, activeId),
+    return PRow(
+      leading: ProviderAvatarSmall(
+        name: name,
+        role: m.providerRole == 'nurse' ? UserRole.nurse : UserRole.doctor,
+        gender: m.providerGender,
+        photoUrl: m.providerPhotoUrl,
+        radius: 19,
+      ),
+      title: name,
+      subtitle: '${_capitalize(specialty)}${m.isPrimary ? ' · Primary' : ''}',
+      trailing: [
+        PButton(
+          'Message',
+          kind: PButtonKind.alt,
+          dense: true,
+          onPressed: () => context.go('/patient/messages'),
         ),
-        const SizedBox(width: 24),
-        // Sidebar
-        SizedBox(
-          width: 320,
-          child: _sidebarColumn(activeId),
-        ),
       ],
     );
   }
 
-  // ── Mobile single-column layout ─────────────────────────────────
+  // ── Lists ─────────────────────────────────────────────────────────────
 
-  Widget _mobileLayout(
-    AppointmentModel? next,
-    List<AppointmentModel> upcoming,
-    List<AppointmentModel> past,
-    String activeId,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _mainColumn(next, upcoming, past, activeId),
-        const SizedBox(height: 24),
-        _sidebarColumn(activeId),
-      ],
-    );
-  }
-
-  // ── Main column ─────────────────────────────────────────────────
-
-  Widget _mainColumn(
-    AppointmentModel? next,
-    List<AppointmentModel> upcoming,
-    List<AppointmentModel> past,
-    String activeId,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Featured next appointment
-        if (next != null)
-          _FeaturedAppointment(
-            appointment: next,
-            providerName:
-                _providerNames[next.providerId] ?? 'Provider',
-            onBook: () => _openBookingSheet(activeId),
-            onReschedule: () => _reschedule(next),
-            onCancel: () => _cancelAppointment(next),
-          )
-        else
-          _EmptyNextAppointment(
-            onBook: () => _openBookingSheet(activeId),
-          ),
-
-        const SizedBox(height: 28),
-
-        // Upcoming list
-        _SectionHeader(
-          title: 'Upcoming',
-          count: upcoming.length,
-        ),
-        const SizedBox(height: 12),
-        if (upcoming.isEmpty)
-          _buildEmptyState()
-        else
-          for (int i = 0; i < upcoming.length; i++) ...[
-            _AppointmentListRow(
-              appointment: upcoming[i],
-              providerName:
-                  _providerNames[upcoming[i].providerId] ?? 'Provider',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AppointmentDetailScreen(
-                      appointment: upcoming[i]),
-                ),
-              ),
-            ),
-            if (i < upcoming.length - 1)
-              const SizedBox(height: 10),
-          ],
-
-        // Past
-        if (past.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          _PastSection(
-            past: past,
-            providerNames: _providerNames,
-            onCancel: _cancelAppointment,
-            onReschedule: _reschedule,
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ── Sidebar column ──────────────────────────────────────────────
-
-  Widget _sidebarColumn(String activeId) {
-    return Column(
-      children: [
-        _CareTeamSidebarCard(patientId: activeId),
-        const SizedBox(height: 16),
-        _QuickActionsCard(onBook: () => _openBookingSheet(activeId)),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48),
+  Widget _listCard({
+    required String title,
+    required List<AppointmentModel> items,
+    required String emptyEmoji,
+    required String emptyTitle,
+    required String emptyBody,
+    Widget? emptyAction,
+    bool showManage = false,
+  }) {
+    return PCard(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              color: _navyBg,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.calendar_today_outlined,
-              size: 28,
-              color: _slate,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No upcoming appointments',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: _slate,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Book your first appointment to get started.',
-            style: TextStyle(fontSize: 13.5, color: _slate),
-          ),
+          PCardTitle(title),
+          if (items.isEmpty)
+            PEmpty(
+              emoji: emptyEmoji,
+              title: emptyTitle,
+              body: emptyBody,
+              action: emptyAction,
+            )
+          else
+            for (final a in items)
+              PRow(
+                leadingEmoji: '📅',
+                title:
+                    '${DateFormat('d MMM').format(a.scheduledAt)} · ${a.chiefComplaint?.trim().isNotEmpty == true ? a.chiefComplaint!.trim() : (_providerNames[a.providerId] ?? 'Consultation')}',
+                subtitle:
+                    '${DateFormat('HH:mm').format(a.scheduledAt)} · ${_facilityLine(a)}',
+                trailing: [
+                  _statusBadge(a.status),
+                  if (showManage)
+                    PButton(
+                      'Manage',
+                      kind: PButtonKind.alt,
+                      dense: true,
+                      onPressed: () => _openManage(a),
+                    )
+                  else
+                    PButton(
+                      'Details',
+                      kind: PButtonKind.alt,
+                      dense: true,
+                      onPressed: () => _openDetails(a),
+                    ),
+                ],
+              ),
         ],
       ),
     );
   }
 
-  // ── Booking (bottom sheet) ─────────────────────────────────────
+  String _facilityLine(AppointmentModel a) {
+    final facility = a.facilityId == null ? null : _facilityNames[a.facilityId];
+    final provider = _providerNames[a.providerId];
+    final parts = <String>[
+      if (provider != null) provider,
+      if (facility != null && facility.isNotEmpty) facility,
+    ];
+    return parts.isEmpty ? _typeLabel(a.type) : parts.join(' · ');
+  }
+
+  String _typeLabel(AppointmentType t) =>
+      t == AppointmentType.inPerson ? 'In person' : 'Telehealth';
+
+  Widget _statusBadge(AppointmentStatus s) => switch (s) {
+        AppointmentStatus.confirmed => const PBadge('Confirmed', tone: PTone.ok),
+        AppointmentStatus.pending => const PBadge('Pending', tone: PTone.warn),
+        AppointmentStatus.completed => const PBadge('Completed', tone: PTone.blue),
+        AppointmentStatus.cancelled => const PBadge('Cancelled', tone: PTone.gray),
+      };
+
+  String _capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  // ── Actions ───────────────────────────────────────────────────────────
+
+  void _openDetails(AppointmentModel a) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AppointmentDetailScreen(appointment: a)),
+    ).then((_) => _refresh());
+  }
+
+  void _openManage(AppointmentModel a) {
+    showPModal<void>(
+      context: context,
+      title: 'Manage appointment',
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${DateFormat('EEEE, d MMM yyyy · HH:mm').format(a.scheduledAt)}\n'
+            '${_facilityLine(a)} · ${_typeLabel(a.type)}',
+            style: PT.sub(),
+          ),
+          const SizedBox(height: 18),
+          PButton(
+            'View details',
+            kind: PButtonKind.alt,
+            expand: true,
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openDetails(a);
+            },
+          ),
+          const SizedBox(height: 10),
+          PButton(
+            'Reschedule',
+            expand: true,
+            onPressed: () {
+              Navigator.pop(ctx);
+              _reschedule(a);
+            },
+          ),
+          const SizedBox(height: 10),
+          PButton(
+            'Cancel appointment',
+            kind: PButtonKind.red,
+            expand: true,
+            onPressed: () {
+              Navigator.pop(ctx);
+              _confirmCancel(a);
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   void _openBookingSheet(String patientId, {UserModel? prefilledProvider}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) => _BookAppointmentSheet(
         patientId: patientId,
         prefilledProvider: prefilledProvider,
@@ -352,9 +481,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) => _BookAppointmentSheet(
         patientId: a.patientId,
         rescheduleAppointment: a,
@@ -362,1145 +489,44 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     ).then((_) => _refresh());
   }
 
-  void _refresh() {
-    if (!mounted) return;
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final depProvider =
-        Provider.of<DependentProvider>(context, listen: false);
-    final activeId =
-        depProvider.activePatientId ?? auth.currentUser?.id;
-    if (activeId != null) {
-      Provider.of<AppointmentProvider>(context, listen: false)
-          .loadAppointments(activeId);
-    }
-    setState(() {});
-  }
-
-  Future<void> _cancelAppointment(AppointmentModel a) async {
-    final confirm = await showDialog<bool>(
+  void _confirmCancel(AppointmentModel a) {
+    showPModal<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cancel appointment?'),
-        content: Text(
-            'Cancel your ${a.type == AppointmentType.telehealth ? "telehealth" : "in-person"} appointment on ${DateFormat('d MMM yyyy').format(a.scheduledAt)}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep it'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style:
-                FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Yes, cancel'),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      final aptProvider =
-          Provider.of<AppointmentProvider>(context, listen: false);
-      await aptProvider.cancelAppointment(a.id);
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// HERO BANNER
-// ═══════════════════════════════════════════════════════════════════════
-
-class _HeroBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final screenW = MediaQuery.sizeOf(context).width;
-    final isWide = screenW > 800;
-
-    return Container(
-      width: double.infinity,
-      height: isWide ? 180 : 150,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_heroDeep, _navy, _navy2],
-          stops: [0, 0.5, 1],
-        ),
-        image: DecorationImage(
-          image: AssetImage('assets/images/heeero.jpg'),
-          fit: BoxFit.cover,
-          opacity: 0.2,
-        ),
-      ),
-      child: ClipRect(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      _heroDeep,
-                      _navy.withOpacity(0.9),
-                      _navy2.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isWide ? 40 : 20,
-                  isWide ? 36 : 28,
-                  isWide ? 40 : 20,
-                  28,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Appointments',
-                      style: GoogleFonts.fraunces(
-                        fontSize: isWide ? 28 : 22,
-                        fontWeight: FontWeight.w700,
-                        color: _white,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Plan your upcoming appointments',
-                      style: TextStyle(
-                        fontSize: isWide ? 15 : 13.5,
-                        color: _white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// FEATURED NEXT APPOINTMENT
-// ═══════════════════════════════════════════════════════════════════════
-
-class _FeaturedAppointment extends StatefulWidget {
-  const _FeaturedAppointment({
-    required this.appointment,
-    required this.providerName,
-    required this.onBook,
-    required this.onReschedule,
-    required this.onCancel,
-  });
-
-  final AppointmentModel appointment;
-  final String providerName;
-  final VoidCallback onBook;
-  final VoidCallback onReschedule;
-  final VoidCallback onCancel;
-
-  @override
-  State<_FeaturedAppointment> createState() =>
-      _FeaturedAppointmentState();
-}
-
-class _FeaturedAppointmentState extends State<_FeaturedAppointment> {
-  bool _hovered = false;
-
-  String _statusLabel() {
-    switch (widget.appointment.status) {
-      case AppointmentStatus.confirmed:
-        return 'Confirmed';
-      case AppointmentStatus.pending:
-        return 'Pending';
-      case AppointmentStatus.completed:
-        return 'Completed';
-      case AppointmentStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  Color _statusBg() {
-    switch (widget.appointment.status) {
-      case AppointmentStatus.confirmed:
-        return _successLight;
-      case AppointmentStatus.pending:
-        return _warningLight;
-      case AppointmentStatus.completed:
-        return _greyLight;
-      case AppointmentStatus.cancelled:
-        return _greyLight;
-    }
-  }
-
-  Color _statusColor() {
-    switch (widget.appointment.status) {
-      case AppointmentStatus.confirmed:
-        return _success;
-      case AppointmentStatus.pending:
-        return _warning;
-      case AppointmentStatus.completed:
-        return _slate;
-      case AppointmentStatus.cancelled:
-        return _grey;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final a = widget.appointment;
-    final screenW = MediaQuery.sizeOf(context).width;
-    final isWide = screenW > 800;
-    final isTelehealth = a.type == AppointmentType.telehealth;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AppointmentDetailScreen(appointment: a),
-          ),
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: EdgeInsets.all(isWide ? 24 : 18),
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _hovered ? _navy : _line,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _navy.withOpacity(0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: isWide ? 56 : 48,
-                    height: isWide ? 56 : 48,
-                    decoration: BoxDecoration(
-                      color: _navyBg,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      isTelehealth
-                          ? Icons.videocam_rounded
-                          : Icons.local_hospital_rounded,
-                      color: isTelehealth ? _medBlue : _navy,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Next appointment',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _slate,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.providerName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: isWide ? 18 : 16,
-                            fontWeight: FontWeight.w700,
-                            color: _ink,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _statusBg(),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      _statusLabel(),
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: _statusColor(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: _greyLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 15, color: _slate),
-                    const SizedBox(width: 8),
-                    Text(
-                      DateFormat('EEEE, d MMMM yyyy')
-                          .format(a.scheduledAt),
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: _ink,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.access_time,
-                        size: 15, color: _slate),
-                    const SizedBox(width: 6),
-                    Text(
-                      DateFormat('h:mm a').format(a.scheduledAt),
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: _ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  _MetaChip(
-                    icon: isTelehealth
-                        ? Icons.videocam_outlined
-                        : Icons.local_hospital_outlined,
-                    label: isTelehealth ? 'Telehealth' : 'In-Person',
-                  ),
-                  if (a.chiefComplaint != null &&
-                      a.chiefComplaint!.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    _MetaChip(
-                      icon: Icons.notes_outlined,
-                      label: a.chiefComplaint!,
-                      maxLines: 1,
-                    ),
-                  ],
-                ],
-              ),
-              if (a.status == AppointmentStatus.pending ||
-                  a.status == AppointmentStatus.confirmed) ...[
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: widget.onReschedule,
-                        icon: const Icon(Icons.schedule_outlined,
-                            size: 16),
-                        label: const Text('Reschedule'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _navy,
-                          side: const BorderSide(color: _line),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 11),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: widget.onCancel,
-                        icon: const Icon(Icons.close_outlined,
-                            size: 16),
-                        label: const Text('Cancel'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(
-                              color: Color(0x3FB71C1C)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 11),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyNextAppointment extends StatelessWidget {
-  const _EmptyNextAppointment({required this.onBook});
-  final VoidCallback onBook;
-
-  @override
-  Widget build(BuildContext context) {
-    final screenW = MediaQuery.sizeOf(context).width;
-    final isWide = screenW > 800;
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isWide ? 28 : 20),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _line),
-        boxShadow: [
-          BoxShadow(
-            color: _navy.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: _navyBg,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.add_circle_outline,
-                size: 24, color: _navy),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'No upcoming appointments',
-            style: TextStyle(
-              fontSize: isWide ? 17 : 15,
-              fontWeight: FontWeight.w700,
-              color: _ink,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Book an appointment to get started.',
-            style: TextStyle(fontSize: 13.5, color: _slate),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onBook,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Book appointment'),
-            style: FilledButton.styleFrom(
-              backgroundColor: _navy,
-              foregroundColor: _white,
-              minimumSize: const Size(180, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({
-    required this.icon,
-    required this.label,
-    this.maxLines,
-  });
-  final IconData icon;
-  final String label;
-  final int? maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _softBlue,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: _medBlue),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: maxLines,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _medBlue,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// SECTION HEADER
-// ═══════════════════════════════════════════════════════════════════════
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, this.count});
-  final String title;
-  final int? count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: _ink,
-          ),
-        ),
-        if (count != null) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: _navyBg,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: _navy,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// APPOINTMENT LIST ROW
-// ═══════════════════════════════════════════════════════════════════════
-
-class _AppointmentListRow extends StatefulWidget {
-  const _AppointmentListRow({
-    required this.appointment,
-    required this.providerName,
-    required this.onTap,
-  });
-
-  final AppointmentModel appointment;
-  final String providerName;
-  final VoidCallback onTap;
-
-  @override
-  State<_AppointmentListRow> createState() =>
-      _AppointmentListRowState();
-}
-
-class _AppointmentListRowState extends State<_AppointmentListRow> {
-  bool _hovered = false;
-
-  String _statusLabel() {
-    switch (widget.appointment.status) {
-      case AppointmentStatus.confirmed:
-        return 'Confirmed';
-      case AppointmentStatus.pending:
-        return 'Pending';
-      case AppointmentStatus.completed:
-        return 'Completed';
-      case AppointmentStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  Color _statusBg() {
-    switch (widget.appointment.status) {
-      case AppointmentStatus.confirmed:
-        return _successLight;
-      case AppointmentStatus.pending:
-        return _warningLight;
-      case AppointmentStatus.completed:
-        return _greyLight;
-      case AppointmentStatus.cancelled:
-        return _greyLight;
-    }
-  }
-
-  Color _statusColor() {
-    switch (widget.appointment.status) {
-      case AppointmentStatus.confirmed:
-        return _success;
-      case AppointmentStatus.pending:
-        return _warning;
-      case AppointmentStatus.completed:
-        return _slate;
-      case AppointmentStatus.cancelled:
-        return _grey;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final a = widget.appointment;
-    final screenW = MediaQuery.sizeOf(context).width;
-    final isWide = screenW > 800;
-    final isTelehealth = a.type == AppointmentType.telehealth;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding:
-              EdgeInsets.symmetric(horizontal: 16, vertical: isWide ? 14 : 12),
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _hovered ? _navy : _line),
-          ),
-          child: Row(
-            children: [
-              // Date box
-              Container(
-                width: 50,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _navyBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      DateFormat('MMM')
-                          .format(a.scheduledAt)
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: _navy,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${a.scheduledAt.day}',
-                      style: GoogleFonts.fraunces(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: _ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.providerName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: isWide ? 15 : 14,
-                        fontWeight: FontWeight.w700,
-                        color: _ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          isTelehealth
-                              ? Icons.videocam_outlined
-                              : Icons.local_hospital_outlined,
-                          size: 12,
-                          color: _slate,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isTelehealth ? 'Telehealth' : 'In-person',
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: _slate,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        const Icon(Icons.access_time,
-                            size: 12, color: _slate),
-                        const SizedBox(width: 4),
-                        Text(
-                          DateFormat('h:mm a').format(a.scheduledAt),
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: _slate,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Status
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _statusBg(),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  _statusLabel(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: _statusColor(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: _hovered ? _navy : _slate,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// PAST SECTION
-// ═══════════════════════════════════════════════════════════════════════
-
-class _PastSection extends StatefulWidget {
-  const _PastSection({
-    required this.past,
-    required this.providerNames,
-    required this.onCancel,
-    required this.onReschedule,
-  });
-  final List<AppointmentModel> past;
-  final Map<String, String> providerNames;
-  final void Function(AppointmentModel) onCancel;
-  final void Function(AppointmentModel) onReschedule;
-
-  @override
-  State<_PastSection> createState() => _PastSectionState();
-}
-
-class _PastSectionState extends State<_PastSection> {
-  bool _open = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => setState(() => _open = !_open),
-          child: Container(
-            width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: _white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _line),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Past appointments (${widget.past.length})',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _ink,
-                  ),
-                ),
-                AnimatedRotation(
-                  turns: _open ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 250),
-                  child: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: _slate,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedCrossFade(
-          firstChild: const SizedBox.shrink(),
-          secondChild: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Column(
-              children: [
-                for (int i = 0; i < widget.past.length; i++) ...[
-                  _AppointmentListRow(
-                    appointment: widget.past[i],
-                    providerName: widget
-                            .providerNames[widget.past[i].providerId] ??
-                        'Provider',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AppointmentDetailScreen(
-                            appointment: widget.past[i]),
-                      ),
-                    ),
-                  ),
-                  if (i < widget.past.length - 1)
-                    const SizedBox(height: 10),
-                ],
-              ],
-            ),
-          ),
-          crossFadeState: _open
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 300),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// CARE TEAM SIDEBAR CARD
-// ═══════════════════════════════════════════════════════════════════════
-
-class _CareTeamSidebarCard extends StatefulWidget {
-  const _CareTeamSidebarCard({required this.patientId});
-  final String patientId;
-
-  @override
-  State<_CareTeamSidebarCard> createState() => _CareTeamSidebarCardState();
-}
-
-class _CareTeamSidebarCardState extends State<_CareTeamSidebarCard> {
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<CareTeamProvider>(
-      builder: (context, ct, _) {
-        final members = ct.members;
-        final hasMembers = members.isNotEmpty;
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _line),
-            boxShadow: [
-              BoxShadow(
-                color: _navy.withOpacity(0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Care team',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _ink,
-                    ),
-                  ),
-                  if (hasMembers)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _navyBg,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '${members.length}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: _navy,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (ct.isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: _navy),
-                    ),
-                  ),
-                )
-              else if (!hasMembers)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'No care team yet',
-                      style: TextStyle(fontSize: 13.5, color: _slate),
-                    ),
-                  ),
-                )
-              else
-                _buildMemberGrid(members),
-              const SizedBox(height: 14),
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _greyLight,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add, size: 16, color: _navy),
-                      SizedBox(width: 6),
-                      Text(
-                        'Add member',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _navy,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMemberGrid(List<CareTeamMemberModel> members) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: members.take(4).map((m) {
-        final specialty = m.specialtyLabel ??
-            m.providerDepartment ??
-            m.providerRole;
-        return SizedBox(
-          width: 110,
-          child: Column(
-            children: [
-              ProviderAvatar(
-                name: m.providerName,
-                role: m.providerRole == 'nurse'
-                    ? UserRole.nurse
-                    : UserRole.doctor,
-                gender: m.providerGender,
-                photoUrl: m.providerPhotoUrl,
-                patientId: widget.patientId,
-                providerId: m.providerId,
-                radius: 24,
-                onChooseAvatar: () => showAvatarPicker(
-                  context: context,
-                  patientId: widget.patientId,
-                  providerId: m.providerId,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                m.providerName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: _ink,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _capitalize(specialty),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: _slate,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  String _capitalize(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// QUICK ACTIONS SIDEBAR CARD
-// ═══════════════════════════════════════════════════════════════════════
-
-class _QuickActionsCard extends StatelessWidget {
-  const _QuickActionsCard({required this.onBook});
-  final VoidCallback onBook;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _line),
-        boxShadow: [
-          BoxShadow(
-            color: _navy.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
+      title: 'Cancel appointment?',
+      builder: (ctx) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Quick actions',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: _ink,
-            ),
+          Text(
+            'Cancel your ${_typeLabel(a.type).toLowerCase()} appointment on '
+            '${DateFormat('d MMM yyyy').format(a.scheduledAt)}?',
+            style: PT.sub(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
-                child: _QuickActionTile(
-                  icon: Icons.person_search_outlined,
-                  label: 'Find provider',
-                  onTap: () {},
+                child: PButton(
+                  'Keep it',
+                  kind: PButtonKind.alt,
+                  expand: true,
+                  onPressed: () => Navigator.pop(ctx),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _QuickActionTile(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Book visit',
-                  onTap: onBook,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickActionTile(
-                  icon: Icons.share_outlined,
-                  label: 'Share records',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ShareRecords()),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _QuickActionTile(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'View history',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ExpensesScreen()),
-                  ),
+                child: PButton(
+                  'Yes, cancel',
+                  kind: PButtonKind.red,
+                  expand: true,
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final apt = Provider.of<AppointmentProvider>(context, listen: false);
+                    await apt.cancelAppointment(a.id);
+                    if (mounted) {
+                      pToast(context, 'Appointment cancelled');
+                      _refresh();
+                    }
+                  },
                 ),
               ),
             ],
@@ -1511,61 +537,8 @@ class _QuickActionsCard extends StatelessWidget {
   }
 }
 
-class _QuickActionTile extends StatefulWidget {
-  const _QuickActionTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_QuickActionTile> createState() => _QuickActionTileState();
-}
-
-class _QuickActionTileState extends State<_QuickActionTile> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-          decoration: BoxDecoration(
-            color: _hovered ? _softBlue : _greyLight,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            children: [
-              Icon(widget.icon,
-                  size: 20, color: _hovered ? _navy : _slate),
-              const SizedBox(height: 6),
-              Text(
-                widget.label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _hovered ? _navy : _slate,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════
-// BOOK APPOINTMENT BOTTOM SHEET
+// Booking / rescheduling sheet
 // ═══════════════════════════════════════════════════════════════════════
 
 class _BookAppointmentSheet extends StatefulWidget {
@@ -1580,8 +553,7 @@ class _BookAppointmentSheet extends StatefulWidget {
   });
 
   @override
-  State<_BookAppointmentSheet> createState() =>
-      _BookAppointmentSheetState();
+  State<_BookAppointmentSheet> createState() => _BookAppointmentSheetState();
 }
 
 class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
@@ -1606,8 +578,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
     if (widget.rescheduleAppointment != null) {
       final a = widget.rescheduleAppointment!;
       _selectedDate = a.scheduledAt;
-      _selectedTime =
-          TimeOfDay(hour: a.scheduledAt.hour, minute: a.scheduledAt.minute);
+      _selectedTime = TimeOfDay(hour: a.scheduledAt.hour, minute: a.scheduledAt.minute);
       _isTelehealth = a.type == AppointmentType.telehealth;
       _complaintCtrl.text = a.chiefComplaint ?? '';
     }
@@ -1625,27 +596,23 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
 
   Future<void> _loadProviders() async {
     try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select()
-          .inFilter('role', ['doctor', 'nurse']);
+      final response =
+          await Supabase.instance.client.from('users').select().inFilter('role', ['doctor', 'nurse']);
       if (mounted) {
-        final providers = (response as List)
-            .map((j) => UserModel.fromJson(j as Map<String, dynamic>))
-            .toList();
+        final providers =
+            (response as List).map((j) => UserModel.fromJson(j as Map<String, dynamic>)).toList();
         UserModel? selected;
         if (widget.prefilledProvider != null) {
           try {
-            selected = providers
-                .firstWhere((p) => p.id == widget.prefilledProvider!.id);
+            selected = providers.firstWhere((p) => p.id == widget.prefilledProvider!.id);
           } catch (_) {
             selected = widget.prefilledProvider;
             providers.insert(0, widget.prefilledProvider!);
           }
         } else if (widget.rescheduleAppointment != null) {
           try {
-            selected = providers.firstWhere(
-                (p) => p.id == widget.rescheduleAppointment!.providerId);
+            selected = providers
+                .firstWhere((p) => p.id == widget.rescheduleAppointment!.providerId);
           } catch (_) {
             selected = null;
           }
@@ -1658,23 +625,24 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       }
     } catch (e) {
       debugPrint('appointments_screen: loading providers failed: $e');
-      showErrorSnackBar(context, 'Could not load providers');
-      if (mounted) setState(() => _loadingProviders = false);
+      if (mounted) {
+        showErrorSnackBar(context, 'Could not load providers');
+        setState(() => _loadingProviders = false);
+      }
     }
   }
 
   Future<void> _loadFacilities() async {
     try {
-      final provider =
-          Provider.of<AdminFacilityProvider>(context, listen: false);
+      final provider = Provider.of<AdminFacilityProvider>(context, listen: false);
       await provider.loadFacilities();
       if (mounted) {
         setState(() {
           _facilities = provider.facilities;
           if (widget.rescheduleAppointment?.facilityId != null) {
             try {
-              _selectedFacility = _facilities.firstWhere(
-                  (f) => f.id == widget.rescheduleAppointment!.facilityId);
+              _selectedFacility = _facilities
+                  .firstWhere((f) => f.id == widget.rescheduleAppointment!.facilityId);
             } catch (_) {
               // Facility not in the loaded list -- leave unselected.
             }
@@ -1684,16 +652,16 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       }
     } catch (e) {
       debugPrint('appointments_screen: loading facilities failed: $e');
-      showErrorSnackBar(context, 'Could not load facilities');
-      if (mounted) setState(() => _loadingFacilities = false);
+      if (mounted) {
+        showErrorSnackBar(context, 'Could not load facilities');
+        setState(() => _loadingFacilities = false);
+      }
     }
   }
 
   Future<void> _submit() async {
     if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date and time.')),
-      );
+      pToast(context, 'Please select a date and time.');
       return;
     }
     setState(() => _submitting = true);
@@ -1706,17 +674,14 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       _selectedTime!.minute,
     );
 
-    final aptProvider =
-        Provider.of<AppointmentProvider>(context, listen: false);
+    final aptProvider = Provider.of<AppointmentProvider>(context, listen: false);
     final bool ok;
 
     if (widget.rescheduleAppointment != null) {
-      // In-place reschedule: only scheduled_at changes. The provider/
-      // facility/type pickers above are locked to the original appointment's
-      // values in reschedule mode (see the disabled onChanged below) --
-      // reschedule_appointment() only moves the time, so it would be
-      // misleading to let the user pick different values here and have
-      // them silently ignored.
+      // In-place reschedule: only scheduled_at changes. The provider,
+      // facility and type pickers are locked in reschedule mode because
+      // reschedule_appointment() only moves the time -- letting them be
+      // changed here would silently ignore the new values.
       ok = await aptProvider.rescheduleAppointment(
         widget.rescheduleAppointment!.id,
         scheduledAt,
@@ -1729,43 +694,33 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         providerId: providerId,
         facilityId: _selectedFacility?.id,
         scheduledAt: scheduledAt,
-        type: _isTelehealth
-            ? AppointmentType.telehealth
-            : AppointmentType.inPerson,
+        type: _isTelehealth ? AppointmentType.telehealth : AppointmentType.inPerson,
         status: AppointmentStatus.pending,
-        chiefComplaint: _complaintCtrl.text.trim().isEmpty
-            ? null
-            : _complaintCtrl.text.trim(),
+        chiefComplaint:
+            _complaintCtrl.text.trim().isEmpty ? null : _complaintCtrl.text.trim(),
         isFollowUp: false,
       );
       ok = await aptProvider.bookAppointment(appointment);
     }
 
-    if (mounted) {
-      setState(() => _submitting = false);
-      if (ok) {
-        Navigator.pop(context);
-        _showConfirmation(
-          providerName: _selectedProvider?.fullName ?? 'Unassigned',
-          providerRole: _selectedProvider?.role.name,
-          facilityName: _selectedFacility?.name ?? '',
-          scheduledAt: scheduledAt,
-          isTelehealth: _isTelehealth,
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Could not ${widget.rescheduleAppointment != null ? "reschedule" : "book"} — try again'),
-              backgroundColor: Colors.red),
-        );
-      }
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (ok) {
+      Navigator.pop(context);
+      _showConfirmation(
+        providerName: _selectedProvider?.fullName ?? 'Unassigned',
+        facilityName: _selectedFacility?.name ?? '',
+        scheduledAt: scheduledAt,
+        isTelehealth: _isTelehealth,
+      );
+    } else {
+      pToast(context,
+          'Could not ${_isRescheduling ? "reschedule" : "book"} — please try again.');
     }
   }
 
   void _showConfirmation({
     required String providerName,
-    String? providerRole,
     required String facilityName,
     required DateTime scheduledAt,
     required bool isTelehealth,
@@ -1773,12 +728,9 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) => _ConfirmationSheet(
         providerName: providerName,
-        providerRole: providerRole,
         facilityName: facilityName,
         scheduledAt: scheduledAt,
         isTelehealth: isTelehealth,
@@ -1786,21 +738,10 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
     );
   }
 
-  String _initials(String name) {
-    final parts =
-        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) {
-      return parts.first.characters.first.toUpperCase();
-    }
-    return (parts.first.characters.first + parts.last.characters.first)
-        .toUpperCase();
-  }
-
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
+      initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -1817,198 +758,125 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final screenW = MediaQuery.sizeOf(context).width;
-    final isDesktop = screenW > 700;
-
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.9,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        return Container(
+          decoration: const BoxDecoration(
+            color: PT.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
           child: Column(
             children: [
               Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: PT.line,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    widget.rescheduleAppointment != null
-                        ? 'Reschedule appointment'
-                        : 'Book appointment',
-                    style: GoogleFonts.fraunces(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: _ink,
+                  Expanded(
+                    child: Text(
+                      _isRescheduling ? 'Reschedule appointment' : 'Book appointment',
+                      style: PT.h3().copyWith(fontSize: 20),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: _greyLight,
-                        shape: BoxShape.circle,
+                  Material(
+                    color: PT.closeBtnBg,
+                    borderRadius: BorderRadius.circular(9),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(9),
+                      onTap: () => Navigator.pop(context),
+                      child: const SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: Icon(Icons.close, size: 18, color: PT.muted),
                       ),
-                      child: const Icon(Icons.close,
-                          size: 16, color: _slate),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              if (_isRescheduling)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: PCallout(
+                    body: 'Rescheduling only moves the date and time. The facility, provider '
+                        'and visit type stay as they were.',
+                  ),
+                ),
               Expanded(
                 child: ListView(
                   controller: scrollController,
                   children: [
-                    // Facility + Provider
-                    if (isDesktop)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _facilityField()),
-                          const SizedBox(width: 14),
-                          Expanded(child: _providerField()),
-                        ],
-                      )
-                    else ...[
-                      _facilityField(),
-                      const SizedBox(height: 18),
-                      _providerField(),
-                    ],
+                    PFormGrid([
+                      PField(label: 'Facility', child: _facilityField()),
+                      PField(label: 'Provider', child: _providerField()),
+                      PField(label: 'Date', child: _pickerField(
+                        _selectedDate == null
+                            ? 'Choose a date'
+                            : DateFormat('EEE, d MMM yyyy').format(_selectedDate!),
+                        Icons.calendar_today_outlined,
+                        _pickDate,
+                        filled: _selectedDate != null,
+                      )),
+                      PField(label: 'Time', child: _pickerField(
+                        _selectedTime == null ? 'Choose a time' : _selectedTime!.format(context),
+                        Icons.schedule,
+                        _pickTime,
+                        filled: _selectedTime != null,
+                      )),
+                    ]),
                     const SizedBox(height: 18),
-
-                    // Date + Time
-                    if (isDesktop)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _dateField()),
-                          const SizedBox(width: 14),
-                          Expanded(child: _timeField()),
-                        ],
-                      )
-                    else ...[
-                      _dateField(),
-                      const SizedBox(height: 18),
-                      _timeField(),
-                    ],
-                    const SizedBox(height: 18),
-
-                    // Type
-                    const _FieldLabel('Type'),
+                    Text('Type', style: PT.label().copyWith(fontSize: 11)),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
-                          child: _TypeCard(
+                          child: _typeCard(
                             icon: Icons.local_hospital_outlined,
-                            label: 'In-Person',
+                            label: 'In person',
                             selected: !_isTelehealth,
-                            onTap: _isRescheduling
-                                ? () {}
-                                : () =>
-                                    setState(() => _isTelehealth = false),
+                            onTap: _isRescheduling ? null : () => setState(() => _isTelehealth = false),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _TypeCard(
+                          child: _typeCard(
                             icon: Icons.videocam_outlined,
                             label: 'Telehealth',
                             selected: _isTelehealth,
-                            onTap: _isRescheduling
-                                ? () {}
-                                : () =>
-                                    setState(() => _isTelehealth = true),
+                            onTap: _isRescheduling ? null : () => setState(() => _isTelehealth = true),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 18),
-
-                    // Chief complaint
-                    const _FieldLabel('Chief complaint (optional)'),
-                    TextField(
-                      controller: _complaintCtrl,
-                      maxLength: 250,
-                      maxLines: 4,
-                      minLines: 3,
-                      style: const TextStyle(fontSize: 14.5, color: _ink),
-                      cursorColor: _navy,
-                      decoration: InputDecoration(
-                        hintText: 'Describe your symptoms\u2026',
-                        hintStyle: TextStyle(
-                            fontSize: 14.5,
-                            color: _slate.withOpacity(0.7)),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.all(14),
-                        constraints:
-                            const BoxConstraints(minHeight: 80),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: _line, width: 1.5),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: _line, width: 1.5),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: _navy, width: 1.5),
-                        ),
-                        counterStyle: const TextStyle(
-                            fontSize: 11.5, color: _slate),
+                    PField(
+                      label: 'Reason for visit (optional)',
+                      child: TextField(
+                        controller: _complaintCtrl,
+                        maxLength: 250,
+                        maxLines: 4,
+                        minLines: 3,
+                        decoration: pInput(hint: 'Describe your symptoms…'),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // Submit
-                    FilledButton(
+                    const SizedBox(height: 18),
+                    PButton(
+                      _submitting
+                          ? 'Saving…'
+                          : (_isRescheduling ? 'Reschedule appointment' : 'Book appointment'),
+                      expand: true,
                       onPressed: _submitting ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _navy,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: _navy,
-                        disabledForegroundColor: Colors.white,
-                        elevation: 0,
-                        minimumSize: const Size(double.infinity, 50),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white),
-                            )
-                          : Text(
-                              widget.rescheduleAppointment != null
-                                  ? 'Reschedule appointment'
-                                  : 'Book appointment'),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -2022,368 +890,131 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
   }
 
   Widget _facilityField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _FieldLabel('Facility'),
-        _FieldRow(
-          icon: Icons.local_hospital_outlined,
-          suffix: const Icon(Icons.keyboard_arrow_down,
-              size: 18, color: _slate),
-          child: _loadingFacilities
-              ? _loadingSpinner()
-              : DropdownButton<FacilityModel>(
-                  value: _selectedFacility,
-                  isExpanded: true,
-                  isDense: true,
-                  underline: const SizedBox.shrink(),
-                  icon: const SizedBox.shrink(),
-                  dropdownColor: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  style:
-                      const TextStyle(fontSize: 14.5, color: _ink),
-                  hint: const Text('Choose facility',
-                      style:
-                          TextStyle(fontSize: 14.5, color: _slate)),
-                  items: _facilities
-                      .map((f) => DropdownMenuItem(
-                          value: f,
-                          child: Text(f.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: _isRescheduling
-                      ? null
-                      : (v) => setState(() => _selectedFacility = v),
-                ),
-        ),
+    if (_loadingFacilities) return _fieldSpinner();
+    return DropdownButtonFormField<FacilityModel>(
+      value: _selectedFacility,
+      isExpanded: true,
+      decoration: pInput(),
+      hint: Text('Any facility', style: PT.sub()),
+      items: [
+        for (final f in _facilities)
+          DropdownMenuItem(
+            value: f,
+            child: Text(f.name, overflow: TextOverflow.ellipsis, style: PT.body()),
+          ),
       ],
+      onChanged: _isRescheduling ? null : (v) => setState(() => _selectedFacility = v),
     );
   }
 
   Widget _providerField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _FieldLabel('Provider'),
-        _FieldRow(
-          icon: Icons.person_outline,
-          suffix: const Icon(Icons.keyboard_arrow_down,
-              size: 18, color: _slate),
-          child: _loadingProviders
-              ? _loadingSpinner()
-              : _providers.isEmpty
-                  ? const Text(
-                      'No providers registered',
-                      style:
-                          TextStyle(fontSize: 14.5, color: _slate))
-                  : Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 15,
-                          backgroundColor: _navyBg,
-                          child: _selectedProvider == null
-                              ? const Icon(Icons.person_outline,
-                                  size: 16, color: _slate)
-                              : Text(
-                                  _initials(
-                                      _selectedProvider!.fullName),
-                                  style: const TextStyle(
-                                    color: _navy,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11.5,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: DropdownButton<UserModel>(
-                            value: _selectedProvider,
-                            isExpanded: true,
-                            isDense: true,
-                            underline: const SizedBox.shrink(),
-                            icon: const SizedBox.shrink(),
-                            dropdownColor: Colors.white,
-                            borderRadius:
-                                BorderRadius.circular(12),
-                            style: const TextStyle(
-                                fontSize: 14.5, color: _ink),
-                            hint: const Text('Choose provider',
-                                style: TextStyle(
-                                    fontSize: 14.5,
-                                    color: _slate)),
-                            items: _providers
-                                .map((p) => DropdownMenuItem(
-                                      value: p,
-                                      child: Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 15,
-                                            backgroundColor:
-                                                _navyBg,
-                                            child: Text(
-                                              _initials(p.fullName),
-                                              style:
-                                                  const TextStyle(
-                                                color: _navy,
-                                                fontWeight:
-                                                    FontWeight.w700,
-                                                fontSize: 11.5,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                              width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment
-                                                      .start,
-                                              mainAxisSize:
-                                                  MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  p.fullName,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow
-                                                          .ellipsis,
-                                                  style:
-                                                      const TextStyle(
-                                                    fontSize: 14.5,
-                                                    fontWeight:
-                                                        FontWeight
-                                                            .w600,
-                                                    color: _ink,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  p.role.name,
-                                                  style:
-                                                      const TextStyle(
-                                                    fontSize: 12,
-                                                    color: _slate,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ))
-                                .toList(),
-                            onChanged: _isRescheduling
-                                ? null
-                                : (v) => setState(
-                                    () => _selectedProvider = v),
-                          ),
-                        ),
-                      ],
-                    ),
-        ),
+    if (_loadingProviders) return _fieldSpinner();
+    return DropdownButtonFormField<UserModel>(
+      value: _selectedProvider,
+      isExpanded: true,
+      decoration: pInput(),
+      hint: Text('Any available provider', style: PT.sub()),
+      items: [
+        for (final p in _providers)
+          DropdownMenuItem(
+            value: p,
+            child: Text('${p.fullName} · ${_capitalize(p.role.name)}',
+                overflow: TextOverflow.ellipsis, style: PT.body()),
+          ),
       ],
+      onChanged: _isRescheduling ? null : (v) => setState(() => _selectedProvider = v),
     );
   }
 
-  Widget _dateField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _FieldLabel('Date'),
-        _FieldRow(
-          icon: Icons.calendar_today_outlined,
-          suffix: const Icon(Icons.chevron_right,
-              size: 18, color: _slate),
-          onTap: _pickDate,
-          child: Text(
-            _selectedDate != null
-                ? DateFormat('d MMMM yyyy').format(_selectedDate!)
-                : 'Choose date',
-            style: TextStyle(
-              fontSize: 14.5,
-              color: _selectedDate != null ? _ink : _slate,
-            ),
+  Widget _pickerField(String text, IconData icon, VoidCallback onTap, {required bool filled}) {
+    return Material(
+      color: PT.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border.all(color: PT.line),
+            borderRadius: BorderRadius.circular(10),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _timeField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _FieldLabel('Time'),
-        _FieldRow(
-          icon: Icons.access_time,
-          suffix: const Icon(Icons.chevron_right,
-              size: 18, color: _slate),
-          onTap: _pickTime,
-          child: Text(
-            _selectedTime != null
-                ? _selectedTime!.format(context)
-                : 'Choose time',
-            style: TextStyle(
-              fontSize: 14.5,
-              color: _selectedTime != null ? _ink : _slate,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _loadingSpinner() => const SizedBox(
-        height: 20,
-        child: Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: _navy),
-          ),
-        ),
-      );
-}
-
-// ── Booking form widgets ────────────────────────────────────────────
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: _slate,
-        ),
-      ),
-    );
-  }
-}
-
-class _FieldRow extends StatefulWidget {
-  const _FieldRow({
-    required this.icon,
-    required this.child,
-    this.suffix,
-    this.onTap,
-  });
-  final IconData icon;
-  final Widget child;
-  final Widget? suffix;
-  final VoidCallback? onTap;
-
-  @override
-  State<_FieldRow> createState() => _FieldRowState();
-}
-
-class _FieldRowState extends State<_FieldRow> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final row = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _focused ? _navy : _line,
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(widget.icon, size: 16, color: _slate),
-          const SizedBox(width: 12),
-          Expanded(child: widget.child),
-          if (widget.suffix != null) ...[
-            const SizedBox(width: 8),
-            widget.suffix!,
-          ],
-        ],
-      ),
-    );
-
-    return Focus(
-      canRequestFocus: false,
-      includeSemantics: false,
-      onFocusChange: (f) {
-        if (_focused != f) setState(() => _focused = f);
-      },
-      child: widget.onTap != null
-          ? GestureDetector(onTap: widget.onTap, child: row)
-          : row,
-    );
-  }
-}
-
-class _TypeCard extends StatelessWidget {
-  const _TypeCard({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding:
-            const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-        decoration: BoxDecoration(
-          color: selected ? _navyBg : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? _navy : _line,
-            width: selected ? 2 : 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 17,
-              color: selected ? _navy : _slate,
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? _navy : _slate,
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: PT.muted),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  text,
+                  overflow: TextOverflow.ellipsis,
+                  style: filled ? PT.body() : PT.sub(),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _typeCard({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback? onTap,
+  }) {
+    return Opacity(
+      opacity: onTap == null && !selected ? .5 : 1,
+      child: Material(
+        color: selected ? PT.calloutBg : PT.white,
+        borderRadius: BorderRadius.circular(PT.rRow),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(PT.rRow),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: selected ? PT.teal : PT.line, width: selected ? 1.5 : 1),
+              borderRadius: BorderRadius.circular(PT.rRow),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: selected ? PT.teal : PT.muted),
+                const SizedBox(width: 8),
+                Text(label,
+                    style: PT.body().copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: selected ? PT.ink : PT.muted,
+                    )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldSpinner() => Container(
+        height: 46,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          border: Border.all(color: PT.line),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2, color: PT.teal),
+        ),
+      );
+
+  String _capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// CONFIRMATION BOTTOM SHEET
+// Confirmation
 // ═══════════════════════════════════════════════════════════════════════
 
 class _ConfirmationSheet extends StatefulWidget {
@@ -2392,10 +1023,9 @@ class _ConfirmationSheet extends StatefulWidget {
     required this.facilityName,
     required this.scheduledAt,
     required this.isTelehealth,
-    this.providerRole,
   });
+
   final String providerName;
-  final String? providerRole;
   final String facilityName;
   final DateTime scheduledAt;
   final bool isTelehealth;
@@ -2434,231 +1064,63 @@ class _ConfirmationSheetState extends State<_ConfirmationSheet> {
     context.go('/patient');
   }
 
-  String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) {
-      return parts.first.characters.first.toUpperCase();
-    }
-    return (parts.first.characters.first + parts.last.characters.first)
-        .toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      builder: (context, scrollController) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Center(
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    color: _success,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.check,
-                      size: 30, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Appointment booked!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.fraunces(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: _ink,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Your appointment has been successfully scheduled.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: _slate),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _line),
-                ),
-                child: Column(
-                  children: [
-                    _ConfirmRow(
-                      leading: CircleAvatar(
-                        radius: 17,
-                        backgroundColor: _navyBg,
-                        child: Text(
-                          _initials(widget.providerName),
-                          style: const TextStyle(
-                            color: _navy,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.providerName,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: _ink,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            widget.providerRole ?? '',
-                            style: const TextStyle(
-                                fontSize: 12.5, color: _slate),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(height: 1, color: _line),
-                    _ConfirmRow(
-                      icon: Icons.location_on_outlined,
-                      label: widget.facilityName.isEmpty
-                          ? '\u2014'
-                          : widget.facilityName,
-                    ),
-                    Container(height: 1, color: _line),
-                    _ConfirmRow(
-                      icon: Icons.calendar_today_outlined,
-                      label:
-                          '${DateFormat('d MMMM yyyy').format(widget.scheduledAt)} \u00B7 ${DateFormat('h:mm a').format(widget.scheduledAt)}',
-                    ),
-                    Container(height: 1, color: _line),
-                    _ConfirmRow(
-                      icon: widget.isTelehealth
-                          ? Icons.videocam_outlined
-                          : Icons.local_hospital_outlined,
-                      label: widget.isTelehealth
-                          ? 'Telehealth'
-                          : 'In-Person',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _finish,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _navy,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        minimumSize: const Size(0, 48),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        textStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700),
-                      ),
-                      child: const Text('View appointments'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _finish,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: _navy,
-                        side: const BorderSide(
-                            color: _line, width: 1.5),
-                        minimumSize: const Size(0, 48),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        textStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700),
-                      ),
-                      child: const Text('Back to home'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Returning in $_secondsLeft s\u2026',
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 12, color: _slate),
-              ),
-            ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: PT.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: PT.calloutBg),
+              child: const Icon(Icons.check_rounded, size: 30, color: PT.teal),
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 14),
+          Center(child: Text('Appointment requested', style: PT.h3().copyWith(fontSize: 20))),
+          const SizedBox(height: 6),
+          Center(
+            child: Text(
+              'Your provider will confirm shortly. You can see it under Upcoming.',
+              textAlign: TextAlign.center,
+              style: PT.sub(),
+            ),
+          ),
+          const SizedBox(height: 18),
+          PCard(
+            child: Column(
+              children: [
+                _row('When', DateFormat('EEEE, d MMM yyyy · HH:mm').format(widget.scheduledAt)),
+                _row('Provider', widget.providerName),
+                if (widget.facilityName.isNotEmpty) _row('Facility', widget.facilityName),
+                _row('Type', widget.isTelehealth ? 'Telehealth' : 'In person'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          PButton('Done ($_secondsLeft)', expand: true, onPressed: _finish),
+        ],
+      ),
     );
   }
-}
 
-class _ConfirmRow extends StatelessWidget {
-  const _ConfirmRow({this.icon, this.label, this.child, this.leading});
-  final IconData? icon;
-  final String? label;
-  final Widget? child;
-  final Widget? leading;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _row(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (leading != null)
-            leading!
-          else if (icon != null)
-            SizedBox(
-              width: 20,
-              child: Icon(icon!, size: 16, color: _slate),
-            ),
-          const SizedBox(width: 12),
-          if (child != null)
-            Expanded(child: child!)
-          else if (label != null)
-            Expanded(
-              child: Text(label!,
-                  style: const TextStyle(fontSize: 14, color: _ink)),
-            ),
+          SizedBox(width: 90, child: Text(label, style: PT.label())),
+          Expanded(child: Text(value, style: PT.rowTitle())),
         ],
       ),
     );

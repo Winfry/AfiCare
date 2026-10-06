@@ -46,11 +46,12 @@ class PatientHomeScreen extends StatelessWidget {
     final dateStr = DateFormat('EEEE · d MMMM yyyy', lang == 'sw' ? 'sw' : 'en')
         .format(DateTime.now());
 
-    final needsOnboarding = profile == null ||
-        profile.dateOfBirth == null ||
-        profile.emergencyContactName == null ||
-        profile.bloodType == null ||
-        allergies.isEmpty;
+    // Only the two things the wizard actually insists on. Blood type and
+    // allergies are optional there — plenty of people have no allergies —
+    // so requiring them here would leave a patient who finished signup
+    // stuck on the checklist for good.
+    final needsOnboarding =
+        profile == null || profile.dateOfBirth == null || profile.emergencyContactName == null;
 
     final profileHasStarted = profile != null &&
         (profile.dateOfBirth != null ||
@@ -70,9 +71,15 @@ class PatientHomeScreen extends StatelessWidget {
           PHero(
             chip: dateStr,
             title: AppStrings.greeting(firstName, lang),
-            body: lang == 'sw'
-                ? 'Karibu tena! Huu hapa ni muhtasari wa afya yako.'
-                : "Here's what's happening with your health today. Your important care information stays in one place.",
+            // A brand-new account has no activity to summarise, so it gets
+            // a welcome instead of a report.
+            body: needsOnboarding
+                ? (lang == 'sw'
+                    ? 'Karibu AfiCare. Hii ndiyo nafasi yako ya afya — bado ni tupu, na hiyo ni sawa.'
+                    : "This is your health space. It's empty for now — as you book visits, collect results and add medicines, they'll gather here.")
+                : (lang == 'sw'
+                    ? 'Karibu tena! Huu hapa ni muhtasari wa afya yako.'
+                    : "Here's what's happening with your health today. Your important care information stays in one place."),
             trailing: listenText == null
                 ? null
                 : IconButton(
@@ -154,11 +161,14 @@ class _AdherenceMetric extends StatelessWidget {
     final hasDoses = adherence.todayDoses.isNotEmpty;
     final remaining = adherence.todayRemaining;
 
+    // An empty account should read as calm, not broken: a dash and a
+    // plain sentence rather than a zero score.
     return PMetric(
       label: 'Medication adherence',
-      value: hasDoses ? '${adherence.todayScore}%' : '--',
+      value: hasDoses ? '${adherence.todayScore}%' : '—',
+      valueFontSize: hasDoses ? null : 24,
       note: !hasDoses
-          ? 'No medications scheduled today'
+          ? 'Nothing to take today'
           : remaining > 0
               ? '$remaining dose${remaining == 1 ? '' : 's'} remaining today'
               : 'All doses taken today',
@@ -224,9 +234,9 @@ class _NextAppointmentMetricState extends State<_NextAppointmentMetric> {
     if (next == null) {
       return PMetric(
         label: 'Next appointment',
-        value: 'None',
+        value: 'Nothing booked',
         valueFontSize: 20,
-        note: 'Book when you need care',
+        note: 'Book one whenever you need care →',
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
@@ -258,8 +268,11 @@ class _ActiveMedicationsMetric extends StatelessWidget {
 
     return PMetric(
       label: 'Active medications',
-      value: '${active.length}',
-      note: active.isEmpty ? 'Nothing active right now' : "View today's doses →",
+      value: active.isEmpty ? 'None yet' : '${active.length}',
+      valueFontSize: active.isEmpty ? 20 : null,
+      note: active.isEmpty
+          ? 'Add one and we\'ll remind you →'
+          : "View today's doses →",
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const MedicationTrackerScreen()),

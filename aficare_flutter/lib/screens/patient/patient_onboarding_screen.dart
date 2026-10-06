@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -13,11 +12,17 @@ import '../../providers/admin_facility_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
-import '../../utils/theme.dart';
+import '../../theme/patient_tokens.dart';
 import '../../utils/snackbar_utils.dart';
+import 'widgets/patient_ui.dart';
 
-/// First-run onboarding wizard shown after a patient creates their
-/// MediLink ID. Steps: Welcome → Complete profile → Care setup → QR code.
+/// First-run onboarding, shown once a patient has created their MediLink
+/// ID. Four steps: Welcome → About you → Your care → Your MediLink ID.
+///
+/// The saving logic is unchanged from the original wizard: the profile
+/// goes through [PatientProfileProvider.saveProfile], the home facility
+/// is written to `users.facility_id`, and anyone the patient cares for is
+/// created through [DependentProvider.addDependent].
 class PatientOnboardingScreen extends StatefulWidget {
   const PatientOnboardingScreen({super.key});
 
@@ -25,11 +30,19 @@ class PatientOnboardingScreen extends StatefulWidget {
   State<PatientOnboardingScreen> createState() => _PatientOnboardingScreenState();
 }
 
+/// Someone the patient looks after, as captured during signup.
+class _NewDependent {
+  const _NewDependent({required this.name, required this.relationship, this.dob});
+  final String name;
+  final String relationship;
+  final DateTime? dob;
+}
+
 class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   int _step = 0;
   bool _saving = false;
 
-  // Step 2 — Complete profile
+  // Step 2 — About you
   DateTime? _dob;
   String? _gender;
   String? _bloodType;
@@ -39,10 +52,9 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   final _emergencyNameController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
 
-  // Step 3 — Care setup
+  // Step 3 — Your care
   String? _facilityId;
-  final _dependents = <String>[];
-  final _depController = TextEditingController();
+  final _dependents = <_NewDependent>[];
   List<FacilityModel> _facilities = const [];
 
   @override
@@ -64,39 +76,32 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
     _dobController.dispose();
     _emergencyNameController.dispose();
     _emergencyPhoneController.dispose();
-    _depController.dispose();
     super.dispose();
   }
 
   String get _firstName {
-    final name = Provider.of<AuthProvider>(context, listen: false)
-            .currentUser
-            ?.fullName
-            .trim() ??
-        'there';
+    final name =
+        Provider.of<AuthProvider>(context, listen: false).currentUser?.fullName.trim() ?? 'there';
     return name.split(' ').first;
   }
 
   String get _medilinkId {
-    final id = Provider.of<AuthProvider>(context, listen: false)
-        .currentUser
-        ?.medilinkId;
+    final id = Provider.of<AuthProvider>(context, listen: false).currentUser?.medilinkId;
     return (id == null || id.isEmpty) ? 'ML-XXX-XXXX' : id;
   }
+
+  // ── Saving (unchanged behaviour) ──────────────────────────────────────
 
   Future<void> _saveProfile() async {
     final provider = Provider.of<PatientProfileProvider>(context, listen: false);
     final existing = provider.profile;
     final profile = PatientProfileModel(
-      id: existing?.id ??
-          Provider.of<AuthProvider>(context, listen: false).currentUser?.id ??
-          '',
+      id: existing?.id ?? Provider.of<AuthProvider>(context, listen: false).currentUser?.id ?? '',
       dateOfBirth: _dob ?? existing?.dateOfBirth,
       gender: _gender ?? existing?.gender,
       bloodType: _bloodType ?? existing?.bloodType,
-      allergies: _allergies.isNotEmpty
-          ? List.of(_allergies)
-          : (existing?.allergies ?? const <String>[]),
+      allergies:
+          _allergies.isNotEmpty ? List.of(_allergies) : (existing?.allergies ?? const <String>[]),
       chronicConditions: existing?.chronicConditions ?? const <String>[],
       emergencyContactName: _emergencyNameController.text.trim().isNotEmpty
           ? _emergencyNameController.text.trim()
@@ -122,16 +127,17 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
             .from('users')
             .update({'facility_id': _facilityId}).eq('id', userId);
       } catch (e) {
-        debugPrint('patient_onboarding_screen: loading onboarding data failed: $e');
-        showErrorSnackBar(context, 'Could not load onboarding data');
+        debugPrint('patient_onboarding_screen: saving home facility failed: $e');
+        if (mounted) showErrorSnackBar(context, 'Could not save your home facility');
       }
     }
 
-    for (final name in _dependents) {
+    for (final d in _dependents) {
       await dep.addDependent(
         guardianId: userId,
-        fullName: name,
-        relationship: 'family',
+        fullName: d.name,
+        relationship: d.relationship,
+        dateOfBirth: d.dob,
       );
     }
   }
@@ -156,19 +162,17 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
       }
     }
     if (dob == null) {
-      _showSnack(
-        typed.isEmpty
-            ? 'Please select your date of birth'
-            : 'Please enter a valid date of birth (DD/MM/YYYY)',
-      );
+      _showSnack(typed.isEmpty
+          ? 'We need your date of birth to continue'
+          : 'That date doesn\'t look right — try DD/MM/YYYY');
       return;
     }
     if (_emergencyNameController.text.trim().isEmpty) {
-      _showSnack('Please enter an emergency contact name');
+      _showSnack('Please add someone we can call in an emergency');
       return;
     }
     if (_emergencyPhoneController.text.trim().isEmpty) {
-      _showSnack('Please enter an emergency contact phone');
+      _showSnack('Please add a phone number for your emergency contact');
       return;
     }
     setState(() => _saving = true);
@@ -216,112 +220,101 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    // Reload the profile so the home screen sees the just-saved data
+    // Reload the profile so Home sees what was just saved.
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final userId = auth.currentUser?.id;
     if (userId != null) {
-      await Provider.of<PatientProfileProvider>(context, listen: false)
-          .loadProfile(userId);
+      await Provider.of<PatientProfileProvider>(context, listen: false).loadProfile(userId);
     }
     if (!mounted) return;
     context.go('/patient');
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AfiCareTheme.clay),
-    );
-  }
+  void _showSnack(String message) => pToast(context, message);
+
+  // ── Build ─────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    // The onboarding is a self-contained light experience. Wrapping it in a
-    // light Theme keeps all inherited text colors dark even when the device
-    // is in dark mode (the app follows the system theme by default).
+    // Self-contained light experience: the wizard keeps its own light
+    // surface even when the device is in dark mode.
     return Theme(
-      data: AfiCareTheme.lightTheme,
+      data: ThemeData(brightness: Brightness.light, scaffoldBackgroundColor: PT.page),
       child: Scaffold(
-        backgroundColor: AfiCareTheme.mist,
+        backgroundColor: PT.page,
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
+              constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
                 children: [
-                  _WizardTopBar(
-                    step: _step,
-                    canGoBack: _step > 0,
-                    onBack: () => _goTo(_step - 1),
-                  ),
+                  _WizardBar(step: _step, canGoBack: _step > 0, onBack: () => _goTo(_step - 1)),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 60),
+                      padding: const EdgeInsets.fromLTRB(22, 10, 22, 60),
                       child: switch (_step) {
                         0 => _WelcomeStep(
-                          firstName: _firstName,
-                          onNext: () => _goTo(1),
-                          onSkip: _skipFromWelcome,
-                        ),
-                        1 => _ProfileStep(
-                          dobController: _dobController,
-                          gender: _gender,
-                          bloodType: _bloodType,
-                          allergies: _allergies,
-                          allergyController: _allergyController,
-                          emergencyNameController: _emergencyNameController,
-                          emergencyPhoneController: _emergencyPhoneController,
-                          onPickDob: _pickDob,
-                          onGenderChanged: (v) => setState(() => _gender = v),
-                          onBloodTypeChanged: (v) => setState(() => _bloodType = v),
-                        onAddAllergy: _addAllergy,
-                        onRemoveAllergy: (a) => setState(() => _allergies.remove(a)),
-                        saving: _saving,
-                        onContinue: _continueFromProfile,
-                      ),
-                      2 => _CareStep(
-                        facilities: _facilities,
-                        facilityId: _facilityId,
-                        dependents: _dependents,
-                        depController: _depController,
-                        onFacilityChanged: (v) => setState(() => _facilityId = v),
-                        onAddDependent: _addDependent,
-                        onRemoveDependent: (n) => setState(() => _dependents.remove(n)),
-                        saving: _saving,
-                        onContinue: _continueFromCare,
-                        onSkip: () => _goTo(3),
-                      ),
-                      _ => _QrStep(
-                        fullName: Provider.of<AuthProvider>(context).currentUser?.fullName ?? '',
-                        medilinkId: _medilinkId,
-                        onFinish: _finish,
-                      ),
-                    },
+                            firstName: _firstName,
+                            onNext: () => _goTo(1),
+                            onSkip: _skipFromWelcome,
+                          ),
+                        1 => _AboutYouStep(
+                            dobController: _dobController,
+                            gender: _gender,
+                            bloodType: _bloodType,
+                            allergies: _allergies,
+                            allergyController: _allergyController,
+                            emergencyNameController: _emergencyNameController,
+                            emergencyPhoneController: _emergencyPhoneController,
+                            onPickDob: _pickDob,
+                            onGenderChanged: (v) => setState(() => _gender = v),
+                            onBloodTypeChanged: (v) => setState(() => _bloodType = v),
+                            onAddAllergy: _addAllergy,
+                            onRemoveAllergy: (a) => setState(() => _allergies.remove(a)),
+                            saving: _saving,
+                            onContinue: _continueFromProfile,
+                          ),
+                        2 => _YourCareStep(
+                            facilities: _facilities,
+                            facilityId: _facilityId,
+                            dependents: _dependents,
+                            onFacilityChanged: (v) => setState(() => _facilityId = v),
+                            onAddDependent: _addDependent,
+                            onRemoveDependent: (d) => setState(() => _dependents.remove(d)),
+                            saving: _saving,
+                            onContinue: _continueFromCare,
+                            onSkip: () => _goTo(3),
+                          ),
+                        _ => _MediLinkStep(
+                            fullName: context.watch<AuthProvider>().currentUser?.fullName ?? '',
+                            medilinkId: _medilinkId,
+                            onFinish: _finish,
+                          ),
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
 
   Future<void> _pickDob() async {
     final now = DateTime.now();
-    final initial = _dob ?? _tryParseDob(_dobController.text.trim()) ??
-        DateTime(now.year - 25, now.month, now.day);
+    final initial =
+        _dob ?? _tryParseDob(_dobController.text.trim()) ?? DateTime(now.year - 25, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(now.year - 120),
       lastDate: now,
-      helpText: 'Date of birth',
+      helpText: 'Your date of birth',
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: AfiCareTheme.canopy,
-              ),
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: PT.teal),
         ),
         child: child!,
       ),
@@ -343,297 +336,102 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
     });
   }
 
-  void _addDependent() {
-    final value = _depController.text.trim();
-    if (value.isEmpty) return;
-    setState(() {
-      _dependents.add(value);
-      _depController.clear();
-    });
+  Future<void> _addDependent() async {
+    final added = await showPModal<_NewDependent>(
+      context: context,
+      title: 'Someone you care for',
+      builder: (ctx) => _AddDependentForm(onDone: (d) => Navigator.pop(ctx, d)),
+    );
+    if (added != null && mounted) setState(() => _dependents.add(added));
   }
 }
 
-// ── Shared wizard chrome ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Wizard chrome
+// ═══════════════════════════════════════════════════════════════════════
 
-class _WizardTopBar extends StatelessWidget {
-  const _WizardTopBar({
-    required this.step,
-    required this.canGoBack,
-    required this.onBack,
-  });
+class _WizardBar extends StatelessWidget {
+  const _WizardBar({required this.step, required this.canGoBack, required this.onBack});
 
   final int step;
   final bool canGoBack;
   final VoidCallback onBack;
 
+  static const _labels = ['Welcome', 'About you', 'Your care', 'All set'];
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CircleIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            visible: canGoBack,
-            onTap: onBack,
-          ),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < 4; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: i == step ? 20 : 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: i <= step ? AfiCareTheme.canopy : AfiCareTheme.line,
-                      borderRadius: BorderRadius.circular(4),
+          Row(
+            children: [
+              if (canGoBack)
+                Material(
+                  color: PT.white,
+                  borderRadius: BorderRadius.circular(PT.rButton),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(PT.rButton),
+                    onTap: onBack,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: PT.line),
+                        borderRadius: BorderRadius.circular(PT.rButton),
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: PT.ink),
                     ),
                   ),
-              ],
-            ),
+                )
+              else
+                const SizedBox(width: 38, height: 38),
+              const Spacer(),
+              Text('Step ${step + 1} of 4 · ${_labels[step]}', style: PT.rowSub()),
+            ],
           ),
-          const SizedBox(width: 36),
+          const SizedBox(height: 14),
+          PProgress((step + 1) / 4, height: 6),
         ],
       ),
     );
   }
 }
 
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
-    required this.icon,
-    required this.visible,
-    required this.onTap,
-  });
+class _StepHead extends StatelessWidget {
+  const _StepHead({required this.eyebrow, required this.title, required this.body});
 
-  final IconData icon;
-  final bool visible;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Visibility(
-      maintainSize: true,
-      maintainAnimation: true,
-      maintainState: true,
-      visible: visible,
-      child: SizedBox(
-        width: 36,
-        height: 36,
-        child: Material(
-          color: AfiCareTheme.white,
-          shape: const CircleBorder(
-            side: BorderSide(color: AfiCareTheme.line),
-          ),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: Icon(icon, size: 15, color: AfiCareTheme.slate),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WizHeader extends StatelessWidget {
-  const _WizHeader({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.leftAlign = false,
-  });
-
-  final String icon;
+  final String eyebrow;
   final String title;
-  final String subtitle;
-  final bool leftAlign;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment:
-          leftAlign ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      children: [
-        if (!leftAlign) ...[
-          Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AfiCareTheme.canopy, AfiCareTheme.canopyDark],
-              ),
-            ),
-            child: Center(
-              child: Text(icon, style: const TextStyle(fontSize: 30)),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-        Text(
-          title,
-          textAlign: leftAlign ? TextAlign.left : TextAlign.center,
-          style: GoogleFonts.fraunces(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: AfiCareTheme.ink,
-            height: 1.25,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          textAlign: leftAlign ? TextAlign.left : TextAlign.center,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AfiCareTheme.slate,
-            height: 1.55,
-          ),
-        ),
-        const SizedBox(height: 32),
-      ],
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel({required this.label, this.required = false});
-  final String label;
-  final bool required;
+  final String body;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text.rich(
-        TextSpan(
-          text: label,
-          style: const TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: AfiCareTheme.slate,
-          ),
-          children: [
-            if (required)
-              const TextSpan(
-                text: ' *',
-                style: TextStyle(color: AfiCareTheme.emergencyRed),
-              ),
-          ],
-        ),
+      padding: const EdgeInsets.only(top: 18, bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(eyebrow.toUpperCase(), style: PT.eyebrow()),
+          const SizedBox(height: 7),
+          Text(title, style: PT.h1().copyWith(fontSize: 27)),
+          const SizedBox(height: 8),
+          Text(body, style: PT.sub()),
+        ],
       ),
     );
   }
 }
 
-class _WizInput extends StatelessWidget {
-  const _WizInput({
-    required this.controller,
-    required this.hint,
-    required this.icon,
-    this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final ValueChanged<String>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      style: const TextStyle(fontSize: 14, color: AfiCareTheme.ink),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-        prefixIcon: Icon(icon, size: 18, color: AfiCareTheme.slate),
-        filled: true,
-        fillColor: AfiCareTheme.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AfiCareTheme.canopy, width: 2),
-        ),
-      ),
-    );
-  }
-}
-
-class _WizSelect extends StatelessWidget {
-  const _WizSelect({
-    required this.value,
-    required this.hint,
-    required this.icon,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final String? value;
-  final String hint;
-  final IconData icon;
-  final List<String> items;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      isExpanded: true,
-      hint: Text(hint, style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
-      icon: const Icon(Icons.expand_more, size: 20, color: AfiCareTheme.slate),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, size: 18, color: AfiCareTheme.slate),
-        filled: true,
-        fillColor: AfiCareTheme.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AfiCareTheme.canopy, width: 2),
-        ),
-      ),
-      items: items
-          .map((item) => DropdownMenuItem(
-                value: item,
-                child: Text(item, style: const TextStyle(fontSize: 14)),
-              ))
-          .toList(),
-      onChanged: onChanged,
-    );
-  }
-}
-
-// ── Step 1: Welcome ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Step 1 — Welcome
+// ═══════════════════════════════════════════════════════════════════════
 
 class _WelcomeStep extends StatelessWidget {
-  const _WelcomeStep({
-    required this.firstName,
-    required this.onNext,
-    required this.onSkip,
-  });
+  const _WelcomeStep({required this.firstName, required this.onNext, required this.onSkip});
 
   final String firstName;
   final VoidCallback onNext;
@@ -642,27 +440,64 @@ class _WelcomeStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _WizHeader(
-          icon: '👋',
-          title: 'Welcome to AfiCare, $firstName',
-          subtitle: "You've got a MediLink ID now — here's what that gets you.",
+        Container(
+          margin: const EdgeInsets.only(top: 18),
+          padding: const EdgeInsets.all(26),
+          decoration: BoxDecoration(
+            gradient: PT.hero,
+            borderRadius: BorderRadius.circular(PT.rHero),
+            boxShadow: PT.heroShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PChip('Your account is ready'),
+              const SizedBox(height: 12),
+              Text('Welcome, $firstName.', style: PT.h2().copyWith(fontSize: 29)),
+              const SizedBox(height: 10),
+              Text(
+                'AfiCare keeps your health information in one place, so the people treating you '
+                'can see what matters — and nothing else without your say-so.',
+                style: PT.body().copyWith(color: Colors.white.withOpacity(.88)),
+              ),
+            ],
+          ),
         ),
-        const _PromiseRow(icon: '📁', text: 'Own your records — see them from any facility'),
-        const _PromiseRow(icon: '📅', text: 'Book visits without calling the clinic'),
-        const _PromiseRow(icon: '💬', text: 'Message your providers directly'),
         const SizedBox(height: 22),
-        _PrimaryButton(label: "Let's go", onTap: onNext),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: onSkip,
-          child: const Text(
-            "I'll do this later",
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AfiCareTheme.slate,
-            ),
+        Text('Three short steps', style: PT.h3()),
+        const SizedBox(height: 10),
+        const _PointRow(
+          icon: Icons.person_outline,
+          title: 'A little about you',
+          body: 'Your date of birth, blood type and anything you\'re allergic to.',
+        ),
+        const _PointRow(
+          icon: Icons.local_hospital_outlined,
+          title: 'Where you get care',
+          body: 'Your usual facility, and anyone whose health you look after.',
+        ),
+        const _PointRow(
+          icon: Icons.qr_code_2_outlined,
+          title: 'Your MediLink ID',
+          body: 'The code that links your care together wherever you go.',
+        ),
+        const SizedBox(height: 22),
+        PButton('Let\'s get started', expand: true, onPressed: onNext),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton(
+            onPressed: onSkip,
+            child: Text('I\'ll do this later', style: PT.body().copyWith(color: PT.muted)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            'You can change any of this at any time.',
+            textAlign: TextAlign.center,
+            style: PT.rowSub(),
           ),
         ),
       ],
@@ -670,31 +505,39 @@ class _WelcomeStep extends StatelessWidget {
   }
 }
 
-class _PromiseRow extends StatelessWidget {
-  const _PromiseRow({required this.icon, required this.text});
-  final String icon;
-  final String text;
+class _PointRow extends StatelessWidget {
+  const _PointRow({required this.icon, required this.title, required this.body});
+
+  final IconData icon;
+  final String title;
+  final String body;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8EDF3),
-              borderRadius: BorderRadius.circular(10),
+              color: PT.calloutBg,
+              borderRadius: BorderRadius.circular(13),
             ),
-            child: Center(child: Text(icon, style: const TextStyle(fontSize: 16))),
+            child: Icon(icon, size: 19, color: PT.teal),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 13),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: PT.rowTitle()),
+                const SizedBox(height: 2),
+                Text(body, style: PT.rowSub()),
+              ],
             ),
           ),
         ],
@@ -703,10 +546,12 @@ class _PromiseRow extends StatelessWidget {
   }
 }
 
-// ── Step 2: Complete profile ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Step 2 — About you
+// ═══════════════════════════════════════════════════════════════════════
 
-class _ProfileStep extends StatelessWidget {
-  const _ProfileStep({
+class _AboutYouStep extends StatelessWidget {
+  const _AboutYouStep({
     required this.dobController,
     required this.gender,
     required this.bloodType,
@@ -741,140 +586,165 @@ class _ProfileStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _WizHeader(
-          icon: '✏️',
-          title: 'Complete your profile',
-          subtitle:
-              'This helps us get your health summary right, and reach the right person if there\u2019s ever an emergency.',
-          leftAlign: true,
+        const _StepHead(
+          eyebrow: 'Step one',
+          title: 'A little about you',
+          body: 'This is what a clinician checks first. It takes a minute, and it can genuinely '
+              'change the care you get in an emergency.',
         ),
-        const _FieldLabel(label: 'Date of birth', required: true),
-        TextField(
-          controller: dobController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          textInputAction: TextInputAction.next,
-          style: const TextStyle(fontSize: 14, color: AfiCareTheme.ink),
-          onTap: onPickDob,
-          decoration: InputDecoration(
-            hintText: 'DD/MM/YYYY',
-            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-            prefixIcon: const Icon(Icons.cake_outlined, size: 18, color: AfiCareTheme.slate),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.calendar_today_outlined,
-                  size: 18, color: AfiCareTheme.canopy),
-              tooltip: 'Open date picker',
-              onPressed: onPickDob,
-            ),
-            filled: true,
-            fillColor: AfiCareTheme.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const _FieldLabel(label: 'Gender'),
-        _WizSelect(
-          value: gender,
-          hint: 'Select gender',
-          icon: Icons.wc_outlined,
-          items: const ['Female', 'Male', 'Other'],
-          onChanged: onGenderChanged,
-        ),
-        const SizedBox(height: 16),
-        const _FieldLabel(label: 'Blood type'),
-        _WizSelect(
-          value: bloodType,
-          hint: 'Select blood type',
-          icon: Icons.water_drop_outlined,
-          items: const ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'],
-          onChanged: onBloodTypeChanged,
-        ),
-        const SizedBox(height: 16),
-        const _FieldLabel(label: 'Allergies (optional)'),
-        Row(
-          children: [
-            Expanded(
-              child: _WizInput(
-                controller: allergyController,
-                hint: 'e.g. Penicillin',
-                icon: Icons.warning_amber_rounded,
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 44,
-              height: 48,
-              child: Material(
-                color: AfiCareTheme.canopy,
-                borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: onAddAllergy,
-                  child: const Icon(Icons.add, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (allergies.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final allergy in allergies)
-                Chip(
-                  label: Text(allergy),
-                  backgroundColor: const Color(0xFFFFEBEE),
-                  side: const BorderSide(color: Color(0xFFF5C6CB)),
-                  labelStyle: const TextStyle(
-                    color: AfiCareTheme.emergencyRed,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+              PField(
+                label: 'Date of birth',
+                child: TextField(
+                  controller: dobController,
+                  readOnly: true,
+                  onTap: onPickDob,
+                  decoration: pInput(hint: 'DD/MM/YYYY').copyWith(
+                    suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18, color: PT.muted),
                   ),
-                  deleteIcon: const Icon(Icons.close, size: 14, color: AfiCareTheme.emergencyRed),
-                  onDeleted: () => onRemoveAllergy(allergy),
                 ),
+              ),
+              const SizedBox(height: 14),
+              PFormGrid([
+                PField(
+                  label: 'Sex',
+                  child: DropdownButtonFormField<String>(
+                    value: gender,
+                    isExpanded: true,
+                    decoration: pInput(),
+                    hint: Text('Prefer not to say', style: PT.sub()),
+                    items: const [
+                      DropdownMenuItem(value: 'female', child: Text('Female')),
+                      DropdownMenuItem(value: 'male', child: Text('Male')),
+                      DropdownMenuItem(value: 'other', child: Text('Other')),
+                    ],
+                    onChanged: onGenderChanged,
+                  ),
+                ),
+                PField(
+                  label: 'Blood type',
+                  child: DropdownButtonFormField<String>(
+                    value: bloodType,
+                    isExpanded: true,
+                    decoration: pInput(),
+                    hint: Text('If you know it', style: PT.sub()),
+                    items: const [
+                      DropdownMenuItem(value: 'O+', child: Text('O+')),
+                      DropdownMenuItem(value: 'O-', child: Text('O−')),
+                      DropdownMenuItem(value: 'A+', child: Text('A+')),
+                      DropdownMenuItem(value: 'A-', child: Text('A−')),
+                      DropdownMenuItem(value: 'B+', child: Text('B+')),
+                      DropdownMenuItem(value: 'B-', child: Text('B−')),
+                      DropdownMenuItem(value: 'AB+', child: Text('AB+')),
+                      DropdownMenuItem(value: 'AB-', child: Text('AB−')),
+                    ],
+                    onChanged: onBloodTypeChanged,
+                  ),
+                ),
+              ]),
             ],
           ),
-        const SizedBox(height: 16),
-        const _FieldLabel(label: 'Emergency contact name', required: true),
-        _WizInput(
-          controller: emergencyNameController,
-          hint: 'Full name',
-          icon: Icons.person_outline,
         ),
         const SizedBox(height: 16),
-        const _FieldLabel(label: 'Emergency contact phone', required: true),
-        _WizInput(
-          controller: emergencyPhoneController,
-          hint: '712 345 678',
-          icon: Icons.phone_outlined,
+        PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PCardTitle('Anything you react badly to?'),
+              Text(
+                'Medicines, foods, anything. This is the one thing worth getting right — it stops '
+                'you being given something that could harm you.',
+                style: PT.rowSub(),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: allergyController,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => onAddAllergy(),
+                      decoration: pInput(hint: 'e.g. Penicillin'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  PButton('Add', kind: PButtonKind.alt, onPressed: onAddAllergy),
+                ],
+              ),
+              if (allergies.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final a in allergies)
+                      InputChip(
+                        label: Text(a, style: PT.badge().copyWith(color: PT.badgeRedFg)),
+                        backgroundColor: PT.badgeRedBg,
+                        side: BorderSide.none,
+                        deleteIconColor: PT.badgeRedFg,
+                        onDeleted: () => onRemoveAllergy(a),
+                      ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: 12),
+                Text('Nothing added yet — that\'s fine if you don\'t have any.', style: PT.rowSub()),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 24),
-        _PrimaryButton(label: saving ? 'Saving…' : 'Continue', onTap: onContinue, loading: saving),
+        const SizedBox(height: 16),
+        PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PCardTitle('Who should we call?'),
+              Text(
+                'One person we can reach if something happens and you can\'t speak for yourself.',
+                style: PT.rowSub(),
+              ),
+              const SizedBox(height: 14),
+              PField(
+                label: 'Their name',
+                child: TextField(
+                  controller: emergencyNameController,
+                  decoration: pInput(hint: 'e.g. Mary Achieng'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              PField(
+                label: 'Their phone number',
+                child: TextField(
+                  controller: emergencyPhoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: pInput(hint: '+254 712 345 678'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        PButton(saving ? 'Saving…' : 'Continue', expand: true, onPressed: saving ? null : onContinue),
       ],
     );
   }
 }
 
-// ── Step 3: Care setup ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Step 3 — Your care
+// ═══════════════════════════════════════════════════════════════════════
 
-class _CareStep extends StatefulWidget {
-  const _CareStep({
+class _YourCareStep extends StatelessWidget {
+  const _YourCareStep({
     required this.facilities,
     required this.facilityId,
     required this.dependents,
-    required this.depController,
     required this.onFacilityChanged,
     required this.onAddDependent,
     required this.onRemoveDependent,
@@ -885,167 +755,255 @@ class _CareStep extends StatefulWidget {
 
   final List<FacilityModel> facilities;
   final String? facilityId;
-  final List<String> dependents;
-  final TextEditingController depController;
+  final List<_NewDependent> dependents;
   final ValueChanged<String?> onFacilityChanged;
   final VoidCallback onAddDependent;
-  final ValueChanged<String> onRemoveDependent;
+  final ValueChanged<_NewDependent> onRemoveDependent;
   final bool saving;
   final VoidCallback onContinue;
   final VoidCallback onSkip;
 
   @override
-  State<_CareStep> createState() => _CareStepState();
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _StepHead(
+          eyebrow: 'Step two',
+          title: 'Your care',
+          body: 'Where you usually go, and anyone whose health you help look after.',
+        ),
+        PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PCardTitle('Where do you usually go?'),
+              Text(
+                'We\'ll show their appointments and results first. You can still be seen anywhere.',
+                style: PT.rowSub(),
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                value: facilityId,
+                isExpanded: true,
+                decoration: pInput(),
+                hint: Text(
+                  facilities.isEmpty ? 'Loading facilities…' : 'Choose a facility',
+                  style: PT.sub(),
+                ),
+                items: [
+                  for (final f in facilities)
+                    DropdownMenuItem(
+                      value: f.id,
+                      child: Text(f.name, overflow: TextOverflow.ellipsis, style: PT.body()),
+                    ),
+                ],
+                onChanged: facilities.isEmpty ? null : onFacilityChanged,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PCardTitle('Do you look after anyone?'),
+              Text(
+                'A child, a parent, anyone whose care you help manage. They get their own record, '
+                'kept separate from yours, and you can switch between them at any time.',
+                style: PT.rowSub(),
+              ),
+              const SizedBox(height: 14),
+              if (dependents.isEmpty)
+                Text('Nobody added yet.', style: PT.rowSub())
+              else
+                for (final d in dependents)
+                  PRow(
+                    leading: PAvatar(initials: _initials(d.name), size: 38, isDependent: true),
+                    title: d.name,
+                    subtitle: _describe(d),
+                    trailing: [
+                      IconButton(
+                        onPressed: () => onRemoveDependent(d),
+                        icon: const Icon(Icons.close_rounded, size: 18, color: PT.muted),
+                        tooltip: 'Remove ${d.name}',
+                      ),
+                    ],
+                  ),
+              const SizedBox(height: 12),
+              PButton('+ Add someone', kind: PButtonKind.alt, onPressed: onAddDependent),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        PButton(saving ? 'Saving…' : 'Continue', expand: true, onPressed: saving ? null : onContinue),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton(
+            onPressed: onSkip,
+            child: Text('Skip for now', style: PT.body().copyWith(color: PT.muted)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String _describe(_NewDependent d) {
+    final rel = d.relationship.isEmpty
+        ? 'Family'
+        : '${d.relationship[0].toUpperCase()}${d.relationship.substring(1)}';
+    if (d.dob == null) return rel;
+    return '$rel · ${_ageFrom(d.dob!)}';
+  }
+
+  static String _ageFrom(DateTime dob) {
+    final now = DateTime.now();
+    var years = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) years--;
+    if (years < 1) {
+      final months = ((now.difference(dob).inDays) / 30.44).floor();
+      return '$months month${months == 1 ? '' : 's'}';
+    }
+    return '$years year${years == 1 ? '' : 's'}';
+  }
+
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
 }
 
-class _CareStepState extends State<_CareStep> {
-  late final TextEditingController _manualFacilityCtrl;
+/// Collects a dependant's name, relationship and date of birth — the
+/// three things the profile switcher needs to label them properly.
+class _AddDependentForm extends StatefulWidget {
+  const _AddDependentForm({required this.onDone});
+
+  final ValueChanged<_NewDependent> onDone;
 
   @override
-  void initState() {
-    super.initState();
-    _manualFacilityCtrl = TextEditingController(text: widget.facilityId ?? '');
-  }
+  State<_AddDependentForm> createState() => _AddDependentFormState();
+}
+
+class _AddDependentFormState extends State<_AddDependentForm> {
+  final _nameCtrl = TextEditingController();
+  String _relationship = 'child';
+  DateTime? _dob;
 
   @override
   void dispose() {
-    _manualFacilityCtrl.dispose();
+    _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDob() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dob ?? DateTime(now.year - 5, now.month, now.day),
+      firstDate: DateTime(now.year - 120),
+      lastDate: now,
+      helpText: 'Their date of birth',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: PT.teal),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _dob = picked);
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasFacilities = widget.facilities.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _WizHeader(
-          icon: '🏥',
-          title: 'Set up your care',
-          subtitle: 'Optional — you can add this later from your profile.',
-          leftAlign: true,
+        Text(
+          'They get their own record with its own MediLink ID. Nothing of theirs mixes with yours.',
+          style: PT.sub(),
         ),
-        const _FieldLabel(label: 'Usual facility'),
-        if (hasFacilities)
-          DropdownButtonFormField<String>(
-            value: widget.facilityId,
-            isExpanded: true,
-            hint: const Text('Select your facility',
-                style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
-            icon: const Icon(Icons.expand_more, size: 20, color: AfiCareTheme.slate),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.local_hospital_outlined,
-                  size: 18, color: AfiCareTheme.slate),
-              filled: true,
-              fillColor: AfiCareTheme.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AfiCareTheme.line, width: 1.5),
-              ),
-            ),
-            items: widget.facilities
-                .map((f) => DropdownMenuItem(
-                    value: f.id,
-                    child: Text(f.name,
-                        style: const TextStyle(fontSize: 14))))
-                .toList(),
-            onChanged: widget.onFacilityChanged,
-          )
-        else
-          _WizInput(
-            controller: _manualFacilityCtrl,
-            hint: 'e.g. Kenyatta National Hospital',
-            icon: Icons.local_hospital_outlined,
-            onChanged: (_) => widget.onFacilityChanged(_manualFacilityCtrl.text.trim().isEmpty
-                ? null
-                : _manualFacilityCtrl.text.trim()),
-          ),
         const SizedBox(height: 16),
-        const _FieldLabel(label: 'Family members / dependents'),
-        Row(
-          children: [
-            Expanded(
-              child: _WizInput(
-                controller: widget.depController,
-                hint: 'e.g. Baby Amara',
-                icon: Icons.family_restroom_outlined,
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 44,
-              height: 48,
-              child: Material(
-                color: AfiCareTheme.canopy,
-                borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: widget.onAddDependent,
-                  child: const Icon(Icons.add, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-          ],
+        PField(
+          label: 'Their full name',
+          child: TextField(
+            controller: _nameCtrl,
+            autofocus: true,
+            decoration: pInput(hint: 'e.g. Amani Nyarangi'),
+          ),
         ),
-        const SizedBox(height: 10),
-        if (widget.dependents.isNotEmpty)
-          Column(
-            children: [
-              for (final name in widget.dependents)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AfiCareTheme.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AfiCareTheme.line),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline, size: 16, color: AfiCareTheme.slate),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(name, style: const TextStyle(fontSize: 13.5)),
-                      ),
-                      InkWell(
-                        onTap: () => widget.onRemoveDependent(name),
-                        child: const Icon(Icons.close, size: 16, color: AfiCareTheme.slate),
-                      ),
-                    ],
-                  ),
-                ),
+        const SizedBox(height: 14),
+        PField(
+          label: 'Who are they to you?',
+          child: DropdownButtonFormField<String>(
+            value: _relationship,
+            isExpanded: true,
+            decoration: pInput(),
+            items: const [
+              DropdownMenuItem(value: 'child', child: Text('My child')),
+              DropdownMenuItem(value: 'parent', child: Text('My parent')),
+              DropdownMenuItem(value: 'other', child: Text('Someone else I care for')),
             ],
+            onChanged: (v) => setState(() => _relationship = v ?? 'child'),
           ),
-        const SizedBox(height: 24),
-        _PrimaryButton(label: widget.saving ? 'Saving…' : 'Continue', onTap: widget.onContinue, loading: widget.saving),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: widget.onSkip,
-          child: const Text(
-            'Skip for now',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AfiCareTheme.slate,
+        ),
+        const SizedBox(height: 14),
+        PField(
+          label: 'Their date of birth',
+          child: Material(
+            color: PT.white,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: _pickDob,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: PT.line),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today_outlined, size: 17, color: PT.muted),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        _dob == null ? 'Choose a date' : DateFormat('d MMMM yyyy').format(_dob!),
+                        style: _dob == null ? PT.sub() : PT.body(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
+        ),
+        const SizedBox(height: 20),
+        PButton(
+          'Add them',
+          expand: true,
+          onPressed: () {
+            final name = _nameCtrl.text.trim();
+            if (name.isEmpty) {
+              pToast(context, 'Please enter their name');
+              return;
+            }
+            widget.onDone(_NewDependent(name: name, relationship: _relationship, dob: _dob));
+          },
         ),
       ],
     );
   }
 }
 
-// ── Step 4: QR code ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Step 4 — MediLink ID
+// ═══════════════════════════════════════════════════════════════════════
 
-class _QrStep extends StatelessWidget {
-  const _QrStep({
+class _MediLinkStep extends StatelessWidget {
+  const _MediLinkStep({
     required this.fullName,
     required this.medilinkId,
     required this.onFinish,
@@ -1058,89 +1016,52 @@ class _QrStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _WizHeader(
-          icon: '🎉',
+        const _StepHead(
+          eyebrow: 'All set',
           title: 'This is your MediLink ID',
-          subtitle:
-              'Show this to any provider to share your records instantly — no forms, no faxes.',
+          body: 'Show this at any AfiCare facility. Scanning it lets them ask for access — nothing '
+              'is shared until you agree.',
         ),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AfiCareTheme.line),
-          ),
-          child: QrImageView(
-            data: medilinkId,
-            version: QrVersions.auto,
-            size: 190,
-            backgroundColor: Colors.white,
-            eyeStyle: const QrEyeStyle(
-              eyeShape: QrEyeShape.square,
-              color: AfiCareTheme.canopy,
-            ),
-            dataModuleStyle: const QrDataModuleStyle(
-              dataModuleShape: QrDataModuleShape.square,
-              color: AfiCareTheme.canopyDark,
-            ),
+        PCard(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: PT.white,
+                  border: Border.all(color: PT.line),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: QrImageView(
+                  data: medilinkId,
+                  version: QrVersions.auto,
+                  size: 168,
+                  backgroundColor: Colors.white,
+                  eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: PT.navy),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: PT.navy,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(fullName, style: PT.h3()),
+              const SizedBox(height: 4),
+              Text(medilinkId, style: PT.body().copyWith(letterSpacing: 1.5, color: PT.teal)),
+            ],
           ),
         ),
         const SizedBox(height: 16),
-        Text(
-          medilinkId,
-          style: GoogleFonts.ibmPlexMono(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AfiCareTheme.slate,
-          ),
+        const PCallout(
+          title: 'You decide who sees what',
+          body: 'Your records are only shared when you approve it, and you can take that back at '
+              'any time from Share Records.',
         ),
-        const SizedBox(height: 32),
-        _PrimaryButton(label: 'Continue to My Health', onTap: onFinish),
+        const SizedBox(height: 20),
+        PButton('Go to my health space', expand: true, onPressed: onFinish),
       ],
-    );
-  }
-}
-
-// ── Shared button ───────────────────────────────────────────────────────
-
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
-    required this.label,
-    required this.onTap,
-    this.loading = false,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: loading ? null : onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AfiCareTheme.canopy,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          disabledBackgroundColor: AfiCareTheme.canopy.withOpacity(0.6),
-          shape: const StadiumBorder(),
-        ),
-        child: loading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(label, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
-      ),
     );
   }
 }
