@@ -37,6 +37,7 @@ import 'models/user_preferences_model.dart';
 import 'utils/theme.dart';
 import 'utils/router.dart';
 import 'config/supabase_config.dart';
+import 'services/offline_cache.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,7 @@ void main() async {
 
   try {
     await Hive.initFlutter();
+    await OfflineCache.init();
   } catch (e) {
     initError = 'Offline storage init failed: $e';
     debugPrint(initError);

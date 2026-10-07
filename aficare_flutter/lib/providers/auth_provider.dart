@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import '../services/offline_cache.dart';
 import '../utils/router.dart' show updateRouterProfile;
 
 class AuthProvider with ChangeNotifier {
@@ -69,6 +70,9 @@ class AuthProvider with ChangeNotifier {
         if (response != null) {
           _currentUser = UserModel.fromJson(response);
           _error = null;
+          // Keep a copy so the MediLink ID — the thing a facility scans —
+          // is still readable when the phone has no connection.
+          await OfflineCache.save(OfflineCache.userKey(userId), response);
           updateRouterProfile(_currentUser);
           notifyListeners();
           return;
@@ -91,7 +95,24 @@ class AuthProvider with ChangeNotifier {
       }
     }
 
-    // All retries exhausted — row doesn't exist
+    // All retries exhausted. Before giving up, fall back to the saved
+    // copy: being offline should not log someone out of their own
+    // MediLink ID. Anything that needs the server will still fail, and
+    // will say so — but the card they show at a facility still works.
+    final cached = OfflineCache.read(OfflineCache.userKey(userId));
+    final payload = cached?.payload;
+    if (payload is Map) {
+      try {
+        _currentUser = UserModel.fromJson(Map<String, dynamic>.from(payload));
+        _error = null;
+        updateRouterProfile(_currentUser);
+        notifyListeners();
+        return;
+      } catch (e) {
+        debugPrint('auth_provider: cached user row unreadable: $e');
+      }
+    }
+
     _error = _error ?? 'Your profile was not found. Please try logging in again.';
     notifyListeners();
   }
@@ -405,6 +426,10 @@ class AuthProvider with ChangeNotifier {
       debugPrint('Error during Supabase signOut: $e');
     }
     // Always clear local state even if remote signOut fails
+    // — including the offline copy of medications, allergies and blood
+    // type. These devices get shared, and one person's safety details
+    // must not survive into the next person's session.
+    await OfflineCache.clear();
     _currentUser = null;
     _error = null;
     updateRouterProfile(null);

@@ -36,6 +36,7 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
   bool _isLoading = true;
+  bool _loadFailed = false;
   int _tab = 0; // 0 = Upcoming, 1 = Past, 2 = Cancelled
   Map<String, String> _providerNames = {};
   Map<String, String> _facilityNames = {};
@@ -56,7 +57,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (!mounted) return;
     final apt = Provider.of<AppointmentProvider>(context, listen: false);
     final activeId = _activeId;
-    if (activeId.isNotEmpty) await apt.loadAppointments(activeId);
+    var failed = false;
+    if (activeId.isNotEmpty) {
+      await apt.loadAppointments(activeId);
+      // Read immediately: the provider reuses `error` for booking,
+      // cancelling and rescheduling failures too.
+      failed = apt.error != null;
+    }
 
     try {
       final provResp = await Supabase.instance.client
@@ -87,8 +94,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (mounted) {
       final ct = Provider.of<CareTeamProvider>(context, listen: false);
       if (activeId.isNotEmpty) await ct.loadCareTeam(activeId);
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadFailed = failed;
+        });
+      }
     }
+  }
+
+  Future<void> _retry() async {
+    setState(() => _isLoading = true);
+    await _load();
   }
 
   void _refresh() {
@@ -126,6 +143,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           else
             Consumer2<AppointmentProvider, DependentProvider>(
               builder: (context, apt, dep, _) {
+                // Without this, a dropped connection renders as "no
+                // upcoming appointments" — and the patient misses a visit
+                // they had actually booked.
+                if (_loadFailed && apt.appointments.isEmpty) {
+                  return PLoadError(what: 'your appointments', onRetry: _retry);
+                }
                 final now = DateTime.now();
                 final all = apt.appointments;
 

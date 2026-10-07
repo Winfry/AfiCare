@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/adherence_model.dart';
 import '../../providers/adherence_provider.dart';
+import '../../providers/prescription_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../theme/patient_tokens.dart';
@@ -41,11 +42,15 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
     if (!mounted) return;
     final ad = Provider.of<AdherenceProvider>(context, listen: false);
     final id = _patientId;
+    final rx = Provider.of<PrescriptionProvider>(context, listen: false);
     var failed = false;
     if (id.isNotEmpty) {
       await ad.ensureTodayDoses(id);
       await ad.loadToday(id);
       await ad.loadHistory(id, days: 7);
+      // Also the prescription list: doses can't be tracked offline, but
+      // the list of what someone takes is cached and can still be shown.
+      await rx.loadPrescriptions(id);
       // Captured here rather than read from the provider during build:
       // the same `error` field is also set by write failures (marking a
       // dose), which must not be reported as a failure to load.
@@ -91,11 +96,17 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
               child: Center(child: CircularProgressIndicator(color: PT.teal)),
             )
           else
-            Consumer<AdherenceProvider>(
-              builder: (context, ad, _) {
+            Consumer2<AdherenceProvider, PrescriptionProvider>(
+              builder: (context, ad, rx, _) {
                 // A failed load must never render as "no medications yet":
                 // a patient could read that as having nothing to take.
                 if (_loadFailed && ad.todayDoses.isEmpty) {
+                  // If we saved their list before, show that rather than
+                  // an error — this is the whole point of the cache.
+                  final savedAt = rx.fromCacheAt;
+                  if (savedAt != null && rx.prescriptions.isNotEmpty) {
+                    return _offlineList(rx, savedAt);
+                  }
                   return PLoadError(what: 'your medications', onRetry: _retry);
                 }
                 return Column(
@@ -119,6 +130,46 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  // ── Offline ───────────────────────────────────────────────────────────
+
+  /// What we can honestly show with no connection: the medicines on file
+  /// as of the last successful load. Dose tracking is deliberately absent
+  /// — marking a dose taken needs the server, and a tick that silently
+  /// failed to save would be worse than no tick at all.
+  Widget _offlineList(PrescriptionProvider rx, DateTime savedAt) {
+    final active = rx.getActivePrescriptions();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        POfflineBanner(savedAt: savedAt, onRetry: _retry),
+        const SizedBox(height: 16),
+        PCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PCardTitle('Your medicines'),
+              if (active.isEmpty)
+                Text('No active medicines in the saved copy.', style: PT.sub())
+              else
+                for (final p in active)
+                  PRow(
+                    leadingEmoji: '💊',
+                    title: p.medicationName,
+                    subtitle: '${p.dosage} · ${p.frequency}',
+                    extraSubtitle: p.instructions,
+                  ),
+              const SizedBox(height: 12),
+              Text(
+                "Ticking doses off needs a connection — we'll pick that back up once you're online.",
+                style: PT.rowSub(),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

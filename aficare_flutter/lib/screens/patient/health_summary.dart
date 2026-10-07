@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/consultation_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../theme/patient_tokens.dart';
@@ -16,14 +17,43 @@ import 'widgets/patient_ui.dart';
 /// Health Records — the patient's own summary: a derived health score,
 /// their latest visit and vitals, a trend across visits, and the way in
 /// to lab results, prescriptions and visit history.
-class HealthSummary extends StatelessWidget {
+class HealthSummary extends StatefulWidget {
   const HealthSummary({super.key});
+
+  @override
+  State<HealthSummary> createState() => _HealthSummaryState();
+}
+
+class _HealthSummaryState extends State<HealthSummary> {
+  bool _loadFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // The shell loads this data, but the screen needs its own load so it
+    // has something to retry with when that load failed.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final dep = Provider.of<DependentProvider>(context, listen: false);
+    final patient = Provider.of<PatientProvider>(context, listen: false);
+    final id = dep.activePatientId ?? auth.currentUser?.id;
+    if (id == null) return;
+    await patient.loadConsultations(id);
+    // Captured now: `error` is shared with access-code generation.
+    if (mounted) setState(() => _loadFailed = patient.error != null);
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final patient = context.watch<PatientProvider>();
-    final profile = context.watch<PatientProfileProvider>().profile;
+    final profileProvider = context.watch<PatientProfileProvider>();
+    final profile = profileProvider.profile;
+    final safetyFromCacheAt = profileProvider.profileFromCacheAt;
 
     final user = auth.currentUser;
     final consultations = List<ConsultationModel>.from(patient.consultations)
@@ -50,13 +80,23 @@ class HealthSummary extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 50),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           )
+        else if (_loadFailed && consultations.isEmpty && safetyFromCacheAt == null)
+          PLoadError(what: 'your health records', onRetry: _load)
         else ...[
+          // Allergies and blood type below may be the saved copy; say so
+          // rather than let them pass as current.
+          if (safetyFromCacheAt != null) ...[
+            POfflineBanner(savedAt: safetyFromCacheAt, onRetry: _load),
+            const SizedBox(height: 16),
+          ],
           PGrid(
             columns: 3,
             children: [
               _scoreCard(score),
               _recentVisitCard(latest),
-              _allergiesCard(allergies),
+              // `profile == null` means the profile never loaded — which
+              // must not read as "no allergies".
+              _allergiesCard(allergies, known: profile != null),
             ],
           ),
           const SizedBox(height: 16),
@@ -116,14 +156,20 @@ class HealthSummary extends StatelessWidget {
     );
   }
 
-  Widget _allergiesCard(List<String> allergies) {
+  Widget _allergiesCard(List<String> allergies, {required bool known}) {
     return PCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Allergies', style: PT.label()),
           const SizedBox(height: 7),
-          if (allergies.isEmpty) ...[
+          if (!known) ...[
+            // Saying "none recorded" here would be a safety claim we
+            // cannot stand behind — the record simply didn't arrive.
+            Text('Not available', style: PT.h3()),
+            const SizedBox(height: 4),
+            Text("We couldn't load this. Don't rely on it being empty.", style: PT.sub()),
+          ] else if (allergies.isEmpty) ...[
             Text('None recorded', style: PT.h3()),
             const SizedBox(height: 4),
             Text('Add these with your provider so they are on file.', style: PT.sub()),

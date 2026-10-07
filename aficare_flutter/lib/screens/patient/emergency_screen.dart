@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../services/offline_cache.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/snackbar_utils.dart';
 
@@ -30,6 +31,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   final _notesCtrl = TextEditingController();
 
   String? _selectedBloodType;
+  DateTime? _fromCacheAt;
   List<String> _allergies = [];
   final _allergyCtrl = TextEditingController();
 
@@ -40,36 +42,108 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   Future<void> _loadProfile() async {
-    try {
-      final patientId = _supabase.auth.currentUser?.id;
-      if (patientId == null) return;
+    final patientId = _supabase.auth.currentUser?.id;
+    if (patientId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
+    try {
       final data = await _supabase
           .from('emergency_profiles')
           .select()
           .eq('patient_id', patientId)
           .maybeSingle();
 
-      if (data != null && mounted) {
-        setState(() {
-          _profile = data;
-          _selectedBloodType = data['blood_type'] as String?;
-          _allergies = (data['allergies'] as List?)?.cast<String>() ?? [];
-          _contactNameCtrl.text = data['emergency_contact_name'] as String? ?? '';
-          _contactPhoneCtrl.text = data['emergency_contact_phone'] as String? ?? '';
-          _contactRelCtrl.text = data['emergency_contact_relationship'] as String? ?? '';
-          _contact2NameCtrl.text = data['emergency_contact2_name'] as String? ?? '';
-          _contact2PhoneCtrl.text = data['emergency_contact2_phone'] as String? ?? '';
-          _contact2RelCtrl.text = data['emergency_contact2_relationship'] as String? ?? '';
-          _notesCtrl.text = data['notes'] as String? ?? '';
-        });
+      if (data != null) {
+        // Of everything in the app this is the most important thing to
+        // have on the device: blood type and allergies are needed exactly
+        // when there is no time and often no signal.
+        await OfflineCache.save(OfflineCache.emergencyKey(patientId), data);
+        if (mounted) setState(() => _applyProfile(data, fromCacheAt: null));
       }
     } catch (e) {
       debugPrint('Error loading emergency profile: $e');
-      showErrorSnackBar(context, 'Could not load emergency data');
+      // Fall back to the saved copy instead of presenting empty fields —
+      // a blank blood type here is not a neutral default.
+      final cached = OfflineCache.read(OfflineCache.emergencyKey(patientId));
+      final payload = cached?.payload;
+      if (payload is Map && mounted) {
+        setState(() => _applyProfile(
+              Map<String, dynamic>.from(payload),
+              fromCacheAt: cached!.savedAt,
+            ));
+      } else if (mounted) {
+        showErrorSnackBar(context, 'Could not load emergency data');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Styled to match this screen, which has not yet been moved onto the
+  /// patient design tokens.
+  Widget _buildOfflineBanner(DateTime savedAt) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5DF),
+        border: Border.all(color: const Color(0xFFF1DFB9)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 19, color: Color(0xFF8C6A31)),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Showing your saved copy',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF8C6A31)),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'You appear to be offline. These are the details saved on this phone on '
+                  '${_savedAtLabel(savedAt)}. Changes you make now cannot be saved until '
+                  "you're back online.",
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF8C6A31), height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _savedAtLabel(DateTime t) {
+    final now = DateTime.now();
+    final days = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(t.year, t.month, t.day))
+        .inDays;
+    final time = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    if (days == 0) return 'today at $time';
+    if (days == 1) return 'yesterday at $time';
+    return '${t.day}/${t.month}/${t.year}';
+  }
+
+  /// Fills the form from a row, whether it came from the server or the
+  /// on-device copy. Caller is responsible for being inside setState.
+  void _applyProfile(Map<String, dynamic> data, {required DateTime? fromCacheAt}) {
+    _profile = data;
+    _fromCacheAt = fromCacheAt;
+    _selectedBloodType = data['blood_type'] as String?;
+    _allergies = (data['allergies'] as List?)?.cast<String>() ?? [];
+    _contactNameCtrl.text = data['emergency_contact_name'] as String? ?? '';
+    _contactPhoneCtrl.text = data['emergency_contact_phone'] as String? ?? '';
+    _contactRelCtrl.text = data['emergency_contact_relationship'] as String? ?? '';
+    _contact2NameCtrl.text = data['emergency_contact2_name'] as String? ?? '';
+    _contact2PhoneCtrl.text = data['emergency_contact2_phone'] as String? ?? '';
+    _contact2RelCtrl.text = data['emergency_contact2_relationship'] as String? ?? '';
+    _notesCtrl.text = data['notes'] as String? ?? '';
   }
 
   Future<void> _saveProfile() async {
@@ -240,6 +314,13 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Says plainly when the details below are the saved
+                  // copy, so nobody acts on them believing they're current.
+                  if (_fromCacheAt != null) ...[
+                    _buildOfflineBanner(_fromCacheAt!),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Blood Type Card
                   _buildBloodTypeCard(),
                   const SizedBox(height: 16),

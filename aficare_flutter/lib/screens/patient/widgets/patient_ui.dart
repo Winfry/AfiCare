@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../theme/patient_tokens.dart';
 
@@ -797,6 +798,41 @@ class PLoadError extends StatelessWidget {
       tone: PTone.red,
       trailing: PButton('Retry', kind: PButtonKind.alt, dense: true, onPressed: onRetry),
     );
+  }
+}
+
+/// Shown above data that came from the on-device copy because the live
+/// load failed. It must never be silent: showing a saved list as though
+/// it were current is its own kind of lie, just a gentler one.
+class POfflineBanner extends StatelessWidget {
+  const POfflineBanner({super.key, required this.savedAt, this.onRetry});
+
+  final DateTime savedAt;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return PCallout(
+      title: 'Showing your saved copy',
+      body: "You appear to be offline. This is what we last saved on ${_when(savedAt)} — "
+          'anything added since then is not here.',
+      tone: PTone.warn,
+      trailing: onRetry == null
+          ? null
+          : PButton('Retry', kind: PButtonKind.alt, dense: true, onPressed: onRetry),
+    );
+  }
+
+  static String _when(DateTime t) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final that = DateTime(t.year, t.month, t.day);
+    final days = today.difference(that).inDays;
+    final time = DateFormat('HH:mm').format(t);
+    if (days == 0) return 'today at $time';
+    if (days == 1) return 'yesterday at $time';
+    if (days < 7) return '${DateFormat('EEEE').format(t)} at $time';
+    return DateFormat('d MMMM').format(t);
   }
 }
 
