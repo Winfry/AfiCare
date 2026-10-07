@@ -33,6 +33,7 @@ class MessagesScreen extends StatefulWidget {
 
 class _MessagesScreenState extends State<MessagesScreen> {
   bool _isLoading = true;
+  bool _loadFailed = false;
   String _search = '';
   ConversationSummary? _selected;
 
@@ -47,8 +48,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final mp = Provider.of<MessageProvider>(context, listen: false);
     final id = auth.currentUser?.id;
-    if (id != null) await mp.loadConversations(id);
-    if (mounted) setState(() => _isLoading = false);
+    var failed = false;
+    if (id != null) {
+      await mp.loadConversations(id);
+      // Read here, not during build: `error` is shared with send failures.
+      failed = mp.error != null;
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _loadFailed = failed;
+      });
+    }
   }
 
   @override
@@ -104,7 +115,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: convos.isEmpty
+            child: _loadFailed && convos.isEmpty
+                ? PLoadError(what: 'your conversations', onRetry: _load)
+                : convos.isEmpty
                 ? const PEmpty(
                     emoji: '💬',
                     title: 'No messages yet',

@@ -21,6 +21,7 @@ class LabResultsScreen extends StatefulWidget {
 
 class _LabResultsScreenState extends State<LabResultsScreen> {
   bool _isLoading = true;
+  bool _loadFailed = false;
   int _filter = 0; // All, Pending, Completed, Critical
 
   @override
@@ -35,8 +36,22 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
     final dep = Provider.of<DependentProvider>(context, listen: false);
     final lab = Provider.of<LabProvider>(context, listen: false);
     final id = dep.activePatientId ?? auth.currentUser?.id;
-    if (id != null) await lab.loadOrders(id);
-    if (mounted) setState(() => _isLoading = false);
+    var failed = false;
+    if (id != null) {
+      await lab.loadOrders(id);
+      failed = lab.error != null;
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _loadFailed = failed;
+      });
+    }
+  }
+
+  Future<void> _retry() async {
+    setState(() => _isLoading = true);
+    await _load();
   }
 
   List<LabOrderModel> _apply(LabProvider lab) {
@@ -77,6 +92,12 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
               // provider state from inside build.
               final list = List<LabOrderModel>.from(_apply(lab))
                 ..sort((a, b) => _at(b).compareTo(_at(a)));
+
+              // Never say "no lab results" when the request failed — a
+              // patient could take that as a clean bill of health.
+              if (_loadFailed && lab.orders.isEmpty) {
+                return PLoadError(what: 'your lab results', onRetry: _retry);
+              }
 
               if (list.isEmpty) {
                 return PCard(

@@ -30,7 +30,14 @@ import 'widgets/patient_ui.dart';
 /// PWD/Disability) are no longer duplicated here — Home is deliberately
 /// a summary, not a second medical record.
 class PatientHomeScreen extends StatelessWidget {
-  const PatientHomeScreen({super.key});
+  const PatientHomeScreen({super.key, this.loadFailed = false, this.onRetry});
+
+  /// Set by the shell when the data behind this summary didn't load. The
+  /// summary is then suppressed: an empty dashboard after a failed load
+  /// reads as "you have no appointments and nothing to take", which is a
+  /// dangerous thing to tell someone who does.
+  final bool loadFailed;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +112,12 @@ class PatientHomeScreen extends StatelessWidget {
             _AllergyRow(allergies: allergies, lang: lang),
             const SizedBox(height: 16),
           ],
-          if (needsOnboarding)
+          if (loadFailed)
+            PLoadError(
+              what: 'your health summary',
+              onRetry: onRetry ?? () {},
+            )
+          else if (needsOnboarding)
             _FirstRunBody(lang: lang, profileHasStarted: profileHasStarted)
           else
             const _ReturningBody(),

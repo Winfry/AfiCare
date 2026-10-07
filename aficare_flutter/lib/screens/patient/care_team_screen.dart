@@ -20,13 +20,23 @@ class CareTeamScreen extends StatefulWidget {
 }
 
 class _CareTeamScreenState extends State<CareTeamScreen> {
+  bool _loadFailed = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final id = context.read<DependentProvider>().activePatientId;
-      if (id != null && mounted) context.read<CareTeamProvider>().loadCareTeam(id);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    final id = context.read<DependentProvider>().activePatientId;
+    if (id == null) return;
+    final ct = context.read<CareTeamProvider>();
+    await ct.loadCareTeam(id);
+    // Captured now rather than watched during build: the provider reuses
+    // `error` for add/remove failures, which are not load failures.
+    if (mounted) setState(() => _loadFailed = ct.error != null);
   }
 
   @override
@@ -45,6 +55,8 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           )
+        else if (_loadFailed && members.isEmpty)
+          PLoadError(what: 'your care team', onRetry: _load)
         else if (members.isEmpty)
           PCard(
             child: PEmpty(

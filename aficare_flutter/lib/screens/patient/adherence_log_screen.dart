@@ -26,6 +26,7 @@ enum _Cell { taken, partial, due, skipped, missed, none }
 
 class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
   bool _isLoading = true;
+  bool _loadFailed = false;
   int _range = 7; // 7 or 30
 
   @override
@@ -41,8 +42,19 @@ class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
     final dep = Provider.of<DependentProvider>(context, listen: false);
     final ad = Provider.of<AdherenceProvider>(context, listen: false);
     final id = dep.activePatientId ?? auth.currentUser?.id;
-    if (id != null) await ad.loadHistory(id, days: _range);
-    if (mounted) setState(() => _isLoading = false);
+    var failed = false;
+    if (id != null) {
+      await ad.loadHistory(id, days: _range);
+      // Read straight after the load: the provider's `error` is shared
+      // with write failures such as marking a dose.
+      failed = ad.error != null;
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _loadFailed = failed;
+      });
+    }
   }
 
   @override
@@ -68,6 +80,11 @@ class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
         else
           Consumer<AdherenceProvider>(
             builder: (context, ad, _) {
+              // With no history loaded these metrics would read "0%
+              // adherence, 0/0 doses" — a wrong figure, not an empty one.
+              if (_loadFailed && ad.history.isEmpty) {
+                return PLoadError(what: 'your adherence history', onRetry: _load);
+              }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

@@ -776,6 +776,30 @@ class PCallout extends StatelessWidget {
 // Progress — `.progress`
 // ═══════════════════════════════════════════════════════════════════════
 
+/// Shown when a load failed, so that a failed query never masquerades as
+/// an empty record. A patient who is told "no medications yet" when the
+/// request simply didn't arrive may conclude they have nothing to take,
+/// so every screen that can come back empty must be able to say this
+/// instead — and must suppress its empty state while it does.
+class PLoadError extends StatelessWidget {
+  const PLoadError({super.key, required this.what, required this.onRetry});
+
+  /// What could not be loaded, in the patient's own words — e.g.
+  /// "your medications", which reads as "Could not load your medications".
+  final String what;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return PCallout(
+      title: 'Could not load $what',
+      body: "You may be offline. Nothing has been lost — check your connection and try again.",
+      tone: PTone.red,
+      trailing: PButton('Retry', kind: PButtonKind.alt, dense: true, onPressed: onRetry),
+    );
+  }
+}
+
 class PProgress extends StatelessWidget {
   const PProgress(this.value, {super.key, this.color, this.height = 9});
 

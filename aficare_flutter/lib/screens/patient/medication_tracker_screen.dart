@@ -22,6 +22,7 @@ class MedicationTrackerScreen extends StatefulWidget {
 
 class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
   bool _isLoading = true;
+  bool _loadFailed = false;
   int _tab = 0; // 0 = Active, 1 = Past
 
   @override
@@ -40,12 +41,27 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
     if (!mounted) return;
     final ad = Provider.of<AdherenceProvider>(context, listen: false);
     final id = _patientId;
+    var failed = false;
     if (id.isNotEmpty) {
       await ad.ensureTodayDoses(id);
       await ad.loadToday(id);
       await ad.loadHistory(id, days: 7);
+      // Captured here rather than read from the provider during build:
+      // the same `error` field is also set by write failures (marking a
+      // dose), which must not be reported as a failure to load.
+      failed = ad.error != null;
     }
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _loadFailed = failed;
+      });
+    }
+  }
+
+  Future<void> _retry() async {
+    setState(() => _isLoading = true);
+    await _load();
   }
 
   Future<void> _mark(AdherenceLogModel dose, AdherenceStatus status) async {
@@ -77,9 +93,18 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
           else
             Consumer<AdherenceProvider>(
               builder: (context, ad, _) {
+                // A failed load must never render as "no medications yet":
+                // a patient could read that as having nothing to take.
+                if (_loadFailed && ad.todayDoses.isEmpty) {
+                  return PLoadError(what: 'your medications', onRetry: _retry);
+                }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_loadFailed) ...[
+                      PLoadError(what: 'your latest doses', onRetry: _retry),
+                      const SizedBox(height: 16),
+                    ],
                     _todayCard(ad),
                     const SizedBox(height: 16),
                     PTabs(

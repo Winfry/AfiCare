@@ -100,14 +100,17 @@ class PatientShell extends StatefulWidget {
 
 class _PatientShellState extends State<PatientShell> {
   int _tab = 0;
+  bool _loadFailed = false;
 
-  final _screens = const [
-    PatientHomeScreen(),
-    AppointmentsScreen(),
-    MedicationTrackerScreen(),
-    MessagesScreen(),
-    PatientProfileScreen(),
-  ];
+  /// Built per frame rather than held as a const list so Home can be told
+  /// when the shell's own load failed.
+  List<Widget> get _screens => [
+        PatientHomeScreen(loadFailed: _loadFailed, onRetry: _loadAll),
+        const AppointmentsScreen(),
+        const MedicationTrackerScreen(),
+        const MessagesScreen(),
+        const PatientProfileScreen(),
+      ];
 
   @override
   void initState() {
@@ -126,6 +129,7 @@ class _PatientShellState extends State<PatientShell> {
 
     dep.setOwnId(id);
 
+    var failed = false;
     try {
       await Future.wait([
         dep.loadDependents(id),
@@ -134,12 +138,27 @@ class _PatientShellState extends State<PatientShell> {
         Provider.of<PatientProfileProvider>(context, listen: false).loadProfile(id),
         _loadForPatient(dep.activePatientId ?? id),
       ]);
-    } catch (_) {
-      // Non-fatal; screens render their own empty states.
+    } catch (e) {
+      debugPrint('patient_shell: initial load threw: $e');
+      failed = true;
     }
+
+    // The providers catch their own exceptions and return empty lists, so
+    // the catch above almost never fires — their `error` fields are the
+    // real signal. Without this check a dropped connection reaches Home
+    // as a tidy, healthy-looking summary of nothing.
+    if (!failed && mounted) failed = _anyLoadFailed();
+    if (mounted) setState(() => _loadFailed = failed);
 
     _maybeRouteToOnboarding(id);
   }
+
+  /// True when any provider behind Home's summary failed to load.
+  bool _anyLoadFailed() =>
+      Provider.of<AppointmentProvider>(context, listen: false).error != null ||
+      Provider.of<AdherenceProvider>(context, listen: false).error != null ||
+      Provider.of<PrescriptionProvider>(context, listen: false).error != null ||
+      Provider.of<LabProvider>(context, listen: false).error != null;
 
   /// Everything keyed by the *active* patient UUID, so switching to a
   /// dependent actually shows that dependent's data.
@@ -213,6 +232,10 @@ class _PatientShellState extends State<PatientShell> {
     dep.switchTo(patientId);
     setState(() => _tab = 0);
     await _loadForPatient(patientId);
+    // Re-check: switching profile reloads everything Home summarises, so
+    // a failure here has to update the flag too — otherwise switching
+    // while offline lands on an empty dashboard that looks healthy.
+    if (mounted) setState(() => _loadFailed = _anyLoadFailed());
   }
 
   void _openSwitcher({required bool fromTop}) {
