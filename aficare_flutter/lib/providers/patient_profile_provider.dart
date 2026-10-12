@@ -77,11 +77,26 @@ class PatientProfileProvider with ChangeNotifier {
   /// Upsert the patient profile row (insert if absent, update otherwise).
   Future<bool> saveProfile(PatientProfileModel profile) async {
     try {
-      await _supabase.from('patients').upsert(profile.toJson());
-      _profile = profile;
+      // Ask for the stored row back. When row-level security refuses an
+      // upsert's UPDATE half, Postgres reports success with zero rows, so
+      // without this a write that never happened looked identical to one
+      // that did — and a new patient's profile was silently lost.
+      final saved = await _supabase
+          .from('patients')
+          .upsert(profile.toJson())
+          .select()
+          .maybeSingle();
+      if (saved == null) {
+        throw StateError('the server accepted the request but stored nothing');
+      }
+      _profile = PatientProfileModel.fromJson(saved);
+      _profileFromCacheAt = null;
+      _error = null;
+      await OfflineCache.save(OfflineCache.safetyKey(profile.id), _profile!.toJson());
       notifyListeners();
       return true;
     } catch (e) {
+      debugPrint('patient_profile_provider: saveProfile failed: $e');
       _error = e.toString();
       notifyListeners();
       return false;

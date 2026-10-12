@@ -66,7 +66,38 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFacilities());
+    _prefillFromSaved();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadFacilities();
+      _loadSavedIfMissing();
+    });
+  }
+
+  /// Opening /onboarding directly (a page refresh) skips the shell, so
+  /// the profile may not be loaded yet.
+  Future<void> _loadSavedIfMissing() async {
+    final provider = Provider.of<PatientProfileProvider>(context, listen: false);
+    final userId = Provider.of<AuthProvider>(context, listen: false).currentUser?.id;
+    if (provider.profile != null || userId == null) return;
+    await provider.loadProfile(userId);
+    // Only fill an untouched form; never overwrite what is being typed.
+    if (!mounted || _dob != null || _emergencyNameController.text.isNotEmpty) return;
+    setState(_prefillFromSaved);
+  }
+
+  /// Starts the form from whatever is already stored, so a patient who
+  /// left part-way (or reopens this from Home's checklist) never has to
+  /// type their details in a second time.
+  void _prefillFromSaved() {
+    final saved = Provider.of<PatientProfileProvider>(context, listen: false).profile;
+    if (saved == null) return;
+    _dob = saved.dateOfBirth;
+    if (_dob != null) _dobController.text = DateFormat('dd/MM/yyyy').format(_dob!);
+    _gender = saved.gender;
+    _bloodType = saved.bloodType;
+    _allergies.addAll(saved.allergies);
+    _emergencyNameController.text = saved.emergencyContactName ?? '';
+    _emergencyPhoneController.text = saved.emergencyContactPhone ?? '';
   }
 
   Future<void> _loadFacilities() async {
@@ -98,7 +129,8 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
 
   // ── Saving (unchanged behaviour) ──────────────────────────────────────
 
-  Future<void> _saveProfile() async {
+  /// Returns false when nothing was stored; the caller must not move on.
+  Future<bool> _saveProfile() async {
     final provider = Provider.of<PatientProfileProvider>(context, listen: false);
     final existing = provider.profile;
     final profile = PatientProfileModel(
@@ -106,8 +138,9 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
       dateOfBirth: _dob ?? existing?.dateOfBirth,
       gender: _gender ?? existing?.gender,
       bloodType: _bloodType ?? existing?.bloodType,
-      allergies:
-          _allergies.isNotEmpty ? List.of(_allergies) : (existing?.allergies ?? const <String>[]),
+      // The form starts pre-filled from the saved profile, so the list is
+      // authoritative — including a patient removing an allergy.
+      allergies: List.of(_allergies),
       chronicConditions: existing?.chronicConditions ?? const <String>[],
       emergencyContactName: _emergencyNameController.text.trim().isNotEmpty
           ? _emergencyNameController.text.trim()
@@ -118,7 +151,7 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
       address: existing?.address,
       insuranceId: existing?.insuranceId,
     );
-    await provider.saveProfile(profile);
+    return provider.saveProfile(profile);
   }
 
   Future<void> _saveFacilityAndDependents() async {
@@ -183,8 +216,17 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
       return;
     }
     setState(() => _saving = true);
-    await _saveProfile();
+    final ok = await _saveProfile();
     if (!mounted) return;
+    if (!ok) {
+      // Stay on this step with everything still filled in. Moving on
+      // here is what used to make a failed save look like a success.
+      setState(() => _saving = false);
+      final why = Provider.of<PatientProfileProvider>(context, listen: false).error;
+      _showSnack("We couldn't save your details, so please try again."
+          "${why == null ? '' : ' ($why)'}");
+      return;
+    }
     setState(() {
       _saving = false;
       _step = 2;
