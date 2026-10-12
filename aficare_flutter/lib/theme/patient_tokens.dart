@@ -24,6 +24,7 @@ class PT {
   static const Color danger = Color(0xFFBD6256); // coral
   static const Color warn   = Color(0xFFB0751D); // gold
   static const Color white  = Color(0xFFFFFFFF);
+  static const Color gold   = Color(0xFFE5B867); // rail active stripe
 
   // ── Sidebar rail ────────────────────────────────────────────────────
   static const Color railTop    = Color(0xFF1B3850);

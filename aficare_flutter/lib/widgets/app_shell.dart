@@ -47,6 +47,10 @@ class AppShellTheme {
     this.searchRadius,
     this.searchMaxWidth,
     this.bottomNavActiveColor,
+    this.railActiveIndicator,
+    this.topBarColor,
+    this.topBarIconStyle,
+    this.avatarOnlyWhenCollapsed,
   });
 
   final Color? pageBackground;
@@ -69,6 +73,20 @@ class AppShellTheme {
   final double? searchMaxWidth;
 
   final Color? bottomNavActiveColor;
+
+  /// A 3px stripe on the left edge of the selected rail item.
+  final Color? railActiveIndicator;
+
+  final Color? topBarColor;
+
+  /// Applied to the built-in notification button so it matches any
+  /// [AppShell.trailingActions] the role supplies.
+  final ButtonStyle? topBarIconStyle;
+
+  /// Hide the top-bar avatar while the rail is showing (the rail footer
+  /// already carries the account), keeping it on phones where it is the
+  /// only way in.
+  final bool? avatarOnlyWhenCollapsed;
 }
 
 class AppShell extends StatelessWidget {
@@ -94,6 +112,7 @@ class AppShell extends StatelessWidget {
     this.brandMark,
     this.sidebarFooter,
     this.onAvatarTap,
+    this.topBarLeading,
   });
 
   final List<SidebarEntry> sidebarEntries;
@@ -134,17 +153,22 @@ class AppShell extends StatelessWidget {
   /// profile switcher).
   final VoidCallback? onAvatarTap;
 
+  /// Replaces the top bar's search field when given (the patient shell
+  /// shows a breadcrumb there and moves search to an icon button).
+  final Widget? topBarLeading;
+
   @override
   Widget build(BuildContext context) {
     final t = shellTheme;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= (t?.collapseWidth ?? AppBreakpoints.sidebarCollapse);
+        final isWide = constraints.maxWidth >=
+            (t?.collapseWidth ?? AppBreakpoints.sidebarCollapse);
 
         return Scaffold(
-          backgroundColor:
-              t?.pageBackground ?? (isDark ? AppColors.darkScaffold : AppColors.mistBackground),
+          backgroundColor: t?.pageBackground ??
+              (isDark ? AppColors.darkScaffold : AppColors.mistBackground),
           body: Row(
             children: [
               if (isWide)
@@ -173,6 +197,7 @@ class AppShell extends StatelessWidget {
                       onSearch: onSearch,
                       onNotificationTap: onNotificationTap,
                       onAvatarTap: onAvatarTap,
+                      leading: topBarLeading,
                       theme: t,
                     ),
                     Expanded(
@@ -185,7 +210,8 @@ class AppShell extends StatelessWidget {
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: t?.contentMaxWidth ?? 1300),
+                            constraints: BoxConstraints(
+                                maxWidth: t?.contentMaxWidth ?? 1300),
                             child: body,
                           ),
                         ),
@@ -246,7 +272,8 @@ class _Sidebar extends StatelessWidget {
             color: AppColors.deepNavy,
             border: Border(right: BorderSide(color: borderColor)),
           ),
-      padding: theme?.railPadding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
+      padding: theme?.railPadding ??
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -256,7 +283,8 @@ class _Sidebar extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              children: _buildNavTiles(theme?.railGroupStyle == null ? groupLabelColor : null),
+              children: _buildNavTiles(
+                  theme?.railGroupStyle == null ? groupLabelColor : null),
             ),
           ),
           if (footer != null)
@@ -279,6 +307,7 @@ class _Sidebar extends StatelessWidget {
       ),
     );
   }
+
   List<Widget> _buildNavTiles(Color? groupLabelColor) {
     final tiles = <Widget>[];
     var navIndex = -1;
@@ -349,30 +378,41 @@ class _SidebarTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(radius),
           onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               color: selected ? active : Colors.transparent,
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: selected ? Colors.white : muted),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: (baseStyle ?? const TextStyle(fontSize: 14)).copyWith(
-                      fontWeight: selected
-                          ? FontWeight.w600
-                          : (baseStyle?.fontWeight ?? FontWeight.w500),
-                      color: selected ? Colors.white : muted,
+              // A left-only border can't carry a radius in Flutter, so the
+              // stripe is square here and rounded by the ClipRRect above.
+              foregroundDecoration:
+                  selected && theme?.railActiveIndicator != null
+                      ? BoxDecoration(
+                          border: Border(
+                              left: BorderSide(
+                                  color: theme!.railActiveIndicator!,
+                                  width: 3)))
+                      : null,
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: selected ? Colors.white : muted),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          (baseStyle ?? const TextStyle(fontSize: 14)).copyWith(
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : (baseStyle?.fontWeight ?? FontWeight.w500),
+                        color: selected ? Colors.white : muted,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -400,15 +440,26 @@ class _BrandMark extends StatelessWidget {
           ),
           alignment: Alignment.center,
           child: const Text('A',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15)),
         ),
         const SizedBox(width: 10),
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('AfiCare', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5, color: Colors.white)),
+            Text('AfiCare',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    color: Colors.white)),
             Text('MEDILINK',
-                style: TextStyle(fontSize: 9.5, letterSpacing: 1.2, color: Color(0xFFA9B8CC), fontWeight: FontWeight.w500)),
+                style: TextStyle(
+                    fontSize: 9.5,
+                    letterSpacing: 1.2,
+                    color: Color(0xFFA9B8CC),
+                    fontWeight: FontWeight.w500)),
           ],
         ),
       ],
@@ -429,9 +480,11 @@ class _TopBar extends StatelessWidget {
     this.onSearch,
     this.onNotificationTap,
     this.onAvatarTap,
+    this.leading,
     this.theme,
   });
 
+  final Widget? leading;
   final String searchHint;
   final String avatarLabel;
   final Color? avatarColor;
@@ -447,8 +500,10 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
-    final chipBg = theme?.searchFill ?? (isDark ? Colors.white.withOpacity(.07) : AppColors.mistBackground);
+    final borderColor =
+        isDark ? Colors.white.withOpacity(.08) : AppColors.borderSubtle;
+    final chipBg = theme?.searchFill ??
+        (isDark ? Colors.white.withOpacity(.07) : AppColors.mistBackground);
     final mutedColor = isDark ? const Color(0xFFC7D2DC) : AppColors.textMuted;
     final searchRadius = theme?.searchRadius ?? 999;
 
@@ -456,19 +511,25 @@ class _TopBar extends StatelessWidget {
       height: theme?.topBarHeight ?? 66,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkAppBar : Colors.white,
-        border: Border(bottom: theme?.topBarBottomBorder ?? BorderSide(color: borderColor)),
+        color: theme?.topBarColor ??
+            (isDark ? AppColors.darkAppBar : Colors.white),
+        border: Border(
+            bottom:
+                theme?.topBarBottomBorder ?? BorderSide(color: borderColor)),
       ),
       child: Row(
         children: [
-          if (isWide)
+          if (leading != null)
+            Expanded(child: leading!)
+          else if (isWide)
             ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: theme?.searchMaxWidth ?? 420),
+              constraints:
+                  BoxConstraints(maxWidth: theme?.searchMaxWidth ?? 420),
               child: _searchChip(chipBg, mutedColor, searchRadius),
             )
           else
             Expanded(child: _searchChip(chipBg, mutedColor, searchRadius)),
-          const SizedBox(width: 16),
+          if (leading == null) const SizedBox(width: 16),
           ...trailingActions,
           Stack(
             clipBehavior: Clip.none,
@@ -476,10 +537,11 @@ class _TopBar extends StatelessWidget {
               IconButton(
                 onPressed: onNotificationTap ?? () {},
                 icon: const Icon(Icons.notifications_none_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: chipBg,
-                  foregroundColor: mutedColor,
-                ),
+                style: theme?.topBarIconStyle ??
+                    IconButton.styleFrom(
+                      backgroundColor: chipBg,
+                      foregroundColor: mutedColor,
+                    ),
               ),
               if (showNotificationDot)
                 Positioned(
@@ -491,19 +553,23 @@ class _TopBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.emergency,
-                      border: Border.all(color: isDark ? AppColors.darkAppBar : Colors.white, width: 1.5),
+                      border: Border.all(
+                          color: isDark ? AppColors.darkAppBar : Colors.white,
+                          width: 1.5),
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(width: 10),
-          _Avatar(
-            label: avatarLabel,
-            color: avatarColor,
-            photoUrl: avatarPhotoUrl,
-            onTap: onAvatarTap,
-          ),
+          if (!(isWide && (theme?.avatarOnlyWhenCollapsed ?? false))) ...[
+            const SizedBox(width: 10),
+            _Avatar(
+              label: avatarLabel,
+              color: avatarColor,
+              photoUrl: avatarPhotoUrl,
+              onTap: onAvatarTap,
+            ),
+          ],
         ],
       ),
     );
@@ -563,7 +629,10 @@ class _Avatar extends StatelessWidget {
           ? null
           : Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.deepNavy),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                  color: AppColors.deepNavy),
             ),
     );
 
@@ -591,7 +660,8 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = this.activeColor ?? Theme.of(context).colorScheme.primary;
+    final activeColor =
+        this.activeColor ?? Theme.of(context).colorScheme.primary;
     final clampedIndex = selectedIndex < items.length ? selectedIndex : 0;
 
     return Container(
@@ -610,11 +680,16 @@ class _BottomNav extends StatelessWidget {
                   onTap: () => onSelect?.call(i),
                   borderRadius: BorderRadius.circular(10),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(items[i].icon, size: 20, color: i == clampedIndex ? activeColor : AppColors.textMuted),
+                        Icon(items[i].icon,
+                            size: 20,
+                            color: i == clampedIndex
+                                ? activeColor
+                                : AppColors.textMuted),
                         const SizedBox(height: 3),
                         Text(
                           items[i].label,
@@ -624,7 +699,9 @@ class _BottomNav extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w500,
-                            color: i == clampedIndex ? activeColor : AppColors.textMuted,
+                            color: i == clampedIndex
+                                ? activeColor
+                                : AppColors.textMuted,
                           ),
                         ),
                       ],
