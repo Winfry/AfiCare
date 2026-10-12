@@ -4,11 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/active_patient.dart';
 import '../../models/appointment_model.dart';
 import '../../models/lab_model.dart';
 import '../../providers/adherence_provider.dart';
 import '../../providers/appointment_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/lab_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../providers/preferences_provider.dart';
@@ -41,14 +41,18 @@ class PatientHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
     final prefs = context.watch<PreferencesProvider>();
     final profile = context.watch<PatientProfileProvider>().profile;
 
-    final user = auth.currentUser;
+    // Whose space this is. The greeting and the allergy strip used to
+    // come from the account holder regardless of who was selected, so a
+    // guardian viewing their child saw their own name and their own
+    // allergies above their child's figures.
+    final subject = ActivePatient.of(context);
+
     final lang = prefs.prefs?.language ?? 'en';
-    final firstName = (user?.fullName ?? 'there').trim().split(' ').first;
-    final allergies = profile?.allergies ?? const <String>[];
+    final firstName = subject.firstName;
+    final allergies = subject.allergies ?? const <String>[];
 
     final dateStr = DateFormat('EEEE · d MMMM yyyy', lang == 'sw' ? 'sw' : 'en')
         .format(DateTime.now());
@@ -57,8 +61,15 @@ class PatientHomeScreen extends StatelessWidget {
     // allergies are optional there — plenty of people have no allergies —
     // so requiring them here would leave a patient who finished signup
     // stuck on the checklist for good.
-    final needsOnboarding =
-        profile == null || profile.dateOfBirth == null || profile.emergencyContactName == null;
+    //
+    // The checklist is about the account holder's own profile, so it is
+    // never shown while a dependant's record is on screen: prompting a
+    // parent to "complete your health profile" over their child's data
+    // is both confusing and wrong about whose data it means.
+    final needsOnboarding = !subject.isDependent &&
+        (profile == null ||
+            profile.dateOfBirth == null ||
+            profile.emergencyContactName == null);
 
     final profileHasStarted = profile != null &&
         (profile.dateOfBirth != null ||
@@ -73,20 +84,29 @@ class PatientHomeScreen extends StatelessWidget {
       child: PScreen(
         eyebrow: 'Patient',
         title: 'Home',
-        subtitle: 'Your daily health space',
+        subtitle: subject.isDependent
+            ? "${subject.fullName}'s health space"
+            : 'Your daily health space',
         children: [
           PHero(
             chip: dateStr,
-            title: AppStrings.greeting(firstName, lang),
+            // Greeting the guardian by name over a child's figures reads
+            // as though the figures were the guardian's.
+            title: subject.isDependent
+                ? subject.fullName
+                : AppStrings.greeting(firstName, lang),
             // A brand-new account has no activity to summarise, so it gets
             // a welcome instead of a report.
-            body: needsOnboarding
-                ? (lang == 'sw'
-                    ? 'Karibu AfiCare. Hii ndiyo nafasi yako ya afya — bado ni tupu, na hiyo ni sawa.'
-                    : "This is your health space. It's empty for now — as you book visits, collect results and add medicines, they'll gather here.")
-                : (lang == 'sw'
-                    ? 'Karibu tena! Huu hapa ni muhtasari wa afya yako.'
-                    : "Here's what's happening with your health today. Your important care information stays in one place."),
+            body: subject.isDependent
+                ? "You're looking after ${subject.firstName}'s record. Everything below is theirs, "
+                    'kept separate from your own.'
+                : needsOnboarding
+                    ? (lang == 'sw'
+                        ? 'Karibu AfiCare. Hii ndiyo nafasi yako ya afya — bado ni tupu, na hiyo ni sawa.'
+                        : "This is your health space. It's empty for now — as you book visits, collect results and add medicines, they'll gather here.")
+                    : (lang == 'sw'
+                        ? 'Karibu tena! Huu hapa ni muhtasari wa afya yako.'
+                        : "Here's what's happening with your health today. Your important care information stays in one place."),
             trailing: listenText == null
                 ? null
                 : IconButton(

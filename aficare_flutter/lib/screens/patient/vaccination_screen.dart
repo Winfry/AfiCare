@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models/active_patient.dart';
 import '../../theme/app_colors.dart';
 import '../../models/vaccination_model.dart';
 
@@ -15,18 +16,38 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   final _supabase = Supabase.instance.client;
   List<VaccinationRecord> _records = [];
   bool _isLoading = true;
-  String? _dateOfBirthRaw;
+  DateTime? _dateOfBirth;
+
+  /// Whose records are currently loaded, so a profile switch while this
+  /// screen is open reloads instead of leaving the previous person's
+  /// card on screen.
+  String? _loadedFor;
+
+  /// The active patient, re-resolved on every dependency change.
+  ActivePatient get _subject => ActivePatient.of(context);
 
   @override
-  void initState() {
-    super.initState();
-    _loadData();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // `watch` inside ActivePatient.of means this re-runs when the active
+    // profile changes.
+    final subject = _subject;
+    if (subject.id.isNotEmpty && subject.id != _loadedFor) {
+      _loadedFor = subject.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadData(subject);
+      });
+    }
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData(ActivePatient subject) async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final patientId = _supabase.auth.currentUser?.id;
-      if (patientId == null) return;
+      // The active patient, not the account holder: this screen is shown
+      // on a dependant profile, and a child's immunisation card is
+      // exactly what it is for.
+      final patientId = subject.id;
+      if (patientId.isEmpty) return;
 
       // Load records
       final data = await _supabase
@@ -38,17 +59,24 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
           .map((j) => VaccinationRecord.fromJson(j))
           .toList();
 
-      // Try to load DOB for schedule calculation
-      try {
-        final patient = await _supabase
-            .from('patients')
-            .select('date_of_birth')
-            .eq('id', patientId)
-            .maybeSingle();
-        if (patient != null) {
-          _dateOfBirthRaw = patient['date_of_birth'] as String?;
-        }
-      } catch (_) {}
+      // The schedule is age-based, so it needs this patient's own date of
+      // birth. A dependant carries theirs on their profile; only the
+      // account holder needs a lookup.
+      if (subject.dateOfBirth != null) {
+        _dateOfBirth = subject.dateOfBirth;
+      } else if (!subject.isDependent) {
+        try {
+          final patient = await _supabase
+              .from('patients')
+              .select('date_of_birth')
+              .eq('id', patientId)
+              .maybeSingle();
+          final raw = patient?['date_of_birth'] as String?;
+          _dateOfBirth = raw == null ? null : DateTime.tryParse(raw);
+        } catch (_) {}
+      } else {
+        _dateOfBirth = null;
+      }
     } catch (e) {
       debugPrint('Error loading vaccination data: $e');
     } finally {
@@ -57,8 +85,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   }
 
   int get _ageWeeks {
-    if (_dateOfBirthRaw == null) return 0;
-    final dob = DateTime.tryParse(_dateOfBirthRaw!);
+    final dob = _dateOfBirth;
     if (dob == null) return 0;
     return (DateTime.now().difference(dob).inDays / 7).floor();
   }
@@ -94,7 +121,12 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => context.go('/patient'),
             ),
-            title: const Text('Vaccinations', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            // Names the profile, so a parent can tell their own card from
+            // their child's at a glance.
+            title: Text(
+              _subject.isDependent ? "${_subject.firstName}'s vaccinations" : 'Vaccinations',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
             actions: [
               TextButton.icon(
                 onPressed: _showAddRecordSheet,
@@ -365,14 +397,33 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AddVaccinationSheet(onComplete: () => _loadData()),
+      // The id is captured here rather than read inside the sheet, so the
+      // record is filed against the profile the user was actually looking
+      // at when they tapped Add.
+      builder: (_) => _AddVaccinationSheet(
+        patientId: _subject.id,
+        patientName: _subject.isDependent ? _subject.fullName : null,
+        onComplete: () => _loadData(_subject),
+      ),
     );
   }
 }
 
 class _AddVaccinationSheet extends StatefulWidget {
   final VoidCallback onComplete;
-  const _AddVaccinationSheet({required this.onComplete});
+  const _AddVaccinationSheet({
+    required this.patientId,
+    required this.patientName,
+    required this.onComplete,
+  });
+
+  /// Whose card this record belongs to — the active profile, which may be
+  /// a dependant.
+  final String patientId;
+
+  /// Set only when that profile is a dependant, so the sheet can say
+  /// whose card is being added to.
+  final String? patientName;
 
   @override
   State<_AddVaccinationSheet> createState() => _AddVaccinationSheetState();
@@ -413,7 +464,12 @@ class _AddVaccinationSheetState extends State<_AddVaccinationSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Record Vaccination', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                  Text(
+                    widget.patientName == null
+                        ? 'Record Vaccination'
+                        : 'Record for ${widget.patientName}',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                  ),
                   const SizedBox(height: 16),
 
                   // Vaccine selector
@@ -509,8 +565,11 @@ class _AddVaccinationSheetState extends State<_AddVaccinationSheet> {
 
   Future<void> _submit() async {
     setState(() => _isSubmitting = true);
-    final patientId = _supabase.auth.currentUser?.id;
-    if (patientId == null) return;
+    final patientId = widget.patientId;
+    if (patientId.isEmpty) {
+      setState(() => _isSubmitting = false);
+      return;
+    }
 
     try {
       // Find the schedule for this vaccine to set next due date

@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../models/active_patient.dart';
 import '../../models/consultation_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
@@ -49,30 +49,38 @@ class _HealthSummaryState extends State<HealthSummary> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
     final patient = context.watch<PatientProvider>();
     final profileProvider = context.watch<PatientProfileProvider>();
-    final profile = profileProvider.profile;
-    final safetyFromCacheAt = profileProvider.profileFromCacheAt;
 
-    final user = auth.currentUser;
+    // Whose record this is. Everything personal on this screen must come
+    // from here: the consultations below are already scoped to the active
+    // patient, so reading allergies from the account holder's profile —
+    // as this screen used to — blended two people into one chart.
+    final subject = ActivePatient.of(context);
+
+    // The cached-copy notice belongs to the account holder's profile, so
+    // it must not be shown while a dependant's record is on screen.
+    final safetyFromCacheAt =
+        subject.isDependent ? null : profileProvider.profileFromCacheAt;
+
     final consultations = List<ConsultationModel>.from(patient.consultations)
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     final latest = consultations.isEmpty ? null : consultations.first;
     final vitals = latest?.vitalSigns;
     final score = _healthScore(vitals);
-    final allergies = profile?.allergies ?? const <String>[];
 
     return PDetailScaffold(
       eyebrow: 'Records',
       title: 'Health Records',
-      subtitle: 'Your health summary, visits, results and prescriptions.',
+      subtitle: subject.isDependent
+          ? "${subject.fullName}'s summary, visits, results and prescriptions."
+          : 'Your health summary, visits, results and prescriptions.',
       action: PButton(
         'Share summary',
         kind: PButtonKind.alt,
         icon: Icons.ios_share,
-        onPressed: () => _share(user, vitals, score),
+        onPressed: () => _share(subject, vitals, score),
       ),
       children: [
         if (patient.isLoading)
@@ -94,9 +102,7 @@ class _HealthSummaryState extends State<HealthSummary> {
             children: [
               _scoreCard(score),
               _recentVisitCard(latest),
-              // `profile == null` means the profile never loaded — which
-              // must not read as "no allergies".
-              _allergiesCard(allergies, known: profile != null),
+              _allergiesCard(subject),
             ],
           ),
           const SizedBox(height: 16),
@@ -156,14 +162,18 @@ class _HealthSummaryState extends State<HealthSummary> {
     );
   }
 
-  Widget _allergiesCard(List<String> allergies, {required bool known}) {
+  /// Three distinct states, and conflating any two of them is a safety
+  /// problem: we know of none; we could not load them; or this profile
+  /// cannot hold them at all. Only the first may read as "none".
+  Widget _allergiesCard(ActivePatient subject) {
+    final allergies = subject.allergies;
     return PCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Allergies', style: PT.label()),
           const SizedBox(height: 7),
-          if (!known) ...[
+          if (allergies == null) ...[
             // Saying "none recorded" here would be a safety claim we
             // cannot stand behind — the record simply didn't arrive.
             Text('Not available', style: PT.h3()),
@@ -454,11 +464,14 @@ class _HealthSummaryState extends State<HealthSummary> {
     return parts.isEmpty ? 'No vitals recorded' : parts.join(' · ');
   }
 
-  void _share(UserModel? user, VitalSigns? v, int? score) {
+  /// Headed with the *active* patient. Sharing a dependant's vitals under
+  /// the guardian's name and MediLink ID would hand a clinician a
+  /// mislabelled record.
+  void _share(ActivePatient subject, VitalSigns? v, int? score) {
     final sb = StringBuffer();
     sb.writeln('AfiCare MediLink — Health Summary');
-    sb.writeln('Patient: ${user?.fullName ?? 'Unknown'}');
-    sb.writeln('MediLink ID: ${user?.medilinkId ?? 'N/A'}');
+    sb.writeln('Patient: ${subject.fullName.isEmpty ? 'Unknown' : subject.fullName}');
+    sb.writeln('MediLink ID: ${subject.medilinkId ?? 'N/A'}');
     sb.writeln('Date: ${DateFormat('d MMM yyyy').format(DateTime.now())}');
     sb.writeln('');
     sb.writeln('Health Score: ${score?.toString() ?? 'No data'}');

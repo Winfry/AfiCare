@@ -74,14 +74,18 @@ const _navGroups = <String, List<_Dest>>{
     _Dest(icon: Icons.pregnant_woman_outlined, label: 'Maternal Care', route: '/patient/anc', adultOnly: true),
     _Dest(icon: Icons.male_outlined, label: "Men's Health", route: '/patient/mens-health', adultOnly: true),
   ],
+  // All account-level: these show the bill payer's costs, receipts and
+  // cover, which belong to the account holder rather than to whichever
+  // profile is being viewed. Marked adult-only so they do not appear
+  // under a dependant, where they would read as that child's finances.
   'Financial': [
-    _Dest(icon: Icons.credit_card_outlined, label: 'Medication Costs', route: '/patient/medication-costs'),
-    _Dest(icon: Icons.receipt_long_outlined, label: 'Receipts', route: '/patient/receipt-upload'),
-    _Dest(icon: Icons.shield_outlined, label: 'Insurance', route: '/patient/insurance-claims'),
+    _Dest(icon: Icons.credit_card_outlined, label: 'Medication Costs', route: '/patient/medication-costs', adultOnly: true),
+    _Dest(icon: Icons.receipt_long_outlined, label: 'Receipts', route: '/patient/receipt-upload', adultOnly: true),
+    _Dest(icon: Icons.shield_outlined, label: 'Insurance', route: '/patient/insurance-claims', adultOnly: true),
     // Not in the design's sidebar, but the redesign removed the only two
     // links into this screen (Home's old quick actions and the
     // Appointments sidebar card), which would have stranded it.
-    _Dest(icon: Icons.account_balance_wallet_outlined, label: 'Expenses', route: '/patient/expenses'),
+    _Dest(icon: Icons.account_balance_wallet_outlined, label: 'Expenses', route: '/patient/expenses', adultOnly: true),
   ],
   'Access': [
     _Dest(icon: Icons.handshake_outlined, label: 'Caregiver Access', route: '/patient/caregiver-portal', adultOnly: true),

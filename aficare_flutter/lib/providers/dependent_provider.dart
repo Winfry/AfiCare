@@ -82,6 +82,7 @@ class DependentProvider extends ChangeNotifier {
     String? gender,
     required String relationship,
     String? bloodType,
+    List<String>? allergies,
     String? notes,
   }) async {
     try {
@@ -93,6 +94,7 @@ class DependentProvider extends ChangeNotifier {
         'gender': gender,
         'relationship': relationship,
         'blood_type': bloodType,
+        if (allergies != null) 'allergies': allergies,
         'medilink_id': medilinkId,
         'notes': notes,
       });
@@ -113,6 +115,7 @@ class DependentProvider extends ChangeNotifier {
     String? gender,
     String? relationship,
     String? bloodType,
+    List<String>? allergies,
     String? notes,
   }) async {
     try {
@@ -125,6 +128,9 @@ class DependentProvider extends ChangeNotifier {
       if (gender != null) updates['gender'] = gender;
       if (relationship != null) updates['relationship'] = relationship;
       if (bloodType != null) updates['blood_type'] = bloodType;
+      // Passed explicitly so an empty list can clear the list, which a
+      // null-means-skip check would make impossible.
+      if (allergies != null) updates['allergies'] = allergies;
       if (notes != null) updates['notes'] = notes;
 
       await Supabase.instance.client

@@ -218,6 +218,42 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
               _infoChip(Icons.badge_outlined, d.medilinkId ?? 'No ID'),
             ],
           ),
+          // Surfaced on the card itself: an allergy is only useful if it
+          // is seen without opening anything.
+          if (d.allergies.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final a in d.allergies)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0ED),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            size: 12, color: Color(0xFFA14D43)),
+                        const SizedBox(width: 5),
+                        Text(
+                          a,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFA14D43),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -321,9 +357,14 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
   String? _relationship;
   String? _bloodType;
   DateTime? _dob;
+  final _allergies = <String>[];
+  final _allergyController = TextEditingController();
   bool _submitting = false;
 
-  static const _relationships = ['child', 'grandchild', 'sibling', 'other'];
+  // 'parent' matters: a common case is an adult keeping records for an
+  // ageing parent, and leaving it out meant editing such a profile
+  // silently cleared the relationship.
+  static const _relationships = ['child', 'parent', 'grandchild', 'sibling', 'other'];
   static const _genders = ['male', 'female', 'other'];
   static const _bloodTypes = [
     'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'
@@ -339,13 +380,24 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
       _relationship = d.relationship;
       _bloodType = d.bloodType;
       _dob = d.dateOfBirth;
+      _allergies.addAll(d.allergies);
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _allergyController.dispose();
     super.dispose();
+  }
+
+  void _addAllergy() {
+    final value = _allergyController.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      _allergies.add(value);
+      _allergyController.clear();
+    });
   }
 
   Future<void> _submit() async {
@@ -377,6 +429,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
         gender: _gender,
         relationship: _relationship!,
         bloodType: _bloodType,
+        allergies: _allergies,
       );
     } else {
       ok = await dep.updateDependent(
@@ -387,6 +440,8 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
         gender: _gender,
         relationship: _relationship,
         bloodType: _bloodType,
+        // Always sent, so removing the last allergy actually clears it.
+        allergies: _allergies,
       );
     }
 
@@ -556,6 +611,60 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
                   .toList(),
               onChanged: (v) => setState(() => _bloodType = v),
             ),
+            const SizedBox(height: 16),
+
+            // Allergies — kept against this profile rather than the
+            // guardian's, which is the whole point of migration 008.
+            const Text('Allergies',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              'Anything they react badly to — medicines, foods. This is what a '
+              'clinician checks first.',
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _allergyController,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _addAllergy(),
+                    decoration: _fieldDecoration(hintText: 'e.g. Penicillin'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton(
+                  onPressed: _addAllergy,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(64, 52),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Add'),
+                ),
+              ],
+            ),
+            if (_allergies.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final a in _allergies)
+                    InputChip(
+                      label: Text(a),
+                      backgroundColor: const Color(0xFFFFF0ED),
+                      side: BorderSide.none,
+                      deleteIconColor: const Color(0xFFA14D43),
+                      labelStyle: const TextStyle(
+                          color: Color(0xFFA14D43), fontWeight: FontWeight.w700),
+                      onDeleted: () => setState(() => _allergies.remove(a)),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
 
             ElevatedButton.icon(

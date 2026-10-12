@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/referral_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dependent_provider.dart';
 import '../../providers/referral_provider.dart';
 import '../../theme/patient_tokens.dart';
 import 'widgets/patient_ui.dart';
@@ -33,8 +34,11 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
 
   Future<void> _load() async {
     if (!mounted) return;
+    // Referrals are clinical and belong to the person referred, so this
+    // follows the active profile rather than the account holder.
+    final dep = Provider.of<DependentProvider>(context, listen: false);
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final id = auth.currentUser?.id;
+    final id = dep.activePatientId ?? auth.currentUser?.id;
     if (id == null) return;
 
     final provider = Provider.of<ReferralProvider>(context, listen: false);

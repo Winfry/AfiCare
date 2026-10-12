@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models/active_patient.dart';
 import '../../theme/app_colors.dart';
 import '../../models/medication_reminder_model.dart';
 import '../../services/medication_reminder_service.dart';
@@ -13,20 +13,38 @@ class MedicationReminderScreen extends StatefulWidget {
 }
 
 class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
-  final _supabase = Supabase.instance.client;
   final _service = MedicationReminderService();
   List<MedicationReminder> _reminders = [];
   bool _isLoading = true;
+
+  /// Whose reminders are loaded, so switching profile reloads instead of
+  /// leaving the previous person's list on screen.
+  String? _loadedFor;
+
+  ActivePatient get _subject => ActivePatient.of(context);
 
   @override
   void initState() {
     super.initState();
     _service.init();
-    _loadReminders();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final subject = _subject;
+    if (subject.id.isNotEmpty && subject.id != _loadedFor) {
+      _loadedFor = subject.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadReminders();
+      });
+    }
   }
 
   Future<void> _loadReminders() async {
-    final patientId = _supabase.auth.currentUser?.id;
+    // Reminders follow the active profile: a parent setting a reminder
+    // for their child's syrup should not file it against themselves.
+    final patientId = _subject.id.isEmpty ? null : _subject.id;
     if (patientId == null) return;
 
     final reminders = await _service.loadReminders(patientId);
@@ -55,7 +73,12 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => context.go('/patient'),
             ),
-            title: const Text('Medication Reminders', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            title: Text(
+              _subject.isDependent
+                  ? "${_subject.firstName}'s reminders"
+                  : 'Medication Reminders',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
             actions: [
               TextButton.icon(
                 onPressed: () => _showAddSheet(),
@@ -227,7 +250,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   }
 
   void _handleAction(String action, MedicationReminder reminder) async {
-    final patientId = _supabase.auth.currentUser?.id;
+    final patientId = _subject.id.isEmpty ? null : _subject.id;
     if (patientId == null) return;
 
     switch (action) {
@@ -260,7 +283,11 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // Captured here so the reminder is filed against the profile that
+      // was on screen when Add was tapped.
       builder: (_) => _AddReminderSheet(
+        patientId: _subject.id,
+        patientName: _subject.isDependent ? _subject.fullName : null,
         onComplete: () => _loadReminders(),
       ),
     );
@@ -268,15 +295,22 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 }
 
 class _AddReminderSheet extends StatefulWidget {
+  final String patientId;
+
+  /// Set only for a dependant, so the sheet can name whose reminder it is.
+  final String? patientName;
   final VoidCallback onComplete;
-  const _AddReminderSheet({required this.onComplete});
+  const _AddReminderSheet({
+    required this.patientId,
+    required this.patientName,
+    required this.onComplete,
+  });
 
   @override
   State<_AddReminderSheet> createState() => _AddReminderSheetState();
 }
 
 class _AddReminderSheetState extends State<_AddReminderSheet> {
-  final _supabase = Supabase.instance.client;
   final _medNameCtrl = TextEditingController();
   final _dosageCtrl = TextEditingController();
   String _frequency = 'once_daily';
@@ -509,8 +543,8 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
   }
 
   Future<void> _save() async {
-    final patientId = _supabase.auth.currentUser?.id;
-    if (patientId == null) return;
+    final patientId = widget.patientId;
+    if (patientId.isEmpty) return;
 
     setState(() => _isSaving = true);
 

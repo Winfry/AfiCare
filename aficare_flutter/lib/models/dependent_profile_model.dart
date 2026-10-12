@@ -6,6 +6,10 @@ class DependentProfileModel {
   final String? gender; // 'male', 'female', 'other'
   final String relationship; // 'child', 'grandchild', 'sibling', 'other'
   final String? bloodType;
+
+  /// Known allergies for this dependant. An empty list means "none
+  /// recorded" — never a clinical confirmation that they have none.
+  final List<String> allergies;
   final String? medilinkId; // 'ML-DEP-XXXXXX'
   final String? notes;
   final DateTime createdAt;
@@ -18,6 +22,7 @@ class DependentProfileModel {
     this.gender,
     required this.relationship,
     this.bloodType,
+    this.allergies = const [],
     this.medilinkId,
     this.notes,
     required this.createdAt,
@@ -34,6 +39,9 @@ class DependentProfileModel {
       gender: json['gender'] as String?,
       relationship: json['relationship'] as String,
       bloodType: json['blood_type'] as String?,
+      // Tolerates the column being absent on older databases.
+      allergies: (json['allergies'] as List?)?.map((e) => e.toString()).toList() ??
+          const <String>[],
       medilinkId: json['medilink_id'] as String?,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -49,6 +57,7 @@ class DependentProfileModel {
       'gender': gender,
       'relationship': relationship,
       'blood_type': bloodType,
+      'allergies': allergies,
       'medilink_id': medilinkId,
       'notes': notes,
       'created_at': createdAt.toIso8601String(),
@@ -63,6 +72,7 @@ class DependentProfileModel {
     String? gender,
     String? relationship,
     String? bloodType,
+    List<String>? allergies,
     String? medilinkId,
     String? notes,
     DateTime? createdAt,
@@ -75,6 +85,7 @@ class DependentProfileModel {
       gender: gender ?? this.gender,
       relationship: relationship ?? this.relationship,
       bloodType: bloodType ?? this.bloodType,
+      allergies: allergies ?? this.allergies,
       medilinkId: medilinkId ?? this.medilinkId,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,

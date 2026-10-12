@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../models/active_patient.dart';
 import '../../services/offline_cache.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/snackbar_utils.dart';
@@ -35,14 +36,30 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   List<String> _allergies = [];
   final _allergyCtrl = TextEditingController();
 
+  /// Whose emergency details are loaded, so switching profile while this
+  /// screen is open reloads rather than leaving the previous person's
+  /// blood type on screen.
+  String? _loadedFor;
+
+  ActivePatient get _subject => ActivePatient.of(context);
+
   @override
-  void initState() {
-    super.initState();
-    _loadProfile();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final subject = _subject;
+    if (subject.id.isNotEmpty && subject.id != _loadedFor) {
+      _loadedFor = subject.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadProfile();
+      });
+    }
   }
 
   Future<void> _loadProfile() async {
-    final patientId = _supabase.auth.currentUser?.id;
+    // The active profile, not the account holder: a child's blood type
+    // and allergies are precisely what this screen exists to show, and
+    // showing the parent's here could inform the wrong treatment.
+    final patientId = _subject.id.isEmpty ? null : _subject.id;
     if (patientId == null) {
       if (mounted) setState(() => _isLoading = false);
       return;
@@ -147,7 +164,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   Future<void> _saveProfile() async {
-    final patientId = _supabase.auth.currentUser?.id;
+    // Saves against whoever is on screen, matching what was loaded —
+    // otherwise editing a child's details would overwrite the parent's.
+    final patientId = _subject.id.isEmpty ? null : _subject.id;
     if (patientId == null) return;
 
     try {
@@ -289,7 +308,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => context.go('/patient'),
             ),
-            title: const Text('Emergency Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            title: Text(
+              _subject.isDependent
+                  ? "${_subject.firstName}'s emergency profile"
+                  : 'Emergency Profile',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
             actions: [
               // SOS Button
               Padding(

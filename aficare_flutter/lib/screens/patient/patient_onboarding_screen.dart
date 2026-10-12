@@ -32,10 +32,16 @@ class PatientOnboardingScreen extends StatefulWidget {
 
 /// Someone the patient looks after, as captured during signup.
 class _NewDependent {
-  const _NewDependent({required this.name, required this.relationship, this.dob});
+  const _NewDependent({
+    required this.name,
+    required this.relationship,
+    this.dob,
+    this.allergies = const [],
+  });
   final String name;
   final String relationship;
   final DateTime? dob;
+  final List<String> allergies;
 }
 
 class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
@@ -138,6 +144,7 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
         fullName: d.name,
         relationship: d.relationship,
         dateOfBirth: d.dob,
+        allergies: d.allergies,
       );
     }
   }
@@ -889,13 +896,25 @@ class _AddDependentForm extends StatefulWidget {
 
 class _AddDependentFormState extends State<_AddDependentForm> {
   final _nameCtrl = TextEditingController();
+  final _allergyCtrl = TextEditingController();
+  final _allergies = <String>[];
   String _relationship = 'child';
   DateTime? _dob;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _allergyCtrl.dispose();
     super.dispose();
+  }
+
+  void _addAllergy() {
+    final value = _allergyCtrl.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      _allergies.add(value);
+      _allergyCtrl.clear();
+    });
   }
 
   Future<void> _pickDob() async {
@@ -980,6 +999,41 @@ class _AddDependentFormState extends State<_AddDependentForm> {
             ),
           ),
         ),
+        const SizedBox(height: 14),
+        PField(
+          label: 'Anything they react badly to?',
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _allergyCtrl,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _addAllergy(),
+                  decoration: pInput(hint: 'e.g. Penicillin'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              PButton('Add', kind: PButtonKind.alt, onPressed: _addAllergy),
+            ],
+          ),
+        ),
+        if (_allergies.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final a in _allergies)
+                InputChip(
+                  label: Text(a, style: PT.badge().copyWith(color: PT.badgeRedFg)),
+                  backgroundColor: PT.badgeRedBg,
+                  side: BorderSide.none,
+                  deleteIconColor: PT.badgeRedFg,
+                  onDeleted: () => setState(() => _allergies.remove(a)),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 20),
         PButton(
           'Add them',
@@ -990,7 +1044,12 @@ class _AddDependentFormState extends State<_AddDependentForm> {
               pToast(context, 'Please enter their name');
               return;
             }
-            widget.onDone(_NewDependent(name: name, relationship: _relationship, dob: _dob));
+            widget.onDone(_NewDependent(
+              name: name,
+              relationship: _relationship,
+              dob: _dob,
+              allergies: List.of(_allergies),
+            ));
           },
         ),
       ],
