@@ -137,7 +137,11 @@ class _PatientShellState extends State<PatientShell> {
   /// Built per frame rather than held as a const list so Home can be told
   /// when the shell's own load failed.
   List<Widget> get _screens => [
-        PatientHomeScreen(loadFailed: _loadFailed, onRetry: _loadAll),
+        PatientHomeScreen(
+          loadFailed: _loadFailed,
+          onRetry: _loadAll,
+          onOpenTab: (t) => setState(() => _tab = t),
+        ),
         const AppointmentsScreen(),
         const MedicationTrackerScreen(),
         const MessagesScreen(),
