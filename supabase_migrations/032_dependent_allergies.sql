@@ -1,5 +1,5 @@
--- ── Migration 008: Allergies on dependent profiles ──────────────────────────
--- Run after 007_fix_users_rls_recursion.sql
+-- ── Migration 032: Allergies on dependent profiles ──────────────────────────
+-- Run after 031_provisional_provider_verification.sql
 --
 -- WHY
 -- `patients` has carried an allergies array since the beginning, but

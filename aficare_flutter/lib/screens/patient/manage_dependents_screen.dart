@@ -614,7 +614,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             const SizedBox(height: 16),
 
             // Allergies — kept against this profile rather than the
-            // guardian's, which is the whole point of migration 008.
+            // guardian's, which is the whole point of migration 032.
             const Text('Allergies',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),

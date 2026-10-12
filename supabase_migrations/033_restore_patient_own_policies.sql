@@ -1,5 +1,5 @@
--- ── Migration 009: Restore patients' access to their own record ────────────
--- Run after 008_dependent_allergies.sql
+-- ── Migration 033: Restore patients' access to their own record ────────────
+-- Run after 032_dependent_allergies.sql (applied 2026-10-12)
 --
 -- WHY
 -- The live database was found (2026-10-12) to have only two policies on

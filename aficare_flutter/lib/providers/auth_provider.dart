@@ -395,13 +395,13 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _supabase
-          .from('users')
-          .select('email')
-          .eq('medilink_id', medilinkId)
-          .maybeSingle();
-
-      final email = response?['email'] as String?;
+      // Through an RPC rather than a table read: before sign-in the
+      // caller is anonymous, and users must not be readable by anon
+      // (034_close_public_users_read.sql).
+      final email = await _supabase.rpc(
+        'login_email_for_medilink',
+        params: {'p_medilink_id': medilinkId.trim()},
+      ) as String?;
       if (email == null) {
         _error = 'Invalid MediLink ID or password';
         _isLoading = false;

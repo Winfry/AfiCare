@@ -29,7 +29,7 @@ import 'patient_profile_model.dart';
 /// find out" — the record failed to load. Screens must render those two
 /// states differently and must never show null as "none".
 ///
-/// Both profile types can now hold allergies (migration 008 added the
+/// Both profile types can now hold allergies (migration 032 added the
 /// column to `dependent_profiles`); before that, a dependant's allergies
 /// were nowhere, and the guardian's were shown in their place.
 @immutable
@@ -64,7 +64,7 @@ class ActivePatient {
 
   final String? medilinkId;
 
-  /// Every profile can hold allergies since migration 008. Kept as a
+  /// Every profile can hold allergies since migration 032. Kept as a
   /// named concept so screens read by intent rather than by profile type.
   bool get canRecordAllergies => true;
 
