@@ -121,9 +121,22 @@ class PT {
   static bool isMobile(BuildContext c) => MediaQuery.sizeOf(c).width < bpMobile;
   static bool isTablet(BuildContext c) => MediaQuery.sizeOf(c).width < bpTablet;
 
-  // ── Type scale (Figtree — one face across the whole patient app) ─────
-  static TextStyle h1() => GoogleFonts.figtree(fontSize: 30, fontWeight: FontWeight.w700, color: ink, height: 1.2);
-  static TextStyle h2() => GoogleFonts.figtree(fontSize: 28, fontWeight: FontWeight.w700, color: white, height: 1.2);
+  // ── Type scale ──────────────────────────────────────────────────────
+  // Two faces, as in the approved "AfiCare Today" design: Fraunces for
+  // page titles, section headings and big numbers; Figtree for
+  // everything else (card titles, rows, buttons, labels, body).
+
+  /// Fraunces at the design's weight and tracking. Use for display text
+  /// only — never for body copy, rows or buttons.
+  static TextStyle serif({required double fontSize, Color color = ink, double height = 1.15}) =>
+      GoogleFonts.fraunces(
+          fontSize: fontSize, fontWeight: FontWeight.w500, letterSpacing: -.5, color: color, height: height);
+
+  static TextStyle h1() => serif(fontSize: 34, height: 1.13);
+  static TextStyle h2() => serif(fontSize: 30, color: white, height: 1.15);
+
+  /// Section headings between cards (`.sectionhead h2`).
+  static TextStyle section() => serif(fontSize: 23, height: 1.2);
   static TextStyle h3() => GoogleFonts.figtree(fontSize: 16, fontWeight: FontWeight.w700, color: ink);
 
   static TextStyle eyebrow() =>
@@ -134,8 +147,8 @@ class PT {
   static TextStyle rowTitle() => GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.w700, color: ink);
   static TextStyle rowSub() => GoogleFonts.figtree(fontSize: 12.5, color: muted, height: 1.35);
   static TextStyle label() => GoogleFonts.figtree(fontSize: 12, color: muted);
-  static TextStyle metric() => GoogleFonts.figtree(fontSize: 28, fontWeight: FontWeight.w900, color: ink, height: 1.1);
-  static TextStyle score() => GoogleFonts.figtree(fontSize: 46, fontWeight: FontWeight.w900, color: teal, height: 1.05);
+  static TextStyle metric() => serif(fontSize: 30, color: navy, height: 1.05);
+  static TextStyle score() => serif(fontSize: 46, color: navy, height: 1);
   static TextStyle badge() => GoogleFonts.figtree(fontSize: 11, fontWeight: FontWeight.w800);
   static TextStyle button() => GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.w700);
   static TextStyle navItem() => GoogleFonts.figtree(fontSize: 15, color: railText);

@@ -282,7 +282,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       child: Column(
         children: [
           Text('${at.day}',
-              style: PT.h3().copyWith(fontSize: 21, height: 1.1, color: PT.navy)),
+              style: PT.serif(fontSize: 24, height: 1, color: PT.navy)),
           Text(DateFormat('MMM').format(at).toUpperCase(),
               style: PT.rowSub().copyWith(
                   fontSize: 10, fontWeight: FontWeight.w800, color: PT.teal, letterSpacing: .8)),

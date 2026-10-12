@@ -169,7 +169,7 @@ class PHeading extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Expanded(child: Text(text, style: PT.h3())),
+          Expanded(child: Text(text, style: PT.section())),
           if (action != null) action!,
         ],
       ),
@@ -220,7 +220,7 @@ class PHero extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: PT.h2().copyWith(fontSize: PT.isMobile(context) ? 24 : 28),
+                  style: PT.h2().copyWith(fontSize: PT.isMobile(context) ? 29 : 36),
                 ),
               ),
               if (trailing != null) trailing!,
@@ -1239,7 +1239,7 @@ Future<T?> showPModal<T>({
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(title, style: PT.h3().copyWith(fontSize: 20))),
+                  Expanded(child: Text(title, style: PT.serif(fontSize: 24))),
                   Material(
                     color: PT.closeBtnBg,
                     borderRadius: BorderRadius.circular(9),
