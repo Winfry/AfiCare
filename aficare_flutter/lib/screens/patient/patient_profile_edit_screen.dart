@@ -5,6 +5,7 @@ import '../../models/patient_profile_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../utils/theme.dart';
+import 'widgets/patient_ui.dart';
 
 /// B2 — Patient Profile (Edit)
 class PatientProfileEditScreen extends StatefulWidget {
@@ -125,7 +126,8 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      backgroundColor: Colors.transparent,
+      appBar: const PSubPageBar(title: 'Edit profile'),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -145,9 +147,9 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const PLoadingPage()
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
                 Center(
                   child: Column(

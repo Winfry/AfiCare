@@ -70,9 +70,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PScreenHead(
-          eyebrow: 'Your care',
+          eyebrow: 'People who care for you',
           title: 'Messages',
-          subtitle: 'Keep conversations with your care team in one place.',
+          subtitle:
+              'A place to ask questions about your care. For emergencies, seek urgent help rather than waiting for a reply.',
         ),
         Expanded(
           child: _isLoading
@@ -347,6 +348,46 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _paneHeader(),
+            const Divider(height: 1, color: PT.line),
+            Expanded(child: _chatBody(myId)),
+          ],
+        ),
+      );
+    }
+
+    // Pushed on narrow screens. Inside the shell that push lands in the
+    // shell's own navigator, so the sidebar/top bar stay put: no app bar,
+    // just a back button and the name above the thread and input bar.
+    if (PatientShellScope.inShell(context)) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  PButton(
+                    '← Back',
+                    kind: PButtonKind.alt,
+                    dense: true,
+                    onPressed: () => Navigator.maybePop(context),
+                  ),
+                  const SizedBox(width: 14),
+                  _avatar(18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.counterpartName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: PT.section(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Divider(height: 1, color: PT.line),
             Expanded(child: _chatBody(myId)),
           ],

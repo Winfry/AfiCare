@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/medication_cost_model.dart';
 import '../../utils/snackbar_utils.dart';
+import 'widgets/patient_ui.dart';
 
 class MedicationCostScreen extends StatefulWidget {
   const MedicationCostScreen({super.key});
@@ -78,33 +78,17 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.canopy)));
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Medication Costs', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            actions: [
-              TextButton.icon(
-                onPressed: _showAddSheet,
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'What care costs',
+      title: 'Medication costs',
+      subtitle: 'What your medicines cost, so nothing gets lost.',
+      action: PButton('Add a purchase', icon: Icons.add, onPressed: _showAddSheet),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -137,14 +121,13 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: _costCard(_costs[i]),
                 ),
                 childCount: _costs.length,
               ),
             ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -258,6 +241,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
@@ -339,6 +323,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
     final budgetCtrl = TextEditingController(text: _monthlyBudget.toStringAsFixed(0));
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(20),

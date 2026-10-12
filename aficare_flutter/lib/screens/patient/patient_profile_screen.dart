@@ -6,8 +6,9 @@ import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import 'patient_profile_edit_screen.dart';
 import 'patient_settings_screen.dart';
+import 'widgets/patient_ui.dart';
 
-/// Profile tab of the patient bottom-nav shell.
+/// Profile & MediLink ID page, reached from the More page (/patient/profile).
 class PatientProfileScreen extends StatelessWidget {
   const PatientProfileScreen({super.key});
 
@@ -16,11 +17,11 @@ class PatientProfileScreen extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: ListView(
-        children: [
-          const SizedBox(height: 24),
+    return PDetailScaffold(
+      eyebrow: 'Who you are here',
+      title: 'Profile & MediLink ID',
+      subtitle: 'Your details, and the ID that links your care together across facilities.',
+      children: [
           Center(
             child: CircleAvatar(
               radius: 48,
@@ -59,8 +60,7 @@ class PatientProfileScreen extends StatelessWidget {
             },
             color: Colors.red,
           ),
-        ],
-      ),
+      ],
     );
   }
 

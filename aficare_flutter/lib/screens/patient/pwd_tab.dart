@@ -13,6 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/disability_profile.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../utils/theme.dart';
+import 'widgets/patient_ui.dart';
 
 class PwdTab extends StatefulWidget {
   final String patientId;
@@ -102,21 +103,21 @@ class _PwdTabState extends State<PwdTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Reached two ways: as its own page in the patient shell (from More),
+    // and as a tab inside the legacy full dashboard. In the shell the
+    // design's page head replaces the green banner; in the dashboard tab
+    // the banner stays, as that screen has no head of its own.
+    final inShell = PatientShellScope.inShell(context);
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return inShell ? const PLoadingPage() : const Center(child: CircularProgressIndicator());
     }
 
     final recommendations = _hasPwdCondition && !_profile.isEmpty
         ? _engine.getRecommendations(_profile)
         : <PwdRecommendation>[];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 20),
+    final sections = <Widget>[
           _buildToggleCard(),
           if (_hasPwdCondition) ...[
             const SizedBox(height: 16),
@@ -138,6 +139,28 @@ class _PwdTabState extends State<PwdTab> {
           _buildCaregiverSection(),
           const SizedBox(height: 24),
           _buildProviderNoteCard(),
+    ];
+
+    if (inShell) {
+      return PDetailScaffold(
+        eyebrow: 'Care that fits you',
+        title: 'PWD / disability support',
+        subtitle: 'Tell facilities what you need, so they can be ready before you arrive. '
+            'Your information is private and protected.',
+        children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: sections),
+        ],
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 20),
+          ...sections,
         ],
       ),
     );
@@ -1135,6 +1158,7 @@ class _PwdTabState extends State<PwdTab> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

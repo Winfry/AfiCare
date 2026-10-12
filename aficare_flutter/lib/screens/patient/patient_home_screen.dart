@@ -17,13 +17,14 @@ import '../../providers/prescription_provider.dart';
 import '../../services/tts_service.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/app_strings.dart';
-import 'appointments_screen.dart';
-import 'medication_tracker_screen.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
-/// Shell tabs Home can switch to, so links stay inside the shell (and
-/// keep the sidebar) instead of pushing a bare page on top of it.
-const _tabVisits = 1, _tabMeds = 2, _tabMessages = 3;
+// Routes, not pushed pages: every patient route renders inside the
+// shell, so following a link from Today keeps the sidebar on screen.
+const _tabVisits = PatientRoutes.appointments,
+    _tabMeds = PatientRoutes.medications,
+    _tabMessages = PatientRoutes.messages;
 
 /// Patient "Today" — built against the approved "AfiCare Today" design.
 ///
@@ -33,17 +34,7 @@ const _tabVisits = 1, _tabMeds = 2, _tabMessages = 3;
 /// is an existing user and gets the everyday Today page; the checklist
 /// never comes back, whatever else is still empty.
 class PatientHomeScreen extends StatelessWidget {
-  const PatientHomeScreen({super.key, this.loadFailed = false, this.onRetry, this.onOpenTab});
-
-  /// Set by the shell when the data behind this summary didn't load. The
-  /// summary is then suppressed: an empty dashboard after a failed load
-  /// reads as "you have no appointments and nothing to take", which is a
-  /// dangerous thing to tell someone who does.
-  final bool loadFailed;
-  final VoidCallback? onRetry;
-
-  /// Switches the shell to one of its tabs.
-  final ValueChanged<int>? onOpenTab;
+  const PatientHomeScreen({super.key});
 
   /// The essentials signup insists on. Blood type and allergies are
   /// optional there — plenty of people have no allergies — so requiring
@@ -58,6 +49,12 @@ class PatientHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesProvider>();
+    // Set by the shell when the data behind this summary didn't load. The
+    // summary is then suppressed: an empty dashboard after a failed load
+    // reads as "you have no appointments and nothing to take", which is a
+    // dangerous thing to tell someone who does.
+    final shell = PatientShellScope.maybeOf(context);
+    final loadFailed = shell?.loadFailed ?? false;
     final profileProvider = context.watch<PatientProfileProvider>();
 
     // Whose space this is. Greeting and allergies follow the selected
@@ -73,17 +70,7 @@ class PatientHomeScreen extends StatelessWidget {
 
     final ttsEnabled = prefs.prefs?.textToSpeech ?? false;
 
-    void openTab(int tab) {
-      if (onOpenTab != null) {
-        onOpenTab!(tab);
-      } else if (tab == _tabVisits) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const AppointmentsScreen()));
-      } else if (tab == _tabMeds) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const MedicationTrackerScreen()));
-      } else {
-        context.go('/patient/messages');
-      }
-    }
+    void openTab(String route) => context.go(route);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -97,7 +84,7 @@ class PatientHomeScreen extends StatelessWidget {
             ttsEnabled: ttsEnabled,
             showDoses: !loadFailed && !needsSetup,
             onBook: () => openTab(_tabVisits),
-            onRecords: () => context.go('/patient/records'),
+            onRecords: () => context.go(PatientRoutes.records),
             onPlan: () => openTab(_tabMeds),
           ),
           // Allergies are safety information, so they sit directly under
@@ -114,7 +101,7 @@ class PatientHomeScreen extends StatelessWidget {
           if (loadFailed)
             Padding(
               padding: const EdgeInsets.only(top: 25),
-              child: PLoadError(what: 'your health summary', onRetry: onRetry ?? () {}),
+              child: PLoadError(what: 'your health summary', onRetry: shell?.onRetry ?? () {}),
             )
           else if (stillLoading)
             const Padding(
@@ -457,7 +444,7 @@ class _SectionHead extends StatelessWidget {
 class _TodayBody extends StatelessWidget {
   const _TodayBody({required this.openTab});
 
-  final ValueChanged<int> openTab;
+  final ValueChanged<String> openTab;
 
   @override
   Widget build(BuildContext context) {
@@ -836,7 +823,7 @@ class _NextVisitCardState extends State<_NextVisitCard> {
 class _HelpActions extends StatelessWidget {
   const _HelpActions({required this.openTab});
 
-  final ValueChanged<int> openTab;
+  final ValueChanged<String> openTab;
 
   @override
   Widget build(BuildContext context) {
@@ -1025,20 +1012,14 @@ class _FirstRunBody extends StatelessWidget {
         subtitle: AppStrings.checklistAppointmentSub(lang),
         done: hasAppointments,
         actionLabel: AppStrings.btnBookNow(lang),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
-        ),
+        onTap: () => context.go(PatientRoutes.appointments),
       ),
       _Step(
         title: AppStrings.checklistMedication(lang),
         subtitle: AppStrings.checklistMedicationSub(lang),
         done: hasMedications,
         actionLabel: AppStrings.btnAddNow(lang),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const MedicationTrackerScreen()),
-        ),
+        onTap: () => context.go(PatientRoutes.medications),
       ),
       _Step(
         title: AppStrings.checklistSharing(lang),

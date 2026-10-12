@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_colors.dart';
+import 'widgets/patient_ui.dart';
 
 class AccessibilitySettingsScreen extends StatefulWidget {
   const AccessibilitySettingsScreen({super.key});
@@ -41,26 +41,16 @@ class _AccessibilitySettingsScreenState extends State<AccessibilitySettingsScree
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.canopy)));
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Accessibility', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
+    return PSliverPage(
+      eyebrow: 'Care that fits you',
+      title: 'Accessibility',
+      subtitle: 'Make AfiCare easier to see, hear and use — on every screen.',
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -185,8 +175,7 @@ class _AccessibilitySettingsScreenState extends State<AccessibilitySettingsScree
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../theme/patient_tokens.dart';
+import '../patient_nav.dart';
 
 /// The patient app's shared visual vocabulary, transcribed from
 /// `docs/patient_prototype.html`. Every widget here maps to one class in
@@ -99,10 +101,85 @@ class PScreenHead extends StatelessWidget {
   }
 }
 
-/// The outer chrome every pushed patient screen shares: page ground, a
-/// minimal back bar, centred max-width column, and a [PScreen] head.
-/// Replaces the hand-rolled `Scaffold` → `CustomScrollView` →
-/// `SliverAppBar` block that was copy-pasted across ~9 screens.
+/// Marks everything below it as rendered inside the patient shell (the
+/// sidebar, top bar and bottom bar are already on screen), and carries
+/// the shell's load state down to the pages.
+class PatientShellScope extends InheritedWidget {
+  const PatientShellScope({
+    super.key,
+    required this.loadFailed,
+    required this.onRetry,
+    required super.child,
+  });
+
+  /// True when the shell's initial load of the patient's data failed.
+  final bool loadFailed;
+  final VoidCallback onRetry;
+
+  static PatientShellScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PatientShellScope>();
+
+  static bool inShell(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<PatientShellScope>() != null;
+
+  @override
+  bool updateShouldNotify(PatientShellScope old) => old.loadFailed != loadFailed;
+}
+
+/// The design's `.backlink`: "← Back to More of AfiCare" at the foot of a
+/// page reached from the More page.
+///
+/// A page pushed on top of another (a detail view opened with
+/// Navigator.push) gets a plain "← Back" that returns to it instead. A
+/// sidebar destination gets nothing — the sidebar is the way out.
+class PBackLink extends StatelessWidget {
+  const PBackLink({super.key, this.onBack});
+
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final route = ModalRoute.of(context);
+    // GoRouter pages carry a Page as their settings; anything else was
+    // pushed imperatively over a page and should simply pop.
+    final pushed = route != null && route.settings is! Page && Navigator.of(context).canPop();
+
+    final String label;
+    final VoidCallback action;
+    if (onBack != null) {
+      label = '← Back';
+      action = onBack!;
+    } else if (pushed) {
+      label = '← Back';
+      action = () => Navigator.of(context).pop();
+    } else {
+      final String location;
+      try {
+        location = GoRouterState.of(context).uri.path;
+      } catch (_) {
+        return const SizedBox.shrink();
+      }
+      if (isPatientSidebarRoute(location)) return const SizedBox.shrink();
+      label = '← Back to More of AfiCare';
+      action = () => context.go(PatientRoutes.more);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 26),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PButton(label, kind: PButtonKind.alt, onPressed: action),
+      ),
+    );
+  }
+}
+
+/// The chrome every patient page shares.
+///
+/// Inside the shell (the normal case) it is just the page: the design's
+/// eyebrow/title/subtitle head, the content and a [PBackLink]. Outside it
+/// — a page opened on its own, which should now be rare — it adds the
+/// page ground and a minimal back bar so the page is never a dead end.
 class PDetailScaffold extends StatelessWidget {
   const PDetailScaffold({
     super.key,
@@ -125,35 +202,196 @@ class PDetailScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final page = PScreen(
+      eyebrow: eyebrow,
+      title: title,
+      subtitle: subtitle,
+      action: action,
+      children: [...children, PBackLink(onBack: onBack)],
+    );
+
+    if (PatientShellScope.inShell(context)) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: floatingActionButton,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 40),
+          child: page,
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: PT.page,
       floatingActionButton: floatingActionButton,
-      appBar: AppBar(
-        backgroundColor: PT.page,
-        surfaceTintColor: PT.page,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
-          onPressed: onBack ?? () => Navigator.maybePop(context),
-        ),
-      ),
+      appBar: _standaloneBar(context, onBack),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 60),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: PT.maxContentWidth),
-            child: PScreen(
-              eyebrow: eyebrow,
-              title: title,
-              subtitle: subtitle,
-              action: action,
-              children: children,
-            ),
+            child: page,
           ),
         ),
       ),
     );
   }
+}
+
+/// [PDetailScaffold] for pages built from slivers (long lists, pinned
+/// sections). Same head, same back link, same shell awareness.
+class PSliverPage extends StatelessWidget {
+  const PSliverPage({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    this.subtitle,
+    this.action,
+    required this.slivers,
+    this.onBack,
+    this.floatingActionButton,
+    this.controller,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+  final List<Widget> slivers;
+  final VoidCallback? onBack;
+  final Widget? floatingActionButton;
+  final ScrollController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final inShell = PatientShellScope.inShell(context);
+    final scroll = CustomScrollView(
+      controller: controller,
+      slivers: [
+        SliverToBoxAdapter(
+          child: PScreenHead(eyebrow: eyebrow, title: title, subtitle: subtitle, action: action),
+        ),
+        ...slivers,
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 40),
+            child: PBackLink(onBack: onBack),
+          ),
+        ),
+      ],
+    );
+
+    if (inShell) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: floatingActionButton,
+        body: scroll,
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: PT.page,
+      floatingActionButton: floatingActionButton,
+      appBar: _standaloneBar(context, onBack),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: PT.maxContentWidth),
+            child: scroll,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Header for a sub-page whose body is its own scrolling list (a form,
+/// a settings list, a detail view opened from another page): a back arrow
+/// and the title in the design's serif, on the page ground rather than a
+/// coloured app bar. Use as a Scaffold's `appBar:` with a transparent
+/// Scaffold so it sits inside the shell's content area.
+class PSubPageBar extends StatelessWidget implements PreferredSizeWidget {
+  const PSubPageBar({super.key, required this.title, this.onBack, this.actions = const []});
+
+  final String title;
+
+  /// Defaults to popping back to the page this was opened from, or to the
+  /// More page when there is nothing to pop (a deep link or a refresh).
+  final VoidCallback? onBack;
+  final List<Widget> actions;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(64);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Back',
+            onPressed: onBack ??
+                () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go(PatientRoutes.more);
+                  }
+                },
+            icon: const Icon(Icons.arrow_back_rounded, size: 20),
+            style: IconButton.styleFrom(
+              fixedSize: const Size(42, 42),
+              backgroundColor: PT.white,
+              foregroundColor: PT.teal,
+              side: const BorderSide(color: PT.line),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(title, style: PT.serif(fontSize: 27), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          ...actions,
+        ],
+      ),
+    );
+  }
+}
+
+/// A patient page that is still loading. Inside the shell that is just a
+/// spinner where the page will be; on its own it also paints the ground.
+class PLoadingPage extends StatelessWidget {
+  const PLoadingPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const spinner = Center(child: CircularProgressIndicator(color: PT.teal));
+    if (PatientShellScope.inShell(context)) return spinner;
+    return const Scaffold(backgroundColor: PT.page, body: spinner);
+  }
+}
+
+/// Minimal back bar for a page shown outside the shell. Falls back to
+/// Today when there is nothing to pop to (a deep link or a refresh).
+PreferredSizeWidget _standaloneBar(BuildContext context, VoidCallback? onBack) {
+  return AppBar(
+    backgroundColor: PT.page,
+    surfaceTintColor: PT.page,
+    elevation: 0,
+    leading: IconButton(
+      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
+      onPressed: onBack ??
+          () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              context.go(PatientRoutes.today);
+            }
+          },
+    ),
+  );
 }
 
 /// Plain section heading used above a list inside a screen (not a card).

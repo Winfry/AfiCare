@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/receipt_model.dart';
+import 'widgets/patient_ui.dart';
 
 class ReceiptUploadScreen extends StatefulWidget {
   const ReceiptUploadScreen({super.key});
@@ -54,28 +54,18 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.canopy)));
-    }
+    if (_isLoading) return const PLoadingPage();
 
     final totalSpent = _receipts.fold<double>(0, (s, r) => s + (r.totalAmount ?? 0));
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Receipts & Expenses', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
+    return PSliverPage(
+      eyebrow: 'What care costs',
+      title: 'Receipts',
+      subtitle: 'Keep every receipt together, ready for a claim.',
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -133,8 +123,7 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -254,6 +243,7 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(

@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/appointment_model.dart';
 import '../../providers/appointment_provider.dart';
 import '../../utils/snackbar_utils.dart';
+import 'widgets/patient_ui.dart';
 
 /// B7 — Appointment Detail
 class AppointmentDetailScreen extends StatefulWidget {
@@ -85,32 +86,12 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         a.status != AppointmentStatus.completed;
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 12, 12, 0),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Appointment Detail',
-                style: GoogleFonts.fraunces(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      backgroundColor: Colors.transparent,
+      appBar: const PSubPageBar(title: 'Appointment detail'),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const PLoadingPage()
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),

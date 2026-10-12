@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
 import '../../models/drug_interaction_model.dart';
+import 'widgets/patient_ui.dart';
 
 class DrugInteractionScreen extends StatefulWidget {
   final List<String> currentMedications;
@@ -66,22 +66,14 @@ class _DrugInteractionScreenState extends State<DrugInteractionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Drug Interaction Checker', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
+    return PSliverPage(
+      eyebrow: 'Before you take it',
+      title: 'Medicine checker',
+      subtitle: "A quick reference for common interactions. It doesn't replace your pharmacist.",
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -201,8 +193,7 @@ class _DrugInteractionScreenState extends State<DrugInteractionScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 

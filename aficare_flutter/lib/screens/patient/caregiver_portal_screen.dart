@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/caregiver_model.dart';
+import 'widgets/patient_ui.dart';
 
 class CaregiverPortalScreen extends StatefulWidget {
   const CaregiverPortalScreen({super.key});
@@ -52,33 +52,17 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.canopy)));
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Caregiver Access', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            actions: [
-              TextButton.icon(
-                onPressed: _showGrantAccessSheet,
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Grant', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'Shared, on your terms',
+      title: 'Caregiver access',
+      subtitle: 'Let someone you trust see part of your record — and change your mind whenever you like.',
+      action: PButton('Grant access', icon: Icons.add, onPressed: _showGrantAccessSheet),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -114,8 +98,7 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -189,6 +172,7 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Container(

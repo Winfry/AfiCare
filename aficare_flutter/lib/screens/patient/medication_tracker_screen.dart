@@ -85,9 +85,9 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PScreenHead(
-            eyebrow: 'Clinical',
-            title: 'Medications',
-            subtitle: 'Know what you take, when you take it, and what needs attention.',
+            eyebrow: 'Your care',
+            title: 'Medication plan',
+            subtitle: 'No judgement, just a clear view of what’s due and what you’ve already taken.',
             action: PButton('+ Add', onPressed: _openAddMedication),
           ),
           if (_isLoading)

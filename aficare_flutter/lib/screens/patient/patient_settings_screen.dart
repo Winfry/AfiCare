@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../services/tts_service.dart';
 import '../../utils/theme.dart';
+import 'widgets/patient_ui.dart';
 
 /// B20 — Settings (Patient)
 class PatientSettingsScreen extends StatefulWidget {
@@ -41,15 +42,16 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      backgroundColor: Colors.transparent,
+      appBar: const PSubPageBar(title: 'Settings'),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const PLoadingPage()
           : Consumer<PreferencesProvider>(
               builder: (context, pp, _) {
                 final prefs = pp.prefs ??
                     UserPreferencesModel(userId: '');
                 return ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   children: [
                     _sectionLabel('APPEARANCE'),
                     _card(
@@ -327,6 +329,7 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
   void _pickLanguage(UserPreferencesModel prefs) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       builder: (_) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [

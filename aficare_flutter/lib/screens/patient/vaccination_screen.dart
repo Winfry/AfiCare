@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/active_patient.dart';
 import '../../theme/app_colors.dart';
 import '../../models/vaccination_model.dart';
+import 'widgets/patient_ui.dart';
 
 class VaccinationScreen extends StatefulWidget {
   const VaccinationScreen({super.key});
@@ -104,40 +104,19 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.canopy)),
-      );
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            // Names the profile, so a parent can tell their own card from
-            // their child's at a glance.
-            title: Text(
-              _subject.isDependent ? "${_subject.firstName}'s vaccinations" : 'Vaccinations',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            actions: [
-              TextButton.icon(
-                onPressed: _showAddRecordSheet,
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'Staying protected',
+      // Names the profile, so a parent can tell their own card from
+      // their child's at a glance.
+      title: _subject.isDependent ? "${_subject.firstName}'s vaccinations" : 'Vaccinations',
+      subtitle: "What's been given, and what's due — checked against Kenya's national schedule.",
+      action: PButton('Add a record', icon: Icons.add, onPressed: _showAddRecordSheet),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -175,8 +154,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -395,6 +373,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   void _showAddRecordSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       // The id is captured here rather than read inside the sheet, so the

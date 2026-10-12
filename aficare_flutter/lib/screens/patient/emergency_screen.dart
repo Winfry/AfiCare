@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/active_patient.dart';
 import '../../services/offline_cache.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/snackbar_utils.dart';
+import 'widgets/patient_ui.dart';
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
@@ -291,50 +291,21 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.canopy)),
-      );
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: Text(
-              _subject.isDependent
-                  ? "${_subject.firstName}'s emergency profile"
-                  : 'Emergency Profile',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            actions: [
-              // SOS Button
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ElevatedButton.icon(
-                  onPressed: _showSOSDialog,
-                  icon: const Icon(Icons.warning_rounded, size: 18),
-                  label: const Text('SOS'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'When minutes matter',
+      title: _subject.isDependent
+          ? "${_subject.firstName}'s emergency profile"
+          : 'Emergency support',
+      subtitle: _subject.isDependent
+          ? 'The things a stranger would need to know about ${_subject.firstName}, ready in one tap.'
+          : 'The things a stranger would need to know about you, ready in one tap.',
+      action: PButton('SOS', icon: Icons.warning_rounded, kind: PButtonKind.red, onPressed: _showSOSDialog),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -380,8 +351,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 

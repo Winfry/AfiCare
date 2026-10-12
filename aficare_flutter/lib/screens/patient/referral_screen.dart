@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -69,7 +68,6 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
       eyebrow: 'Clinical',
       title: 'Referrals',
       subtitle: 'Follow referrals from request to facility response.',
-      onBack: () => context.go('/patient'),
       children: [
         const PCallout(
           body: 'Referrals are sent by your healthcare provider to a higher-level facility — '

@@ -19,135 +19,27 @@ import '../../providers/care_team_provider.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../widgets/app_shell.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
-import 'patient_home_screen.dart';
-import 'appointments_screen.dart';
-import 'medication_tracker_screen.dart';
-import 'messages_screen.dart';
-import 'patient_profile_screen.dart';
-import 'manage_dependents_screen.dart';
 
-/// Where a patient nav entry goes. Either an [IndexedStack] tab (kept in
-/// the shell so its state survives navigation) or a pushed route.
-class _Dest {
-  const _Dest({
-    required this.icon,
-    required this.label,
-    this.tab,
-    this.route,
-    this.adultOnly = false,
-    this.phoneOnly = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final int? tab;
-  final String? route;
-
-  /// Hidden while a guardian is viewing a child's profile (the spec's
-  /// `data-adult`): these sections are meaningless for a dependent.
-  final bool adultOnly;
-
-  /// Listed on the More page only on phones, where it has no sidebar slot.
-  final bool phoneOnly;
-}
-
-/// Tab indices for the shell's [IndexedStack].
-const _tToday = 0, _tVisits = 1, _tMeds = 2, _tMessages = 3, _tProfile = 4, _tMore = 5;
-
-/// The sidebar, exactly as in the approved "AfiCare Today" design: four
-/// everyday destinations and two for people and support. Everything else
-/// lives on the "More of AfiCare" page ([_moreGroups]) rather than in a
-/// 25-item rail.
-const _sidebarGroups = <String, List<_Dest>>{
-  'Your care': [
-    _Dest(icon: Icons.home_outlined, label: 'Today', tab: _tToday),
-    _Dest(icon: Icons.calendar_today_outlined, label: 'Appointments', tab: _tVisits),
-    _Dest(icon: Icons.medication_outlined, label: 'Medications', tab: _tMeds),
-    _Dest(icon: Icons.description_outlined, label: 'Health records', route: '/patient/records'),
-  ],
-  'People & support': [
-    _Dest(icon: Icons.chat_bubble_outline, label: 'Messages', tab: _tMessages),
-    _Dest(icon: Icons.grid_view_rounded, label: 'More of AfiCare', tab: _tMore),
-  ],
-};
-
-/// The "More of AfiCare" page. Every screen that is not in the sidebar
-/// must be listed here, or it has no way in.
-const _moreGroups = <String, List<_Dest>>{
-  // Health records and Messages are in the sidebar on wide screens; the
-  // phone's bottom bar has no room for them, so they are repeated here.
-  'Your record': [
-    _Dest(icon: Icons.description_outlined, label: 'Health records', route: '/patient/records', phoneOnly: true),
-    _Dest(icon: Icons.chat_bubble_outline, label: 'Messages', tab: _tMessages, phoneOnly: true),
-    _Dest(icon: Icons.science_outlined, label: 'Lab results', route: '/patient/labs'),
-    _Dest(icon: Icons.check_circle_outline, label: 'Adherence log', route: '/patient/adherence'),
-    _Dest(icon: Icons.groups_2_outlined, label: 'Care team', route: '/patient/care-team'),
-    _Dest(icon: Icons.north_east, label: 'Referrals', route: '/patient/referrals'),
-    _Dest(icon: Icons.ios_share, label: 'Share my records', route: '/patient/share'),
-  ],
-  'Health & wellbeing': [
-    _Dest(icon: Icons.emergency_outlined, label: 'Emergency support', route: '/patient/emergency'),
-    _Dest(icon: Icons.psychology_outlined, label: 'Mental wellbeing', route: '/patient/mental-health', adultOnly: true),
-    _Dest(icon: Icons.vaccines_outlined, label: 'Vaccinations', route: '/patient/vaccinations'),
-    _Dest(icon: Icons.alarm_outlined, label: 'Medicine reminders', route: '/patient/medication-reminders'),
-    _Dest(icon: Icons.manage_search, label: 'Medicine checker', route: '/patient/drug-interactions'),
-    _Dest(icon: Icons.pregnant_woman_outlined, label: 'Maternal care', route: '/patient/anc', adultOnly: true),
-    _Dest(icon: Icons.male_outlined, label: "Men's health", route: '/patient/mens-health', adultOnly: true),
-  ],
-  'Support & access': [
-    _Dest(icon: Icons.accessible, label: 'PWD / disability support', route: '/patient/pwd'),
-    _Dest(icon: Icons.accessibility_new_outlined, label: 'Accessibility', route: '/patient/accessibility'),
-    _Dest(icon: Icons.handshake_outlined, label: 'Caregiver access', route: '/patient/caregiver-portal', adultOnly: true),
-    _Dest(icon: Icons.person_outline, label: 'Profile & MediLink ID', tab: _tProfile),
-  ],
-  // All account-level: these show the bill payer's costs, receipts and
-  // cover, which belong to the account holder rather than to whichever
-  // profile is being viewed. Marked adult-only so they do not appear
-  // under a dependant, where they would read as that child's finances.
-  'Costs & cover': [
-    _Dest(icon: Icons.credit_card_outlined, label: 'Medication costs', route: '/patient/medication-costs', adultOnly: true),
-    _Dest(icon: Icons.receipt_long_outlined, label: 'Receipts', route: '/patient/receipt-upload', adultOnly: true),
-    _Dest(icon: Icons.shield_outlined, label: 'Insurance claims', route: '/patient/insurance-claims', adultOnly: true),
-    _Dest(icon: Icons.account_balance_wallet_outlined, label: 'Expenses', route: '/patient/expenses', adultOnly: true),
-  ],
-};
-
-/// Breadcrumb label for each tab.
-const _tabTitles = {
-  _tToday: 'Today',
-  _tVisits: 'Appointments',
-  _tMeds: 'Medications',
-  _tMessages: 'Messages',
-  _tProfile: 'Profile & MediLink ID',
-  _tMore: 'More of AfiCare',
-};
-
+/// The patient app's frame: sidebar, top bar, phone bottom bar and the
+/// guardian banner, around whichever patient page is open.
+///
+/// Built by the `/patient` ShellRoute, so [child] is the routed page and
+/// [location] its path. The shell's State lives as long as the patient is
+/// in the app, so its data load runs once, not once per page.
 class PatientShell extends StatefulWidget {
-  const PatientShell({super.key});
+  const PatientShell({super.key, required this.location, required this.child});
+
+  final String location;
+  final Widget child;
 
   @override
   State<PatientShell> createState() => _PatientShellState();
 }
 
 class _PatientShellState extends State<PatientShell> {
-  int _tab = 0;
   bool _loadFailed = false;
-
-  /// Built per frame rather than held as a const list so Home can be told
-  /// when the shell's own load failed.
-  List<Widget> get _screens => [
-        PatientHomeScreen(
-          loadFailed: _loadFailed,
-          onRetry: _loadAll,
-          onOpenTab: (t) => setState(() => _tab = t),
-        ),
-        const AppointmentsScreen(),
-        const MedicationTrackerScreen(),
-        const MessagesScreen(),
-        const PatientProfileScreen(),
-        _MoreOfAfiCare(onOpen: _openDest),
-      ];
 
   @override
   void initState() {
@@ -235,15 +127,15 @@ class _PatientShellState extends State<PatientShell> {
   /// order. Adult-only entries drop out on a dependent profile, which is
   /// why the selected index has to be derived from this list rather than
   /// stored.
-  List<_Dest> _visibleDests(bool isDependent) => [
-        for (final group in _sidebarGroups.values)
+  List<PatientDest> _visibleDests(bool isDependent) => [
+        for (final group in patientSidebar.values)
           for (final d in group)
             if (!(isDependent && d.adultOnly)) d,
       ];
 
   List<SidebarEntry> _sidebarEntries(bool isDependent) {
     final entries = <SidebarEntry>[];
-    _sidebarGroups.forEach((group, dests) {
+    patientSidebar.forEach((group, dests) {
       final visible = dests.where((d) => !(isDependent && d.adultOnly)).toList();
       if (visible.isEmpty) return;
       entries.add(SidebarGroupLabel(group));
@@ -254,20 +146,17 @@ class _PatientShellState extends State<PatientShell> {
     return entries;
   }
 
-  void _openDest(_Dest d) {
-    if (d.tab != null) {
-      setState(() => _tab = d.tab!);
-    } else if (d.route != null) {
-      context.go(d.route!);
-    }
-  }
+  void _openDest(PatientDest d) => context.go(d.route);
 
   // ── Profile switching ─────────────────────────────────────────────────
 
   Future<void> _switchTo(String patientId) async {
     final dep = context.read<DependentProvider>();
     dep.switchTo(patientId);
-    setState(() => _tab = 0);
+    // Back to Today: most pages load their data once when opened, so
+    // staying put would show the previous profile's figures under the
+    // new profile's name.
+    context.go(PatientRoutes.today);
     await _loadForPatient(patientId);
     // Re-check: switching profile reloads everything Home summarises, so
     // a failure here has to update the flag too — otherwise switching
@@ -281,6 +170,7 @@ class _PatientShellState extends State<PatientShell> {
     if (isMobile) {
       showModalBottomSheet<void>(
         context: context,
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
         builder: (ctx) => Container(
           decoration: const BoxDecoration(
@@ -377,10 +267,7 @@ class _PatientShellState extends State<PatientShell> {
                 sheetContext: sheetContext,
                 icon: Icons.add,
                 label: 'Add a child profile',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ManageDependentsScreen()),
-                ),
+                onTap: () => context.go(PatientRoutes.dependents),
               ),
               // The spec has no log-out anywhere; keeping it reachable
               // here rather than leaving real users stranded.
@@ -487,15 +374,29 @@ class _PatientShellState extends State<PatientShell> {
     final isDependent = dep.isViewingDependent;
     final activeDependent = dep.activeDependent;
 
+    final location = widget.location;
     final visible = _visibleDests(isDependent);
-    // Profile is reached from the More page, so More stays lit there.
-    final litTab = _tab == _tProfile ? _tMore : _tab;
-    final selectedIndex = visible.indexWhere((d) => d.tab == litTab);
-    final bottomIndex = switch (litTab) {
-      _tToday || _tVisits || _tMeds => litTab,
-      _tMore => 3,
-      _ => -1,
-    };
+    // A page reached from More keeps "More of AfiCare" lit, so the
+    // patient can always see where they are in the app.
+    final litRoute = patientSidebarRouteFor(location);
+    final selectedIndex = visible.indexWhere((d) => d.route == litRoute);
+    final bottomIndex = patientBottomIndexFor(location);
+
+    // A child's profile must never sit under an adult-only page (their
+    // "finances", maternal care, etc.). Switching profile already goes
+    // to Today; this also covers a deep link or the browser's Back.
+    if (isDependent && isPatientAdultOnly(location)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go(PatientRoutes.today);
+      });
+    }
+
+    final pageTitle = patientTitleFor(location);
+    final crumbs = [
+      if (!isPatientSidebarRoute(location) && litRoute == PatientRoutes.more && pageTitle != 'More of AfiCare')
+        'More of AfiCare',
+      pageTitle == 'AfiCare' ? 'Today' : pageTitle,
+    ];
 
     final ownName = auth.currentUser?.fullName ?? 'My profile';
     final displayName = isDependent ? (activeDependent?.fullName ?? 'Dependent') : ownName;
@@ -547,13 +448,13 @@ class _PatientShellState extends State<PatientShell> {
       onSelect: (i) {
         if (i >= 0 && i < visible.length) _openDest(visible[i]);
       },
-      onBottomNavSelect: (i) => setState(() => _tab = i <= 2 ? i : _tMore),
+      onBottomNavSelect: (i) => context.go(patientBottomRoutes[i]),
       onSearch: _openSearch,
       onAvatarTap: () => _openSwitcher(fromTop: true),
       searchHint: 'Search appointments, medications, or anything...',
       avatarLabel: _initials(displayName),
       avatarColor: isDependent ? PT.avatarDepBg : PT.avatarBg,
-      topBarLeading: _Breadcrumb(page: _tabTitles[_tab] ?? 'Today'),
+      topBarLeading: _Breadcrumb(trail: crumbs),
       trailingActions: [
         IconButton(
           onPressed: _openSearch,
@@ -563,7 +464,9 @@ class _PatientShellState extends State<PatientShell> {
         ),
         const SizedBox(width: 9),
         IconButton(
-          onPressed: () => context.go('/patient/scan'),
+          // Pushed, full screen: the camera needs the whole screen, and
+          // closing it should return to the page it was opened from.
+          onPressed: () => context.push(PatientRoutes.scan),
           tooltip: 'Scan MediLink QR',
           icon: const Icon(Icons.qr_code_scanner_rounded),
           style: _topIconStyle,
@@ -591,7 +494,13 @@ class _PatientShellState extends State<PatientShell> {
                 },
               ),
             ),
-          Expanded(child: IndexedStack(index: _tab, children: _screens)),
+          Expanded(
+            child: PatientShellScope(
+              loadFailed: _loadFailed,
+              onRetry: _loadAll,
+              child: widget.child,
+            ),
+          ),
         ],
       ),
     );
@@ -633,6 +542,7 @@ class _PatientShellState extends State<PatientShell> {
   void _openSearch() {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -891,119 +801,33 @@ final ButtonStyle _topIconStyle = IconButton.styleFrom(
 /// "AfiCare / Today". Hidden on phones, as in the design, where the
 /// bottom bar already says where you are.
 class _Breadcrumb extends StatelessWidget {
-  const _Breadcrumb({required this.page});
+  const _Breadcrumb({required this.trail});
 
-  final String page;
+  /// Page names after "AfiCare", outermost first; the last is current.
+  final List<String> trail;
 
   @override
   Widget build(BuildContext context) {
     if (PT.isMobile(context)) return const SizedBox.shrink();
+    const slash = TextSpan(text: '  /  ', style: TextStyle(color: Color(0xFFB3BDC1)));
     return Text.rich(
       TextSpan(
         style: PT.label().copyWith(fontSize: 13),
         children: [
-          const TextSpan(text: 'AfiCare  '),
-          const TextSpan(text: '/', style: TextStyle(color: Color(0xFFB3BDC1))),
-          TextSpan(text: '  $page', style: const TextStyle(fontWeight: FontWeight.w700, color: PT.ink)),
+          const TextSpan(text: 'AfiCare'),
+          for (int i = 0; i < trail.length; i++) ...[
+            slash,
+            TextSpan(
+              text: trail[i],
+              style: i == trail.length - 1
+                  ? const TextStyle(fontWeight: FontWeight.w700, color: PT.ink)
+                  : null,
+            ),
+          ],
         ],
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
-/// The "More of AfiCare" page (`#more`): every patient tool that is not
-/// in the sidebar, as grouped two-column grids of tiles.
-class _MoreOfAfiCare extends StatelessWidget {
-  const _MoreOfAfiCare({required this.onOpen});
-
-  final ValueChanged<_Dest> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDependent = context.watch<DependentProvider>().isViewingDependent;
-    final isMobile = PT.isMobile(context);
-
-    final sections = <Widget>[];
-    for (final group in _moreGroups.entries) {
-      final items = [
-        for (final d in group.value)
-          if (!(isDependent && d.adultOnly) && !(d.phoneOnly && !isMobile)) d,
-      ];
-      if (items.isEmpty) continue;
-      sections.add(Padding(
-        padding: const EdgeInsets.only(bottom: 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PHeading(group.key),
-            LayoutBuilder(builder: (context, c) {
-              const gap = 10.0;
-              final w = (c.maxWidth - gap) / 2;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final d in items)
-                    SizedBox(width: w, child: _MoreTile(dest: d, onTap: () => onOpen(d))),
-                ],
-              );
-            }),
-          ],
-        ),
-      ));
-    }
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const PScreenHead(
-            eyebrow: 'Here when you need us',
-            title: 'More of AfiCare',
-            subtitle: "All the other tools are still here. We've simply made a little more room for your everyday care.",
-          ),
-          ...sections,
-        ],
-      ),
-    );
-  }
-}
-
-/// `.moreitem`.
-class _MoreTile extends StatelessWidget {
-  const _MoreTile({required this.dest, required this.onTap});
-
-  final _Dest dest;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: PT.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(PT.rRow),
-        side: const BorderSide(color: PT.line),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(PT.rRow),
-        hoverColor: PT.searchFill,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(dest.icon, size: 19, color: PT.teal),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(dest.label,
-                    style: PT.rowTitle().copyWith(fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

@@ -11,7 +11,7 @@ import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../theme/patient_tokens.dart';
-import 'medication_tracker_screen.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
 /// Health Records — the patient's own summary: a derived health score,
@@ -251,10 +251,7 @@ class _HealthSummaryState extends State<HealthSummary> {
             title: 'Prescriptions',
             subtitle: 'Current and past',
             trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MedicationTrackerScreen()),
-            ),
+            onTap: () => context.go(PatientRoutes.medications),
           ),
           PRow(
             leadingEmoji: '🩺',

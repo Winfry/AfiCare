@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
 import '../../models/insurance_claim_model.dart';
+import 'widgets/patient_ui.dart';
 
 class InsuranceClaimsScreen extends StatefulWidget {
   const InsuranceClaimsScreen({super.key});
@@ -60,33 +60,17 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.canopy)));
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Insurance Claims', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            actions: [
-              TextButton.icon(
-                onPressed: _showNewClaimSheet,
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('New Claim', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'What care costs',
+      title: 'Insurance claims',
+      subtitle: 'Your claims in one place. For official cover and status, check with SHA or your insurer directly.',
+      action: PButton('New claim', icon: Icons.add, onPressed: _showNewClaimSheet),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -120,7 +104,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: _claimCard(_filteredClaims[i]),
                 ),
                 childCount: _filteredClaims.length,
@@ -129,7 +113,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
           // NHIF Directory link
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -155,8 +139,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -272,6 +255,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(

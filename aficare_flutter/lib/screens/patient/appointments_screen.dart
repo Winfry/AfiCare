@@ -19,6 +19,7 @@ import '../../theme/patient_tokens.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../widgets/provider_avatar.dart';
 import 'appointment_detail_screen.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
 /// Appointments — book, manage and understand visits. Rendered inside
@@ -127,9 +128,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PScreenHead(
-            eyebrow: 'Clinical',
+            eyebrow: 'Your care',
             title: 'Appointments',
-            subtitle: 'Book, manage and understand your visits.',
+            subtitle: 'All your visits in one place. Plans change — we can help with that.',
             action: PButton(
               '+ Book appointment',
               onPressed: () => _openBookingSheet(_activeId),
@@ -491,6 +492,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void _openBookingSheet(String patientId, {UserModel? prefilledProvider}) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _BookAppointmentSheet(
@@ -503,6 +505,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void _reschedule(AppointmentModel a) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _BookAppointmentSheet(
@@ -750,6 +753,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
   }) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _ConfirmationSheet(
@@ -1084,7 +1088,9 @@ class _ConfirmationSheetState extends State<_ConfirmationSheet> {
 
   void _finish() {
     Navigator.popUntil(context, (r) => r.isFirst);
-    context.go('/patient');
+    // Land on Appointments, where the new request is listed. (This used
+    // to say '/patient' when Appointments was a tab of that route.)
+    context.go(PatientRoutes.appointments);
   }
 
   @override

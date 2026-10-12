@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../models/medical_expense_model.dart';
 import '../../utils/theme.dart';
+import 'widgets/patient_ui.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -38,6 +39,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   void _showExpenseForm({MedicalExpenseModel? existing}) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -54,82 +56,82 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Medical Expenses'),
-        backgroundColor: AfiCareTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        actions: [
-          if (_filterCategory != null)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear filter',
-              onPressed: () => setState(() => _filterCategory = null),
-            ),
-        ],
-      ),
-      body: Consumer<ExpenseProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading && provider.expenses.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer<ExpenseProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoading && provider.expenses.isEmpty) {
+          return const PLoadingPage();
+        }
 
-          final filtered = _filtered(provider.expenses);
+        final filtered = _filtered(provider.expenses);
 
-          return RefreshIndicator(
-            onRefresh: () async => _loadData(),
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildSummary(provider)),
-                SliverToBoxAdapter(child: _buildCategoryFilter()),
-                if (filtered.isEmpty)
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.receipt_long,
-                              size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text('No expenses recorded yet',
-                              style: TextStyle(
-                                  fontSize: 16, color: Colors.grey)),
-                          SizedBox(height: 8),
-                          Text('Tap + to add your first expense',
-                              style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                    ),
+        // RefreshIndicator wraps the whole page: PSliverPage's scroll view
+        // sits directly under it (no other viewport between), so
+        // pull-to-refresh still triggers.
+        return RefreshIndicator(
+          onRefresh: () async => _loadData(),
+          child: PSliverPage(
+            eyebrow: 'What care costs',
+            title: 'Expenses',
+            subtitle: 'Your own log of health spending.',
+            action: _filterCategory != null
+                ? PButton(
+                    'Clear filter',
+                    icon: Icons.clear,
+                    kind: PButtonKind.alt,
+                    onPressed: () => setState(() => _filterCategory = null),
                   )
-                else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final expense = filtered[index];
-                        return _buildExpenseTile(expense);
-                      },
-                      childCount: filtered.length,
+                : null,
+            floatingActionButton: FloatingActionButton(
+              onPressed: () => _showExpenseForm(),
+              backgroundColor: AfiCareTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add),
+            ),
+            slivers: [
+              SliverToBoxAdapter(child: _buildSummary(provider)),
+              SliverToBoxAdapter(child: _buildCategoryFilter()),
+              if (filtered.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.receipt_long,
+                            size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text('No expenses recorded yet',
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey)),
+                        SizedBox(height: 8),
+                        Text('Tap + to add your first expense',
+                            style: TextStyle(color: Colors.grey)),
+                      ],
                     ),
                   ),
-              ],
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showExpenseForm(),
-        backgroundColor: AfiCareTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final expense = filtered[index];
+                      return _buildExpenseTile(expense);
+                    },
+                    childCount: filtered.length,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildSummary(ExpenseProvider provider) {
     final f = NumberFormat('#,##0');
+    // Was a full-bleed tinted band under the old app bar; inside the shell
+    // it is just the top of the page, so no tint and no side padding.
     return Container(
-      padding: const EdgeInsets.all(20),
-      color: AfiCareTheme.primaryGreen.withOpacity(0.05),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -261,7 +263,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Widget _buildCategoryFilter() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -322,7 +324,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ),
       onDismissed: (_) => context.read<ExpenseProvider>().deleteExpense(expense.id),
       child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
           leading: CircleAvatar(
             backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),

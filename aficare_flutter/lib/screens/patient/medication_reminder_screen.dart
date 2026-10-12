@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../models/active_patient.dart';
 import '../../theme/app_colors.dart';
 import '../../models/medication_reminder_model.dart';
 import '../../services/medication_reminder_service.dart';
+import 'widgets/patient_ui.dart';
 
 class MedicationReminderScreen extends StatefulWidget {
   const MedicationReminderScreen({super.key});
@@ -53,43 +53,22 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.canopy)),
-      );
-    }
+    if (_isLoading) return const PLoadingPage();
 
     final active = _reminders.where((r) => r.isActive).toList();
     final inactive = _reminders.where((r) => !r.isActive).toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: Text(
-              _subject.isDependent
-                  ? "${_subject.firstName}'s reminders"
-                  : 'Medication Reminders',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            actions: [
-              TextButton.icon(
-                onPressed: () => _showAddSheet(),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'A small nudge',
+      title: _subject.isDependent
+          ? "${_subject.firstName}'s reminders"
+          : 'Medicine reminders',
+      subtitle: 'Set to the times you actually take things, not the times a form suggested.',
+      action: PButton('Add a reminder', icon: Icons.add, onPressed: () => _showAddSheet()),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -128,8 +107,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -281,6 +259,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   void _showAddSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       // Captured here so the reminder is filed against the profile that

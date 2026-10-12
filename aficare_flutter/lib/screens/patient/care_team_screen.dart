@@ -48,7 +48,6 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
       eyebrow: 'Your care',
       title: 'Care Team',
       subtitle: 'People involved in your care.',
-      onBack: () => context.go('/patient'),
       children: [
         if (ct.isLoading)
           const Padding(

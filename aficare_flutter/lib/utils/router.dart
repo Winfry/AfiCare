@@ -13,6 +13,10 @@ import '../presentation/auth/register/role_selection/register_role_screen.dart';
 import '../presentation/auth/register/patient/patient_register_screen.dart';
 import '../presentation/auth/register/clinician/clinician_register_screen.dart';
 import '../screens/patient/patient_shell.dart';
+import '../screens/patient/patient_home_screen.dart';
+import '../screens/patient/patient_more_screen.dart';
+import '../screens/patient/medication_tracker_screen.dart';
+import '../screens/patient/manage_dependents_screen.dart';
 import '../screens/patient/patient_onboarding_screen.dart';
 import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/patient_profile_screen.dart';
@@ -128,7 +132,34 @@ void updateRouterProfile(UserModel? user) {
   _authRefreshNotifier.value++;
 }
 
+/// The app's root navigator. Patient pages render in the patient shell's
+/// own navigator; routes that must cover the whole screen name this one.
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// A patient page: fades and rises into place, as the design's pages do
+/// (`.page.active { animation: appear .25s }`), rather than sliding in
+/// as a new screen — the shell around it never moves.
+CustomTransitionPage<void> _patientPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 250),
+    reverseTransitionDuration: const Duration(milliseconds: 150),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, .012), end: Offset.zero).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final appRouter = GoRouter(
+  navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   debugLogDiagnostics: false,
   refreshListenable: _authRefreshNotifier,
@@ -283,118 +314,140 @@ final appRouter = GoRouter(
       builder: (context, state) => const PatientOnboardingScreen(),
     ),
 
-    // Patient Routes — bottom-nav shell
-    GoRoute(
-      path: '/patient',
-      builder: (context, state) => const PatientShell(),
+    // Patient Routes. One ShellRoute: every patient page renders inside
+    // PatientShell, so the sidebar / top bar / bottom bar stay on screen
+    // wherever the patient goes. Only the QR scanner (needs the whole
+    // screen) and the legacy full dashboard escape to the root navigator.
+    ShellRoute(
+      builder: (context, state, child) => PatientShell(location: state.uri.path, child: child),
       routes: [
         GoRoute(
-          path: 'full',
-          builder: (context, state) => const PatientDashboard(),
-        ),
-        GoRoute(
-          path: 'health',
-          builder: (context, state) => const HealthSummary(),
-        ),
-        GoRoute(
-          path: 'share',
-          builder: (context, state) => const ShareRecords(),
-        ),
-        GoRoute(
-          path: 'scan',
-          builder: (context, state) => const QRScanner(),
-        ),
-        GoRoute(
-          path: 'appointments',
-          builder: (context, state) => const AppointmentsScreen(),
-        ),
-        GoRoute(
-          path: 'expenses',
-          builder: (context, state) => const ExpensesScreen(),
-        ),
-        GoRoute(
-          path: 'mental-health',
-          builder: (context, state) => const MentalHealthScreen(),
-        ),
-        GoRoute(
-          path: 'emergency',
-          builder: (context, state) => const EmergencyScreen(),
-        ),
-        GoRoute(
-          path: 'anc',
-          builder: (context, state) => const AncScreen(),
-        ),
-        GoRoute(
-          path: 'vaccinations',
-          builder: (context, state) => const VaccinationScreen(),
-        ),
-        GoRoute(
-          path: 'medication-reminders',
-          builder: (context, state) => const MedicationReminderScreen(),
-        ),
-        GoRoute(
-          path: 'mens-health',
-          builder: (context, state) => const MensHealthScreen(),
-        ),
-        GoRoute(
-          path: 'caregiver-portal',
-          builder: (context, state) => const CaregiverPortalScreen(),
-        ),
-        GoRoute(
-          path: 'receipt-upload',
-          builder: (context, state) => const ReceiptUploadScreen(),
-        ),
-        GoRoute(
-          path: 'drug-interactions',
-          builder: (context, state) => const DrugInteractionScreen(),
-        ),
-        GoRoute(
-          path: 'medication-costs',
-          builder: (context, state) => const MedicationCostScreen(),
-        ),
-        GoRoute(
-          path: 'insurance-claims',
-          builder: (context, state) => const InsuranceClaimsScreen(),
-        ),
-        GoRoute(
-          path: 'accessibility',
-          builder: (context, state) => const AccessibilitySettingsScreen(),
-        ),
-        GoRoute(
-          path: 'messages',
-          builder: (context, state) => const MessagesScreen(),
-        ),
-        GoRoute(
-          path: 'records',
-          builder: (context, state) => const HealthSummary(),
-        ),
-        GoRoute(
-          path: 'referrals',
-          builder: (context, state) => const PatientReferralScreen(),
-        ),
-        GoRoute(
-          path: 'labs',
-          builder: (context, state) => const LabResultsScreen(),
-        ),
-        GoRoute(
-          path: 'adherence',
-          builder: (context, state) => const AdherenceLogScreen(),
-        ),
-        GoRoute(
-          path: 'care-team',
-          builder: (context, state) => const CareTeamScreen(),
-        ),
-        GoRoute(
-          path: 'pwd',
-          builder: (context, state) {
-            final dep = context.read<DependentProvider>();
-            final id = dep.activePatientId ?? context.read<AuthProvider>().currentUser?.id ?? '';
-            return PwdTab(patientId: id);
-          },
-        ),
-        GoRoute(
-          path: 'profile',
-          builder: (context, state) => const PatientProfileScreen(),
+          path: '/patient',
+          pageBuilder: (context, state) => _patientPage(state, const PatientHomeScreen()),
+          routes: [
+            GoRoute(
+              path: 'full',
+              parentNavigatorKey: _rootNavigatorKey,
+              builder: (context, state) => const PatientDashboard(),
+            ),
+            GoRoute(
+              path: 'health',
+              pageBuilder: (context, state) => _patientPage(state, const HealthSummary()),
+            ),
+            GoRoute(
+              path: 'share',
+              pageBuilder: (context, state) => _patientPage(state, const ShareRecords()),
+            ),
+            GoRoute(
+              path: 'scan',
+              parentNavigatorKey: _rootNavigatorKey,
+              builder: (context, state) => const QRScanner(),
+            ),
+            GoRoute(
+              path: 'appointments',
+              pageBuilder: (context, state) => _patientPage(state, const AppointmentsScreen()),
+            ),
+            GoRoute(
+              path: 'expenses',
+              pageBuilder: (context, state) => _patientPage(state, const ExpensesScreen()),
+            ),
+            GoRoute(
+              path: 'mental-health',
+              pageBuilder: (context, state) => _patientPage(state, const MentalHealthScreen()),
+            ),
+            GoRoute(
+              path: 'emergency',
+              pageBuilder: (context, state) => _patientPage(state, const EmergencyScreen()),
+            ),
+            GoRoute(
+              path: 'anc',
+              pageBuilder: (context, state) => _patientPage(state, const AncScreen()),
+            ),
+            GoRoute(
+              path: 'vaccinations',
+              pageBuilder: (context, state) => _patientPage(state, const VaccinationScreen()),
+            ),
+            GoRoute(
+              path: 'medication-reminders',
+              pageBuilder: (context, state) => _patientPage(state, const MedicationReminderScreen()),
+            ),
+            GoRoute(
+              path: 'mens-health',
+              pageBuilder: (context, state) => _patientPage(state, const MensHealthScreen()),
+            ),
+            GoRoute(
+              path: 'caregiver-portal',
+              pageBuilder: (context, state) => _patientPage(state, const CaregiverPortalScreen()),
+            ),
+            GoRoute(
+              path: 'receipt-upload',
+              pageBuilder: (context, state) => _patientPage(state, const ReceiptUploadScreen()),
+            ),
+            GoRoute(
+              path: 'drug-interactions',
+              pageBuilder: (context, state) => _patientPage(state, const DrugInteractionScreen()),
+            ),
+            GoRoute(
+              path: 'medication-costs',
+              pageBuilder: (context, state) => _patientPage(state, const MedicationCostScreen()),
+            ),
+            GoRoute(
+              path: 'insurance-claims',
+              pageBuilder: (context, state) => _patientPage(state, const InsuranceClaimsScreen()),
+            ),
+            GoRoute(
+              path: 'accessibility',
+              pageBuilder: (context, state) => _patientPage(state, const AccessibilitySettingsScreen()),
+            ),
+            GoRoute(
+              path: 'messages',
+              pageBuilder: (context, state) => _patientPage(state, const MessagesScreen()),
+            ),
+            GoRoute(
+              path: 'records',
+              pageBuilder: (context, state) => _patientPage(state, const HealthSummary()),
+            ),
+            GoRoute(
+              path: 'referrals',
+              pageBuilder: (context, state) => _patientPage(state, const PatientReferralScreen()),
+            ),
+            GoRoute(
+              path: 'labs',
+              pageBuilder: (context, state) => _patientPage(state, const LabResultsScreen()),
+            ),
+            GoRoute(
+              path: 'adherence',
+              pageBuilder: (context, state) => _patientPage(state, const AdherenceLogScreen()),
+            ),
+            GoRoute(
+              path: 'care-team',
+              pageBuilder: (context, state) => _patientPage(state, const CareTeamScreen()),
+            ),
+            GoRoute(
+              path: 'pwd',
+              pageBuilder: (context, state) {
+                final dep = context.read<DependentProvider>();
+                final id = dep.activePatientId ?? context.read<AuthProvider>().currentUser?.id ?? '';
+                return _patientPage(state, PwdTab(patientId: id));
+              },
+            ),
+            GoRoute(
+              path: 'profile',
+              pageBuilder: (context, state) => _patientPage(state, const PatientProfileScreen()),
+            ),
+            GoRoute(
+              path: 'medications',
+              pageBuilder: (context, state) => _patientPage(state, const MedicationTrackerScreen()),
+            ),
+            GoRoute(
+              path: 'more',
+              pageBuilder: (context, state) => _patientPage(state, const PatientMoreScreen()),
+            ),
+            GoRoute(
+              path: 'dependents',
+              pageBuilder: (context, state) => _patientPage(state, const ManageDependentsScreen()),
+            ),
+          ],
         ),
       ],
     ),

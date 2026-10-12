@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +13,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/medical_ai_service.dart';
 import '../../theme/patient_tokens.dart';
-import 'qr_scanner.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
 /// Share Records — choose what leaves the record, who can open it, and
@@ -339,10 +340,8 @@ class _ShareRecordsState extends State<ShareRecords> {
                   const SizedBox(height: 18),
                   PButton(
                     'Open scanner',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const QRScanner()),
-                    ),
+                    // Full screen over the shell: the camera needs the room.
+                    onPressed: () => context.push(PatientRoutes.scan),
                   ),
                 ],
               ),

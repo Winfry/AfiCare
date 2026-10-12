@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
 import '../../models/anc_visit_model.dart';
+import 'widgets/patient_ui.dart';
 
 class AncScreen extends StatefulWidget {
   const AncScreen({super.key});
@@ -90,35 +90,17 @@ class _AncScreenState extends State<AncScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.canopy)),
-      );
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('ANC Tracker', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            actions: [
-              TextButton.icon(
-                onPressed: _showAddVisitSheet,
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Visit', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ),
-            ],
-          ),
+    return PSliverPage(
+      eyebrow: 'You and your baby',
+      title: 'Maternal care',
+      subtitle: 'Your pregnancy, week by week, and the visits that go with it.',
+      action: PButton('Add a visit', icon: Icons.add, onPressed: _showAddVisitSheet),
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -145,8 +127,7 @@ class _AncScreenState extends State<AncScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -425,6 +406,7 @@ class _AncScreenState extends State<AncScreen> {
     DateTime selectedDate = DateTime.now().subtract(const Duration(days: 140));
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => StatefulBuilder(
@@ -510,6 +492,7 @@ class _AncScreenState extends State<AncScreen> {
   void _showAddVisitSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _AddVisitSheet(

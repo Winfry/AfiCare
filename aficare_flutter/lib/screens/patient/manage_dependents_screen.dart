@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/dependent_profile_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
+import 'widgets/patient_ui.dart';
 
 class ManageDependentsScreen extends StatefulWidget {
   const ManageDependentsScreen({super.key});
@@ -32,34 +33,8 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FB),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border:
-                Border(bottom: BorderSide(color: Color(0xFFE4E1D8), width: 1)),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Manage Dependents',
-                style: GoogleFonts.fraunces(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      backgroundColor: Colors.transparent,
+      appBar: const PSubPageBar(title: 'People I care for'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showFormSheet(),
         backgroundColor: const Color(0xFF1D3557),
@@ -70,7 +45,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
       body: Consumer<DependentProvider>(
         builder: (ctx, dep, _) {
           if (dep.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const PLoadingPage();
           }
           if (dep.dependents.isEmpty) {
             return _buildEmptyState();
@@ -329,6 +304,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
   void _showFormSheet({DependentProfileModel? existing}) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _DependentFormSheet(

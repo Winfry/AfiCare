@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
 import '../../models/mental_health_model.dart';
 import '../../utils/snackbar_utils.dart';
+import 'widgets/patient_ui.dart';
 
 class MentalHealthScreen extends StatefulWidget {
   const MentalHealthScreen({super.key});
@@ -58,28 +58,16 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.canopy)),
-      );
-    }
+    if (_isLoading) return const PLoadingPage();
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.canopy,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-              onPressed: () => context.go('/patient'),
-            ),
-            title: const Text('Mental Health', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
+    return PSliverPage(
+      eyebrow: 'Private, and yours',
+      title: 'Mental wellbeing',
+      subtitle: 'A gentle check-in. No score here is a diagnosis, and nobody sees this unless you choose to share it.',
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,8 +111,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -358,6 +345,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
   void _startScreening(String toolType) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _ScreeningSheet(
