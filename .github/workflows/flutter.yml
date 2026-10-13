@@ -39,7 +39,9 @@ jobs:
       - name: Build Web
         run: |
           cd aficare_flutter
-          flutter build web --release --base-href "/AfiCare/"
+          flutter build web --release --base-href "/AfiCare/" --pwa-strategy=none
+          # Swap the (empty) worker for one that clears old visitors' caches.
+          cp web/sw_cleanup.js build/web/flutter_service_worker.js
 
       - name: Upload Web Build
         uses: actions/upload-artifact@v4
