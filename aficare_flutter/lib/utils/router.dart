@@ -18,7 +18,6 @@ import '../screens/patient/patient_more_screen.dart';
 import '../screens/patient/medication_tracker_screen.dart';
 import '../screens/patient/manage_dependents_screen.dart';
 import '../screens/patient/patient_onboarding_screen.dart';
-import '../screens/patient/patient_dashboard.dart';
 import '../screens/patient/patient_profile_screen.dart';
 import '../screens/patient/messages_screen.dart';
 import '../screens/patient/health_summary.dart';
@@ -29,6 +28,7 @@ import '../screens/patient/expenses_screen.dart';
 import '../screens/patient/mental_health_screen.dart';
 import '../screens/patient/emergency_screen.dart';
 import '../screens/patient/anc_screen.dart';
+import '../screens/patient/womens_health_screen.dart';
 import '../screens/patient/vaccination_screen.dart';
 import '../screens/patient/medication_reminder_screen.dart';
 import '../screens/patient/mens_health_screen.dart';
@@ -316,8 +316,8 @@ final appRouter = GoRouter(
 
     // Patient Routes. One ShellRoute: every patient page renders inside
     // PatientShell, so the sidebar / top bar / bottom bar stay on screen
-    // wherever the patient goes. Only the QR scanner (needs the whole
-    // screen) and the legacy full dashboard escape to the root navigator.
+    // wherever the patient goes. Only the QR scanner (it needs the whole
+    // screen) escapes to the root navigator.
     ShellRoute(
       builder: (context, state, child) => PatientShell(location: state.uri.path, child: child),
       routes: [
@@ -325,11 +325,6 @@ final appRouter = GoRouter(
           path: '/patient',
           pageBuilder: (context, state) => _patientPage(state, const PatientHomeScreen()),
           routes: [
-            GoRoute(
-              path: 'full',
-              parentNavigatorKey: _rootNavigatorKey,
-              builder: (context, state) => const PatientDashboard(),
-            ),
             GoRoute(
               path: 'health',
               pageBuilder: (context, state) => _patientPage(state, const HealthSummary()),
@@ -374,6 +369,10 @@ final appRouter = GoRouter(
             GoRoute(
               path: 'mens-health',
               pageBuilder: (context, state) => _patientPage(state, const MensHealthScreen()),
+            ),
+            GoRoute(
+              path: 'womens-health',
+              pageBuilder: (context, state) => _patientPage(state, const WomensHealthScreen()),
             ),
             GoRoute(
               path: 'caregiver-portal',

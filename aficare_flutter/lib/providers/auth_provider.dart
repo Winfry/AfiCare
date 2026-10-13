@@ -449,7 +449,16 @@ class AuthProvider with ChangeNotifier {
       if (fullName != null) updates['full_name'] = fullName;
       if (phone != null) updates['phone'] = phone;
       if (metadata != null) updates['metadata'] = metadata;
-      await _supabase.from('users').update(updates).eq('id', _currentUser!.id);
+      // .select() so a write that row-level security silently refuses
+      // (no error, zero rows changed) is reported instead of "Saved".
+      final rows = await _supabase
+          .from('users')
+          .update(updates)
+          .eq('id', _currentUser!.id)
+          .select('id');
+      if ((rows as List).isEmpty) {
+        throw StateError('The change was not saved (no permission to update this account).');
+      }
       await _loadUserProfile(_currentUser!.id);
       return true;
     } catch (e) {

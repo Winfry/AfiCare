@@ -103,10 +103,9 @@ class _PwdTabState extends State<PwdTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Reached two ways: as its own page in the patient shell (from More),
-    // and as a tab inside the legacy full dashboard. In the shell the
-    // design's page head replaces the green banner; in the dashboard tab
-    // the banner stays, as that screen has no head of its own.
+    // Normally its own page in the patient shell (from More), where the
+    // design's page head replaces the green banner. Rendered anywhere else
+    // it keeps the banner, as it then has no head of its own.
     final inShell = PatientShellScope.inShell(context);
 
     if (_isLoading) {

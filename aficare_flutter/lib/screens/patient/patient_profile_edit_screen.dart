@@ -85,7 +85,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
     if (user == null) return;
 
     // 1) users table (name + phone)
-    await auth.updateProfile(
+    final userOk = await auth.updateProfile(
       fullName: _nameController.text.trim(),
       phone: _phoneController.text.trim().isEmpty
           ? null
@@ -111,12 +111,17 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
           ? null
           : _policyNumber.text.trim(),
     );
-    final ok = await pp.saveProfile(profile);
+    final profileOk = await pp.saveProfile(profile);
+    final ok = userOk && profileOk;
 
     if (mounted) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Profile saved' : 'Could not save profile'),
+        content: Text(ok
+            ? 'Profile saved'
+            : !userOk && profileOk
+                ? 'Your health details were saved, but your name and phone were not. Please try again.'
+                : 'Could not save profile'),
         backgroundColor: ok ? Colors.green : Colors.red,
       ));
       if (ok) Navigator.pop(context);

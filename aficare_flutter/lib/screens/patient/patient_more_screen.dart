@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
+import '../../providers/patient_profile_provider.dart';
 import '../../theme/patient_tokens.dart';
 import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
@@ -16,12 +18,16 @@ class PatientMoreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDependent = context.watch<DependentProvider>().isViewingDependent;
     final isMobile = PT.isMobile(context);
+    // The account holder's gender: the More page only lists adult pages
+    // for the account holder, so a dependant's gender never applies here.
+    final gender = context.watch<PatientProfileProvider>().profile?.gender ??
+        context.watch<AuthProvider>().currentUser?.gender;
 
     final sections = <Widget>[];
     for (final group in patientMore.entries) {
       final items = [
         for (final d in group.value)
-          if (!(isDependent && d.adultOnly) && !(d.phoneOnly && !isMobile)) d,
+          if (!(isDependent && d.adultOnly) && !(d.phoneOnly && !isMobile) && d.shownFor(gender)) d,
       ];
       if (items.isEmpty) continue;
       sections.add(Padding(

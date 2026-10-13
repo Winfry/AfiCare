@@ -18,6 +18,7 @@ abstract final class PatientRoutes {
   static const more = '/patient/more';
   static const profile = '/patient/profile';
   static const dependents = '/patient/dependents';
+  static const womensHealth = '/patient/womens-health';
   static const scan = '/patient/scan';
 }
 
@@ -28,6 +29,7 @@ class PatientDest {
     required this.route,
     this.adultOnly = false,
     this.phoneOnly = false,
+    this.forGender,
   });
 
   final IconData icon;
@@ -41,6 +43,27 @@ class PatientDest {
 
   /// Listed on the More page only on phones, where it has no sidebar slot.
   final bool phoneOnly;
+
+  /// 'female' or 'male' for a page about one sex's health. Hidden from
+  /// the More page only when the patient's gender is recorded and differs;
+  /// with no gender on record, both are listed.
+  final String? forGender;
+
+  /// Whether to list this page for a patient whose gender is [gender]
+  /// (as stored: 'female', 'Female', 'F', … or null).
+  bool shownFor(String? gender) {
+    if (forGender == null) return true;
+    final g = normalisePatientGender(gender);
+    return g == null || g == forGender;
+  }
+}
+
+/// 'female', 'male', or null when not recorded or neither.
+String? normalisePatientGender(String? gender) {
+  final g = gender?.trim().toLowerCase() ?? '';
+  if (g == 'f' || g == 'female' || g == 'woman') return 'female';
+  if (g == 'm' || g == 'male' || g == 'man') return 'male';
+  return null;
 }
 
 /// The sidebar, exactly as in the design: four everyday destinations and
@@ -79,7 +102,18 @@ const patientMore = <String, List<PatientDest>>{
     PatientDest(icon: Icons.alarm_outlined, label: 'Medicine reminders', route: '/patient/medication-reminders'),
     PatientDest(icon: Icons.manage_search, label: 'Medicine checker', route: '/patient/drug-interactions'),
     PatientDest(icon: Icons.pregnant_woman_outlined, label: 'Maternal care', route: '/patient/anc', adultOnly: true),
-    PatientDest(icon: Icons.male_outlined, label: "Men's health", route: '/patient/mens-health', adultOnly: true),
+    PatientDest(
+        icon: Icons.female_outlined,
+        label: "Women's health",
+        route: PatientRoutes.womensHealth,
+        adultOnly: true,
+        forGender: 'female'),
+    PatientDest(
+        icon: Icons.male_outlined,
+        label: "Men's health",
+        route: '/patient/mens-health',
+        adultOnly: true,
+        forGender: 'male'),
   ],
   'Support & access': [
     PatientDest(icon: Icons.accessible, label: 'PWD / disability support', route: '/patient/pwd'),

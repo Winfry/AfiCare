@@ -745,7 +745,12 @@ class PButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (icon != null) ...[Icon(icon, size: 17, color: fg), const SizedBox(width: 7)],
-        Text(label, style: PT.button().copyWith(color: fg, fontSize: dense ? 12 : 14)),
+        // Flexible so a long label wraps on a narrow phone instead of
+        // overflowing the button.
+        Flexible(
+          child: Text(label,
+              textAlign: TextAlign.center, style: PT.button().copyWith(color: fg, fontSize: dense ? 12 : 14)),
+        ),
       ],
     );
 

@@ -38,7 +38,7 @@ void main() {
 
   testWidgets('PatientShell builds without throwing', (tester) async {
     useCleanSurface(tester);
-    final exception = await pumpShell(tester, const PatientShell());
+    final exception = await pumpShell(tester, const PatientShell(location: '/patient', child: SizedBox()));
     expect(exception, isNull);
     expect(find.byType(AppShell), findsOneWidget);
   });
