@@ -71,7 +71,10 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   // Outside the test body: Supabase starts a refresh timer when it
   // initialises, which a widget test would report as left pending.
-  setUpAll(ensureSupabaseMocked);
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await ensureSupabaseMocked();
+  });
 
   for (final (name, size) in [('phone', const Size(375, 812)), ('desktop', const Size(1280, 900))]) {
     testWidgets('lays out on a $name without overflow', (tester) async {

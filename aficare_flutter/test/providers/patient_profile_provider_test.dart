@@ -76,24 +76,37 @@ void main() {
 
   group('PatientProfileProvider.saveProfile', () {
     test('upserts the profile and updates local state', () async {
-      fake.routeJson('/rest/v1/patients', <String, dynamic>{});
-
-      final provider = PatientProfileProvider();
       final profile = PatientProfileModel(
         id: 'p1',
         bloodType: 'AB+',
         allergies: const ['None'],
       );
+      // The saved row comes back (saveProfile uses .select()).
+      fake.routeJson('/rest/v1/patients', profile.toJson());
 
+      final provider = PatientProfileProvider();
       final ok = await provider.saveProfile(profile);
 
       expect(ok, isTrue);
-      expect(provider.profile, same(profile));
+      expect(provider.profile?.id, 'p1');
+      expect(provider.profile?.bloodType, 'AB+');
+      expect(provider.profile?.allergies, ['None']);
 
       final upsert = fake.requestsTo('POST', 'patients').single;
       final body = jsonDecode(upsert.body) as Map<String, dynamic>;
       expect(body, containsPair('id', 'p1'));
       expect(body, containsPair('blood_type', 'AB+'));
+    });
+
+    test('reports failure when the database stores nothing', () async {
+      // What a row-level-security refusal looks like: no error, no row.
+      fake.routeJson('/rest/v1/patients', <Object?>[]);
+
+      final provider = PatientProfileProvider();
+      final ok = await provider.saveProfile(PatientProfileModel(id: 'p1', bloodType: 'AB+'));
+
+      expect(ok, isFalse);
+      expect(provider.profile, isNull);
     });
   });
 }

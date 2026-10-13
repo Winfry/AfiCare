@@ -210,9 +210,12 @@ void main() {
   });
 
   group('AuthProvider.signInWithMedilinkId', () {
-    test('resolves the email from the users table and signs in', () async {
-      fake.routeJson('/rest/v1/users', [userRow()]);
+    test('resolves the email through the login RPC and signs in', () async {
+      // 034: the users table is no longer readable before sign-in; the
+      // email comes from login_email_for_medilink().
+      fake.routeJson('/rest/v1/rpc/login_email_for_medilink', userRow()['email']);
       fake.routeJson('/auth/v1/token', sessionJson());
+      fake.routeJson('/rest/v1/users', [userRow()]);
 
       final provider = AuthProvider();
       final ok = await provider.signInWithMedilinkId(
@@ -222,12 +225,13 @@ void main() {
 
       expect(ok, isTrue);
       expect(provider.currentUser?.id, userId);
+      final rpc = fake.requestsTo('POST', 'rpc/login_email_for_medilink').single;
+      expect(jsonDecode(rpc.body), {'p_medilink_id': 'ML-NBO-123456'});
     });
 
     test('returns false instead of throwing when no user matches', () async {
-      // `.maybeSingle()` on an empty result must not throw; the old code used
-      // `.single()` which raised a PostgrestException.
-      fake.routeJson('/rest/v1/users', <Object?>[]);
+      // The RPC returns null for an unknown ID.
+      fake.routeJson('/rest/v1/rpc/login_email_for_medilink', null);
 
       final provider = AuthProvider();
       final ok = await provider.signInWithMedilinkId(
@@ -238,6 +242,44 @@ void main() {
       expect(ok, isFalse);
       expect(provider.error, 'Invalid MediLink ID or password');
       expect(fake.requestsTo('POST', 'auth/v1/token'), isEmpty);
+    });
+  });
+
+  group('AuthProvider.updateProfile', () {
+    Future<AuthProvider> signedIn() async {
+      fake.routeJson('/auth/v1/token', sessionJson());
+      fake.routeJson('/rest/v1/users', [userRow()]);
+      final provider = AuthProvider();
+      expect(
+        await provider.signIn(email: '${phone.replaceAll('+', '')}@patient.aficare', password: 'x'),
+        isTrue,
+      );
+      return provider;
+    }
+
+    test('reports success when the row comes back updated', () async {
+      final provider = await signedIn();
+      fake.routeJson('/rest/v1/users', [
+        {...userRow(), 'metadata': {'blood_type': 'O+'}},
+      ]);
+
+      final ok = await provider.updateProfile(metadata: {'blood_type': 'O+'});
+
+      expect(ok, isTrue);
+      final patch = fake.requestsTo('PATCH', 'users').single;
+      expect(jsonDecode(patch.body), {'metadata': {'blood_type': 'O+'}});
+      expect(provider.currentUser?.metadata?['blood_type'], 'O+');
+    });
+
+    test('reports failure when the database silently changes nothing', () async {
+      // A row-level-security refusal: 200 OK, zero rows.
+      final provider = await signedIn();
+      fake.routeJson('/rest/v1/users', <Object?>[]);
+
+      final ok = await provider.updateProfile(metadata: {'blood_type': 'O+'});
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('not saved'));
     });
   });
 
