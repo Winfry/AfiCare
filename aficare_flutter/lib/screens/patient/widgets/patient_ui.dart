@@ -892,6 +892,27 @@ class PQuickActions extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Soft icon — `.soft-icon` (the tinted tile that leads most rows)
+// ═══════════════════════════════════════════════════════════════════════
+
+class PSoftIcon extends StatelessWidget {
+  const PSoftIcon(this.icon, {super.key, this.size = 42});
+
+  final IconData icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: PT.calloutBg, borderRadius: BorderRadius.circular(size / 3)),
+      child: Icon(icon, size: size * .47, color: PT.teal),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Avatar — `.avatar` / `.avatar.dep`
 // ═══════════════════════════════════════════════════════════════════════
 

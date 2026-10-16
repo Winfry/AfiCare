@@ -504,23 +504,6 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _SoftIcon extends StatelessWidget {
-  const _SoftIcon(this.icon, {this.size = 42});
-
-  final IconData icon;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: PT.calloutBg, borderRadius: BorderRadius.circular(size / 3)),
-      child: Icon(icon, size: size * .47, color: PT.teal),
-    );
-  }
-}
-
 class _CardHead extends StatelessWidget {
   const _CardHead({required this.title, required this.sub, required this.icon});
 
@@ -544,7 +527,7 @@ class _CardHead extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        _SoftIcon(icon),
+        PSoftIcon(icon),
       ],
     );
   }
@@ -799,7 +782,7 @@ class _NextVisitCardState extends State<_NextVisitCard> {
             decoration: const BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
             child: Row(
               children: [
-                const _SoftIcon(Icons.wb_sunny_outlined, size: 34),
+                const PSoftIcon(Icons.wb_sunny_outlined, size: 34),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -873,7 +856,7 @@ class _ActionTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SoftIcon(icon),
+              PSoftIcon(icon),
               const SizedBox(height: 13),
               Text(title, style: PT.rowTitle()),
               const SizedBox(height: 3),
