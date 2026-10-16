@@ -605,7 +605,7 @@ class _EmergencyFormState extends State<_EmergencyForm> {
             runSpacing: 6,
             children: [
               for (final a in _allergies)
-                _RemovableBadge(label: a, onRemove: () => setState(() => _allergies.remove(a))),
+                PRemovableBadge(a, tone: PTone.red, onRemove: () => setState(() => _allergies.remove(a))),
             ],
           ),
           const SizedBox(height: 10),
@@ -684,36 +684,6 @@ class _BloodTypePill extends StatelessWidget {
             child: Text(label, style: PT.button().copyWith(color: selected ? PT.navy : PT.ink)),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _RemovableBadge extends StatelessWidget {
-  const _RemovableBadge({required this.label, required this.onRemove});
-
-  final String label;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 10, right: 4, top: 3, bottom: 3),
-      decoration: BoxDecoration(color: PT.badgeRedBg, borderRadius: BorderRadius.circular(PT.rPill)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: PT.badge().copyWith(color: PT.badgeRedFg, fontSize: 12)),
-          const SizedBox(width: 2),
-          InkWell(
-            onTap: onRemove,
-            customBorder: const CircleBorder(),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: Icon(Icons.close_rounded, size: 15, color: PT.badgeRedFg, semanticLabel: 'Remove $label'),
-            ),
-          ),
-        ],
       ),
     );
   }

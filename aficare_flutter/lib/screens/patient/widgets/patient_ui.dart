@@ -707,6 +707,40 @@ class PBadge extends StatelessWidget {
   }
 }
 
+/// A [PBadge] with a remove button, for lists the person is editing
+/// (allergies, medicines to compare).
+class PRemovableBadge extends StatelessWidget {
+  const PRemovableBadge(this.label, {super.key, required this.onRemove, this.tone = PTone.blue});
+
+  final String label;
+  final VoidCallback onRemove;
+  final PTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = PBadge.colorsFor(tone);
+    return Container(
+      padding: const EdgeInsets.only(left: 10, right: 4, top: 3, bottom: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(PT.rPill)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: PT.badge().copyWith(color: fg, fontSize: 12)),
+          const SizedBox(width: 2),
+          InkWell(
+            onTap: onRemove,
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Icon(Icons.close_rounded, size: 15, color: fg, semanticLabel: 'Remove $label'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Buttons — `.btn`, `.btn.alt`, `.btn.red`
 // ═══════════════════════════════════════════════════════════════════════

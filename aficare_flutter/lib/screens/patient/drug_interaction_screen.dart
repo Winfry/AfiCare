@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
 import '../../models/drug_interaction_model.dart';
+import '../../theme/patient_tokens.dart';
 import 'widgets/patient_ui.dart';
 
 class DrugInteractionScreen extends StatefulWidget {
@@ -15,20 +15,26 @@ class _DrugInteractionScreenState extends State<DrugInteractionScreen> {
   final _newMedCtrl = TextEditingController();
   List<String> _selectedMeds = [];
   List<DrugInteraction> _interactions = [];
-  bool _hasChecked = false;
 
   static const _commonMeds = [
     'Paracetamol', 'Amoxicillin', 'Metformin', 'Amlodipine',
     'Omeprazole', 'Lisinopril', 'Atorvastatin', 'Ibuprofen',
-    'Warfarin', 'Aspirin', 'Fluoxetine', 'Salbutamol',
-    'Ciprofloxacin', 'Metoprolol', 'Levothyroxine',
-    'Spironolactone', 'Enalapril', 'Clopidogrel',
+  ];
+
+  /// A spread of severities from the known list, shown as examples so the
+  /// page is useful before anything has been typed.
+  static const _examplePairs = [
+    ('Warfarin', 'Ibuprofen'),
+    ('Metformin', 'Alcohol'),
+    ('Ciprofloxacin', 'Calcium'),
+    ('Amlodipine', 'Grapefruit'),
   ];
 
   @override
   void initState() {
     super.initState();
     _selectedMeds = List.from(widget.currentMedications);
+    _interactions = _find(_selectedMeds);
   }
 
   @override
@@ -37,32 +43,32 @@ class _DrugInteractionScreenState extends State<DrugInteractionScreen> {
     super.dispose();
   }
 
-  void _checkInteractions() {
-    final interactions = DrugInteractionService.checkInteractions(_selectedMeds);
-    setState(() {
-      _interactions = interactions;
-      _hasChecked = true;
-    });
-  }
+  void _checkInteractions() => setState(() => _interactions = _find(_selectedMeds));
+
+  static List<DrugInteraction> _find(List<String> meds) => DrugInteractionService.checkInteractions(meds)
+    ..sort((a, b) => _rank(a.severity).compareTo(_rank(b.severity)));
+
+  static int _rank(String severity) => switch (severity) {
+        'severe' => 0,
+        'moderate' => 1,
+        'mild' => 2,
+        _ => 3,
+      };
 
   void _addMedication(String name) {
     final trimmed = name.trim();
-    if (trimmed.isEmpty || _selectedMeds.contains(trimmed)) return;
-    setState(() {
-      _selectedMeds.add(trimmed);
-      _newMedCtrl.clear();
-      _hasChecked = false;
-    });
+    _newMedCtrl.clear();
+    if (trimmed.isEmpty || _isSelected(trimmed)) return;
+    _selectedMeds.add(trimmed);
     _checkInteractions();
   }
 
   void _removeMedication(String name) {
-    setState(() {
-      _selectedMeds.remove(name);
-      _hasChecked = false;
-    });
+    _selectedMeds.removeWhere((m) => m.toLowerCase() == name.toLowerCase());
     _checkInteractions();
   }
+
+  bool _isSelected(String name) => _selectedMeds.any((m) => m.toLowerCase() == name.toLowerCase());
 
   @override
   Widget build(BuildContext context) {
@@ -71,190 +77,240 @@ class _DrugInteractionScreenState extends State<DrugInteractionScreen> {
       title: 'Medicine checker',
       subtitle: "A quick reference for common interactions. It doesn't replace your pharmacist.",
       slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Your Medications', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _newMedCtrl,
-                          decoration: InputDecoration(
-                            hintText: 'Type medication name...',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            isDense: true,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.add_circle_rounded, color: AppColors.canopy),
-                              onPressed: () => _addMedication(_newMedCtrl.text),
-                            ),
-                          ),
-                          onSubmitted: _addMedication,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Quick add common Kenya medications
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: _commonMeds.take(8).map((med) {
-                      final isSelected = _selectedMeds.contains(med);
-                      return GestureDetector(
-                        onTap: () => isSelected ? _removeMedication(med) : _addMedication(med),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.canopy.withOpacity(0.1) : Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: isSelected ? AppColors.canopy : AppColors.borderSubtle),
-                          ),
-                          child: Text(med, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? AppColors.canopy : Colors.grey.shade700)),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  if (_selectedMeds.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _selectedMeds.map((med) => Chip(
-                        label: Text(med, style: const TextStyle(fontSize: 13)),
-                        deleteIcon: const Icon(Icons.close, size: 16),
-                        deleteIconColor: Colors.red,
-                        onDeleted: () => _removeMedication(med),
-                        backgroundColor: AppColors.canopy.withOpacity(0.08),
-                        side: BorderSide(color: AppColors.canopy.withOpacity(0.2)),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity, height: 44,
-                      child: ElevatedButton.icon(
-                        onPressed: _checkInteractions,
-                        icon: const Icon(Icons.search_rounded, size: 18),
-                        label: Text('Check ${_selectedMeds.length} Medications'),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      ),
-                    ),
-                  ],
-
-                  if (_hasChecked) ...[
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Icon(
-                          _interactions.isEmpty ? Icons.check_circle_rounded : Icons.warning_rounded,
-                          color: _interactions.isEmpty ? const Color(0xFF2E7D32) : const Color(0xFFF57F17),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _interactions.isEmpty
-                              ? 'No interactions found'
-                              : '${_interactions.length} interaction${_interactions.length > 1 ? 's' : ''} found',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: _interactions.isEmpty ? const Color(0xFF2E7D32) : const Color(0xFFF57F17),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    if (_interactions.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text('No known interactions between these medications. Always confirm with your pharmacist or doctor.',
-                            style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                      )
-                    else
-                      ...(_interactions.map((i) => _interactionCard(i))),
-                  ],
-                ],
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PCallout(
+                tone: PTone.warn,
+                title: 'Use this as a prompt, not an answer',
+                body: 'If anything here worries you, speak to a pharmacist or your doctor '
+                    'before changing what you take.',
               ),
-            ),
+              const SizedBox(height: 29),
+              const PHeading('Your medicines'),
+              _MedicinesCard(
+                controller: _newMedCtrl,
+                commonMeds: _commonMeds,
+                selected: _selectedMeds,
+                isSelected: _isSelected,
+                onAdd: _addMedication,
+                onRemove: _removeMedication,
+              ),
+              const SizedBox(height: 29),
+              PHeading(
+                'What we found',
+                action: _selectedMeds.length < 2
+                    ? null
+                    : _interactions.isEmpty
+                        ? const PBadge('Nothing in our list', tone: PTone.gray)
+                        : PBadge('${_interactions.length} to look at', tone: PTone.warn),
+              ),
+              _ResultsCard(medCount: _selectedMeds.length, interactions: _interactions),
+              const SizedBox(height: 29),
+              const PHeading('Common pairs to watch'),
+              PCard(
+                padding: const EdgeInsets.all(15),
+                child: Column(
+                  children: [
+                    for (final pair in _examplePairs)
+                      for (final i in DrugInteractionService.checkInteractions([pair.$1, pair.$2]))
+                        _InteractionRow(i, showAdvice: false),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
           ),
+        ),
       ],
     );
   }
+}
 
-  Widget _interactionCard(DrugInteraction interaction) {
-    final severityColor = _severityColor(interaction.severity);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: severityColor.withOpacity(0.3)),
-      ),
+// ═══════════════════════════════════════════════════════════════════════
+// Your medicines
+// ═══════════════════════════════════════════════════════════════════════
+
+class _MedicinesCard extends StatelessWidget {
+  const _MedicinesCard({
+    required this.controller,
+    required this.commonMeds,
+    required this.selected,
+    required this.isSelected,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final TextEditingController controller;
+  final List<String> commonMeds;
+  final List<String> selected;
+  final bool Function(String) isSelected;
+  final ValueChanged<String> onAdd;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return PCard(
+      padding: const EdgeInsets.all(21),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('Add everything you take, including things bought without a prescription.', style: PT.sub()),
+          const SizedBox(height: 14),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: severityColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                child: Text(interaction.severity.toUpperCase(),
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: severityColor)),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: pInput(hint: 'Type a medicine, e.g. Warfarin'),
+                  onSubmitted: onAdd,
+                ),
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text('${interaction.drug1} + ${interaction.drug2}',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-              ),
+              PButton('Add', kind: PButtonKind.alt, onPressed: () => onAdd(controller.text)),
             ],
           ),
+          const SizedBox(height: 16),
+          Text('Common in Kenya', style: PT.label()),
           const SizedBox(height: 8),
-          Text(interaction.description, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-          if (interaction.recommendation.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final med in commonMeds)
+                _MedPill(
+                  label: med,
+                  selected: isSelected(med),
+                  onTap: () => isSelected(med) ? onRemove(med) : onAdd(med),
+                ),
+            ],
+          ),
+          if (selected.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Text('Comparing', style: PT.label()),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(8)),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline_rounded, color: Color(0xFFF57F17), size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(interaction.recommendation,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final m in selected) PRemovableBadge(m, onRemove: () => onRemove(m))],
             ),
           ],
         ],
       ),
     );
   }
+}
 
-  Color _severityColor(String severity) {
-    switch (severity) {
-      case 'severe': return const Color(0xFFC62828);
-      case 'moderate': return const Color(0xFFF57F17);
-      case 'mild': return const Color(0xFFF9A825);
-      default: return Colors.grey;
-    }
+class _MedPill extends StatelessWidget {
+  const _MedPill({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? PT.badgeBlueBg : PT.white,
+        borderRadius: BorderRadius.circular(PT.rPill),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(PT.rPill),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              border: Border.all(color: selected ? PT.teal : PT.line, width: selected ? 1.5 : 1),
+              borderRadius: BorderRadius.circular(PT.rPill),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[const Icon(Icons.check_rounded, size: 14, color: PT.teal), const SizedBox(width: 4)],
+                Text(label, style: PT.label().copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? PT.navy : PT.ink,
+                )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// What we found
+// ═══════════════════════════════════════════════════════════════════════
+
+class _ResultsCard extends StatelessWidget {
+  const _ResultsCard({required this.medCount, required this.interactions});
+
+  final int medCount;
+  final List<DrugInteraction> interactions;
+
+  @override
+  Widget build(BuildContext context) {
+    return PCard(
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        children: [
+          if (medCount < 2)
+            PRow(
+              leading: const PSoftIcon(Icons.compare_arrows_rounded),
+              title: medCount == 0 ? 'Add your medicines to compare them' : 'Add one more to compare',
+              subtitle: 'Results appear here as soon as there are two.',
+            )
+          else if (interactions.isEmpty)
+            // Deliberately not "no interactions": the list behind this is
+            // short, and silence from it is not a sign that a mix is safe.
+            PRow(
+              leading: const PSoftIcon(Icons.search_off_rounded),
+              title: 'Nothing found in our list',
+              subtitle: 'This checker only knows ${DrugInteractionService.knownInteractions.length} '
+                  "common pairs, so this doesn't mean they're safe together. "
+                  'Your pharmacist can check them properly.',
+            )
+          else
+            for (final i in interactions) _InteractionRow(i, showAdvice: true),
+        ],
+      ),
+    );
+  }
+}
+
+class _InteractionRow extends StatelessWidget {
+  const _InteractionRow(this.interaction, {required this.showAdvice});
+
+  final DrugInteraction interaction;
+  final bool showAdvice;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, tone) = switch (interaction.severity) {
+      'severe' => ('Avoid', PTone.red),
+      'moderate' => ('Caution', PTone.warn),
+      'mild' => ('Low risk', PTone.blue),
+      _ => (interaction.severity, PTone.gray),
+    };
+    final advice = interaction.recommendation;
+
+    return PRow(
+      leading: const PSoftIcon(Icons.medication_outlined),
+      title: '${interaction.drug1} + ${interaction.drug2}',
+      subtitle: interaction.description,
+      trailing: [PBadge(label, tone: tone)],
+      below: !showAdvice || advice.isEmpty
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(left: 53),
+              child: Text(advice, style: PT.rowSub().copyWith(color: PT.ink, fontWeight: FontWeight.w600)),
+            ),
+    );
   }
 }
