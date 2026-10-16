@@ -163,18 +163,24 @@ class MedicationReminderService {
 
   Future<List<MedicationReminder>> loadReminders(String patientId) async {
     try {
-      final data = await _supabase
-          .from('medication_reminders')
-          .select()
-          .eq('patient_id', patientId)
-          .order('created_at', ascending: false);
-      return (data as List)
-          .map((j) => MedicationReminder.fromJson(j))
-          .toList();
+      return await fetchReminders(patientId);
     } catch (e) {
       debugPrint('Error loading reminders: $e');
       return [];
     }
+  }
+
+  /// Like [loadReminders] but throws on failure, for screens that must
+  /// tell "couldn't load" apart from "there are none".
+  Future<List<MedicationReminder>> fetchReminders(String patientId) async {
+    final data = await _supabase
+        .from('medication_reminders')
+        .select()
+        .eq('patient_id', patientId)
+        .order('created_at', ascending: false);
+    return (data as List)
+        .map((j) => MedicationReminder.fromJson(j))
+        .toList();
   }
 
   Future<MedicationReminder?> saveReminder({
@@ -226,7 +232,10 @@ class MedicationReminderService {
     }
   }
 
-  Future<void> toggleReminder(String reminderId, bool isActive) async {
+  /// Returns whether the change was saved. Pass [reminder] when resuming
+  /// so its notifications are scheduled again — pausing cancelled them,
+  /// and without this a resumed reminder shows as on but never rings.
+  Future<bool> toggleReminder(String reminderId, bool isActive, {MedicationReminder? reminder}) async {
     try {
       await _supabase
           .from('medication_reminders')
@@ -235,21 +244,28 @@ class MedicationReminderService {
 
       if (!isActive) {
         await cancelReminder(reminderId);
+      } else if (reminder != null) {
+        await scheduleReminder(reminder);
       }
+      return true;
     } catch (e) {
       debugPrint('Error toggling reminder: $e');
+      return false;
     }
   }
 
-  Future<void> deleteReminder(String reminderId) async {
+  /// Returns whether the reminder was deleted.
+  Future<bool> deleteReminder(String reminderId) async {
     try {
       await cancelReminder(reminderId);
       await _supabase
           .from('medication_reminders')
           .delete()
           .eq('id', reminderId);
+      return true;
     } catch (e) {
       debugPrint('Error deleting reminder: $e');
+      return false;
     }
   }
 }

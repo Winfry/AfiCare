@@ -180,7 +180,7 @@ class _MedicinesCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final med in commonMeds)
-                _MedPill(
+                PChoicePill(
                   label: med,
                   selected: isSelected(med),
                   onTap: () => isSelected(med) ? onRemove(med) : onAdd(med),
@@ -203,46 +203,6 @@ class _MedicinesCard extends StatelessWidget {
   }
 }
 
-class _MedPill extends StatelessWidget {
-  const _MedPill({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? PT.badgeBlueBg : PT.white,
-        borderRadius: BorderRadius.circular(PT.rPill),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(PT.rPill),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border.all(color: selected ? PT.teal : PT.line, width: selected ? 1.5 : 1),
-              borderRadius: BorderRadius.circular(PT.rPill),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (selected) ...[const Icon(Icons.check_rounded, size: 14, color: PT.teal), const SizedBox(width: 4)],
-                Text(label, style: PT.label().copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: selected ? PT.navy : PT.ink,
-                )),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // What we found

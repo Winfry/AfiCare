@@ -68,8 +68,12 @@ class MedicationReminderProvider with ChangeNotifier {
   }
 
   Future<void> toggleReminder(String reminderId, bool isActive) async {
-    await _service.toggleReminder(reminderId, isActive);
     final idx = _reminders.indexWhere((r) => r.id == reminderId);
+    await _service.toggleReminder(
+      reminderId,
+      isActive,
+      reminder: isActive && idx >= 0 ? _reminders[idx] : null,
+    );
     if (idx >= 0) {
       _reminders[idx] = MedicationReminder(
         id: _reminders[idx].id,

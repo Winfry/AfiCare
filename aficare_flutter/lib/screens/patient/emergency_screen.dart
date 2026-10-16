@@ -590,11 +590,12 @@ class _EmergencyFormState extends State<_EmergencyForm> {
           runSpacing: 8,
           children: [
             for (final bt in _bloodTypes)
-              _BloodTypePill(
+              PChoicePill(
                 label: bt,
                 selected: _bloodType == bt,
                 // Tapping the chosen one again clears it, for "not sure".
                 onTap: () => setState(() => _bloodType = _bloodType == bt ? null : bt),
+                width: 68,
               ),
           ],
         ),
@@ -651,40 +652,6 @@ class _EmergencyFormState extends State<_EmergencyForm> {
           child: PButton(_saving ? 'Saving…' : 'Save', onPressed: _saving ? null : _save),
         ),
       ],
-    );
-  }
-}
-
-class _BloodTypePill extends StatelessWidget {
-  const _BloodTypePill({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? PT.badgeBlueBg : PT.white,
-        borderRadius: BorderRadius.circular(PT.rButton),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(PT.rButton),
-          child: Container(
-            width: 58,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border.all(color: selected ? PT.teal : PT.line, width: selected ? 1.5 : 1),
-              borderRadius: BorderRadius.circular(PT.rButton),
-            ),
-            child: Text(label, style: PT.button().copyWith(color: selected ? PT.navy : PT.ink)),
-          ),
-        ),
-      ),
     );
   }
 }

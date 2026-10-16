@@ -741,6 +741,54 @@ class PRemovableBadge extends StatelessWidget {
   }
 }
 
+/// A tappable pill for picking from a short set (blood type, how often,
+/// quick-add medicines). [width] fixes the size so a row of short labels
+/// lines up.
+class PChoicePill extends StatelessWidget {
+  const PChoicePill({super.key, required this.label, required this.selected, required this.onTap, this.width});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? PT.badgeBlueBg : PT.white,
+        borderRadius: BorderRadius.circular(PT.rPill),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(PT.rPill),
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: selected ? PT.teal : PT.line, width: selected ? 1.5 : 1),
+              borderRadius: BorderRadius.circular(PT.rPill),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (selected) ...[const Icon(Icons.check_rounded, size: 14, color: PT.teal), const SizedBox(width: 4)],
+                Text(label, style: PT.label().copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? PT.navy : PT.ink,
+                )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Buttons — `.btn`, `.btn.alt`, `.btn.red`
 // ═══════════════════════════════════════════════════════════════════════
