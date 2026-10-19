@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/caregiver_model.dart';
 import '../../models/dependent_profile_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
+import '../../services/caregiver_service.dart';
+import '../../theme/patient_tokens.dart';
+import '../../utils/default_avatars.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
+/// Everyone the signed-in person looks after, in one list, because to them
+/// it is one idea. Underneath there are two different things:
+///
+///  * **Dependants**: profiles this account owns, for people without an
+///    account of their own (a child, a parent who doesn't use a phone).
+///    Editable here, and switchable to from the profile menu.
+///  * **Shared with you**: people with their own account who gave this
+///    person a caregiver code. Read-only, and theirs to stop.
 class ManageDependentsScreen extends StatefulWidget {
   const ManageDependentsScreen({super.key});
 
@@ -16,10 +32,18 @@ class ManageDependentsScreen extends StatefulWidget {
 }
 
 class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
+  final _caregiver = CaregiverService();
+  List<CaregiverLink> _shared = [];
+  bool _sharedLoading = true;
+  bool _sharedFailed = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      _loadShared();
+    });
   }
 
   Future<void> _load() async {
@@ -30,235 +54,208 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
     if (uid != null) await dep.loadDependents(uid);
   }
 
+  Future<void> _loadShared() async {
+    try {
+      final shared = await _caregiver.peopleICareFor();
+      if (!mounted) return;
+      setState(() {
+        _shared = shared;
+        _sharedFailed = false;
+      });
+    } on CaregiverException {
+      if (mounted) setState(() => _sharedFailed = true);
+    } finally {
+      if (mounted) setState(() => _sharedLoading = false);
+    }
+  }
+
+  Future<void> _enterCode() async {
+    final name = await showPModal<String>(
+      context: context,
+      title: 'Enter a caregiver code',
+      builder: (ctx) => _EnterCodeForm(onRedeem: _caregiver.redeem),
+    );
+    if (name == null || !mounted) return;
+    pToast(context, "You can now see $name's shared record.");
+    await _loadShared();
+  }
+
+  void _openShared(CaregiverLink link) =>
+      context.go('${PatientRoutes.dependents}/shared/${Uri.encodeComponent(link.accessId)}');
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: const PSubPageBar(title: 'People I care for'),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showFormSheet(),
-        backgroundColor: const Color(0xFF1D3557),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.person_add),
-        label: const Text('Add Dependent'),
-      ),
-      body: Consumer<DependentProvider>(
-        builder: (ctx, dep, _) {
-          if (dep.isLoading) {
-            return const PLoadingPage();
-          }
-          if (dep.dependents.isEmpty) {
-            return _buildEmptyState();
-          }
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                itemCount: dep.dependents.length,
-                itemBuilder: (ctx, i) =>
-                    _buildDependentCard(dep, dep.dependents[i]),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
+    final dep = context.watch<DependentProvider>();
+    if (dep.isLoading && dep.dependents.isEmpty && _sharedLoading) return const PLoadingPage();
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                color: Color(0xFFEAF3FC),
-                shape: BoxShape.circle,
-              ),
-              child:
-                  const Icon(Icons.child_care, size: 36, color: Color(0xFF1D3557)),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'No dependents added yet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1B1B18),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Add a child or family member to manage\ntheir health records under your account.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF98917F), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDependentCard(DependentProvider dep, DependentProfileModel d) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E1D8)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return PSliverPage(
+      eyebrow: 'Family & caregiving',
+      title: 'People I care for',
+      subtitle: 'Profiles you manage for family, and records others have shared with you.',
+      action: PButton('Add a dependant', icon: Icons.person_add_alt_1_outlined, onPressed: () => _showFormSheet()),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: const Color(0xFFE8EDF3),
-                child: Text(
-                  d.fullName.isNotEmpty ? d.fullName[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1D3557),
-                  ),
-                ),
+              const PHeading('You manage these profiles'),
+              _managedCard(dep),
+              const SizedBox(height: 29),
+              PHeading(
+                'Shared with you',
+                action: PButton('Enter a code', kind: PButtonKind.alt, dense: true, icon: Icons.key_rounded, onPressed: _enterCode),
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              _sharedCard(),
+              const SizedBox(height: 29),
+              const PHeading("What's the difference?"),
+              PCard(
+                padding: const EdgeInsets.all(21),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      d.fullName,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
+                    _explainer(
+                      Icons.family_restroom_outlined,
+                      'A dependant has no account of their own',
+                      'Like a young child. You create their profile, add their details and book for them.',
                     ),
-                    Row(
-                      children: [
-                        _buildBadge(_capitalize(d.relationship),
-                            const Color(0xFF457B9D)),
-                        if (d.gender != null) ...[
-                          const SizedBox(width: 6),
-                          _buildBadge(
-                              _capitalize(d.gender!), const Color(0xFF64B5F6)),
-                        ],
-                      ],
+                    const SizedBox(height: 14),
+                    _explainer(
+                      Icons.handshake_outlined,
+                      'A shared record belongs to them',
+                      'They use AfiCare themselves and gave you a code. You can look, not change anything, '
+                          'and they can stop sharing at any time.',
                     ),
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                onSelected: (v) {
-                  if (v == 'edit') _showFormSheet(existing: d);
-                  if (v == 'delete') _confirmDelete(dep, d);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(children: [
-                      Icon(Icons.edit, size: 18),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ]),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(children: [
-                      Icon(Icons.delete, size: 18, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete', style: TextStyle(color: Colors.red)),
-                    ]),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 32),
             ],
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
+        ),
+      ],
+    );
+  }
+
+  Widget _explainer(IconData icon, String title, String body) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PSoftIcon(icon, size: 36),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (d.dateOfBirth != null)
-                _infoChip(
-                    Icons.cake,
-                    '${d.dateOfBirth!.day}/${d.dateOfBirth!.month}/${d.dateOfBirth!.year}'),
-              if (d.bloodType != null) _infoChip(Icons.bloodtype, d.bloodType!),
-              _infoChip(Icons.badge_outlined, d.medilinkId ?? 'No ID'),
+              Text(title, style: PT.rowTitle()),
+              const SizedBox(height: 2),
+              Text(body, style: PT.rowSub()),
             ],
           ),
-          // Surfaced on the card itself: an allergy is only useful if it
-          // is seen without opening anything.
-          if (d.allergies.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+        ),
+      ],
+    );
+  }
+
+  Widget _managedCard(DependentProvider dep) {
+    if (dep.error != null && dep.dependents.isEmpty) {
+      return PLoadError(what: 'the profiles you manage', onRetry: _load);
+    }
+    return PCard(
+      padding: const EdgeInsets.all(15),
+      child: dep.dependents.isEmpty
+          ? PEmpty(
+              emoji: '👶',
+              title: 'No dependants yet',
+              body: 'Add a child or family member who has no AfiCare account, '
+                  'and keep their health records under yours.',
+              action: PButton('Add a dependant', icon: Icons.person_add_alt_1_outlined, onPressed: () => _showFormSheet()),
+            )
+          : Column(children: [for (final d in dep.dependents) _dependentRow(dep, d)]),
+    );
+  }
+
+  Widget _sharedCard() {
+    if (_sharedLoading) {
+      return const PCard(
+        padding: EdgeInsets.all(30),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.5, color: PT.teal)),
+      );
+    }
+    if (_sharedFailed) return PLoadError(what: 'records shared with you', onRetry: _loadShared);
+    return PCard(
+      padding: const EdgeInsets.all(15),
+      child: _shared.isEmpty
+          ? PEmpty(
+              emoji: '🤝',
+              title: 'Nobody has shared with you yet',
+              body: 'When someone gives you a caregiver code from their AfiCare app, enter it here '
+                  'to follow their appointments, medicines and more.',
+              action: PButton('Enter a code', icon: Icons.key_rounded, onPressed: _enterCode),
+            )
+          : Column(
               children: [
-                for (final a in d.allergies)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0ED),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            size: 12, color: Color(0xFFA14D43)),
-                        const SizedBox(width: 5),
-                        Text(
-                          a,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFA14D43),
-                          ),
-                        ),
-                      ],
-                    ),
+                for (final s in _shared)
+                  PRow(
+                    leading: PAvatar(initials: DefaultAvatar.initials(s.patientName)),
+                    title: s.patientName,
+                    subtitle: CaregiverAccess.accessLevelScope(s.accessLevel),
+                    extraSubtitle: [
+                      'View only',
+                      if (s.since != null) 'since ${DateFormat('d MMM yyyy').format(s.since!)}',
+                    ].join(' · '),
+                    trailing: const [Icon(Icons.chevron_right_rounded, color: PT.muted)],
+                    onTap: () => _openShared(s),
                   ),
               ],
             ),
-          ],
-        ],
-      ),
     );
   }
 
-  Widget _buildBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-            fontSize: 11, color: color, fontWeight: FontWeight.w500),
-      ),
-    );
-  }
+  Widget _dependentRow(DependentProvider dep, DependentProfileModel d) {
+    final facts = [
+      _capitalize(d.relationship),
+      if (d.gender != null) _capitalize(d.gender!),
+      if (d.dateOfBirth != null) 'Born ${DateFormat('d MMM yyyy').format(d.dateOfBirth!)}',
+    ].join(' · ');
+    final ids = [
+      d.medilinkId ?? 'No MediLink ID yet',
+      if (d.bloodType != null) 'Blood ${d.bloodType}',
+    ].join(' · ');
 
-  Widget _infoChip(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: Colors.grey[500]),
-        const SizedBox(width: 4),
-        Text(text,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-      ],
+    final controls = [
+      PButton('Edit', kind: PButtonKind.alt, dense: true, onPressed: () => _showFormSheet(existing: d)),
+      PButton('Remove', kind: PButtonKind.alt, dense: true, onPressed: () => _confirmDelete(dep, d)),
+    ];
+    final mobile = PT.isMobile(context);
+
+    return PRow(
+      leading: PAvatar(initials: DefaultAvatar.initials(d.fullName), isDependent: true),
+      title: d.fullName,
+      subtitle: facts,
+      extraSubtitle: ids,
+      trailing: mobile ? const [] : [controls[0], controls[1]],
+      below: (d.allergies.isEmpty && !mobile)
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(left: 46),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Shown on the row itself: an allergy is only useful if
+                  // it is seen without opening anything.
+                  if (d.allergies.isNotEmpty)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [for (final a in d.allergies) PBadge('Allergy: $a', tone: PTone.red)],
+                    ),
+                  if (mobile) ...[
+                    if (d.allergies.isNotEmpty) const SizedBox(height: 10),
+                    Row(children: [controls[0], const SizedBox(width: 8), controls[1]]),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 
@@ -270,34 +267,29 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final guardianId = auth.currentUser?.id ?? '';
 
-    final confirm = await showDialog<bool>(
+    final confirm = await showPModal<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Dependent?'),
-        content: Text(
-            'Remove ${d.fullName} and all associated data? This cannot be undone.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: Colors.red))),
+      title: 'Remove ${d.fullName}?',
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Their profile and everything recorded under it will be deleted. This can't be undone.",
+              style: PT.sub()),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              PButton('Keep', kind: PButtonKind.alt, onPressed: () => Navigator.pop(ctx, false)),
+              const SizedBox(width: 8),
+              PButton('Remove', kind: PButtonKind.red, onPressed: () => Navigator.pop(ctx, true)),
+            ],
+          ),
         ],
       ),
     );
     if (confirm == true && mounted) {
       final ok = await dep.deleteDependent(d.id, guardianId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ok
-              ? '${d.fullName} removed'
-              : 'Could not delete — try again'),
-          backgroundColor: ok ? const Color(0xFF1D3557) : Colors.red,
-        ));
-      }
+      if (mounted) pToast(context, ok ? '${d.fullName} removed' : "Couldn't remove them. Please try again.");
     }
   }
 
@@ -311,6 +303,91 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
         existing: existing,
         onSaved: _load,
       ),
+    );
+  }
+}
+
+// ── Enter a caregiver code (inside showPModal) ────────────────
+
+/// Pops with the name of the person who shared, once the code is accepted.
+class _EnterCodeForm extends StatefulWidget {
+  const _EnterCodeForm({required this.onRedeem});
+
+  final Future<String> Function(String code) onRedeem;
+
+  @override
+  State<_EnterCodeForm> createState() => _EnterCodeFormState();
+}
+
+class _EnterCodeFormState extends State<_EnterCodeForm> {
+  final _ctrl = TextEditingController();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final code = CaregiverAccess.normaliseCode(_ctrl.text);
+    if (code.length != 8) {
+      setState(() => _error = 'Codes are 8 letters and numbers, like ABCD-2345.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final name = await widget.onRedeem(code);
+      if (mounted) Navigator.pop(context, name);
+    } on CaregiverException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Ask the person you care for to make a code in their AfiCare app '
+          '(More → Share with a caregiver), then type it here.',
+          style: PT.sub(),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          autocorrect: false,
+          enableSuggestions: false,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\- ]')),
+            LengthLimitingTextInputFormatter(10),
+          ],
+          style: GoogleFonts.figtree(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 3, color: PT.ink),
+          textAlign: TextAlign.center,
+          decoration: pInput(hint: 'ABCD-2345'),
+          onSubmitted: (_) => _saving ? null : _submit(),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          PCallout(tone: PTone.red, body: _error!),
+        ],
+        const SizedBox(height: 12),
+        Text("You'll be able to look at what they chose to share, not change it.", style: PT.rowSub()),
+        const SizedBox(height: 18),
+        Align(
+          alignment: Alignment.centerRight,
+          child: PButton(_saving ? 'Checking…' : 'Use this code', onPressed: _saving ? null : _submit),
+        ),
+      ],
     );
   }
 }

@@ -118,7 +118,7 @@ const patientMore = <String, List<PatientDest>>{
   'Support & access': [
     PatientDest(icon: Icons.accessible, label: 'PWD / disability support', route: '/patient/pwd'),
     PatientDest(icon: Icons.accessibility_new_outlined, label: 'Accessibility', route: '/patient/accessibility'),
-    PatientDest(icon: Icons.handshake_outlined, label: 'Caregiver access', route: '/patient/caregiver-portal', adultOnly: true),
+    PatientDest(icon: Icons.handshake_outlined, label: 'Share with a caregiver', route: '/patient/caregiver-portal', adultOnly: true),
     PatientDest(icon: Icons.person_outline, label: 'Profile & MediLink ID', route: PatientRoutes.profile),
     PatientDest(icon: Icons.family_restroom_outlined, label: 'People I care for', route: PatientRoutes.dependents, adultOnly: true),
   ],

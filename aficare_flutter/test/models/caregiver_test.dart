@@ -2,32 +2,83 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aficare_flutter/models/caregiver_model.dart';
 
 void main() {
-  group('CaregiverAccess access codes', () {
-    test('generateAccessCode produces 6-digit string', () {
-      final code = CaregiverAccess.generateAccessCode();
-      expect(code.length, 6);
-      expect(int.tryParse(code), isNotNull);
+  final now = DateTime(2026, 10, 16, 12);
+
+  CaregiverAccess grant({
+    bool isActive = true,
+    DateTime? codeExpiresAt,
+    DateTime? redeemedAt,
+  }) =>
+      CaregiverAccess(
+        id: 'ca-1',
+        accessCode: 'ABCD2345',
+        accessLevel: 'full',
+        isActive: isActive,
+        grantedAt: DateTime(2026, 10, 15),
+        codeExpiresAt: codeExpiresAt,
+        redeemedAt: redeemedAt,
+      );
+
+  group('CaregiverAccess status', () {
+    test('an unused code inside its 48 hours is waiting', () {
+      final g = grant(codeExpiresAt: now.add(const Duration(hours: 5)));
+      expect(g.statusAt(now), CaregiverGrantStatus.waiting);
+      expect(g.isLiveAt(now), isTrue);
     });
 
-    test('generateAccessCode produces valid 6-digit codes', () {
-      final codes = <String>[];
-      for (var i = 0; i < 100; i++) {
-        final code = CaregiverAccess.generateAccessCode();
-        expect(code.length, 6);
-        expect(int.tryParse(code), isNotNull);
-        codes.add(code);
-      }
-      // Timestamp-based: all codes in same ms are identical, but should be valid
-      expect(codes.first.length, 6);
+    test('an unused code past its time has expired', () {
+      final g = grant(codeExpiresAt: now.subtract(const Duration(minutes: 1)));
+      expect(g.statusAt(now), CaregiverGrantStatus.expired);
+      expect(g.isLiveAt(now), isFalse);
+    });
+
+    test('an entered code stays active after the code time passes', () {
+      final g = grant(
+        codeExpiresAt: now.subtract(const Duration(days: 30)),
+        redeemedAt: now.subtract(const Duration(days: 31)),
+      );
+      expect(g.statusAt(now), CaregiverGrantStatus.active);
+      expect(g.isLiveAt(now), isTrue);
+    });
+
+    test('stopped wins over everything', () {
+      final g = grant(isActive: false, redeemedAt: now, codeExpiresAt: now.add(const Duration(days: 1)));
+      expect(g.statusAt(now), CaregiverGrantStatus.stopped);
+      expect(g.isLiveAt(now), isFalse);
+    });
+
+    test('a code with no expiry recorded is treated as expired, not open forever', () {
+      expect(grant().statusAt(now), CaregiverGrantStatus.expired);
     });
   });
 
-  group('CaregiverAccess access level labels', () {
-    test('accessLevelLabel returns correct labels', () {
-      expect(CaregiverAccess.accessLevelLabel('full'), 'Full Access');
-      expect(CaregiverAccess.accessLevelLabel('medical_only'), 'Medical Records Only');
-      expect(CaregiverAccess.accessLevelLabel('appointments_only'), 'Appointments Only');
-      expect(CaregiverAccess.accessLevelLabel('emergency_only'), 'Emergency Info Only');
+  group('CaregiverAccess codes', () {
+    test('formatCode splits eight characters into two groups', () {
+      expect(CaregiverAccess.formatCode('ABCD2345'), 'ABCD-2345');
+    });
+
+    test('normaliseCode accepts what people actually type', () {
+      expect(CaregiverAccess.normaliseCode(' abcd-2345 '), 'ABCD2345');
+      expect(CaregiverAccess.normaliseCode('ab cd 23 45'), 'ABCD2345');
+    });
+
+    test('formatCode leaves anything that is not eight characters alone', () {
+      expect(CaregiverAccess.formatCode('123456'), '123456');
+    });
+  });
+
+  group('CaregiverAccess access levels', () {
+    test('every level has a label and a plain-words scope', () {
+      for (final level in ['full', 'medical_only', 'appointments_only', 'emergency_only']) {
+        expect(CaregiverAccess.accessLevelLabel(level), isNot(level));
+        expect(CaregiverAccess.accessLevelScope(level), isNotEmpty);
+      }
+    });
+
+    test('no level claims to share mental health', () {
+      for (final level in ['full', 'medical_only', 'appointments_only', 'emergency_only']) {
+        expect(CaregiverAccess.accessLevelScope(level).toLowerCase(), isNot(contains('mental')));
+      }
     });
 
     test('unknown level returns raw string', () {
@@ -35,48 +86,35 @@ void main() {
     });
   });
 
-  group('CaregiverAccess fromJson/toJson', () {
-    test('round-trip preserves all fields', () {
-      final access = CaregiverAccess(
-        id: 'ca-1',
-        caregiverUserId: 'carer-1',
-        dependentPatientId: 'patient-1',
-        accessCode: '123456',
-        accessLevel: 'full',
-        isActive: true,
-        grantedAt: DateTime(2026, 1, 1),
-        expiresAt: DateTime(2026, 12, 31),
-        grantedByPatientId: 'patient-1',
-      );
-
-      final restored = CaregiverAccess.fromJson(access.toJson());
-      expect(restored.id, 'ca-1');
-      expect(restored.accessCode, '123456');
-      expect(restored.accessLevel, 'full');
-      expect(restored.isActive, true);
-      expect(restored.expiresAt, DateTime(2026, 12, 31));
+  group('fromJson', () {
+    test('CaregiverAccess reads what my_caregiver_grants() returns', () {
+      final g = CaregiverAccess.fromJson({
+        'id': 'ca-1',
+        'access_code': 'ABCD2345',
+        'access_level': 'medical_only',
+        'is_active': true,
+        'granted_at': '2026-10-15T09:00:00Z',
+        'code_expires_at': '2026-10-17T09:00:00Z',
+        'redeemed_at': '2026-10-15T10:00:00Z',
+        'caregiver_name': 'Amina Otieno',
+        'last_viewed_at': null,
+      });
+      expect(g.accessLevel, 'medical_only');
+      expect(g.caregiverName, 'Amina Otieno');
+      expect(g.redeemedAt, isNotNull);
+      expect(g.lastViewedAt, isNull);
     });
 
-    test('fromJson handles null expiresAt', () {
-      final access = CaregiverAccess.fromJson({});
-      expect(access.expiresAt, isNull);
-      expect(access.isActive, true);
+    test('CaregiverAccess survives an empty row', () {
+      final g = CaregiverAccess.fromJson({});
+      expect(g.codeExpiresAt, isNull);
+      expect(g.isActive, isTrue);
     });
-  });
 
-  group('CaregiverActivity fromJson', () {
-    test('fromJson handles all fields', () {
-      final json = {
-        'id': 'act-1',
-        'caregiver_access_id': 'ca-1',
-        'action_type': 'viewed_records',
-        'details': 'Viewed prescriptions',
-        'timestamp': '2026-08-01T10:00:00Z',
-      };
-      final activity = CaregiverActivity.fromJson(json);
-      expect(activity.id, 'act-1');
-      expect(activity.actionType, 'viewed_records');
-      expect(activity.details, 'Viewed prescriptions');
+    test('CaregiverLink falls back to a neutral name', () {
+      final l = CaregiverLink.fromJson({'access_id': 'ca-1', 'patient_name': '  ', 'access_level': 'full'});
+      expect(l.patientName, 'AfiCare patient');
+      expect(l.accessId, 'ca-1');
     });
   });
 }

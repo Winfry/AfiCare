@@ -33,6 +33,7 @@ import '../screens/patient/vaccination_screen.dart';
 import '../screens/patient/medication_reminder_screen.dart';
 import '../screens/patient/mens_health_screen.dart';
 import '../screens/patient/caregiver_portal_screen.dart';
+import '../screens/patient/caring_for_screen.dart';
 import '../screens/patient/receipt_upload_screen.dart';
 import '../screens/patient/drug_interaction_screen.dart';
 import '../screens/patient/medication_cost_screen.dart';
@@ -445,6 +446,14 @@ final appRouter = GoRouter(
             GoRoute(
               path: 'dependents',
               pageBuilder: (context, state) => _patientPage(state, const ManageDependentsScreen()),
+              routes: [
+                // A record someone shared with this person by caregiver code.
+                GoRoute(
+                  path: 'shared/:accessId',
+                  pageBuilder: (context, state) =>
+                      _patientPage(state, CaringForScreen(accessId: state.pathParameters['accessId']!)),
+                ),
+              ],
             ),
           ],
         ),
