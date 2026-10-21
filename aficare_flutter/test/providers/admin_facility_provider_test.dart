@@ -140,9 +140,11 @@ void main() {
     });
 
     test('getFacilityStats counts providers and departments', () async {
-      fake.routeJson('/rest/v1/users', [
-        {'id': 'u1'},
-        {'id': 'u2'},
+      // Providers are counted from the facility's links, not from users:
+      // a provider can work at several facilities.
+      fake.routeJson('/rest/v1/provider_facilities', [
+        {'provider_id': 'u1'},
+        {'provider_id': 'u2'},
       ]);
       fake.routeJson('/rest/v1/departments', [
         {'id': 'd1'},
@@ -155,6 +157,8 @@ void main() {
 
       expect(stats['providers'], 2);
       expect(stats['departments'], 3);
+      expect(fake.requestsTo('GET', 'provider_facilities').single.url.queryParameters['facility_id'], 'eq.f1');
+      expect(fake.requestsTo('GET', 'departments').single.url.queryParameters['facility_id'], 'eq.f1');
     });
   });
 

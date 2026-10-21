@@ -130,13 +130,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final crossCount = constraints.maxWidth > 800 ? 4 : (constraints.maxWidth > 500 ? 2 : 1);
-                    return GridView.count(
-                      crossAxisCount: crossCount,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 2.0,
+                    // Cards take their own height. A grid cell's height is
+                    // fixed (by aspect ratio or extent), and StatCard's
+                    // content doesn't shrink with the width, so narrow cards
+                    // or larger text cut the bottom off.
+                    const gap = 16.0;
+                    final cardWidth = (constraints.maxWidth - gap * (crossCount - 1)) / crossCount;
+                    return Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
                       children: [
                         StatCard(
                           label: 'Registered Patients',
@@ -178,7 +180,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             iconColor: const Color(0xFF457B9D),
                           ),
                         ),
-                      ],
+                      ].map((card) => SizedBox(width: cardWidth, child: card)).toList(),
                     );
                   },
                 ),

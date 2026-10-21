@@ -145,34 +145,76 @@ void main() {
     });
   });
 
-  group('AppointmentProvider.updateStatus', () {
-    test('sends the update and mutates the local row', () async {
+  // Status changes go through database functions (cancel_appointment,
+  // confirm_appointment, reschedule_appointment), not a direct PATCH, so
+  // the database can check who is allowed to make each change.
+  group('AppointmentProvider status changes', () {
+    test('cancel calls cancel_appointment and marks the row cancelled', () async {
       fake.routeJson('/rest/v1/appointments', [appointmentRow()]);
+      fake.routeJson('/rest/v1/rpc/cancel_appointment', null);
 
       final provider = AppointmentProvider();
       await provider.loadAppointments('p1');
 
-      final ok = await provider.updateStatus('ap1', AppointmentStatus.cancelled);
+      final ok = await provider.cancelAppointment('ap1', reason: 'travelling');
 
       expect(ok, isTrue);
       expect(provider.appointments.single.status, AppointmentStatus.cancelled);
+      expect(fake.requestsTo('PATCH', 'appointments'), isEmpty);
 
-      final update = fake.requestsTo('PATCH', 'appointments').single;
-      final body = jsonDecode(update.body) as Map<String, dynamic>;
-      expect(body, containsPair('status', 'cancelled'));
+      final call = fake.requestsTo('POST', 'rpc/cancel_appointment').single;
+      final body = jsonDecode(call.body) as Map<String, dynamic>;
+      expect(body, containsPair('target_appointment_id', 'ap1'));
+      expect(body, containsPair('reason', 'travelling'));
     });
 
-    test('failure sets an error and returns false', () async {
+    test('confirm calls confirm_appointment and marks the row confirmed', () async {
+      fake.routeJson('/rest/v1/appointments', [appointmentRow(status: 'pending')]);
+      fake.routeJson('/rest/v1/rpc/confirm_appointment', null);
+
+      final provider = AppointmentProvider();
+      await provider.loadAppointments('p1');
+
+      final ok = await provider.confirmAppointment('ap1');
+
+      expect(ok, isTrue);
+      expect(provider.appointments.single.status, AppointmentStatus.confirmed);
+      final body = jsonDecode(fake.requestsTo('POST', 'rpc/confirm_appointment').single.body) as Map<String, dynamic>;
+      expect(body, containsPair('target_appointment_id', 'ap1'));
+    });
+
+    test('reschedule calls reschedule_appointment and moves the row', () async {
+      fake.routeJson('/rest/v1/appointments', [appointmentRow()]);
+      fake.routeJson('/rest/v1/rpc/reschedule_appointment', null);
+
+      final provider = AppointmentProvider();
+      await provider.loadAppointments('p1');
+
+      final newTime = DateTime.utc(2026, 6, 3, 14);
+      final ok = await provider.rescheduleAppointment('ap1', newTime);
+
+      expect(ok, isTrue);
+      expect(provider.appointments.single.scheduledAt, newTime);
+      final body = jsonDecode(fake.requestsTo('POST', 'rpc/reschedule_appointment').single.body) as Map<String, dynamic>;
+      expect(body, containsPair('target_appointment_id', 'ap1'));
+      expect(body, containsPair('new_scheduled_at', newTime.toIso8601String()));
+    });
+
+    test('a refused change sets an error, returns false and leaves the row alone', () async {
+      fake.routeJson('/rest/v1/appointments', [appointmentRow()]);
       fake.routeRaw(
-        '/rest/v1/appointments',
-        http.Response('{"message":"not found"}', 404),
+        '/rest/v1/rpc/cancel_appointment',
+        http.Response('{"message":"not allowed"}', 403),
       );
 
       final provider = AppointmentProvider();
-      final ok = await provider.updateStatus('missing', AppointmentStatus.cancelled);
+      await provider.loadAppointments('p1');
+
+      final ok = await provider.cancelAppointment('ap1');
 
       expect(ok, isFalse);
       expect(provider.error, isNotNull);
+      expect(provider.appointments.single.status, AppointmentStatus.confirmed);
     });
   });
 }
