@@ -125,6 +125,13 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
                       'They use AfiCare themselves and gave you a code. You can look, not change anything, '
                           'and they can stop sharing at any time.',
                     ),
+                    const SizedBox(height: 14),
+                    _explainer(
+                      Icons.gavel_outlined,
+                      "Neither one, by itself, lets you decide for someone",
+                      "Managing a profile or seeing a shared record here doesn't give you the right to "
+                          'agree to treatment or make medical decisions for that person.',
+                    ),
                   ],
                 ),
               ),
@@ -201,6 +208,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
                     subtitle: CaregiverAccess.accessLevelScope(s.accessLevel),
                     extraSubtitle: [
                       'View only',
+                      if (CaregiverRelationship.asTheir(s.relationship) case final who?) who,
                       if (s.since != null) 'since ${DateFormat('d MMM yyyy').format(s.since!)}',
                     ].join(' · '),
                     trailing: const [Icon(Icons.chevron_right_rounded, color: PT.muted)],

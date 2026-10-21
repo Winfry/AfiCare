@@ -40,8 +40,8 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
 
   /// Makes the code and returns it; throws [CaregiverException] with a
   /// message to show if it couldn't.
-  Future<String> _grant(String accessLevel) async {
-    final code = await _service.createCode(accessLevel);
+  Future<String> _grant(String accessLevel, String relationship) async {
+    final code = await _service.createCode(accessLevel, relationship);
     _loadAccess();
     return code;
   }
@@ -103,7 +103,7 @@ class _CaregiverPortalScreenState extends State<CaregiverPortalScreen> {
     return PSliverPage(
       eyebrow: 'Caregiver access',
       title: 'Share with someone you trust',
-      subtitle: 'Let a family member or friend follow part of your care. '
+      subtitle: 'Let a family member, a friend or a carer you trust follow part of your care. '
           'They can look, not change anything, and you can stop it whenever you like.',
       action: PButton('Make a code', icon: Icons.add, onPressed: _showGrant),
       slivers: [
@@ -199,7 +199,9 @@ class _AccessRow extends StatelessWidget {
     final code = 'Code ${CaregiverAccess.formatCode(a.accessCode)}';
     final name = a.caregiverName?.trim();
 
-    final title = a.redeemedAt != null && name != null && name.isNotEmpty ? name : code;
+    final who = a.redeemedAt != null && name != null && name.isNotEmpty ? name : code;
+    final relationship = CaregiverRelationship.label(a.relationship);
+    final title = relationship == null ? who : '$who · $relationship';
     final detail = switch (status) {
       CaregiverGrantStatus.waiting => 'Not entered yet · works until ${_dayTime(a.codeExpiresAt!)}',
       CaregiverGrantStatus.active => [
@@ -251,6 +253,8 @@ class _HowItWorks extends StatelessWidget {
     ('They enter it', 'In their own AfiCare app: More → People I care for → Enter a code.'),
     ('They can look', "They see only what you chose, and can't change anything. "
         'Mental health check-ins are never shared.'),
+    ('You still decide', "Being your caregiver doesn't let them make medical decisions for you "
+        'or agree to treatment on your behalf.'),
     ('You stay in control', 'Stop it here at any time and it ends straight away.'),
   ];
 
@@ -299,7 +303,7 @@ class _HowItWorks extends StatelessWidget {
 class _GrantForm extends StatefulWidget {
   const _GrantForm({required this.onGrant});
 
-  final Future<String> Function(String accessLevel) onGrant;
+  final Future<String> Function(String accessLevel, String relationship) onGrant;
 
   @override
   State<_GrantForm> createState() => _GrantFormState();
@@ -309,6 +313,9 @@ class _GrantFormState extends State<_GrantForm> {
   static const _levels = ['full', 'medical_only', 'appointments_only', 'emergency_only'];
 
   String _level = 'full';
+
+  /// Who the person is to the patient. No default: the patient chooses.
+  String? _relationship;
   bool _saving = false;
   String? _error;
 
@@ -316,12 +323,17 @@ class _GrantFormState extends State<_GrantForm> {
   String? _code;
 
   Future<void> _generate() async {
+    final relationship = _relationship;
+    if (relationship == null) {
+      setState(() => _error = 'Choose who this person is to you.');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      final code = await widget.onGrant(_level);
+      final code = await widget.onGrant(_level, relationship);
       if (mounted) setState(() => _code = code);
     } on CaregiverException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -338,8 +350,32 @@ class _GrantFormState extends State<_GrantForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Choose what they'll be able to see. They can look but not change anything.", style: PT.sub()),
-        const SizedBox(height: 14),
+        Text('Who is this person to you?', style: PT.rowTitle()),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final r in CaregiverRelationship.values)
+              PChoicePill(
+                label: CaregiverRelationship.label(r)!,
+                selected: _relationship == r,
+                onTap: () => setState(() {
+                  _relationship = r;
+                  _error = null;
+                }),
+              ),
+          ],
+        ),
+        if (_relationshipNote(_relationship) case final note?) ...[
+          const SizedBox(height: 10),
+          Text(note, style: PT.rowSub()),
+        ],
+        const SizedBox(height: 22),
+        Text('What can they see?', style: PT.rowTitle()),
+        const SizedBox(height: 4),
+        Text("They can look but not change anything.", style: PT.sub()),
+        const SizedBox(height: 10),
         for (final level in _levels)
           _LevelOption(
             title: CaregiverAccess.accessLevelLabel(level),
@@ -352,6 +388,10 @@ class _GrantFormState extends State<_GrantForm> {
           'Medicines show everything you have been prescribed. '
           'Mental health check-ins are never shared, whatever you choose.',
           style: PT.rowSub(),
+        ),
+        const SizedBox(height: 12),
+        const PCallout(
+          body: "A caregiver can see what you choose. They can't make medical decisions for you.",
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
@@ -387,7 +427,14 @@ class _GrantFormState extends State<_GrantForm> {
                 child: SelectableText(code, style: PT.score().copyWith(letterSpacing: 4)),
               ),
               const SizedBox(height: 8),
-              Text(CaregiverAccess.accessLevelScope(_level), style: PT.label(), textAlign: TextAlign.center),
+              Text(
+                [
+                  if (CaregiverRelationship.label(_relationship) case final who?) 'For: $who',
+                  CaregiverAccess.accessLevelScope(_level),
+                ].join(' · '),
+                style: PT.label(),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
@@ -418,6 +465,14 @@ class _GrantFormState extends State<_GrantForm> {
     );
   }
 }
+
+/// A word on the two relationships people most often get wrong.
+String? _relationshipNote(String? relationship) => switch (relationship) {
+      'nurse' => "For a nurse you've arranged yourself, for example at home. "
+          "Nurses treating you at a hospital or clinic don't need a code: they see your record through their facility.",
+      'paid_carer' => 'Someone you pay to help you. When they stop working for you, stop their access here.',
+      _ => null,
+    };
 
 class _LevelOption extends StatelessWidget {
   const _LevelOption({required this.title, required this.subtitle, required this.selected, required this.onTap});

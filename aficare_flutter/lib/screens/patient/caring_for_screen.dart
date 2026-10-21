@@ -101,7 +101,8 @@ class _CaringForScreenState extends State<CaringForScreen> {
             children: [
               PViewingBanner(
                 message: "You're looking at what $firstName chose to share. "
-                    "You can't change anything, and $firstName can stop sharing at any time.",
+                    "You can't change anything or make medical decisions for $firstName, "
+                    'and $firstName can stop sharing at any time.',
               ),
               if (_error != null) ...[
                 PCallout(tone: PTone.red, body: _error!),

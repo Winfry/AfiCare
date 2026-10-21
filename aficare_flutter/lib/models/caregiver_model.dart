@@ -25,6 +25,10 @@ class CaregiverAccess {
   final String id;
   final String accessCode;
   final String accessLevel; // 'full', 'medical_only', 'appointments_only', 'emergency_only'
+
+  /// Who the caregiver is to the patient (see [CaregiverRelationship]).
+  /// Null for codes made before migration 037.
+  final String? relationship;
   final bool isActive;
   final DateTime grantedAt;
   final DateTime? codeExpiresAt;
@@ -40,6 +44,7 @@ class CaregiverAccess {
     required this.id,
     required this.accessCode,
     required this.accessLevel,
+    this.relationship,
     this.isActive = true,
     required this.grantedAt,
     this.codeExpiresAt,
@@ -53,6 +58,7 @@ class CaregiverAccess {
       id: json['id'] as String? ?? '',
       accessCode: json['access_code'] as String? ?? '',
       accessLevel: json['access_level'] as String? ?? 'full',
+      relationship: json['relationship'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       grantedAt: _date(json['granted_at']) ?? DateTime.now(),
       codeExpiresAt: _date(json['code_expires_at']),
@@ -116,6 +122,9 @@ class CaregiverLink {
   final String patientName;
   final String? medilinkId;
   final String accessLevel;
+
+  /// Who the signed-in caregiver is to this patient, as the patient put it.
+  final String? relationship;
   final DateTime? since;
 
   const CaregiverLink({
@@ -123,6 +132,7 @@ class CaregiverLink {
     required this.patientName,
     this.medilinkId,
     required this.accessLevel,
+    this.relationship,
     this.since,
   });
 
@@ -133,9 +143,49 @@ class CaregiverLink {
       patientName: name.isEmpty ? 'AfiCare patient' : name,
       medilinkId: json['medilink_id'] as String?,
       accessLevel: json['access_level'] as String? ?? 'full',
+      relationship: json['relationship'] as String?,
       since: _date(json['redeemed_at']),
     );
   }
+}
+
+/// Who a caregiver is to the patient. The patient picks one when making a
+/// code (migration 037). It is only a label: it never changes what the
+/// caregiver can see, and it gives no right to decide for the patient.
+abstract final class CaregiverRelationship {
+  /// In the order the patient is offered them. Matches the check on
+  /// caregiver_access.relationship.
+  static const values = [
+    'spouse', 'parent', 'child', 'sibling', 'relative', 'friend', 'paid_carer', 'nurse', 'other',
+  ];
+
+  /// As the patient sees it: "Wanjiru · Child". Null when not recorded.
+  static String? label(String? value) => switch (value) {
+        'spouse' => 'Spouse or partner',
+        'parent' => 'Parent',
+        'child' => 'Child',
+        'sibling' => 'Brother or sister',
+        'relative' => 'Other relative',
+        'friend' => 'Friend',
+        'paid_carer' => 'Paid carer',
+        'nurse' => 'Nurse',
+        'other' => 'Someone else',
+        _ => null,
+      };
+
+  /// As the caregiver sees it: "you're their child". Null when not
+  /// recorded, or when "someone else" says nothing worth repeating.
+  static String? asTheir(String? value) => switch (value) {
+        'spouse' => "you're their spouse or partner",
+        'parent' => "you're their parent",
+        'child' => "you're their child",
+        'sibling' => "you're their brother or sister",
+        'relative' => "you're their relative",
+        'friend' => "you're their friend",
+        'paid_carer' => "you're their paid carer",
+        'nurse' => "you're their nurse",
+        _ => null,
+      };
 }
 
 DateTime? _date(Object? v) => v is String ? DateTime.tryParse(v)?.toLocal() : null;

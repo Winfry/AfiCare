@@ -29,9 +29,10 @@ class CaregiverService {
     return _list(rows).map(CaregiverAccess.fromJson).toList();
   }
 
-  /// Makes a new code for [accessLevel] and returns it.
-  Future<String> createCode(String accessLevel) async {
-    final res = await _call('create_caregiver_code', {'p_level': accessLevel});
+  /// Makes a new code for [accessLevel] and returns it. [relationship] is
+  /// who the caregiver is to the patient (one of [CaregiverRelationship.values]).
+  Future<String> createCode(String accessLevel, String relationship) async {
+    final res = await _call('create_caregiver_code', {'p_level': accessLevel, 'p_relationship': relationship});
     final code = res is Map ? res['access_code'] as String? : null;
     if (code == null || code.isEmpty) throw const CaregiverException(_genericError);
     return code;

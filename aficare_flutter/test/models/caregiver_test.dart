@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aficare_flutter/models/caregiver_model.dart';
 
@@ -115,6 +117,37 @@ void main() {
       final l = CaregiverLink.fromJson({'access_id': 'ca-1', 'patient_name': '  ', 'access_level': 'full'});
       expect(l.patientName, 'AfiCare patient');
       expect(l.accessId, 'ca-1');
+    });
+  });
+
+  group('CaregiverRelationship', () {
+    test('is read from both lists, and missing on older codes', () {
+      expect(CaregiverAccess.fromJson({'id': 'ca-1', 'relationship': 'paid_carer'}).relationship, 'paid_carer');
+      expect(CaregiverLink.fromJson({'access_id': 'ca-1', 'relationship': 'child'}).relationship, 'child');
+      expect(CaregiverAccess.fromJson({'id': 'ca-1'}).relationship, isNull);
+    });
+
+    test('every choice has a label for the patient', () {
+      for (final r in CaregiverRelationship.values) {
+        expect(CaregiverRelationship.label(r), isNotNull, reason: r);
+      }
+      expect(CaregiverRelationship.label('child'), 'Child');
+      expect(CaregiverRelationship.label(null), isNull);
+      expect(CaregiverRelationship.label('surgeon'), isNull);
+    });
+
+    test('the caregiver sees who they are to the patient', () {
+      expect(CaregiverRelationship.asTheir('child'), "you're their child");
+      expect(CaregiverRelationship.asTheir('paid_carer'), "you're their paid carer");
+      expect(CaregiverRelationship.asTheir('other'), isNull);
+      expect(CaregiverRelationship.asTheir(null), isNull);
+    });
+
+    test('the app offers exactly the values the database accepts (migration 037)', () {
+      final sql = File('../supabase_migrations/037_caregiver_relationship.sql').readAsStringSync();
+      final check = RegExp(r"relationship IN\s*\(([^)]*)\)").firstMatch(sql)!.group(1)!;
+      final allowed = RegExp(r"'([a-z_]+)'").allMatches(check).map((m) => m.group(1)).toList();
+      expect(allowed, CaregiverRelationship.values);
     });
   });
 }
