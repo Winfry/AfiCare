@@ -308,10 +308,11 @@ class _ShareRecordsState extends State<ShareRecords> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PCardTitle('Scan a facility QR'),
+          const PCardTitle('Scan a QR code'),
           Text(
-            'Scanning a facility\'s QR checks you in and shares only what you approve. '
-            'Your records are never sent by the code itself.',
+            'The scanner tells you what a code is: a MediLink ID, a record-sharing link, '
+            'or something else. It never shares your records. Checking in at a facility '
+            'by QR isn\'t available yet.',
             style: PT.sub(),
           ),
           const SizedBox(height: 18),
@@ -332,7 +333,7 @@ class _ShareRecordsState extends State<ShareRecords> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 30),
                     child: Text(
-                      'Point your camera at the facility\'s QR code.',
+                      'Point your camera at any QR code to see what it is.',
                       textAlign: TextAlign.center,
                       style: PT.sub().copyWith(color: const Color(0xFFD6ECE9)),
                     ),

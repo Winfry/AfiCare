@@ -1,7 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
 
-import '../../utils/theme.dart';
+import '../../providers/auth_provider.dart';
+import '../../theme/patient_tokens.dart';
+import 'widgets/patient_ui.dart';
+
+/// What a scanned QR turned out to be.
+enum ScannedKind { ownMedilinkId, medilinkId, shareLink, other }
+
+/// A scanned QR, read honestly: the scanner only says what the code is.
+/// Scanning never verifies anyone and never shares a record, because no
+/// AfiCare facility or provider QR exists yet for it to act on.
+class ScannedCode {
+  const ScannedCode(this.kind, this.raw, {this.value});
+
+  final ScannedKind kind;
+  final String raw;
+
+  /// The MediLink ID or share code found in [raw], if any.
+  final String? value;
+
+  static final _medilinkId = RegExp(r'^ML-[A-Z0-9]+-[A-Z0-9]+$');
+  static final _shareLink = RegExp(r'^https?://\S+/v/([A-Za-z0-9-]+)/?$');
+
+  static ScannedCode parse(String raw, {String? ownMedilinkId}) {
+    final text = raw.trim();
+    final upper = text.toUpperCase();
+    if (_medilinkId.hasMatch(upper)) {
+      final own = ownMedilinkId != null && upper == ownMedilinkId.toUpperCase();
+      return ScannedCode(own ? ScannedKind.ownMedilinkId : ScannedKind.medilinkId, text, value: upper);
+    }
+    final link = _shareLink.firstMatch(text);
+    if (link != null) {
+      return ScannedCode(ScannedKind.shareLink, text, value: link.group(1));
+    }
+    return ScannedCode(ScannedKind.other, text);
+  }
+}
 
 class QRScanner extends StatefulWidget {
   const QRScanner({super.key});
@@ -11,40 +49,28 @@ class QRScanner extends StatefulWidget {
 }
 
 class _QRScannerState extends State<QRScanner> with WidgetsBindingObserver {
-  MobileScannerController? _controller;
-  bool _isScanning = true;
-  bool _hasScanned = false;
-  String? _scannedData;
-  bool _torchEnabled = false;
-  bool _frontCamera = false;
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+  );
+  ScannedCode? _result;
+  bool _torchOn = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initController();
-  }
-
-  void _initController() {
-    _controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-      torchEnabled: false,
-    );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_controller == null) return;
-
+    if (_result != null) return;
     switch (state) {
       case AppLifecycleState.resumed:
-        _controller?.start();
-        break;
+        _controller.start();
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
-        _controller?.stop();
-        break;
+        _controller.stop();
       default:
         break;
     }
@@ -53,591 +79,294 @@ class _QRScannerState extends State<QRScanner> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller?.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan QR Code'),
-        backgroundColor: AfiCareTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off),
-            tooltip: _torchEnabled ? 'Turn off torch' : 'Turn on torch',
-            onPressed: _toggleTorch,
-          ),
-          IconButton(
-            icon: Icon(_frontCamera ? Icons.camera_front : Icons.camera_rear),
-            tooltip: _frontCamera ? 'Switch to rear camera' : 'Switch to front camera',
-            onPressed: _switchCamera,
-          ),
-        ],
-      ),
-      body: _hasScanned ? _buildResultView() : _buildScannerView(),
-    );
-  }
-
-  Widget _buildScannerView() {
-    return Stack(
-      children: [
-        // Camera view
-        MobileScanner(
-          controller: _controller,
-          onDetect: _onDetect,
-        ),
-
-        // Overlay
-        Container(
-          decoration: ShapeDecoration(
-            shape: QRScannerOverlayShape(
-              borderColor: AfiCareTheme.primaryGreen,
-              borderRadius: 16,
-              borderLength: 30,
-              borderWidth: 8,
-              cutOutSize: MediaQuery.of(context).size.width * 0.7,
-            ),
-          ),
-        ),
-
-        // Instructions
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.7),
-                ],
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.qr_code_scanner,
-                  color: Colors.white,
-                  size: 40,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Scan Provider QR Code',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Point your camera at a healthcare provider\'s QR code to verify their identity',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildActionButton(
-                      icon: Icons.image,
-                      label: 'Gallery',
-                      onPressed: _pickFromGallery,
-                    ),
-                    const SizedBox(width: 24),
-                    _buildActionButton(
-                      icon: Icons.keyboard,
-                      label: 'Enter Code',
-                      onPressed: _enterCodeManually,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Scanning indicator
-        if (_isScanning)
-          Positioned(
-            top: 100,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Scanning...',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildResultView() {
-    final parsedData = _parseQRData(_scannedData ?? '');
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.green.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 60,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'QR Code Scanned!',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Provider information verified',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.1),
-                    child: Icon(
-                      Icons.local_hospital,
-                      size: 40,
-                      color: AfiCareTheme.primaryBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    parsedData['name'] ?? 'Healthcare Provider',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    parsedData['hospital'] ?? 'Medical Facility',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.verified,
-                          color: Colors.green.shade700,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Verified Provider',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  _buildInfoRow(
-                    'Provider ID',
-                    parsedData['id'] ?? 'PRV-XXX-XXXX',
-                    Icons.badge,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow(
-                    'Department',
-                    parsedData['department'] ?? 'General Medicine',
-                    Icons.medical_services,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow(
-                    'License No.',
-                    parsedData['license'] ?? 'KMD-123456',
-                    Icons.card_membership,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.orange.shade700),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'This provider is requesting access to your medical records.',
-                    style: TextStyle(
-                      color: Colors.orange.shade900,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          Row(
+      backgroundColor: PT.page,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _scanAgain,
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan Again'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
+              PSubPageBar(
+                title: 'Scan a QR code',
+                actions: [
+                  if (_result == null) ...[
+                    _barButton(
+                      icon: _torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                      tooltip: _torchOn ? 'Turn off torch' : 'Turn on torch',
+                      onPressed: _toggleTorch,
+                    ),
+                    const SizedBox(width: 8),
+                    _barButton(
+                      icon: Icons.cameraswitch_rounded,
+                      tooltip: 'Switch camera',
+                      onPressed: () => _controller.switchCamera(),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _grantAccess(parsedData),
-                  icon: const Icon(Icons.check),
-                  label: const Text('Grant Access'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AfiCareTheme.primaryGreen,
-                  ),
-                ),
-              ),
+              Expanded(child: _result == null ? _scannerView() : _resultView(_result!)),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
-          ),
-        ],
+  Widget _barButton({required IconData icon, required String tooltip, required VoidCallback onPressed}) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        fixedSize: const Size(42, 42),
+        backgroundColor: PT.white,
+        foregroundColor: PT.teal,
+        side: const BorderSide(color: PT.line),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Row(
+  // ── Camera ────────────────────────────────────────────────────────────
+
+  Widget _scannerView() {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 32),
       children: [
-        Icon(icon, size: 20, color: Colors.grey),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey.shade600,
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(PT.rHero),
+                child: ColoredBox(
+                  color: const Color(0xFF0B2230),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MobileScanner(
+                        controller: _controller,
+                        onDetect: _onDetect,
+                        errorBuilder: (context, error, _) => _cameraError(error),
+                      ),
+                      LayoutBuilder(
+                        builder: (context, box) => DecoratedBox(
+                          decoration: ShapeDecoration(
+                            shape: QRScannerOverlayShape(
+                              borderColor: const Color(0xFFD6ECE9),
+                              borderRadius: 16,
+                              borderLength: 30,
+                              borderWidth: 6,
+                              cutOutSize: box.maxWidth * 0.68,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+        const SizedBox(height: 18),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Hold the code inside the frame.', style: PT.h3(), textAlign: TextAlign.center),
+                const SizedBox(height: 6),
+                Text(
+                  'The scanner tells you what a code is. It never shares your records '
+                  'and it can\'t check you in at a facility.',
+                  style: PT.sub(),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _cameraError(MobileScannerException error) {
+    final message = switch (error.errorCode) {
+      MobileScannerErrorCode.permissionDenied =>
+        'AfiCare isn\'t allowed to use your camera. Turn camera access on in your phone or browser settings, then try again.',
+      MobileScannerErrorCode.unsupported => 'This device or browser can\'t scan QR codes.',
+      _ => 'The camera couldn\'t start. Close other apps using it and try again.',
+    };
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.no_photography_outlined, size: 44, color: Color(0xFFD6ECE9)),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: PT.sub().copyWith(color: const Color(0xFFD6ECE9)),
+          ),
+        ],
+      ),
     );
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_hasScanned) return;
-
-    final List<Barcode> barcodes = capture.barcodes;
-    for (final barcode in barcodes) {
-      if (barcode.rawValue != null) {
-        setState(() {
-          _hasScanned = true;
-          _scannedData = barcode.rawValue;
-          _isScanning = false;
-        });
-        _controller?.stop();
-        break;
-      }
+    if (_result != null) return;
+    for (final barcode in capture.barcodes) {
+      final raw = barcode.rawValue;
+      if (raw == null || raw.trim().isEmpty) continue;
+      final own = context.read<AuthProvider>().currentUser?.medilinkId;
+      _controller.stop();
+      setState(() => _result = ScannedCode.parse(raw, ownMedilinkId: own));
+      return;
     }
   }
 
-  Map<String, String> _parseQRData(String data) {
-    // Parse AFICARE QR format: AFICARE:TYPE:ID:NAME:HOSPITAL:DEPARTMENT
-    final parts = data.split(':');
-    if (parts.length >= 2 && parts[0] == 'AFICARE') {
-      return {
-        'type': parts.length > 1 ? parts[1] : 'PROVIDER',
-        'id': parts.length > 2 ? parts[2] : 'PRV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        'name': parts.length > 3 ? parts[3] : 'Dr. Healthcare Provider',
-        'hospital': parts.length > 4 ? parts[4] : 'Medical Center',
-        'department': parts.length > 5 ? parts[5] : 'General Medicine',
-        'license': 'KMD-${DateTime.now().millisecondsSinceEpoch.toString().substring(5, 11)}',
-      };
-    }
-    // Default mock data for demo
-    return {
-      'type': 'PROVIDER',
-      'id': 'PRV-NBO-7842',
-      'name': 'Dr. James Ochieng',
-      'hospital': 'Nairobi General Hospital',
-      'department': 'Internal Medicine',
-      'license': 'KMD-087421',
-    };
-  }
-
-  void _toggleTorch() async {
-    await _controller?.toggleTorch();
-    setState(() {
-      _torchEnabled = !_torchEnabled;
-    });
-  }
-
-  void _switchCamera() async {
-    await _controller?.switchCamera();
-    setState(() {
-      _frontCamera = !_frontCamera;
-    });
-  }
-
-  void _pickFromGallery() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Gallery picker coming soon...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _enterCodeManually() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          title: const Text('Enter Provider Code'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Provider Code',
-              hintText: 'e.g., PRV-NBO-1234',
-              prefixIcon: Icon(Icons.badge),
-            ),
-            textCapitalization: TextCapitalization.characters,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                if (controller.text.isNotEmpty) {
-                  setState(() {
-                    _hasScanned = true;
-                    _scannedData = 'AFICARE:PROVIDER:${controller.text}';
-                  });
-                  _controller?.stop();
-                }
-              },
-              child: const Text('Verify'),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> _toggleTorch() async {
+    await _controller.toggleTorch();
+    if (mounted) setState(() => _torchOn = !_torchOn);
   }
 
   void _scanAgain() {
-    setState(() {
-      _hasScanned = false;
-      _scannedData = null;
-      _isScanning = true;
-    });
-    _controller?.start();
+    setState(() => _result = null);
+    _controller.start();
   }
 
-  void _grantAccess(Map<String, String> providerData) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _buildAccessPermissionSheet(providerData),
-    );
-  }
+  // ── Result ────────────────────────────────────────────────────────────
 
-  Widget _buildAccessPermissionSheet(Map<String, String> providerData) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Grant Access',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Choose what ${providerData['name']} can access:',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 20),
-          _buildPermissionOption('Basic Information', Icons.person, true),
-          _buildPermissionOption('Vital Signs', Icons.favorite, true),
-          _buildPermissionOption('Medical History', Icons.history, false),
-          _buildPermissionOption('Medications', Icons.medication, false),
-          _buildPermissionOption('Lab Results', Icons.science, false),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Access granted to ${providerData['name']}'),
-                    backgroundColor: Colors.green,
+  Widget _resultView(ScannedCode code) {
+    final (String badge, PTone tone, String title, String body) = switch (code.kind) {
+      ScannedKind.ownMedilinkId => (
+          'Your MediLink ID',
+          PTone.ok,
+          'This is your own MediLink ID',
+          'A health worker scans this to find your record. Scanning it here does nothing.',
+        ),
+      ScannedKind.medilinkId => (
+          'MediLink ID',
+          PTone.blue,
+          'This is someone\'s MediLink ID',
+          'Only health workers can open a record from a MediLink ID. You can\'t see this '
+              'person\'s record, and they can\'t see yours.',
+        ),
+      ScannedKind.shareLink => (
+          'Record-sharing link',
+          PTone.blue,
+          'This is an AfiCare record-sharing link',
+          'Someone made it so a health worker could view their records. '
+              'It doesn\'t open anything in your app.',
+        ),
+      ScannedKind.other => (
+          'Not AfiCare',
+          PTone.gray,
+          'This isn\'t an AfiCare code',
+          'AfiCare can\'t do anything with it. Only scan codes you trust.',
+        ),
+    };
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 32),
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PBadge(badge, tone: tone),
+                      const SizedBox(height: 12),
+                      Text(title, style: PT.section()),
+                      const SizedBox(height: 6),
+                      Text(body, style: PT.sub()),
+                      const SizedBox(height: 16),
+                      Text('What the code says', style: PT.label()),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: PT.searchFill,
+                          borderRadius: BorderRadius.circular(PT.rButton),
+                        ),
+                        child: SelectableText(
+                          code.raw,
+                          maxLines: 6,
+                          style: PT.body().copyWith(fontFamily: 'monospace', fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: PButton(
+                          'Copy',
+                          kind: PButtonKind.alt,
+                          dense: true,
+                          icon: Icons.copy_rounded,
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: code.raw));
+                            pToast(context, 'Copied');
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: AfiCareTheme.primaryGreen,
-              ),
-              child: const Text('Confirm Access'),
+                ),
+                const SizedBox(height: 14),
+                const PCallout(
+                  title: 'Nothing was shared',
+                  body: 'Scanning a code never sends your records anywhere. '
+                      'To let a health worker see your records, use Share records.',
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: PButton(
+                        'Scan another',
+                        kind: PButtonKind.alt,
+                        expand: true,
+                        icon: Icons.qr_code_scanner_rounded,
+                        onPressed: _scanAgain,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: PButton(
+                        'Share records',
+                        expand: true,
+                        onPressed: () => context.go('/patient/share'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPermissionOption(String label, IconData icon, bool defaultValue) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        bool isChecked = defaultValue;
-        return CheckboxListTile(
-          value: isChecked,
-          onChanged: (value) {
-            setState(() {
-              isChecked = value ?? false;
-            });
-          },
-          title: Row(
-            children: [
-              Icon(icon, size: 20, color: AfiCareTheme.primaryGreen),
-              const SizedBox(width: 12),
-              Text(label),
-            ],
-          ),
-          controlAffinity: ListTileControlAffinity.trailing,
-          activeColor: AfiCareTheme.primaryGreen,
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
-/// Custom overlay shape for QR scanner
+/// Darkens everything outside a centred square and draws its corners.
 class QRScannerOverlayShape extends ShapeBorder {
   final Color borderColor;
   final double borderWidth;
@@ -666,27 +395,11 @@ class QRScannerOverlayShape extends ShapeBorder {
   }
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    Path getLeftTopPath(Rect rect) {
-      return Path()
-        ..moveTo(rect.left, rect.bottom)
-        ..lineTo(rect.left, rect.top)
-        ..lineTo(rect.right, rect.top);
-    }
-
-    return getLeftTopPath(rect)
-      ..lineTo(rect.right, rect.bottom)
-      ..lineTo(rect.left, rect.bottom)
-      ..lineTo(rect.left, rect.top);
-  }
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) => Path()..addRect(rect);
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
-    final width = rect.width;
-    final height = rect.height;
     final borderOffset = borderWidth / 2;
-    final cutOutWidth = cutOutSize;
-    final cutOutHeight = cutOutSize;
 
     final backgroundPaint = Paint()
       ..color = overlayColor
@@ -703,78 +416,54 @@ class QRScannerOverlayShape extends ShapeBorder {
       ..blendMode = BlendMode.dstOut;
 
     final cutOutRect = Rect.fromLTWH(
-      rect.left + width / 2 - cutOutWidth / 2 + borderOffset,
-      rect.top + height / 2 - cutOutHeight / 2 + borderOffset,
-      cutOutWidth - borderOffset * 2,
-      cutOutHeight - borderOffset * 2,
+      rect.left + rect.width / 2 - cutOutSize / 2 + borderOffset,
+      rect.top + rect.height / 2 - cutOutSize / 2 + borderOffset,
+      cutOutSize - borderOffset * 2,
+      cutOutSize - borderOffset * 2,
     );
 
     canvas
       ..saveLayer(rect, backgroundPaint)
       ..drawRect(rect, backgroundPaint)
-      ..drawRRect(
-        RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)),
-        boxPaint,
-      )
+      ..drawRRect(RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)), boxPaint)
       ..restore();
 
-    // Draw corner borders
-    final borderRect = RRect.fromRectAndRadius(
-      cutOutRect,
-      Radius.circular(borderRadius),
-    );
+    final r = RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius));
+    final radius = Radius.circular(borderRadius);
 
-    // Top left corner
-    canvas.drawPath(
-      Path()
-        ..moveTo(borderRect.left, borderRect.top + borderLength)
-        ..lineTo(borderRect.left, borderRect.top + borderRadius)
-        ..arcToPoint(
-          Offset(borderRect.left + borderRadius, borderRect.top),
-          radius: Radius.circular(borderRadius),
-        )
-        ..lineTo(borderRect.left + borderLength, borderRect.top),
-      borderPaint,
-    );
-
-    // Top right corner
-    canvas.drawPath(
-      Path()
-        ..moveTo(borderRect.right - borderLength, borderRect.top)
-        ..lineTo(borderRect.right - borderRadius, borderRect.top)
-        ..arcToPoint(
-          Offset(borderRect.right, borderRect.top + borderRadius),
-          radius: Radius.circular(borderRadius),
-        )
-        ..lineTo(borderRect.right, borderRect.top + borderLength),
-      borderPaint,
-    );
-
-    // Bottom right corner
-    canvas.drawPath(
-      Path()
-        ..moveTo(borderRect.right, borderRect.bottom - borderLength)
-        ..lineTo(borderRect.right, borderRect.bottom - borderRadius)
-        ..arcToPoint(
-          Offset(borderRect.right - borderRadius, borderRect.bottom),
-          radius: Radius.circular(borderRadius),
-        )
-        ..lineTo(borderRect.right - borderLength, borderRect.bottom),
-      borderPaint,
-    );
-
-    // Bottom left corner
-    canvas.drawPath(
-      Path()
-        ..moveTo(borderRect.left + borderLength, borderRect.bottom)
-        ..lineTo(borderRect.left + borderRadius, borderRect.bottom)
-        ..arcToPoint(
-          Offset(borderRect.left, borderRect.bottom - borderRadius),
-          radius: Radius.circular(borderRadius),
-        )
-        ..lineTo(borderRect.left, borderRect.bottom - borderLength),
-      borderPaint,
-    );
+    canvas
+      ..drawPath(
+        Path()
+          ..moveTo(r.left, r.top + borderLength)
+          ..lineTo(r.left, r.top + borderRadius)
+          ..arcToPoint(Offset(r.left + borderRadius, r.top), radius: radius)
+          ..lineTo(r.left + borderLength, r.top),
+        borderPaint,
+      )
+      ..drawPath(
+        Path()
+          ..moveTo(r.right - borderLength, r.top)
+          ..lineTo(r.right - borderRadius, r.top)
+          ..arcToPoint(Offset(r.right, r.top + borderRadius), radius: radius)
+          ..lineTo(r.right, r.top + borderLength),
+        borderPaint,
+      )
+      ..drawPath(
+        Path()
+          ..moveTo(r.right, r.bottom - borderLength)
+          ..lineTo(r.right, r.bottom - borderRadius)
+          ..arcToPoint(Offset(r.right - borderRadius, r.bottom), radius: radius)
+          ..lineTo(r.right - borderLength, r.bottom),
+        borderPaint,
+      )
+      ..drawPath(
+        Path()
+          ..moveTo(r.left + borderLength, r.bottom)
+          ..lineTo(r.left + borderRadius, r.bottom)
+          ..arcToPoint(Offset(r.left, r.bottom - borderRadius), radius: radius)
+          ..lineTo(r.left, r.bottom - borderLength),
+        borderPaint,
+      );
   }
 
   @override
@@ -783,6 +472,9 @@ class QRScannerOverlayShape extends ShapeBorder {
       borderColor: borderColor,
       borderWidth: borderWidth * t,
       overlayColor: overlayColor,
+      borderRadius: borderRadius * t,
+      borderLength: borderLength * t,
+      cutOutSize: cutOutSize * t,
     );
   }
 }

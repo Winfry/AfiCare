@@ -467,7 +467,7 @@ class _PatientShellState extends State<PatientShell> {
           // Pushed, full screen: the camera needs the whole screen, and
           // closing it should return to the page it was opened from.
           onPressed: () => context.push(PatientRoutes.scan),
-          tooltip: 'Scan MediLink QR',
+          tooltip: 'Scan a QR code',
           icon: const Icon(Icons.qr_code_scanner_rounded),
           style: _topIconStyle,
         ),
