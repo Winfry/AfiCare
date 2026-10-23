@@ -63,6 +63,17 @@ class DefaultAvatar {
     }
   }
 
+  /// The [UserRole] for a role as stored in the database ('doctor',
+  /// 'nurse', ...). Anything unknown counts as a doctor, so a clinician
+  /// still gets a clinician's picture rather than a blank.
+  static UserRole roleFrom(String? value) {
+    final v = value?.trim().toLowerCase();
+    for (final r in UserRole.values) {
+      if (r.name == v) return r;
+    }
+    return UserRole.doctor;
+  }
+
   /// Background color for initials fallback.
   static Color backgroundColor(UserRole role) =>
       _roleColors[role] ?? const Color(0xFFE8EDF3);

@@ -6,6 +6,8 @@ import '../../models/care_team_member_model.dart';
 import '../../providers/care_team_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../theme/patient_tokens.dart';
+import '../../utils/default_avatars.dart';
+import '../../widgets/provider_avatar.dart';
 import 'widgets/patient_ui.dart';
 
 /// Care Team — the people involved in this patient's care. Reads the
@@ -83,10 +85,14 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
 
     return PCard(
       child: PRow(
-        leading: PAvatar(
-          initials: _initials(name),
-          size: 40,
+        // Their photo if they uploaded one, otherwise a doctor or nurse
+        // picture matching their role and gender.
+        leading: ProviderAvatar(
+          name: name,
+          role: DefaultAvatar.roleFrom(m.providerRole),
+          gender: m.providerGender,
           photoUrl: m.providerPhotoUrl,
+          radius: 20,
         ),
         title: name,
         subtitle: _capitalize(specialty) + (m.isPrimary ? ' · Primary' : ''),
@@ -100,13 +106,6 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
         ],
       ),
     );
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return (parts.first[0] + parts.last[0]).toUpperCase();
   }
 
   String _capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';

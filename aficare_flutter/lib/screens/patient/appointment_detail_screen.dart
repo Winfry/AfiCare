@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/appointment_model.dart';
 import '../../providers/appointment_provider.dart';
+import '../../utils/default_avatars.dart';
 import '../../utils/snackbar_utils.dart';
+import '../../widgets/provider_avatar.dart';
 import 'widgets/patient_ui.dart';
 
 /// B7 — Appointment Detail
@@ -56,8 +58,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       }
     } catch (e) {
       debugPrint('appointment_detail_screen: loading appointment detail failed: $e');
+      if (!mounted) return;
       showErrorSnackBar(context, 'Could not load appointment details');
-      if (mounted) setState(() => _loading = false);
+      setState(() => _loading = false);
     }
   }
 
@@ -108,6 +111,15 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       const SizedBox(height: 20),
                       _infoCard(
                         icon: Icons.person,
+                        leading: _provider == null
+                            ? null
+                            : ProviderAvatar(
+                                name: _provider!['full_name'] as String? ?? 'Provider',
+                                role: DefaultAvatar.roleFrom(_provider!['role'] as String?),
+                                gender: _provider!['gender'] as String?,
+                                photoUrl: _provider!['photo_url'] as String?,
+                                radius: 20,
+                              ),
                         label: 'PROVIDER INFO',
                         title: _provider?['full_name'] ?? 'Provider',
                         subtitle: (_provider?['department'] as String?) ??
@@ -192,6 +204,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
 
   Widget _infoCard({
     required IconData icon,
+    Widget? leading,
     required String label,
     required String title,
     required String subtitle,
@@ -205,10 +218,11 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: const Color(0xFFE8EDF3),
-            child: Icon(icon, color: const Color(0xFF1D3557)),
-          ),
+          leading ??
+              CircleAvatar(
+                backgroundColor: const Color(0xFFE8EDF3),
+                child: Icon(icon, color: const Color(0xFF1D3557)),
+              ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

@@ -17,6 +17,8 @@ import '../../providers/prescription_provider.dart';
 import '../../services/tts_service.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/app_strings.dart';
+import '../../utils/default_avatars.dart';
+import '../../widgets/provider_avatar.dart';
 import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
@@ -685,6 +687,9 @@ class _NextVisitCard extends StatefulWidget {
 
 class _NextVisitCardState extends State<_NextVisitCard> {
   String? _providerName;
+
+  /// Role, gender and photo, so the card can show the provider's picture.
+  Map<String, dynamic>? _providerRow;
   String? _loadedForId;
 
   AppointmentModel? _next(BuildContext context) {
@@ -705,11 +710,14 @@ class _NextVisitCardState extends State<_NextVisitCard> {
     try {
       final row = await Supabase.instance.client
           .from('users')
-          .select('full_name')
+          .select('full_name, role, gender, photo_url')
           .eq('id', providerId)
           .maybeSingle();
       if (!mounted) return;
-      setState(() => _providerName = row?['full_name'] as String?);
+      setState(() {
+        _providerRow = row;
+        _providerName = row?['full_name'] as String?;
+      });
     } catch (e) {
       debugPrint('patient_home_screen: loading provider name failed: $e');
     }
@@ -758,7 +766,24 @@ class _NextVisitCardState extends State<_NextVisitCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_providerName ?? 'Your provider', style: PT.rowTitle()),
+                      Row(
+                        children: [
+                          if (_providerRow case final p?) ...[
+                            ProviderAvatarSmall(
+                              name: _providerName ?? 'Provider',
+                              role: DefaultAvatar.roleFrom(p['role'] as String?),
+                              gender: p['gender'] as String?,
+                              photoUrl: p['photo_url'] as String?,
+                              radius: 11,
+                            ),
+                            const SizedBox(width: 7),
+                          ],
+                          Flexible(
+                            child: Text(_providerName ?? 'Your provider',
+                                style: PT.rowTitle(), overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
                       Text(next.type == AppointmentType.inPerson ? 'In person' : 'Telehealth',
                           style: PT.rowSub()),
                       Text(DateFormat('EEEE, h:mm a').format(next.scheduledAt), style: PT.rowSub()),

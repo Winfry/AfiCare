@@ -945,8 +945,22 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         for (final p in _providers)
           DropdownMenuItem(
             value: p,
-            child: Text('${p.fullName} · ${_capitalize(p.role.name)}',
-                overflow: TextOverflow.ellipsis, style: PT.body()),
+            child: Row(
+              children: [
+                ProviderAvatarSmall(
+                  name: p.fullName,
+                  role: p.role,
+                  gender: p.gender,
+                  photoUrl: p.photoUrl,
+                  radius: 14,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('${p.fullName} · ${_capitalize(p.role.name)}',
+                      overflow: TextOverflow.ellipsis, style: PT.body()),
+                ),
+              ],
+            ),
           ),
       ],
       onChanged: _isRescheduling ? null : (v) => setState(() => _selectedProvider = v),

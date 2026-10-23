@@ -35,6 +35,9 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
   bool _loading = false;
   String? _error;
 
+  /// 'female', 'male', or null for "prefer not to say".
+  String? _gender;
+
   Color get _roleColor {
     switch (_role) {
       case 'nurse': return const Color(0xFF4A90E2);
@@ -98,6 +101,7 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
       role: _userRole,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
       department: _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
+      gender: _gender,
     );
 
     if (!mounted) return;
@@ -175,8 +179,10 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
     );
   }
 
-  Widget _roleTab(String role, String label) {
-    final active = _role == role;
+  Widget _roleTab(String role, String label) =>
+      _choiceTab(label, active: _role == role, onTap: () => setState(() => _role = role));
+
+  Widget _choiceTab(String label, {required bool active, required VoidCallback onTap}) {
     return Expanded(
       child: Container(
         height: 38,
@@ -192,10 +198,11 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(999),
-            onTap: () => setState(() => _role = role),
+            onTap: onTap,
             child: Center(
               child: Text(
                 label,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -206,6 +213,33 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGenderChoice() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Gender (optional)',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1B1B18)),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Patients see a matching doctor or nurse picture until you upload your own photo.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF98917F)),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _choiceTab('Female', active: _gender == 'female', onTap: () => setState(() => _gender = 'female')),
+            const SizedBox(width: 8),
+            _choiceTab('Male', active: _gender == 'male', onTap: () => setState(() => _gender = 'male')),
+            const SizedBox(width: 8),
+            _choiceTab('Prefer not to say', active: _gender == null, onTap: () => setState(() => _gender = null)),
+          ],
+        ),
+      ],
     );
   }
 
@@ -240,6 +274,8 @@ class _ClinicianRegisterScreenState extends State<ClinicianRegisterScreen> {
           icon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
         ),
+        const SizedBox(height: 16),
+        _buildGenderChoice(),
         const SizedBox(height: 16),
         BrandedTextField(
           controller: _departmentController,

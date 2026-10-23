@@ -261,6 +261,7 @@ class AuthProvider with ChangeNotifier {
     String? facilityId,
     String? department,
     String? orgName,
+    String? gender,
   }) async {
     _isLoading = true;
     _error = null;
@@ -312,6 +313,8 @@ class AuthProvider with ChangeNotifier {
       if (department != null && department.trim().isNotEmpty) {
         userRecord['department'] = department.trim();
       }
+      // Picks a clinician's default picture until they upload a photo.
+      if (gender != null) userRecord['gender'] = gender;
 
       await _supabase.from('users').insert(userRecord);
       await _loadUserProfile(authResponse.user!.id);
@@ -437,6 +440,30 @@ class AuthProvider with ChangeNotifier {
   }
 
   // ── Update profile ──────────────────────────────────────────────────
+
+  /// Sets the signed-in user's gender: 'male', 'female', 'other', or null
+  /// for "prefer not to say". For clinicians it picks the doctor or nurse
+  /// picture patients see until a real photo is uploaded.
+  Future<bool> updateGender(String? gender) async {
+    if (_currentUser == null) return false;
+    try {
+      final rows = await _supabase
+          .from('users')
+          .update({'gender': gender})
+          .eq('id', _currentUser!.id)
+          .select('id');
+      if ((rows as List).isEmpty) {
+        throw StateError('The change was not saved (no permission to update this account).');
+      }
+      await _loadUserProfile(_currentUser!.id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 
   Future<bool> updateProfile({
     String? fullName,

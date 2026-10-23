@@ -54,6 +54,18 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     }
   }
 
+  bool _savingGender = false;
+
+  Future<void> _setGender(AuthProvider auth, String choice) async {
+    setState(() => _savingGender = true);
+    final ok = await auth.updateGender(choice == 'none' ? null : choice);
+    if (!mounted) return;
+    setState(() => _savingGender = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Saved' : 'Could not save: ${auth.error}')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -106,6 +118,45 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                           ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Gender picks the doctor/nurse picture patients see until a
+          // real photo is uploaded (tap the picture above to upload one).
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Your picture', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Patients see your photo. Until you upload one, they see a doctor or nurse '
+                    'picture that matches the gender you choose here.',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'female', label: Text('Female')),
+                      ButtonSegment(value: 'male', label: Text('Male')),
+                      ButtonSegment(value: 'none', label: Text('Prefer not to say')),
+                    ],
+                    selected: {
+                      switch (user?.gender) {
+                        'female' => 'female',
+                        'male' => 'male',
+                        _ => 'none',
+                      }
+                    },
+                    showSelectedIcon: false,
+                    onSelectionChanged:
+                        _savingGender || user == null ? null : (v) => _setGender(auth, v.first),
                   ),
                 ],
               ),
