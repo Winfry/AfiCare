@@ -547,10 +547,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   onPressed: () async {
                     Navigator.pop(ctx);
                     final apt = Provider.of<AppointmentProvider>(context, listen: false);
-                    await apt.cancelAppointment(a.id);
+                    final ok = await apt.cancelAppointment(a.id);
                     if (mounted) {
-                      pToast(context, 'Appointment cancelled');
-                      _refresh();
+                      pToast(context,
+                          ok ? 'Appointment cancelled' : 'Could not cancel this appointment. Please try again.');
+                      if (ok) _refresh();
                     }
                   },
                 ),
@@ -690,6 +691,12 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       pToast(context, 'Please select a date and time.');
       return;
     }
+    // Every appointment needs a real doctor or nurse: there is no shared
+    // queue that an unassigned booking would land in.
+    if (!_isRescheduling && _selectedProvider == null) {
+      pToast(context, 'Please choose a doctor or nurse.');
+      return;
+    }
     setState(() => _submitting = true);
 
     final scheduledAt = DateTime(
@@ -713,11 +720,10 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         scheduledAt,
       );
     } else {
-      final providerId = _selectedProvider?.id ?? widget.patientId;
       final appointment = AppointmentModel(
         id: '',
         patientId: widget.patientId,
-        providerId: providerId,
+        providerId: _selectedProvider!.id,
         facilityId: _selectedFacility?.id,
         scheduledAt: scheduledAt,
         type: _isTelehealth ? AppointmentType.telehealth : AppointmentType.inPerson,
@@ -734,7 +740,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
     if (ok) {
       Navigator.pop(context);
       _showConfirmation(
-        providerName: _selectedProvider?.fullName ?? 'Unassigned',
+        providerName: _selectedProvider?.fullName ?? 'Your provider',
         facilityName: _selectedFacility?.name ?? '',
         scheduledAt: scheduledAt,
         isTelehealth: _isTelehealth,
@@ -940,7 +946,10 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       value: _selectedProvider,
       isExpanded: true,
       decoration: pInput(),
-      hint: Text('Any available provider', style: PT.sub()),
+      hint: Text(
+        _providers.isEmpty ? 'No doctors or nurses to book with yet' : 'Choose a doctor or nurse',
+        style: PT.sub(),
+      ),
       items: [
         for (final p in _providers)
           DropdownMenuItem(

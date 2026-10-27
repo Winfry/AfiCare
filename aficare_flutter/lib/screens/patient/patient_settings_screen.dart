@@ -7,6 +7,7 @@ import '../../providers/preferences_provider.dart';
 import '../../services/tts_service.dart';
 import '../../utils/theme.dart';
 import 'widgets/patient_ui.dart';
+import 'widgets/pin_account_dialogs.dart';
 
 /// B20 — Settings (Patient)
 class PatientSettingsScreen extends StatefulWidget {
@@ -41,6 +42,7 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final usesPin = context.watch<AuthProvider>().usesPinLogin;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const PSubPageBar(title: 'Settings'),
@@ -223,9 +225,9 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
                         children: [
                           ListTile(
                             leading: const Icon(Icons.lock_outline),
-                            title: const Text('Change Password'),
+                            title: Text(usesPin ? 'Change PIN' : 'Change Password'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: _changePassword,
+                            onTap: usesPin ? _changePin : _changePassword,
                           ),
                           const Divider(height: 1),
                           ListTile(
@@ -353,6 +355,16 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
     );
   }
 
+  Future<void> _changePin() async {
+    final changed = await showChangePinDialog(context);
+    if (changed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('PIN changed. Use your new PIN next time you log in.'),
+        backgroundColor: Colors.green,
+      ));
+    }
+  }
+
   Future<void> _changePassword() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final email = auth.currentUser?.email;
@@ -362,33 +374,30 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok
             ? 'Password reset link sent to $email'
-            : 'Could not send reset link'),
+            : 'Could not send the reset link. Please try again.'),
         backgroundColor: ok ? Colors.green : Colors.red,
       ));
     }
   }
 
+  // Deleting an account isn't built yet: health records can't simply be
+  // wiped, and what happens to them needs deciding first. Until then this
+  // says so plainly instead of claiming a request was sent.
   Future<void> _confirmDelete() async {
-    final confirm = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Account'),
         content: const Text(
-            'This will permanently remove your account and records. This cannot be undone.'),
+            "You can't delete your account from the app yet. "
+            'Nothing has been deleted, and no request has been sent.\n\n'
+            'If you want your account removed, ask the AfiCare team.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: Colors.red))),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK')),
         ],
       ),
     );
-    if (confirm == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Account deletion requested. Contact support.')));
-    }
   }
 }

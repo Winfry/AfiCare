@@ -78,7 +78,9 @@ void main() {
       // Debounced -- nothing fired yet.
       expect(fake.requestsTo('GET', 'facilities'), isEmpty);
 
-      await Future.delayed(const Duration(milliseconds: 400));
+      // Wait for the result rather than a fixed time past the 350ms
+      // debounce: on a busy machine the request lands later.
+      await _until(() => provider.facilities.isNotEmpty);
 
       final req = fake.requestsTo('GET', 'facilities').single;
       expect(req.url.queryParameters['name'], contains('faraway'));
@@ -92,7 +94,7 @@ void main() {
       addTearDown(provider.dispose);
       provider.setTypeFilter('all');
 
-      await Future.delayed(const Duration(milliseconds: 50));
+      await _until(() => fake.requestsTo('GET', 'facilities').isNotEmpty);
 
       final req = fake.requestsTo('GET', 'facilities').single;
       expect(req.url.queryParameters['limit'], '200');
@@ -598,4 +600,13 @@ void main() {
       expect(provider.error, isNotNull);
     });
   });
+}
+
+/// Polls [done] until it is true, failing after [timeout].
+Future<void> _until(bool Function() done, {Duration timeout = const Duration(seconds: 5)}) async {
+  final end = DateTime.now().add(timeout);
+  while (!done()) {
+    if (DateTime.now().isAfter(end)) fail('Timed out waiting');
+    await Future.delayed(const Duration(milliseconds: 20));
+  }
 }

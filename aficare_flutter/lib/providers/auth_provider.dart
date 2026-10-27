@@ -521,6 +521,61 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // ── Phone number and PIN of a PIN account ──────────────────────────
+
+  /// True when this account signs in with phone + PIN. Those accounts are
+  /// created by the `patient-auth` Edge Function with a placeholder email,
+  /// so a password reset email could never reach anyone.
+  bool get usesPinLogin =>
+      _currentUser?.email.toLowerCase().endsWith('@patient.aficare') ?? false;
+
+  /// Changes the phone number of a PIN account. Goes through the Edge
+  /// Function because the sign-in password is derived from phone + PIN:
+  /// changing users.phone on its own would lock the patient out
+  /// (039_patient_account_safety.sql refuses it). [newPhone] must
+  /// already be formatted (+254XXXXXXXXX).
+  Future<bool> changePhone({required String newPhone, required String pin}) async {
+    _error = null;
+    final ok = await _patientAuthAction(
+      {'action': 'change_phone', 'newPhone': newPhone, 'pin': pin},
+      fallback: 'Could not change your phone number. Please try again.',
+    );
+    if (ok && _currentUser != null) await _loadUserProfile(_currentUser!.id);
+    notifyListeners();
+    return ok;
+  }
+
+  /// Changes the PIN of a PIN account (see [changePhone] for why it goes
+  /// through the Edge Function).
+  Future<bool> changePin({required String currentPin, required String newPin}) async {
+    _error = null;
+    final ok = await _patientAuthAction(
+      {'action': 'change_pin', 'currentPin': currentPin, 'newPin': newPin},
+      fallback: 'Could not change your PIN. Please try again.',
+    );
+    notifyListeners();
+    return ok;
+  }
+
+  /// Runs a signed-in `patient-auth` action. On failure, [error] holds the
+  /// server's message (wrong PIN, number taken, ...) or [fallback].
+  Future<bool> _patientAuthAction(Map<String, dynamic> body, {required String fallback}) async {
+    try {
+      final response = await _supabase.functions.invoke('patient-auth', body: body);
+      final data = response.data;
+      if (data is Map && data['ok'] == true) return true;
+      _error = (data is Map && data['error'] is String) ? data['error'] as String : fallback;
+      return false;
+    } on FunctionException catch (e) {
+      final details = e.details;
+      _error = (details is Map && details['error'] is String) ? details['error'] as String : fallback;
+      return false;
+    } catch (e) {
+      _error = fallback;
+      return false;
+    }
+  }
+
   // ── Reset Password ──────────────────────────────────────────────────
 
   Future<bool> resetPassword(String email) async {

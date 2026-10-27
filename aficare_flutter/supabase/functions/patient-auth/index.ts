@@ -53,6 +53,13 @@ function isValidPhone(phone: unknown): phone is string {
   return typeof phone === "string" && phone.trim().length >= 7;
 }
 
+// Phones are stored as +254 followed by 9 digits (PhoneFormatter in the
+// app). A changed number must be in the same form, or the login lookup
+// by phone would never find it again.
+function isKenyanE164(phone: unknown): phone is string {
+  return typeof phone === "string" && /^\+254\d{9}$/.test(phone);
+}
+
 function generateMedilinkId(): string {
   const digits = Math.floor(100000 + Math.random() * 900000);
   return `ML-NBO-${digits}`;
@@ -83,6 +90,8 @@ Deno.serve(async (req) => {
   try {
     if (body.action === "register") return await handleRegister(body, admin, anon);
     if (body.action === "login") return await handleLogin(body, admin, anon);
+    if (body.action === "change_phone") return await handleChangePhone(req, body, admin);
+    if (body.action === "change_pin") return await handleChangePin(req, body, admin);
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("patient-auth error", e);
@@ -218,4 +227,144 @@ async function handleLogin(
     refresh_token: signInData.session.refresh_token,
     user_id: user.id,
   });
+}
+
+// ── Changing the phone number or PIN of a signed-in patient ─────────
+//
+// The Supabase password of a PIN account is derived from phone + PIN, and
+// login finds the account by phone. So both can only change here, where
+// the password is re-derived in the same step. Changing users.phone any
+// other way would lock the patient out for good (039 blocks it).
+
+type PinCheck = "ok" | "wrong" | "locked" | "none";
+
+// Same PIN check and lockout as login: a wrong PIN counts toward the
+// five-attempt limit, so these actions can't be used to guess a PIN.
+async function checkPin(admin: SupabaseClient, userId: string, pin: string): Promise<PinCheck> {
+  const { data: cred } = await admin
+    .from("patient_credentials")
+    .select("pin_hash, failed_attempts, locked_until")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!cred) return "none";
+  if (cred.locked_until && new Date(cred.locked_until) > new Date()) return "locked";
+
+  if (!bcrypt.compareSync(pin, cred.pin_hash)) {
+    const attempts = (cred.failed_attempts ?? 0) + 1;
+    const update: Record<string, unknown> = { failed_attempts: attempts, updated_at: new Date().toISOString() };
+    if (attempts >= MAX_ATTEMPTS) {
+      update.locked_until = new Date(Date.now() + LOCKOUT_MINUTES * 60_000).toISOString();
+      update.failed_attempts = 0;
+    }
+    await admin.from("patient_credentials").update(update).eq("user_id", userId);
+    return "wrong";
+  }
+
+  if (cred.failed_attempts > 0 || cred.locked_until) {
+    await admin
+      .from("patient_credentials")
+      .update({ failed_attempts: 0, locked_until: null, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+  }
+  return "ok";
+}
+
+function pinCheckError(result: PinCheck): Response {
+  if (result === "locked") return json({ error: "Too many attempts. Please try again in a few minutes." }, 429);
+  if (result === "none") return json({ error: "This account doesn't sign in with a PIN." }, 400);
+  return json({ error: "That PIN is not right." }, 401);
+}
+
+// The signed-in caller, from the access token the app sends.
+async function callerId(req: Request, admin: SupabaseClient): Promise<string | null> {
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
+async function handleChangePhone(
+  req: Request,
+  body: Record<string, unknown>,
+  admin: SupabaseClient,
+): Promise<Response> {
+  const userId = await callerId(req, admin);
+  if (!userId) return json({ error: "Please log in again." }, 401);
+
+  const { pin, newPhone } = body;
+  if (!isValidPin(pin)) return json({ error: "Enter your 6-digit PIN." }, 400);
+  if (!isKenyanE164(newPhone)) return json({ error: "Enter a valid Kenyan phone number." }, 400);
+
+  const { data: user } = await admin.from("users").select("id, phone").eq("id", userId).maybeSingle();
+  if (!user) return json({ error: "Please log in again." }, 401);
+
+  const pinResult = await checkPin(admin, userId, pin);
+  if (pinResult !== "ok") return pinCheckError(pinResult);
+
+  if (user.phone === newPhone) return json({ ok: true, phone: newPhone });
+
+  const { data: taken } = await admin.from("users").select("id").eq("phone", newPhone).neq("id", userId).maybeSingle();
+  if (taken) return json({ error: "That phone number is already used by another account." }, 409);
+
+  // Phone first, then the password. If the password step fails the phone
+  // goes back, so the old phone + PIN still work: never half-changed.
+  const { error: phoneErr } = await admin.from("users").update({ phone: newPhone }).eq("id", userId);
+  if (phoneErr) {
+    console.error("change_phone: phone update failed", phoneErr);
+    return json({ error: "Could not change your phone number. Please try again." }, 500);
+  }
+
+  const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
+    password: await derivePassword(newPhone, pin),
+  });
+  if (pwErr) {
+    console.error("change_phone: password update failed", pwErr);
+    await admin.from("users").update({ phone: user.phone }).eq("id", userId);
+    return json({ error: "Could not change your phone number. Please try again." }, 500);
+  }
+
+  return json({ ok: true, phone: newPhone });
+}
+
+async function handleChangePin(
+  req: Request,
+  body: Record<string, unknown>,
+  admin: SupabaseClient,
+): Promise<Response> {
+  const userId = await callerId(req, admin);
+  if (!userId) return json({ error: "Please log in again." }, 401);
+
+  const { currentPin, newPin } = body;
+  if (!isValidPin(currentPin)) return json({ error: "Enter your current 6-digit PIN." }, 400);
+  if (!isValidPin(newPin)) return json({ error: "Your new PIN must be 6 digits." }, 400);
+  if (currentPin === newPin) return json({ error: "Your new PIN is the same as your current one." }, 400);
+
+  const { data: user } = await admin.from("users").select("id, phone").eq("id", userId).maybeSingle();
+  if (!user?.phone) return json({ error: "Please log in again." }, 401);
+
+  const pinResult = await checkPin(admin, userId, currentPin);
+  if (pinResult !== "ok") return pinCheckError(pinResult);
+
+  // Password first, then the stored PIN. If saving the PIN fails the
+  // password goes back, so the current PIN keeps working.
+  const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
+    password: await derivePassword(user.phone, newPin),
+  });
+  if (pwErr) {
+    console.error("change_pin: password update failed", pwErr);
+    return json({ error: "Could not change your PIN. Please try again." }, 500);
+  }
+
+  const { error: credErr } = await admin
+    .from("patient_credentials")
+    .update({ pin_hash: bcrypt.hashSync(newPin, 12), updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+  if (credErr) {
+    console.error("change_pin: pin_hash update failed", credErr);
+    await admin.auth.admin.updateUserById(userId, { password: await derivePassword(user.phone, currentPin) });
+    return json({ error: "Could not change your PIN. Please try again." }, 500);
+  }
+
+  return json({ ok: true });
 }

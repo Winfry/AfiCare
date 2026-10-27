@@ -283,6 +283,71 @@ void main() {
     });
   });
 
+  group('AuthProvider phone and PIN changes', () {
+    Future<AuthProvider> signedIn() async {
+      fake.routeJson('/auth/v1/token', sessionJson());
+      fake.routeJson('/rest/v1/users', [userRow()]);
+      final provider = AuthProvider();
+      expect(
+        await provider.signIn(email: '${phone.replaceAll('+', '')}@patient.aficare', password: 'x'),
+        isTrue,
+      );
+      return provider;
+    }
+
+    test('a phone + PIN account is recognised by its placeholder email', () async {
+      final provider = await signedIn();
+      expect(provider.usesPinLogin, isTrue);
+    });
+
+    test('changePhone goes through patient-auth, never a users update', () async {
+      // Writing users.phone directly would lock a PIN patient out: their
+      // password is derived from phone + PIN.
+      final provider = await signedIn();
+      fake.routeJson('/functions/v1/patient-auth', {'ok': true, 'phone': '+254700111222'});
+      fake.routeJson('/rest/v1/users', [{...userRow(), 'phone': '+254700111222'}]);
+
+      final ok = await provider.changePhone(newPhone: '+254700111222', pin: pin);
+
+      expect(ok, isTrue);
+      final body = jsonDecode(fake.requestsTo('post', 'functions/v1/patient-auth').single.body);
+      expect(body, {'action': 'change_phone', 'newPhone': '+254700111222', 'pin': pin});
+      expect(fake.requestsTo('PATCH', 'users'), isEmpty);
+      expect(provider.currentUser?.phone, '+254700111222');
+    });
+
+    test('changePhone shows the server message when it is refused', () async {
+      final provider = await signedIn();
+      fake.routeRaw('/functions/v1/patient-auth', edgeError('That PIN is not right.', 401));
+
+      final ok = await provider.changePhone(newPhone: '+254700111222', pin: '000000');
+
+      expect(ok, isFalse);
+      expect(provider.error, 'That PIN is not right.');
+    });
+
+    test('changePin sends the current and new PIN', () async {
+      final provider = await signedIn();
+      fake.routeJson('/functions/v1/patient-auth', {'ok': true});
+
+      final ok = await provider.changePin(currentPin: pin, newPin: '654321');
+
+      expect(ok, isTrue);
+      final body = jsonDecode(fake.requestsTo('post', 'functions/v1/patient-auth').single.body);
+      expect(body, {'action': 'change_pin', 'currentPin': pin, 'newPin': '654321'});
+    });
+
+    test('changePin reports failure when the reply is not ok', () async {
+      final provider = await signedIn();
+      fake.routeJson('/functions/v1/patient-auth', {'error': 'Too many attempts. Please try again in a few minutes.'});
+
+      final ok = await provider.changePin(currentPin: pin, newPin: '654321');
+
+      expect(ok, isFalse);
+      expect(provider.error, contains('Too many attempts'));
+    });
+  });
+
   group('AuthProvider.signIn', () {
     test('sets the current user from the users profile row', () async {
       fake.routeJson('/auth/v1/token', sessionJson());

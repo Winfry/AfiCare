@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/patient_profile_model.dart';
+import '../../presentation/auth/register/patient/utils/phone_formatter.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../utils/theme.dart';
 import 'widgets/patient_ui.dart';
+import 'widgets/pin_account_dialogs.dart';
 
 /// B2 — Patient Profile (Edit)
 class PatientProfileEditScreen extends StatefulWidget {
@@ -82,14 +84,30 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final pp = Provider.of<PatientProfileProvider>(context, listen: false);
     final user = auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      setState(() => _saving = false);
+      return;
+    }
+
+    // A PIN account's phone is changed only through its own dialog (it is
+    // part of how they log in), so it is never sent from here.
+    String? phone;
+    if (!auth.usesPinLogin && _phoneController.text.trim().isNotEmpty) {
+      phone = PhoneFormatter.format(_phoneController.text);
+      if (phone == null) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a valid Kenyan phone number, like 0712 345 678.'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+    }
 
     // 1) users table (name + phone)
     final userOk = await auth.updateProfile(
       fullName: _nameController.text.trim(),
-      phone: _phoneController.text.trim().isEmpty
-          ? null
-          : '+254${_phoneController.text.trim()}',
+      phone: phone,
     );
 
     // 2) patients table (medical + insurance)
@@ -128,8 +146,20 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
     }
   }
 
+  Future<void> _changePhone() async {
+    final changed = await showChangePhoneDialog(context);
+    if (!changed || !mounted) return;
+    final phone = context.read<AuthProvider>().currentUser?.phone ?? '';
+    setState(() => _phoneController.text = phone.replaceFirst('+254', ''));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Phone number changed. Use it next time you log in.'),
+      backgroundColor: Colors.green,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final usesPin = context.watch<AuthProvider>().usesPinLogin;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const PSubPageBar(title: 'Edit profile'),
@@ -224,10 +254,23 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _label('Phone Number'),
-                          TextField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                          ),
+                          if (usesPin)
+                            TextField(
+                              controller: _phoneController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                helperText: 'You log in with this number.',
+                                suffixIcon: TextButton(
+                                  onPressed: _changePhone,
+                                  child: const Text('Change'),
+                                ),
+                              ),
+                            )
+                          else
+                            TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                            ),
                         ],
                       ),
                     ),
