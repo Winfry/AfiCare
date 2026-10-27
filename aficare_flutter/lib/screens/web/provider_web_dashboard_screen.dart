@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models/appointment_patient_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -116,22 +117,27 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
     if (user == null) return;
 
     try {
-      final response = await Supabase.instance.client
+      final client = Supabase.instance.client;
+      final response = await client
           .from('appointments')
-          .select('id, scheduled_at, status, chief_complaint, type, users(full_name)')
+          .select('id, scheduled_at, status, chief_complaint, type')
           .eq('provider_id', user.id)
           .order('scheduled_at', ascending: true)
           .limit(20);
 
+      final rows = [for (final a in response as List) Map<String, dynamic>.from(a as Map)];
+      // A users(...) embed can't name the patient: appointments link to
+      // users twice (patient and provider), and the patient may be a
+      // dependant with no account at all.
+      final patients = await AppointmentPatient.fetch(client, rows.map((r) => r['id'] as String));
+
       final now = DateTime.now();
       final upcoming = <Map<String, dynamic>>[];
-      for (final a in response as List) {
-        final map = Map<String, dynamic>.from(a as Map);
+      for (final map in rows) {
         final when = DateTime.tryParse(map['scheduled_at'] as String);
         if (when != null && when.isAfter(now)) {
-          final patient = map['users'] as Map<String, dynamic>?;
           upcoming.add({
-            'name': patient?['full_name'] ?? 'Patient',
+            'name': patients[map['id']]?.label ?? 'Patient',
             'time': '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}',
             'type': map['chief_complaint'] ?? (map['type'] == 'telehealth' ? 'Telehealth' : 'Consultation'),
             'status': map['status'] ?? 'pending',

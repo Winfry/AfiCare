@@ -1,4 +1,4 @@
-(-- ================================================================
+-- ================================================================
 -- 039: Patient account safety: phone changes, and cancelling or moving
 --      a dependant's appointment
 -- Run in: Supabase Dashboard → SQL Editor → New query → Run

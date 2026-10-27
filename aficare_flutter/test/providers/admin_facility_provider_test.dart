@@ -325,8 +325,10 @@ void main() {
         },
       ]);
       fake.routeJson('/rest/v1/users', [
-        {'id': 'p1', 'full_name': 'Jane Doe'},
         {'id': 'd1', 'full_name': 'Dr. Mwangi'},
+      ]);
+      fake.routeJson('/rest/v1/rpc/appointment_patient_names', [
+        {'appointment_id': 'a1', 'patient_name': 'Jane Doe', 'is_dependant': false},
       ]);
 
       final provider = AdminFacilityProvider();
@@ -339,6 +341,41 @@ void main() {
 
       final req = fake.requestsTo('GET', 'appointments').single;
       expect(req.url.queryParameters['facility_id'], 'eq.f1');
+      // Only providers are looked up in users; patients come from the RPC.
+      final usersReq = fake.requestsTo('GET', 'users').single;
+      expect(usersReq.url.queryParameters['id'], 'in.("d1")');
+      final rpc = fake.requestsTo('POST', 'rpc/appointment_patient_names').single;
+      expect(rpc.body, contains('"p_appointment_ids":["a1"]'));
+    });
+
+    test('a dependant is named with their guardian', () async {
+      fake.routeJson('/rest/v1/appointments', [
+        {
+          'id': 'a2',
+          'patient_id': 'dep1',
+          'provider_id': 'd1',
+          'scheduled_at': '2026-01-05T09:00:00.000Z',
+          'type': 'in-person',
+          'status': 'pending',
+        },
+      ]);
+      fake.routeJson('/rest/v1/users', [
+        {'id': 'd1', 'full_name': 'Dr. Mwangi'},
+      ]);
+      fake.routeJson('/rest/v1/rpc/appointment_patient_names', [
+        {
+          'appointment_id': 'a2',
+          'patient_name': 'Brian Wanjiru',
+          'is_dependant': true,
+          'guardian_name': 'Mary Wanjiru',
+          'relationship': 'child',
+        },
+      ]);
+
+      final provider = AdminFacilityProvider();
+      await provider.loadFacilityAppointments('f1');
+
+      expect(provider.facilityAppointments.single['patient_name'], "Brian Wanjiru · Mary Wanjiru's child");
     });
 
     test('empty facility has no appointments, no crash', () async {

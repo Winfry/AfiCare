@@ -1,6 +1,9 @@
 class AncVisit {
   final String id;
   final String patientId;
+
+  /// The pregnancy this visit belongs to (migration 041).
+  final String? pregnancyId;
   final int visitNumber;
   final int gestationalWeeks;
   final String trimester; // 'first', 'second', 'third'
@@ -23,6 +26,7 @@ class AncVisit {
   AncVisit({
     required this.id,
     required this.patientId,
+    this.pregnancyId,
     required this.visitNumber,
     required this.gestationalWeeks,
     required this.trimester,
@@ -47,6 +51,7 @@ class AncVisit {
     return AncVisit(
       id: json['id'] as String? ?? '',
       patientId: json['patient_id'] as String? ?? '',
+      pregnancyId: json['pregnancy_id'] as String?,
       visitNumber: json['visit_number'] as int? ?? 1,
       gestationalWeeks: json['gestational_weeks'] as int? ?? 0,
       trimester: json['trimester'] as String? ?? 'first',
@@ -76,6 +81,7 @@ class AncVisit {
     return {
       'id': id,
       'patient_id': patientId,
+      'pregnancy_id': pregnancyId,
       'visit_number': visitNumber,
       'gestational_weeks': gestationalWeeks,
       'trimester': trimester,

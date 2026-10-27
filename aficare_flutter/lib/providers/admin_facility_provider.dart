@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/appointment_patient_model.dart';
 import '../models/facility_model.dart';
 import '../models/department_model.dart';
 import '../models/drug_stock_model.dart';
@@ -663,19 +664,20 @@ class AdminFacilityProvider with ChangeNotifier {
         return;
       }
 
-      final userIds = {
-        for (final r in list) r['patient_id'] as String,
-        for (final r in list) r['provider_id'] as String,
-      }.toList();
+      final providerIds = {for (final r in list) r['provider_id'] as String}.toList();
 
       final users = await _supabase
           .from('users')
           .select('id, full_name')
-          .inFilter('id', userIds);
+          .inFilter('id', providerIds);
 
       final nameById = <String, String>{
         for (final u in users as List) u['id'] as String: u['full_name'] as String? ?? 'Unknown',
       };
+
+      // The patient may be a dependant, who has no users row, so patients
+      // are named by appointment_patient_names() (040) instead.
+      final patients = await AppointmentPatient.fetch(_supabase, list.map((r) => r['id'] as String));
 
       _facilityAppointments = list
           .map((r) => {
@@ -683,7 +685,7 @@ class AdminFacilityProvider with ChangeNotifier {
                 'scheduled_at': r['scheduled_at'],
                 'type': r['type'],
                 'status': r['status'],
-                'patient_name': nameById[r['patient_id']] ?? 'Unknown',
+                'patient_name': patients[r['id']]?.label ?? 'Unknown',
                 'provider_name': nameById[r['provider_id']] ?? 'Unknown',
               })
           .toList();

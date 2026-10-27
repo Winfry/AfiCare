@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'providers/auth_provider.dart';
 import 'providers/patient_provider.dart';
 import 'providers/consultation_provider.dart';
+import 'providers/pregnancy_provider.dart';
 import 'providers/prescription_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/dependent_provider.dart';
@@ -121,6 +122,7 @@ class AfiCareApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
         ChangeNotifierProvider(create: (_) => DependentProvider()),
         ChangeNotifierProvider(create: (_) => CareTeamProvider()),
+        ChangeNotifierProvider(create: (_) => PregnancyProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
         ChangeNotifierProvider(create: (_) => MessageProvider()),
         ChangeNotifierProvider(create: (_) => LabProvider()),
