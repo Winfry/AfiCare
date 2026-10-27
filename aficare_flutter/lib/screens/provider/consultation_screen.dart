@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
@@ -9,6 +10,7 @@ import '../../providers/prescription_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../services/medical_ai_service.dart';
 import '../../models/consultation_model.dart';
+import '../../models/consultation_patient_model.dart';
 import '../../models/disability_profile.dart';
 import '../../models/prescription_model.dart';
 import '../../models/appointment_model.dart';
@@ -16,6 +18,7 @@ import '../../services/pwd_rule_engine.dart';
 import '../../utils/theme.dart';
 
 class ConsultationScreen extends StatefulWidget {
+  /// The patient's account id, when opened from their record.
   final String? patientId;
 
   const ConsultationScreen({super.key, this.patientId});
@@ -29,9 +32,20 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   final _chiefComplaintController = TextEditingController();
   final _medilinkIdController = TextEditingController();
   
+  /// Who this consultation is for, once looked up and shown to the doctor.
+  /// Everything is saved against [ConsultationPatient.id], never against
+  /// what was typed.
+  ConsultationPatient? _patient;
+  bool _lookingUp = false;
+  String? _lookupError;
+
   // Patient Info
   int _age = 30;
   String _gender = 'Male';
+
+  /// Bumped when the patient's age and gender are filled in for the
+  /// doctor, so those fields show the new values.
+  int _prefillSeed = 0;
   
   // Symptoms
   final Map<String, bool> _symptoms = {
@@ -88,8 +102,39 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   void initState() {
     super.initState();
     if (widget.patientId != null) {
-      _medilinkIdController.text = widget.patientId!;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _findPatient(widget.patientId!));
     }
+  }
+
+  /// Looks up [input] (a MediLink ID, or an account id from the record
+  /// screen) and shows who it is. Returns the patient, or null.
+  Future<ConsultationPatient?> _findPatient(String input) async {
+    setState(() {
+      _lookingUp = true;
+      _lookupError = null;
+    });
+    final (patient, problem) = await ConsultationPatient.find(Supabase.instance.client, input);
+    if (!mounted) return null;
+    setState(() {
+      _lookingUp = false;
+      _patient = patient;
+      _lookupError = problem;
+      if (patient != null) {
+        _medilinkIdController.text = patient.medilinkId ?? _medilinkIdController.text;
+        final age = patient.ageOn(DateTime.now());
+        if (age != null && age <= 120) _age = age;
+        switch (patient.gender) {
+          case 'male':
+            _gender = 'Male';
+          case 'female':
+            _gender = 'Female';
+          case 'other':
+            _gender = 'Other';
+        }
+        _prefillSeed++;
+      }
+    });
+    return patient;
   }
 
   @override
@@ -147,19 +192,70 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _medilinkIdController,
-              decoration: const InputDecoration(
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
                 labelText: 'Patient MediLink ID',
-                hintText: 'ML-XXX-XXXX',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
+                hintText: 'ML-NBO-123456',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.person),
+                suffixIcon: _lookingUp
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                      )
+                    : TextButton(
+                        onPressed: () => _findPatient(_medilinkIdController.text),
+                        child: const Text('Find'),
+                      ),
               ),
+              onChanged: (value) {
+                // Editing the ID means the confirmed patient may no longer
+                // be the right one.
+                if (_patient != null && value.trim().toUpperCase() != _patient!.medilinkId) {
+                  setState(() => _patient = null);
+                }
+                if (_lookupError != null) setState(() => _lookupError = null);
+              },
+              onFieldSubmitted: _findPatient,
               validator: (value) {
-                if (value == null || value.isEmpty) {
+                if (value == null || value.trim().isEmpty) {
                   return 'Please enter patient MediLink ID';
                 }
                 return null;
               },
             ),
+            if (_patient != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_user, color: Colors.green.shade700),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        [
+                          _patient!.name,
+                          if (_patient!.ageOn(DateTime.now()) != null) '${_patient!.ageOn(DateTime.now())} years',
+                          if (_patient!.medilinkId != null) _patient!.medilinkId!,
+                        ].join(' · '),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (_lookupError != null) ...[
+              const SizedBox(height: 10),
+              Text(_lookupError!, style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600)),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
@@ -174,6 +270,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                           SizedBox(
                             width: 60,
                             child: TextFormField(
+                              key: ValueKey('age-$_prefillSeed'),
                               initialValue: '$_age',
                               keyboardType: TextInputType.number,
                               textInputAction: TextInputAction.next,
@@ -211,6 +308,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    key: ValueKey('gender-$_prefillSeed'),
                     value: _gender,
                     decoration: const InputDecoration(
                       labelText: 'Gender',
@@ -1314,9 +1412,36 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       return;
     }
 
+    // Everything taken from the context is taken before the first wait.
+    final messenger = ScaffoldMessenger.of(context);
+    final providerId = Provider.of<AuthProvider>(context, listen: false).currentUser?.id;
+    final consultationProvider = Provider.of<ConsultationProvider>(context, listen: false);
+    final prescriptionProvider = Provider.of<PrescriptionProvider>(context, listen: false);
+    final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
+
+    if (providerId == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Please log in again before saving.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    // Confirm who this is for before anything is saved. A typed MediLink
+    // ID is never saved itself: the tables hold the account id.
+    final patient = _patient ?? await _findPatient(_medilinkIdController.text);
+    if (!mounted) return;
+    if (patient == null) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(_lookupError ?? "Find the patient first, so the consultation is saved to the right record."),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
     // Show saving dialog
     showDialog(
-      context: context,
+      context: this.context,
       barrierDismissible: false,
       builder: (context) => const AlertDialog(
         content: Row(
@@ -1328,11 +1453,6 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         ),
       ),
     );
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final consultationProvider =
-        Provider.of<ConsultationProvider>(context, listen: false);
-    final providerId = authProvider.currentUser?.id ?? 'unknown';
 
     final vitalSigns = VitalSigns(
       temperature: _temperature,
@@ -1349,30 +1469,38 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         .toList();
 
     final consultationId = await consultationProvider.saveConsultation(
-      patientId: _medilinkIdController.text.trim(),
+      patientId: patient.id,
       providerId: providerId,
       chiefComplaint: _chiefComplaintController.text.trim(),
       symptoms: selectedSymptoms,
       vitalSigns: vitalSigns,
       recommendations: _aiResult!.recommendations,
       followUpRequired: _aiResult!.followUpRequired,
+      triageLevel: _aiResult!.triageLevel,
+      diagnoses: [
+        for (final c in _aiResult!.suspectedConditions)
+          Diagnosis(
+            condition: c['name'] as String? ?? '',
+            confidence: (c['confidence'] as num?)?.toDouble() ?? 0,
+            matchingSymptoms: const [],
+            treatment: const [],
+          ),
+      ],
     );
 
     final success = consultationId != null;
 
-    // Capture providers before async gaps to avoid using context after await
-    final prescriptionProvider =
-        Provider.of<PrescriptionProvider>(context, listen: false);
-    final appointmentProvider =
-        Provider.of<AppointmentProvider>(context, listen: false);
+    // Anything that didn't save is listed when the consultation did, so
+    // the doctor never believes a prescription went through when it didn't.
+    final notSaved = <String>[];
 
     // Save prescriptions if any
     if (success && _prescriptions.isNotEmpty) {
       for (final med in _prescriptions) {
-        await prescriptionProvider.createPrescription(
+        final saved = await prescriptionProvider.createPrescription(
           PrescriptionModel(
             id: '',
-            patientId: _medilinkIdController.text.trim(),
+            patientId: patient.id,
             providerId: providerId,
             consultationId: consultationId,
             medicationName: med['medication'] ?? '',
@@ -1383,6 +1511,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             status: PrescriptionStatus.active,
           ),
         );
+        if (!saved) notSaved.add('Prescription: ${med['medication'] ?? 'medicine'}');
       }
     }
 
@@ -1395,10 +1524,10 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
         _appointmentTime?.hour ?? 9,
         _appointmentTime?.minute ?? 0,
       );
-      await appointmentProvider.bookAppointment(
+      final booked = await appointmentProvider.bookAppointment(
         AppointmentModel(
           id: '',
-          patientId: _medilinkIdController.text.trim(),
+          patientId: patient.id,
           providerId: providerId,
           scheduledAt: scheduledAt,
           type: _appointmentType,
@@ -1410,6 +1539,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           consultationId: consultationId,
         ),
       );
+      if (!booked) notSaved.add('Follow-up appointment');
     }
 
     if (!mounted) return;
@@ -1430,9 +1560,16 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Patient: ${_medilinkIdController.text}'),
+              Text('Patient: ${patient.label}'),
               const SizedBox(height: 8),
               Text('Triage: ${_aiResult!.triageLevel.toUpperCase()}'),
+              if (notSaved.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'These were NOT saved. Please add them again:\n${notSaved.map((n) => '• $n').join('\n')}',
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                ),
+              ],
               const SizedBox(height: 8),
               const Text(
                 'Consultation saved to the patient\'s medical record.',

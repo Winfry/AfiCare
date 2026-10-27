@@ -168,4 +168,64 @@ void main() {
       expect(provider.error, isNull);
     });
   });
+
+  group('ConsultationProvider.saveConsultation with the screen\'s analysis', () {
+    test('saves the triage and diagnoses it is given', () async {
+      fake.routeJson('/rest/v1/consultations', <String, dynamic>{});
+      fake.routeJson('/rest/v1/audit_log', <String, dynamic>{});
+
+      final provider = ConsultationProvider();
+      await provider.saveConsultation(
+        patientId: 'p1',
+        providerId: 'prov-1',
+        chiefComplaint: 'Chest pain',
+        symptoms: const ['chest pain'],
+        vitalSigns: VitalSigns(),
+        recommendations: const [],
+        triageLevel: 'emergency',
+        diagnoses: [Diagnosis(condition: 'Angina', confidence: 0.7, matchingSymptoms: const [], treatment: const [])],
+      );
+
+      final body = jsonDecode(fake.requestsTo('POST', 'consultations').single.body) as Map<String, dynamic>;
+      expect(body['triage_level'], 'emergency');
+      expect((body['diagnoses'] as List).single['condition'], 'Angina');
+    });
+
+    test('a triage value the table would refuse falls back instead', () async {
+      fake.routeJson('/rest/v1/consultations', <String, dynamic>{});
+      fake.routeJson('/rest/v1/audit_log', <String, dynamic>{});
+
+      final provider = ConsultationProvider();
+      await provider.saveConsultation(
+        patientId: 'p1',
+        providerId: 'prov-1',
+        chiefComplaint: 'x',
+        symptoms: const [],
+        vitalSigns: VitalSigns(),
+        recommendations: const [],
+        triageLevel: 'very bad',
+      );
+
+      final body = jsonDecode(fake.requestsTo('POST', 'consultations').single.body) as Map<String, dynamic>;
+      expect(ConsultationProvider.triageLevels, contains(body['triage_level']));
+    });
+
+    test('a refused audit entry does not report a saved consultation as failed', () async {
+      fake.routeJson('/rest/v1/consultations', <String, dynamic>{});
+      fake.routeRaw('/rest/v1/audit_log', http.Response('{"message":"row-level security"}', 403));
+
+      final provider = ConsultationProvider();
+      final id = await provider.saveConsultation(
+        patientId: 'p1',
+        providerId: 'prov-1',
+        chiefComplaint: 'Fever',
+        symptoms: const ['fever'],
+        vitalSigns: VitalSigns(),
+        recommendations: const [],
+      );
+
+      expect(id, isNotNull);
+      expect(provider.error, isNull);
+    });
+  });
 }

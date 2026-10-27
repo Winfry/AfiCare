@@ -20,6 +20,9 @@ class ConsultationProvider with ChangeNotifier {
   List<Diagnosis> get diagnoses => _diagnoses;
   List<ConsultationModel> get consultations => _consultations;
   String get triageLevel => _triageLevel;
+
+  /// The values consultations.triage_level accepts.
+  static const triageLevels = ['emergency', 'urgent', 'less_urgent', 'non_urgent'];
   bool get isLoading => _isLoading;
   bool get isAnalyzing => _isAnalyzing;
   String? get error => _error;
@@ -87,10 +90,17 @@ class ConsultationProvider with ChangeNotifier {
     String? notes,
     bool followUpRequired = false,
     DateTime? followUpDate,
+    String? triageLevel,
+    List<Diagnosis>? diagnoses,
   }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
+    // The consultation screen runs its own analysis, so its triage and
+    // diagnoses are passed in; without them every consultation was saved
+    // as non-urgent with no diagnoses, whatever the analysis found.
+    final triage = triageLevels.contains(triageLevel) ? triageLevel! : _triageLevel;
 
     try {
       final consultation = ConsultationModel(
@@ -101,8 +111,8 @@ class ConsultationProvider with ChangeNotifier {
         chiefComplaint: chiefComplaint,
         symptoms: symptoms,
         vitalSigns: vitalSigns,
-        triageLevel: _triageLevel,
-        diagnoses: _diagnoses,
+        triageLevel: triage,
+        diagnoses: diagnoses ?? _diagnoses,
         recommendations: recommendations,
         notes: notes,
         followUpRequired: followUpRequired,
@@ -111,13 +121,19 @@ class ConsultationProvider with ChangeNotifier {
 
       await _supabase.from('consultations').insert(consultation.toJson());
 
-      await _supabase.from('audit_log').insert({
-        'action': 'consultation_created',
-        'user_id': providerId,
-        'patient_id': patientId,
-        'details': {'consultation_id': consultation.id},
-        'timestamp': DateTime.now().toIso8601String(),
-      });
+      // The consultation is saved at this point. A failed audit entry
+      // must not report it as unsaved: the doctor would save it again.
+      try {
+        await _supabase.from('audit_log').insert({
+          'action': 'consultation_created',
+          'user_id': providerId,
+          'patient_id': patientId,
+          'details': {'consultation_id': consultation.id},
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('Consultation saved, but its audit entry failed: $e');
+      }
 
       _currentConsultation = consultation;
       _isLoading = false;
