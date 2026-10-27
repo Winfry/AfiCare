@@ -47,9 +47,11 @@ class Receipt {
     'Dental', 'Optical', 'Maternity', 'Other',
   ];
 
+  /// What the app offers now. NHIF became SHA in October 2024; older
+  /// receipts paid by NHIF still display.
   static const Map<String, String> paymentMethodOptions = {
     'cash': 'Cash',
-    'nhif': 'NHIF',
+    'sha': 'SHA',
     'insurance': 'Insurance',
     'mpesa': 'M-Pesa',
     'card': 'Card',
@@ -57,6 +59,7 @@ class Receipt {
   };
 
   static String paymentMethodLabel(String method) {
+    if (method == 'nhif') return 'NHIF';
     return paymentMethodOptions[method] ?? method;
   }
 

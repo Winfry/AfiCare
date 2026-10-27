@@ -143,4 +143,23 @@ void main() {
       expect(body, containsPair('specialty_label', 'Endocrinologist'));
     });
   });
+
+
+  group('custom members (someone not on AfiCare)', () {
+    test('show the name that was typed in, not the placeholder account', () async {
+      fake.routeJson('/rest/v1/care_team', [
+        {
+          ...teamRow(id: 'ct9', providerId: 'guardian-1'),
+          'specialty_label': 'Mama Njeri (herbalist)',
+          'notes': 'custom',
+        },
+      ]);
+      fake.routeJson('/rest/v1/users', [userRow(id: 'guardian-1')]);
+
+      final provider = CareTeamProvider();
+      await provider.loadCareTeam('p1');
+
+      expect(provider.members.single.providerName, 'Mama Njeri (herbalist)');
+    });
+  });
 }

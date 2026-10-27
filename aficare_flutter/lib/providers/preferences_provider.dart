@@ -40,8 +40,12 @@ class PreferencesProvider with ChangeNotifier {
   }
 
   /// Persist preferences via upsert and update local state immediately.
+  /// If the save fails, the previous preferences come back, so the screen
+  /// never shows a setting as kept when it wasn't.
   Future<bool> save(UserPreferencesModel prefs) async {
+    final previous = _prefs;
     _prefs = prefs;
+    _error = null;
     notifyListeners();
     try {
       final data = prefs.toJson();
@@ -49,7 +53,9 @@ class PreferencesProvider with ChangeNotifier {
       await _supabase.from('user_preferences').upsert(data);
       return true;
     } catch (e) {
-      _error = e.toString();
+      debugPrint('PreferencesProvider.save failed: $e');
+      _prefs = previous;
+      _error = "We couldn't save that setting, so it hasn't changed.";
       notifyListeners();
       return false;
     }

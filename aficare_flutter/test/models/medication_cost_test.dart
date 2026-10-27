@@ -139,4 +139,56 @@ void main() {
       expect(restored.paymentMethod, 'nhif');
     });
   });
+
+
+  group('MedicationCost and the live medication_costs table (042)', () {
+    test('writes the table\'s own column names, and a date without a time', () {
+      final json = MedicationCost(
+        id: 'mc-2',
+        patientId: 'p-1',
+        medicationName: 'Metformin',
+        dosage: '500mg',
+        quantity: 60,
+        unitCost: 20,
+        totalCost: 1200,
+        pharmacyName: 'Goodlife',
+        paymentMethod: 'sha',
+        purchaseDate: DateTime(2026, 10, 27, 14, 30),
+      ).toJson();
+      expect(json['cost'], 1200);
+      expect(json['pharmacy'], 'Goodlife');
+      expect(json['quantity'], 60);
+      expect(json['purchase_date'], '2026-10-27');
+      // Columns the table doesn't have would make every save fail.
+      for (final gone in ['total_cost', 'unit_cost', 'pharmacy_name', 'facility_name', 'receipt_id']) {
+        expect(json.containsKey(gone), isFalse, reason: gone);
+      }
+    });
+
+    test('reads a live row and works out the unit cost', () {
+      final c = MedicationCost.fromJson({
+        'id': 'mc-3',
+        'patient_id': 'p-1',
+        'medication_name': 'Amoxil',
+        'cost': 900,
+        'quantity': 3,
+        'pharmacy': 'Haltons',
+        'payment_method': 'mpesa',
+        'purchase_date': '2026-10-01',
+      });
+      expect(c.totalCost, 900);
+      expect(c.unitCost, 300);
+      expect(c.pharmacyName, 'Haltons');
+    });
+
+    test('offers SHA, not NHIF, and only values the table accepts', () {
+      // Must match medication_costs_payment_method_check in 042.
+      const accepted = {'cash', 'sha', 'nhif', 'insurance', 'mpesa', 'subsidized'};
+      expect(accepted.containsAll(MedicationCost.paymentMethodOptions.keys), isTrue);
+      expect(MedicationCost.paymentMethodOptions.containsKey('sha'), isTrue);
+      expect(MedicationCost.paymentMethodOptions.containsKey('nhif'), isFalse);
+      expect(MedicationCost.paymentMethodLabel('sha'), 'SHA');
+      expect(MedicationCost.paymentMethodLabel('mpesa'), 'M-Pesa');
+    });
+  });
 }

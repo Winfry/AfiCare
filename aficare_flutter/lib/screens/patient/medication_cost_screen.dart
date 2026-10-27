@@ -34,13 +34,11 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
       try {
         final pref = await _supabase
             .from('user_preferences')
-            .select('preferences')
+            .select('monthly_med_budget')
             .eq('user_id', patientId)
             .maybeSingle();
-        if (pref != null && pref['preferences'] != null) {
-          final prefs = pref['preferences'] as Map<String, dynamic>;
-          _monthlyBudget = (prefs['monthly_med_budget'] as num?)?.toDouble() ?? 5000;
-        }
+        final budget = (pref?['monthly_med_budget'] as num?)?.toDouble();
+        if (budget != null) _monthlyBudget = budget;
       } catch (_) {}
 
       final data = await _supabase
@@ -238,6 +236,8 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
     final costCtrl = TextEditingController();
     final pharmacyCtrl = TextEditingController();
     String paymentMethod = 'cash';
+    String? formError;
+    bool saving = false;
 
     showModalBottomSheet(
       context: context,
@@ -269,42 +269,62 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
                 const SizedBox(height: 12),
                 const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                Wrap(spacing: 8, children: [
-                  _paymentChoice('Cash', 'cash', paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
-                  _paymentChoice('NHIF', 'nhif', paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
-                  _paymentChoice('Insurance', 'insurance', paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
-                  _paymentChoice('M-Pesa', 'mhealth', paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final e in MedicationCost.paymentMethodOptions.entries)
+                    _paymentChoice(e.value, e.key, paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
                 ]),
+                if (formError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(formError!, style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
+                ],
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity, height: 48,
                   child: ElevatedButton(
-                    onPressed: medCtrl.text.trim().isEmpty ? null : () async {
+                    // Checked when pressed: a button disabled from the start
+                    // never woke up again as the fields were filled in.
+                    onPressed: saving ? null : () async {
                       final patientId = _supabase.auth.currentUser?.id;
                       if (patientId == null) return;
-                      final qty = int.tryParse(qtyCtrl.text) ?? 1;
-                      final total = double.tryParse(costCtrl.text) ?? 0;
+                      final qty = int.tryParse(qtyCtrl.text.trim());
+                      final total = double.tryParse(costCtrl.text.trim().replaceAll(',', ''));
+                      final problem = medCtrl.text.trim().isEmpty
+                          ? 'Enter the medicine name.'
+                          : (qty == null || qty < 1)
+                              ? 'Quantity should be a whole number, 1 or more.'
+                              : (total == null || total < 0)
+                                  ? 'Enter what you paid, in shillings.'
+                                  : null;
+                      if (problem != null) {
+                        setSheetState(() => formError = problem);
+                        return;
+                      }
+                      setSheetState(() {
+                        formError = null;
+                        saving = true;
+                      });
 
+                      final cost = MedicationCost(
+                        id: const Uuid().v4(),
+                        patientId: patientId,
+                        medicationName: medCtrl.text.trim(),
+                        dosage: dosageCtrl.text.trim(),
+                        quantity: qty!,
+                        unitCost: total! / qty,
+                        totalCost: total,
+                        pharmacyName: pharmacyCtrl.text.trim().isNotEmpty ? pharmacyCtrl.text.trim() : null,
+                        paymentMethod: paymentMethod,
+                        purchaseDate: DateTime.now(),
+                      );
                       try {
-                        await _supabase.from('medication_costs').insert({
-                          'id': const Uuid().v4(),
-                          'patient_id': patientId,
-                          'medication_name': medCtrl.text.trim(),
-                          'dosage': dosageCtrl.text.trim(),
-                          'quantity': qty,
-                          'unit_cost': qty > 0 ? total / qty : total,
-                          'total_cost': total,
-                          'pharmacy_name': pharmacyCtrl.text.trim().isNotEmpty ? pharmacyCtrl.text.trim() : null,
-                          'payment_method': paymentMethod,
-                          'purchase_date': DateTime.now().toIso8601String(),
-                        });
+                        await _supabase.from('medication_costs').insert(cost.toJson());
                         if (mounted) { Navigator.pop(ctx); _loadData(); }
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error saving purchase: $e'), backgroundColor: Colors.red),
-                          );
-                        }
+                        debugPrint('medication_cost_screen: saving purchase failed: $e');
+                        setSheetState(() {
+                          saving = false;
+                          formError = "We couldn't save this purchase. Please check your connection and try again.";
+                        });
                       }
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
@@ -341,15 +361,21 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
                 onPressed: () async {
                   final patientId = _supabase.auth.currentUser?.id;
                   if (patientId == null) return;
-                  final budget = double.tryParse(budgetCtrl.text) ?? 5000;
+                  final budget = double.tryParse(budgetCtrl.text.trim().replaceAll(',', ''));
+                  if (budget == null || budget < 0) {
+                    showErrorSnackBar(context, 'Enter your monthly budget in shillings.');
+                    return;
+                  }
                   try {
-                    await _supabase.from('user_preferences').upsert({
-                      'user_id': patientId,
-                      'preferences': {'monthly_med_budget': budget},
-                    });
+                    // Only this column: the rest of the settings row stays as it is.
+                    await _supabase.from('user_preferences').upsert(
+                      {'user_id': patientId, 'monthly_med_budget': budget},
+                      onConflict: 'user_id',
+                    );
                   } catch (e) {
                     debugPrint('medication_cost_screen: saving budget preference failed: $e');
-                    showErrorSnackBar(context, 'Could not save your budget');
+                    if (mounted) showErrorSnackBar(context, "We couldn't save your budget, so it hasn't changed.");
+                    return;
                   }
                   if (mounted) { setState(() => _monthlyBudget = budget); Navigator.pop(ctx); }
                 },

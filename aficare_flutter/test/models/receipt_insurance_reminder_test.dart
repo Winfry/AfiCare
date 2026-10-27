@@ -138,4 +138,84 @@ void main() {
       expect(ReminderTime(hour: 8, minute: 0, label: 'With breakfast').shortLabel, 'With breakfast');
     });
   });
+
+
+  group('Live tables (042)', () {
+    test('receipts offer SHA, and only values the table accepts', () {
+      // Must match receipts_payment_method_check in 042.
+      const accepted = {'cash', 'sha', 'nhif', 'insurance', 'mpesa', 'card', 'subsidized'};
+      expect(accepted.containsAll(Receipt.paymentMethodOptions.keys), isTrue);
+      expect(Receipt.paymentMethodOptions.containsKey('nhif'), isFalse);
+      expect(Receipt.paymentMethodLabel('sha'), 'SHA');
+      expect(Receipt.paymentMethodLabel('nhif'), 'NHIF');
+    });
+
+    test('a claim is written with the table\'s own column names', () {
+      final json = InsuranceClaim(
+        id: 'ic-2',
+        patientId: 'p-1',
+        insuranceType: 'sha',
+        insuranceNumber: 'SHA-123',
+        claimType: 'maternity',
+        claimStatus: 'draft',
+        claimedAmount: 1500,
+        dateOfService: DateTime(2026, 10, 20, 9),
+        createdAt: DateTime(2026, 10, 27),
+      ).toJson();
+      expect(json['insurance_provider'], 'sha');
+      expect(json['policy_number'], 'SHA-123');
+      expect(json['claim_type'], 'maternity');
+      expect(json['amount'], 1500);
+      expect(json['status'], 'draft');
+      expect(json['service_date'], '2026-10-20');
+      for (final gone in ['insurance_type', 'insurance_number', 'claim_status', 'claimed_amount',
+          'date_of_service', 'services', 'approved_amount']) {
+        expect(json.containsKey(gone), isFalse, reason: gone);
+      }
+    });
+
+    test('a live row reads back, and the old "in_review" becomes "under_review"', () {
+      final c = InsuranceClaim.fromJson({
+        'id': 'ic-3',
+        'patient_id': 'p-1',
+        'insurance_provider': 'private',
+        'policy_number': 'AAR-9',
+        'claim_type': 'dental',
+        'amount': 4000,
+        'status': 'under_review',
+        'service_date': '2026-09-01',
+        'created_at': '2026-09-02T08:00:00Z',
+      });
+      expect(c.insuranceType, 'private');
+      expect(c.insuranceNumber, 'AAR-9');
+      expect(c.claimType, 'dental');
+      expect(c.claimedAmount, 4000);
+      expect(c.claimStatus, 'under_review');
+      expect(InsuranceClaim.statusLabel('under_review'), 'Under Review');
+      expect(InsuranceClaim.fromJson({'status': 'in_review'}).claimStatus, 'under_review');
+    });
+
+    test('statuses and claim types are exactly the ones the table accepts', () {
+      // Must match the CHECKs on insurance_claims (042 pre-check).
+      expect(InsuranceClaim.statuses.toSet(),
+          {'draft', 'submitted', 'under_review', 'approved', 'rejected', 'paid'});
+      expect(InsuranceClaim.claimTypes.keys.toSet(),
+          {'outpatient', 'inpatient', 'emergency', 'maternity', 'chronic', 'dental', 'optical', 'other'});
+      expect(InsuranceClaim.insurerOptions.containsKey('sha'), isTrue);
+    });
+
+    test('a reminder is written with "times", the column 042 renames to', () {
+      final json = MedicationReminder(
+        id: 'mr-1',
+        patientId: 'dep-1',
+        medicationName: 'Amoxil',
+        dosage: '5ml',
+        frequency: 'twice_daily',
+        times: [ReminderTime(hour: 8, minute: 0)],
+        createdAt: DateTime(2026, 10, 27),
+      ).toJson();
+      expect(json.containsKey('times'), isTrue);
+      expect(json.containsKey('reminder_times'), isFalse);
+    });
+  });
 }

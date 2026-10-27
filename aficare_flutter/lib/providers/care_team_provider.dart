@@ -59,6 +59,15 @@ class CareTeamProvider extends ChangeNotifier {
 
       _members = teamRows.map((row) {
         final r = row as Map<String, dynamic>;
+        // Someone who isn't on AfiCare: the name typed in is all there
+        // is. provider_id only holds a placeholder (see addCustomMember).
+        if (r['notes'] == 'custom') {
+          return CareTeamMemberModel.fromJson({
+            ...r,
+            'provider_name': r['specialty_label'] ?? 'Someone not on AfiCare',
+            'provider_role': 'other',
+          });
+        }
         final u = userMap[r['provider_id'] as String] ?? {};
         return CareTeamMemberModel.fromJson({
           ...r,
@@ -140,11 +149,15 @@ class CareTeamProvider extends ChangeNotifier {
     }
   }
 
+  /// Adds someone who isn't on AfiCare, by name. provider_id must be an
+  /// account, so it holds the signed-in account holder's id as a
+  /// placeholder: a dependant has no account of their own to put there.
   Future<bool> addCustomMember(String patientId, String customName) async {
+    final placeholder = Supabase.instance.client.auth.currentUser?.id ?? patientId;
     try {
       await Supabase.instance.client.from('care_team').insert({
         'patient_id': patientId,
-        'provider_id': patientId,
+        'provider_id': placeholder,
         'specialty_label': customName,
         'is_primary': false,
         'notes': 'custom',

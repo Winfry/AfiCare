@@ -20,6 +20,18 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
   bool _isLoading = true;
   bool _isUploading = false;
 
+  /// Receipts live in the private 'receipts' bucket (042), in a folder
+  /// named after the account id. receipts.image_url holds the path in the
+  /// bucket, and the picture is shown through a short-lived signed link.
+  static const _bucket = 'receipts';
+
+  /// Signed links being fetched or fetched, by path, so a rebuild doesn't
+  /// ask again.
+  final Map<String, Future<String>> _signedUrls = {};
+
+  Future<String> _signedUrl(String path) =>
+      _signedUrls[path] ??= _supabase.storage.from(_bucket).createSignedUrl(path, 3600);
+
   @override
   void initState() {
     super.initState();
@@ -163,11 +175,8 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
             child: SizedBox(
               width: 56, height: 56,
               child: receipt.imageUrl != null
-                  ? Image.network(receipt.imageUrl!, fit: BoxFit.cover)
-                  : Container(
-                      color: Colors.grey.shade100,
-                      child: Icon(Icons.receipt_rounded, color: Colors.grey.shade400, size: 24),
-                    ),
+                  ? _thumbnail(receipt.imageUrl!)
+                  : _noPicture(),
             ),
           ),
           const SizedBox(width: 12),
@@ -201,47 +210,85 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
     );
   }
 
+  Widget _noPicture() => Container(
+        color: Colors.grey.shade100,
+        child: Icon(Icons.receipt_rounded, color: Colors.grey.shade400, size: 24),
+      );
+
+  Widget _thumbnail(String stored) {
+    // Older rows could hold a full web address; new ones hold a path.
+    if (stored.startsWith('http')) {
+      return Image.network(stored, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _noPicture());
+    }
+    return FutureBuilder<String>(
+      future: _signedUrl(stored),
+      builder: (context, snap) => snap.hasData
+          ? Image.network(snap.data!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _noPicture())
+          : _noPicture(),
+    );
+  }
+
+  static String _contentTypeFor(String ext) => switch (ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'heic' => 'image/heic',
+        _ => 'image/jpeg',
+      };
+
   Future<void> _pickReceipt(ImageSource source) async {
     final picked = await _imagePicker.pickImage(source: source, maxWidth: 1920, imageQuality: 85);
     if (picked == null) return;
 
-    setState(() => _isUploading = true);
-
     final patientId = _supabase.auth.currentUser?.id;
     if (patientId == null) return;
 
+    setState(() => _isUploading = true);
+    String? path;
     try {
-      final ext = picked.path.split('.').last;
-      final fileName = 'receipts/$patientId/${const Uuid().v4()}.$ext';
+      // On the web picked.path is a blob address, so the name is used.
+      final name = picked.name.toLowerCase();
+      final ext = name.contains('.') ? name.split('.').last : 'jpg';
+      final contentType = picked.mimeType ?? _contentTypeFor(ext);
+      path = '$patientId/${const Uuid().v4()}.$ext';
       final bytes = await picked.readAsBytes();
 
-      await _supabase.storage.from('media').uploadBinary(fileName, bytes,
-          fileOptions: const FileOptions(contentType: 'image/jpeg'));
-
-      final imageUrl = _supabase.storage.from('media').getPublicUrl(fileName);
-
-      if (mounted) {
-        _showReceiptDetailSheet(imageUrl: imageUrl, patientId: patientId);
-      }
+      await _supabase.storage.from(_bucket).uploadBinary(path, bytes,
+          fileOptions: FileOptions(contentType: contentType));
     } catch (e) {
       debugPrint('Error uploading receipt: $e');
+      path = null;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'), backgroundColor: const Color(0xFFE53935)),
+          const SnackBar(
+            content: Text("We couldn't upload that picture. Please check your connection and try again."),
+            backgroundColor: Color(0xFFE53935),
+          ),
         );
       }
     }
 
-    setState(() => _isUploading = false);
+    if (mounted) setState(() => _isUploading = false);
+    if (path != null && mounted) {
+      final saved = await _showReceiptDetailSheet(imagePath: path, patientId: patientId);
+      // Closed without saving: don't leave the picture behind.
+      if (saved != true) {
+        try {
+          await _supabase.storage.from(_bucket).remove([path]);
+        } catch (e) {
+          debugPrint('Removing an unsaved receipt picture failed: $e');
+        }
+      }
+    }
   }
 
-  void _showReceiptDetailSheet({required String imageUrl, required String patientId}) {
+  /// Returns true once the receipt is saved.
+  Future<bool?> _showReceiptDetailSheet({required String imagePath, required String patientId}) {
     final facilityCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
     String serviceType = 'Consultation';
     String paymentMethod = 'cash';
 
-    showModalBottomSheet(
+    return showModalBottomSheet<bool>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
@@ -285,19 +332,23 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                           await _supabase.from('receipts').insert({
                             'id': const Uuid().v4(),
                             'patient_id': patientId,
-                            'image_url': imageUrl,
-                            'facility_name': facilityCtrl.text.isNotEmpty ? facilityCtrl.text : null,
-                            'total_amount': double.tryParse(amountCtrl.text),
+                            'image_url': imagePath,
+                            'facility_name': facilityCtrl.text.trim().isNotEmpty ? facilityCtrl.text.trim() : null,
+                            'total_amount': double.tryParse(amountCtrl.text.trim().replaceAll(',', '')),
                             'service_type': serviceType,
                             'payment_method': paymentMethod,
-                            'date': DateTime.now().toIso8601String(),
+                            'date': DateTime.now().toIso8601String().split('T').first,
                           });
-                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (ctx.mounted) Navigator.pop(ctx, true);
                           _loadReceipts();
                         } catch (e) {
+                          debugPrint('receipt_upload_screen: saving receipt failed: $e');
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error saving receipt: $e'), backgroundColor: Colors.red),
+                              const SnackBar(
+                                content: Text("We couldn't save this receipt. Please check your connection and try again."),
+                                backgroundColor: Colors.red,
+                              ),
                             );
                           }
                         }

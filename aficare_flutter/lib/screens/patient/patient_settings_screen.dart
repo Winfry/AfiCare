@@ -37,7 +37,15 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
 
   Future<void> _save(UserPreferencesModel prefs) async {
     final pp = Provider.of<PreferencesProvider>(context, listen: false);
-    await pp.save(prefs);
+    final ok = await pp.save(prefs);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(pp.error ?? "We couldn't save that setting."),
+          backgroundColor: Colors.red,
+        ));
+    }
   }
 
   @override

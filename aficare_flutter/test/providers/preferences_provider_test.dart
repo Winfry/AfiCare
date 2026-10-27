@@ -95,4 +95,21 @@ void main() {
       expect(body, containsPair('theme', 'high_contrast'));
     });
   });
+
+
+  group('PreferencesProvider.save failure', () {
+    test('a refused save puts the previous settings back and says so', () async {
+      fake.routeJson('/rest/v1/user_preferences', prefsRow());
+      final provider = PreferencesProvider();
+      await provider.loadPreferences('u1');
+      final before = provider.prefs;
+
+      fake.routeRaw('/rest/v1/user_preferences', http.Response('{"message":"column does not exist"}', 400));
+      final ok = await provider.save(before!.copyWith(theme: AppThemePreference.light));
+
+      expect(ok, isFalse);
+      expect(provider.prefs, same(before));
+      expect(provider.error, contains("couldn't save"));
+    });
+  });
 }

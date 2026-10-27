@@ -9,7 +9,9 @@ class MedicationCost {
   final double totalCost;
   final String? pharmacyName;
   final String? facilityName;
-  final String paymentMethod; // 'cash', 'nhif', 'insurance', 'mhealth', 'free'
+  /// See [paymentMethodOptions]. Older rows may hold 'nhif', 'mhealth' or
+  /// 'free', which still display.
+  final String paymentMethod;
   final DateTime purchaseDate;
   final String? receiptId;
   final String? notes;
@@ -31,17 +33,21 @@ class MedicationCost {
     this.notes,
   });
 
+  /// Reads a medication_costs row. The table stores the total as `cost`
+  /// and the pharmacy as `pharmacy` (042); the unit cost is worked out.
   factory MedicationCost.fromJson(Map<String, dynamic> json) {
+    final quantity = (json['quantity'] as num?)?.toInt() ?? 1;
+    final total = ((json['cost'] ?? json['total_cost']) as num?)?.toDouble() ?? 0.0;
     return MedicationCost(
       id: json['id'] as String? ?? '',
       patientId: json['patient_id'] as String? ?? '',
       prescriptionId: json['prescription_id'] as String?,
       medicationName: json['medication_name'] as String? ?? '',
       dosage: json['dosage'] as String? ?? '',
-      quantity: json['quantity'] as int? ?? 0,
-      unitCost: (json['unit_cost'] as num?)?.toDouble() ?? 0.0,
-      totalCost: (json['total_cost'] as num?)?.toDouble() ?? 0.0,
-      pharmacyName: json['pharmacy_name'] as String?,
+      quantity: quantity,
+      unitCost: (json['unit_cost'] as num?)?.toDouble() ?? (quantity > 0 ? total / quantity : total),
+      totalCost: total,
+      pharmacyName: (json['pharmacy'] ?? json['pharmacy_name']) as String?,
       facilityName: json['facility_name'] as String?,
       paymentMethod: json['payment_method'] as String? ?? 'cash',
       purchaseDate: json['purchase_date'] != null
@@ -52,6 +58,7 @@ class MedicationCost {
     );
   }
 
+  /// The columns of medication_costs (see [MedicationCost.fromJson]).
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -60,25 +67,29 @@ class MedicationCost {
       'medication_name': medicationName,
       'dosage': dosage,
       'quantity': quantity,
-      'unit_cost': unitCost,
-      'total_cost': totalCost,
-      'pharmacy_name': pharmacyName,
-      'facility_name': facilityName,
+      'cost': totalCost,
+      'pharmacy': pharmacyName,
       'payment_method': paymentMethod,
-      'purchase_date': purchaseDate.toIso8601String(),
-      'receipt_id': receiptId,
+      'purchase_date': purchaseDate.toIso8601String().split('T').first,
       'notes': notes,
     };
   }
 
+  /// What the app offers now. NHIF became SHA in October 2024.
+  static const Map<String, String> paymentMethodOptions = {
+    'cash': 'Cash',
+    'mpesa': 'M-Pesa',
+    'sha': 'SHA',
+    'insurance': 'Insurance',
+    'subsidized': 'Subsidized',
+  };
+
   static String paymentMethodLabel(String method) {
     switch (method) {
-      case 'cash': return 'Cash';
       case 'nhif': return 'NHIF';
-      case 'insurance': return 'Insurance';
       case 'mhealth': return 'M-Pesa';
       case 'free': return 'Free (Subsidized)';
-      default: return method;
+      default: return paymentMethodOptions[method] ?? method;
     }
   }
 }
