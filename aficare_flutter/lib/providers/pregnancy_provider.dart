@@ -216,8 +216,11 @@ class PregnancyProvider with ChangeNotifier {
       return true;
     } on PostgrestException catch (e) {
       debugPrint('PregnancyProvider write failed: ${e.message}');
-      // The database allows one ongoing pregnancy per person.
-      _error = e.code == '23505' ? 'You already have a pregnancy in progress.' : fallback;
+      // The database allows one ongoing pregnancy per person. With
+      // .maybeSingle(), postgrest-dart replaces the error code with the
+      // HTTP status (409), keeping Postgres's code only in the message.
+      final duplicate = e.code == '23505' || e.message.contains('23505');
+      _error = duplicate ? 'You already have a pregnancy in progress.' : fallback;
       notifyListeners();
       return false;
     } catch (e) {

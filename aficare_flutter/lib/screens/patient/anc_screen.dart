@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../theme/app_colors.dart';
-import '../../models/anc_visit_model.dart';
-import 'widgets/patient_ui.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../../models/anc_visit_model.dart';
+import '../../models/pregnancy_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/pregnancy_provider.dart';
+import '../../theme/patient_tokens.dart';
+import 'widgets/patient_ui.dart';
+import 'widgets/pregnancy_forms.dart';
+
+/// Maternal care: the ongoing pregnancy week by week, its antenatal (ANC)
+/// visits, and past pregnancies. Built on [PregnancyProvider], the same
+/// record Women's health uses. Account-holder only (adult-only in the nav).
 class AncScreen extends StatefulWidget {
   const AncScreen({super.key});
 
@@ -12,674 +21,535 @@ class AncScreen extends StatefulWidget {
 }
 
 class _AncScreenState extends State<AncScreen> {
-  final _supabase = Supabase.instance.client;
-  List<AncVisit> _visits = [];
-  bool _isLoading = true;
-  DateTime? _lmp;
-  String? _notesRaw;
-
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
-  Future<void> _loadData() async {
-    try {
-      final patientId = _supabase.auth.currentUser?.id;
-      if (patientId == null) return;
-
-      // Load visits
-      final visitData = await _supabase
-          .from('anc_visits')
-          .select()
-          .eq('patient_id', patientId)
-          .order('visit_date', ascending: false);
-      _visits = (visitData as List)
-          .map((j) => AncVisit.fromJson(j))
-          .toList();
-
-      // Load LMP from patient notes
-      try {
-        final patient = await _supabase
-            .from('patients')
-            .select('notes')
-            .eq('id', patientId)
-            .maybeSingle();
-        if (patient != null && patient['notes'] != null) {
-          _notesRaw = patient['notes'] as String;
-          if (_notesRaw!.contains('lmp:')) {
-            final lmpStr = _notesRaw!.split('lmp:')[1].split(';')[0].trim();
-            _lmp = DateTime.tryParse(lmpStr);
-          }
-        }
-      } catch (_) {}
-    } catch (e) {
-      debugPrint('Error loading ANC data: $e');
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not load ANC data: $e'), backgroundColor: Colors.red),
-            );
-          }
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  int get _gestationalWeeks {
-    if (_lmp == null) return 0;
-    return (DateTime.now().difference(_lmp!).inDays / 7).floor();
-  }
-
-  String get _trimester => AncVisit.trimesterFromWeeks(_gestationalWeeks);
-
-  String get _dueDate {
-    if (_lmp == null) return 'Not set';
-    final due = _lmp!.add(const Duration(days: 280));
-    return '${due.day}/${due.month}/${due.year}';
-  }
-
-  int get _daysUntilDue {
-    if (_lmp == null) return 0;
-    return _lmp!.add(const Duration(days: 280)).difference(DateTime.now()).inDays;
+  void _load() {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    if (userId != null) context.read<PregnancyProvider>().load(userId);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const PLoadingPage();
+    final pregnancies = context.watch<PregnancyProvider>();
+    if (!pregnancies.loaded) return const PLoadingPage();
 
-    return PSliverPage(
+    final current = pregnancies.current;
+    final today = DateUtils.dateOnly(DateTime.now());
+
+    return PDetailScaffold(
       eyebrow: 'You and your baby',
       title: 'Maternal care',
       subtitle: 'Your pregnancy, week by week, and the visits that go with it.',
-      action: PButton('Add a visit', icon: Icons.add, onPressed: _showAddVisitSheet),
-      slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Pregnancy Progress Card
-                  _buildPregnancyCard(),
-                  const SizedBox(height: 16),
-
-                  // Visit Stats
-                  _buildVisitStats(),
-                  const SizedBox(height: 16),
-
-                  // Danger Signs Warning
-                  if (_trimester == 'third' || _trimester == 'second')
-                    _buildDangerSignsCard(),
-
-                  // Visit Timeline
-                  const Text('Visit History', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                  const SizedBox(height: 10),
-                  if (_visits.isEmpty)
-                    _buildEmptyState()
-                  else
-                    ...(_visits.map((v) => _buildVisitCard(v))),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPregnancyCard() {
-    final weeks = _gestationalWeeks;
-    final progress = (weeks / 40).clamp(0.0, 1.0);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFE91E63), Color(0xFFE91E63).withAlpha(180)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('🤰', style: TextStyle(fontSize: 32)),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    weeks > 0 ? 'Week $weeks' : 'Set LMP to begin',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 22),
-                  ),
-                  Text(
-                    AncVisit.trimesterLabel(_trimester),
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white24,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              minHeight: 8,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Due: $_dueDate', style: const TextStyle(color: Colors.white, fontSize: 13)),
-              Text(
-                _daysUntilDue > 0 ? '$_daysUntilDue days remaining' : 'Due date passed',
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_lmp == null)
-            TextButton(
-              onPressed: _showSetLmpSheet,
-              child: const Text('Set Last Menstrual Period', style: TextStyle(color: Colors.white)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVisitStats() {
-    return Row(
+      action: current == null ? null : PButton('Add a visit', icon: Icons.add, onPressed: () => _addVisit(current)),
       children: [
-        _statCard('${_visits.length}', 'Visits', Icons.medical_services_rounded, const Color(0xFF5C6BC0)),
-        const SizedBox(width: 12),
-        _statCard('$_gestationalWeeks', 'Weeks', Icons.calendar_month_rounded, const Color(0xFF26A69A)),
-        const SizedBox(width: 12),
-        _statCard('${_daysUntilDue > 0 ? _daysUntilDue : 0}', 'Days to Due', Icons.timer_rounded, const Color(0xFFF57F17)),
-      ],
-    );
-  }
-
-  Widget _statCard(String value, String label, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.borderSubtle),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2))],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 6),
-            Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: color)),
-            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDangerSignsCard() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.warning_rounded, color: Color(0xFFF57F17), size: 20),
-              const SizedBox(width: 8),
-              const Text('Danger Signs', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Seek immediate medical care if you experience:\n'
-            '• Severe headache or blurred vision\n'
-            '• Vaginal bleeding\n'
-            '• Severe abdominal pain\n'
-            '• Reduced fetal movement\n'
-            '• Difficulty breathing or convulsions',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.5),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.medical_services_outlined, color: Colors.grey.shade300, size: 48),
-          const SizedBox(height: 12),
-          Text('No ANC Visits Yet', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-          const SizedBox(height: 6),
-          Text(
-            'Track your antenatal care visits to ensure a healthy pregnancy.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _showAddVisitSheet,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Log First Visit'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE91E63),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVisitCard(AncVisit visit) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _trimesterColor(visit.trimester).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Visit ${visit.visitNumber}',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: _trimesterColor(visit.trimester)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${visit.gestationalWeeks} weeks',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w500),
-              ),
-              const Spacer(),
-              Text(
-                '${visit.visitDate.day}/${visit.visitDate.month}/${visit.visitDate.year}',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Vitals row
+        if (pregnancies.error != null && pregnancies.pregnancies.isEmpty)
+          PLoadError(what: 'your pregnancy record', onRetry: _load)
+        else if (current == null)
+          _StartCard(onStart: _start)
+        else ...[
+          _ProgressHero(pregnancy: current, visitsDone: pregnancies.visitsOf(current).length, today: today),
+          const _SeekCareCallout(),
+          const SizedBox(height: 22),
+          const PHeading('Antenatal visits'),
+          _VisitList(visits: pregnancies.visitsOf(current), onAdd: () => _addVisit(current)),
+          const SizedBox(height: 14),
           Wrap(
-            spacing: 12,
-            runSpacing: 6,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              if (visit.systolicBP != null)
-                _vitalChip('BP', '${visit.systolicBP}/${visit.diastolicBP}', Icons.monitor_heart_rounded),
-              if (visit.weight != null)
-                _vitalChip('Weight', '${visit.weight} kg', Icons.scale_rounded),
-              if (visit.hemoglobin != null)
-                _vitalChip('Hb', '${visit.hemoglobin} g/dL', Icons.bloodtype_rounded),
-              if (visit.fetalHeartRate != null)
-                _vitalChip('FHR', '${visit.fetalHeartRate} bpm', Icons.favorite_rounded),
+              PButton('Change dates', kind: PButtonKind.alt, icon: Icons.edit_calendar_outlined,
+                  onPressed: () => _changeDates(current)),
+              PButton('This pregnancy has ended', kind: PButtonKind.alt, onPressed: () => _end(current)),
             ],
           ),
-          if (visit.dangerSigns.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: visit.dangerSigns.map((d) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3E0),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.4)),
-                ),
-                child: Text(d, style: const TextStyle(fontSize: 11, color: Color(0xFFF57F17))),
-              )).toList(),
-            ),
-          ],
         ],
-      ),
-    );
-  }
-
-  Widget _vitalChip(String label, String value, IconData icon) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: Colors.grey.shade500),
-        const SizedBox(width: 4),
-        Text('$label: ', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        if (pregnancies.past.isNotEmpty) ...[
+          const SizedBox(height: 26),
+          const PHeading('Past pregnancies'),
+          PCard(
+            child: Column(
+              children: [
+                for (final p in pregnancies.past)
+                  _PastRow(pregnancy: p, visits: pregnancies.visitsOf(p).length),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        const PCallout(
+          title: 'Who can see this',
+          body: 'You, and the doctors and nurses caring for you: your care team, and anyone you have '
+              'an appointment or consultation with. They can read it but not change it.',
+        ),
       ],
     );
   }
 
-  Color _trimesterColor(String t) {
-    switch (t) {
-      case 'first': return const Color(0xFF5C6BC0);
-      case 'second': return const Color(0xFF26A69A);
-      case 'third': return const Color(0xFFE91E63);
-      default: return Colors.grey;
+  Future<void> _start() async {
+    if (await showPregnancyDatesForm(context) && mounted) {
+      pToast(context, 'Saved. Congratulations!');
     }
   }
 
-  void _showSetLmpSheet() {
-    DateTime selectedDate = DateTime.now().subtract(const Duration(days: 140));
-    showModalBottomSheet(
+  Future<void> _changeDates(Pregnancy p) async {
+    if (await showPregnancyDatesForm(context, editing: p) && mounted) {
+      pToast(context, 'Your dates are updated.');
+    }
+  }
+
+  Future<void> _end(Pregnancy p) async {
+    if (await showEndPregnancyForm(context, p) && mounted) {
+      pToast(context, 'Saved. Your visits stay in your history.');
+    }
+  }
+
+  Future<void> _addVisit(Pregnancy p) async {
+    final dangerSigns = await showPModal<List<String>>(
       context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          height: MediaQuery.of(context).size.height * 0.5,
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      title: 'Add a visit',
+      builder: (_) => _VisitForm(pregnancy: p),
+    );
+    if (dangerSigns == null || !mounted) return;
+    pToast(
+      context,
+      dangerSigns.isEmpty
+          ? 'Visit saved.'
+          : 'Visit saved. You noted danger signs: if you have not been seen for them yet, get care today.',
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// No pregnancy yet
+// ═══════════════════════════════════════════════════════════════════════
+
+class _StartCard extends StatelessWidget {
+  const _StartCard({required this.onStart});
+
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return PCard(
+      child: PEmpty(
+        emoji: '🤰',
+        title: 'Tell us about your pregnancy',
+        body: "Add the first day of your last period, or your due date from a scan, and we'll show "
+            'how far along you are, when your baby is due, and which antenatal visits are next.',
+        action: PButton('Get started', onPressed: onStart),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Progress — the hero
+// ═══════════════════════════════════════════════════════════════════════
+
+class _ProgressHero extends StatelessWidget {
+  const _ProgressHero({required this.pregnancy, required this.visitsDone, required this.today});
+
+  final Pregnancy pregnancy;
+  final int visitsDone;
+  final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final weeks = pregnancy.weeksOn(today);
+    final daysToDue = pregnancy.daysToDueOn(today);
+    final title = daysToDue < 0
+        ? 'Week $weeks · past your due date'
+        : 'Week $weeks · ${Pregnancy.trimesterName(pregnancy.trimesterOn(today))}';
+
+    return PHero(
+      chip: 'PREGNANCY PROGRESS',
+      title: title,
+      body: _visitsLine(weeks, daysToDue),
+      action: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(PT.rPill),
+            child: LinearProgressIndicator(
+              value: pregnancy.progressOn(today),
+              minHeight: 8,
+              backgroundColor: Colors.white24,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              semanticsLabel: 'Pregnancy progress',
+              semanticsValue: 'Week $weeks of 40',
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 34,
+            runSpacing: 12,
             children: [
-              const Text('Set Last Menstrual Period', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-              const SizedBox(height: 6),
-              Text('This helps calculate your due date and track your pregnancy.', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 300,
-                child: CalendarDatePicker(
-                  initialDate: selectedDate,
-                  firstDate: DateTime.now().subtract(const Duration(days: 300)),
-                  lastDate: DateTime.now(),
-                  onDateChanged: (d) => setSheetState(() => selectedDate = d),
-                ),
+              _HeroStat(
+                label: 'DUE DATE',
+                value: DateFormat('d MMMM yyyy').format(pregnancy.dueDate),
+                note: pregnancy.dueDateSource == 'lmp' ? null : 'From ${pregnancy.dueDateSource == 'scan' ? 'a scan' : 'your clinic'}',
               ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final patientId = _supabase.auth.currentUser?.id;
-                    if (patientId == null) return;
-
-                    // Save LMP to patient notes
-                    try {
-                      final notes = _notesRaw ?? '';
-                      String updatedNotes;
-                      if (notes.contains('lmp:')) {
-                        updatedNotes = notes.replaceAll(
-                          RegExp(r'lmp:.*?;'),
-                          'lmp: ${selectedDate.toIso8601String()};',
-                        );
-                      } else {
-                        updatedNotes = '$notes lmp: ${selectedDate.toIso8601String()};';
-                      }
-
-                      await _supabase.from('patients').upsert({
-                        'id': patientId,
-                        'notes': updatedNotes,
-                      });
-
-                      Navigator.pop(ctx);
-                      setState(() {
-                        _lmp = selectedDate;
-                        _notesRaw = updatedNotes;
-                      });
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error saving LMP: $e'), backgroundColor: Colors.red),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE91E63),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Save'),
-                ),
+              _HeroStat(
+                label: daysToDue < 0 ? 'DAYS PAST' : 'DAYS TO GO',
+                value: '${daysToDue.abs()}',
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  void _showAddVisitSheet() {
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AddVisitSheet(
-        visitNumber: _visits.length + 1,
-        gestationalWeeks: _gestationalWeeks,
-        onComplete: () => _loadData(),
-      ),
-    );
+  String _visitsLine(int weeks, int daysToDue) {
+    if (daysToDue < 0) {
+      return 'Your due date has passed, which is common. Keep going to your clinic as they advise: '
+          'most babies arrive by 42 weeks.';
+    }
+    final toGo = Pregnancy.contactsToGo(visitsDone);
+    final next = Pregnancy.nextContactWeekAfter(weeks);
+    final nextLine = next == null ? '' : ' Next one is usually around week $next.';
+    if (visitsDone == 0) {
+      return 'No antenatal visits recorded yet. Eight are recommended, the first by week 12.$nextLine';
+    }
+    final done = '$visitsDone antenatal ${visitsDone == 1 ? 'visit' : 'visits'} done';
+    if (toGo == 0) return '$done. That covers the eight recommended visits.';
+    return '$done, $toGo to go.$nextLine';
   }
 }
 
-class _AddVisitSheet extends StatefulWidget {
-  final int visitNumber;
-  final int gestationalWeeks;
-  final VoidCallback onComplete;
-  const _AddVisitSheet({required this.visitNumber, required this.gestationalWeeks, required this.onComplete});
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.label, required this.value, this.note});
+
+  final String label;
+  final String value;
+  final String? note;
 
   @override
-  State<_AddVisitSheet> createState() => _AddVisitSheetState();
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: PT.label().copyWith(color: Colors.white70, letterSpacing: .5, fontSize: 11)),
+        const SizedBox(height: 3),
+        Text(value, style: PT.body().copyWith(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+        if (note != null) Text(note!, style: PT.label().copyWith(color: Colors.white70)),
+      ],
+    );
+  }
 }
 
-class _AddVisitSheetState extends State<_AddVisitSheet> {
-  final _bpSysCtrl = TextEditingController();
-  final _bpDiaCtrl = TextEditingController();
-  final _weightCtrl = TextEditingController();
-  final _hbCtrl = TextEditingController();
-  final _fhrCtrl = TextEditingController();
-  final _fundalCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
-  final _facilityCtrl = TextEditingController();
-  final _supabase = Supabase.instance.client;
-  bool _isSubmitting = false;
-  List<String> _selectedDangerSigns = [];
+class _SeekCareCallout extends StatelessWidget {
+  const _SeekCareCallout();
+
+  @override
+  Widget build(BuildContext context) {
+    return const PCallout(
+      tone: PTone.red,
+      title: 'When to seek care straight away',
+      body: 'Severe headache or blurred vision, bleeding, severe abdominal pain, your baby moving less, '
+          'fits, or difficulty breathing.',
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Visits
+// ═══════════════════════════════════════════════════════════════════════
+
+class _VisitList extends StatelessWidget {
+  const _VisitList({required this.visits, required this.onAdd});
+
+  final List<AncVisit> visits;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    if (visits.isEmpty) {
+      return PCard(
+        child: PEmpty(
+          emoji: '🩺',
+          title: 'No visits recorded yet',
+          body: 'After each antenatal visit, add what was checked so it is all in one place.',
+          action: PButton('Add a visit', kind: PButtonKind.alt, onPressed: onAdd),
+        ),
+      );
+    }
+    return PCard(
+      child: Column(children: [for (final v in visits) _VisitRow(visit: v)]),
+    );
+  }
+}
+
+class _VisitRow extends StatelessWidget {
+  const _VisitRow({required this.visit});
+
+  final AncVisit visit;
+
+  @override
+  Widget build(BuildContext context) {
+    final when = visit.visitDate.toLocal();
+    final checks = [
+      if (visit.systolicBP != null && visit.diastolicBP != null) 'BP ${visit.systolicBP}/${visit.diastolicBP}',
+      if (visit.weight != null) 'Weight ${_num(visit.weight!)} kg',
+      if (visit.hemoglobin != null) 'Hb ${_num(visit.hemoglobin!)}',
+      if (visit.fetalHeartRate != null) 'Baby\'s heart ${visit.fetalHeartRate}',
+      if (visit.fundalHeight != null) 'Fundal height ${_num(visit.fundalHeight!)} cm',
+    ];
+    return PRow(
+      leading: _DateBox(date: when),
+      title: 'Visit ${visit.visitNumber} · ${visit.gestationalWeeks} weeks',
+      subtitle: checks.isEmpty ? 'No measurements recorded' : checks.join(' · '),
+      extraSubtitle: visit.facility.trim().isEmpty ? null : visit.facility.trim(),
+      trailing: [if (visit.dangerSigns.isNotEmpty) const PBadge('Danger signs', tone: PTone.red)],
+      below: visit.dangerSigns.isEmpty
+          ? null
+          : Text('Noted: ${visit.dangerSigns.join(', ')}', style: PT.rowSub().copyWith(color: PT.danger)),
+    );
+  }
+
+  static String _num(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+}
+
+class _DateBox extends StatelessWidget {
+  const _DateBox({required this.date});
+
+  final DateTime date;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      width: 52,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(color: PT.badgeWarnBg, borderRadius: BorderRadius.circular(13)),
       child: Column(
         children: [
-          Container(
-            width: 40, height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Add Visit #${widget.visitNumber}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                  const SizedBox(height: 4),
-                  Text('Gestational age: ${widget.gestationalWeeks} weeks', style: TextStyle(color: Colors.grey.shade500)),
-                  const SizedBox(height: 20),
-                  _field('Systolic BP (mmHg)', _bpSysCtrl, TextInputType.number),
-                  const SizedBox(height: 10),
-                  _field('Diastolic BP (mmHg)', _bpDiaCtrl, TextInputType.number),
-                  const SizedBox(height: 10),
-                  _field('Weight (kg)', _weightCtrl, TextInputType.number),
-                  const SizedBox(height: 10),
-                  _field('Hemoglobin (g/dL)', _hbCtrl, TextInputType.number),
-                  const SizedBox(height: 10),
-                  _field('Fetal Heart Rate (bpm)', _fhrCtrl, TextInputType.number),
-                  const SizedBox(height: 10),
-                  _field('Fundal Height (cm)', _fundalCtrl, TextInputType.number),
-                  const SizedBox(height: 10),
-                  _field('Facility', _facilityCtrl, TextInputType.text),
-                  const SizedBox(height: 16),
-
-                  const Text('Danger Signs Observed:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: AncVisit.dangerSignsList.map((sign) {
-                      final selected = _selectedDangerSigns.contains(sign);
-                      return FilterChip(
-                        label: Text(sign, style: TextStyle(fontSize: 12, color: selected ? Colors.white : Colors.grey.shade700)),
-                        selected: selected,
-                        onSelected: (s) => setState(() {
-                          if (s) _selectedDangerSigns.add(sign);
-                          else _selectedDangerSigns.remove(sign);
-                        }),
-                        selectedColor: const Color(0xFFF57F17),
-                        backgroundColor: Colors.grey.shade100,
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE91E63),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Save Visit', style: TextStyle(fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ),
+          Text('${date.day}', style: PT.serif(fontSize: 22, color: PT.badgeWarnFg, height: 1)),
+          const SizedBox(height: 3),
+          Text(DateFormat('MMM').format(date).toUpperCase(),
+              style: PT.badge().copyWith(color: PT.badgeWarnFg, fontSize: 10)),
         ],
       ),
     );
   }
+}
 
-  Widget _field(String label, TextEditingController ctrl, TextInputType type) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: type,
-      decoration: InputDecoration(
-        labelText: label,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFE91E63), width: 1.5),
-        ),
+class _PastRow extends StatelessWidget {
+  const _PastRow({required this.pregnancy, required this.visits});
+
+  final Pregnancy pregnancy;
+  final int visits;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = DateFormat('d MMM yyyy');
+    final ended = pregnancy.endedOn == null ? null : 'Ended ${fmt.format(pregnancy.endedOn!)}';
+    final how = pregnancy.outcome == null || pregnancy.outcome == 'not_said'
+        ? null
+        : Pregnancy.outcomes[pregnancy.outcome];
+    return PRow(
+      leadingEmoji: '🤍',
+      title: 'Due ${fmt.format(pregnancy.dueDate)}',
+      subtitle: [ended, how, '$visits ${visits == 1 ? 'visit' : 'visits'}'].whereType<String>().join(' · '),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Add a visit
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Pops the danger signs noted (possibly empty) once saved.
+class _VisitForm extends StatefulWidget {
+  const _VisitForm({required this.pregnancy});
+
+  final Pregnancy pregnancy;
+
+  @override
+  State<_VisitForm> createState() => _VisitFormState();
+}
+
+class _VisitFormState extends State<_VisitForm> {
+  DateTime _date = DateUtils.dateOnly(DateTime.now());
+  final _sys = TextEditingController();
+  final _dia = TextEditingController();
+  final _weight = TextEditingController();
+  final _hb = TextEditingController();
+  final _fhr = TextEditingController();
+  final _fundal = TextEditingController();
+  final _facility = TextEditingController();
+  final _notes = TextEditingController();
+  final Set<String> _signs = {};
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    for (final c in [_sys, _dia, _weight, _hb, _fhr, _fundal, _facility, _notes]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final start = widget.pregnancy.datingStart;
+    final picked = await showDatePicker(
+      context: context,
+      helpText: 'Date of the visit',
+      initialDate: _date,
+      firstDate: start.isAfter(today) ? today : start,
+      lastDate: today,
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  /// The number typed into [c], or null when empty. Sets [_error] and
+  /// returns double.nan when it is not a number in [min]..[max].
+  double? _read(TextEditingController c, String what, double min, double max) {
+    final text = c.text.trim().replaceAll(',', '.');
+    if (text.isEmpty) return null;
+    final v = double.tryParse(text);
+    if (v == null || v < min || v > max) {
+      _error ??= '$what should be a number between ${min.toStringAsFixed(0)} and ${max.toStringAsFixed(0)}.';
+      return double.nan;
+    }
+    return v;
+  }
+
+  Future<void> _save() async {
+    _error = null;
+    final sys = _read(_sys, 'Top blood pressure number', 60, 250);
+    final dia = _read(_dia, 'Bottom blood pressure number', 30, 150);
+    final weight = _read(_weight, 'Weight', 25, 250);
+    final hb = _read(_hb, 'Hb', 3, 25);
+    final fhr = _read(_fhr, "Baby's heart rate", 60, 220);
+    final fundal = _read(_fundal, 'Fundal height', 5, 50);
+    if (_error == null && (sys == null) != (dia == null)) {
+      _error = 'Enter both blood pressure numbers, or neither.';
+    }
+    if (_error != null) {
+      setState(() {});
+      return;
+    }
+
+    setState(() => _saving = true);
+    final pregnancies = context.read<PregnancyProvider>();
+    // A visit today is stamped with the current time; an earlier one at
+    // midday, so the calendar day survives any time-zone conversion.
+    final now = DateTime.now();
+    final when = DateUtils.isSameDay(_date, now) ? now : DateTime(_date.year, _date.month, _date.day, 12);
+    final ok = await pregnancies.addVisit(
+      visitDate: when,
+      systolicBP: sys?.round(),
+      diastolicBP: dia?.round(),
+      weight: weight,
+      hemoglobin: hb,
+      fetalHeartRate: fhr?.round(),
+      fundalHeight: fundal,
+      facility: _facility.text.trim(),
+      dangerSigns: AncVisit.dangerSignsList.where(_signs.contains).toList(),
+      notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+    );
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context, _signs.toList());
+    } else {
+      setState(() {
+        _saving = false;
+        _error = pregnancies.error;
+      });
+    }
+  }
+
+  Widget _number(String label, TextEditingController c, {String? hint}) {
+    return PField(
+      label: label,
+      child: TextField(
+        controller: c,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: pInput(hint: hint),
       ),
     );
   }
 
-  Future<void> _submit() async {
-    setState(() => _isSubmitting = true);
-    final patientId = _supabase.auth.currentUser?.id;
-    if (patientId == null) return;
-
-    try {
-      await _supabase.from('anc_visits').insert({
-        'patient_id': patientId,
-        'visit_number': widget.visitNumber,
-        'gestational_weeks': widget.gestationalWeeks,
-        'trimester': AncVisit.trimesterFromWeeks(widget.gestationalWeeks),
-        'visit_date': DateTime.now().toIso8601String(),
-        'systolic_bp': int.tryParse(_bpSysCtrl.text),
-        'diastolic_bp': int.tryParse(_bpDiaCtrl.text),
-        'weight': double.tryParse(_weightCtrl.text),
-        'hemoglobin': double.tryParse(_hbCtrl.text),
-        'fetal_heart_rate': int.tryParse(_fhrCtrl.text),
-        'fundal_height': double.tryParse(_fundalCtrl.text),
-        'facility': _facilityCtrl.text.trim(),
-        'danger_signs': _selectedDangerSigns,
-        'notes': _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
-      });
-
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onComplete();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Visit recorded'), backgroundColor: Color(0xFF2E7D32)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-    setState(() => _isSubmitting = false);
-  }
-
   @override
-  void dispose() {
-    _bpSysCtrl.dispose();
-    _bpDiaCtrl.dispose();
-    _weightCtrl.dispose();
-    _hbCtrl.dispose();
-    _fhrCtrl.dispose();
-    _fundalCtrl.dispose();
-    _notesCtrl.dispose();
-    _facilityCtrl.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final weeks = widget.pregnancy.weeksOn(_date);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Add what was checked. Leave out anything that wasn\'t.', style: PT.sub()),
+        const SizedBox(height: 15),
+        PField(
+          label: 'Date of the visit',
+          child: PButton(
+            '${DateFormat('d MMMM yyyy').format(_date)} · $weeks weeks',
+            kind: PButtonKind.alt,
+            icon: Icons.event_outlined,
+            onPressed: _saving ? null : _pickDate,
+          ),
+        ),
+        const SizedBox(height: 11),
+        PFormGrid([
+          _number('Blood pressure, top number', _sys, hint: '110'),
+          _number('Blood pressure, bottom number', _dia, hint: '70'),
+          _number('Weight (kg)', _weight, hint: '66'),
+          _number('Hb (g/dL)', _hb, hint: '11.5'),
+          _number("Baby's heart rate (per minute)", _fhr, hint: '145'),
+          _number('Fundal height (cm)', _fundal, hint: '24'),
+        ]),
+        const SizedBox(height: 11),
+        PField(
+          label: 'Clinic or hospital',
+          child: TextField(controller: _facility, decoration: pInput(hint: 'Where you were seen')),
+        ),
+        const SizedBox(height: 15),
+        Text('Any danger signs since your last visit?', style: PT.rowTitle()),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final sign in AncVisit.dangerSignsList)
+              PChoicePill(
+                label: sign,
+                selected: _signs.contains(sign),
+                onTap: () => setState(() => _signs.contains(sign) ? _signs.remove(sign) : _signs.add(sign)),
+              ),
+          ],
+        ),
+        if (_signs.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const PCallout(
+            tone: PTone.red,
+            body: 'If you have not been seen for these yet, please get care today. Call 999 or go to the '
+                'nearest facility if it is severe.',
+          ),
+        ],
+        const SizedBox(height: 15),
+        PField(
+          label: 'Notes',
+          child: TextField(
+            controller: _notes,
+            minLines: 2,
+            maxLines: 4,
+            decoration: pInput(hint: 'Anything your clinic told you'),
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          PCallout(tone: PTone.red, body: _error!),
+        ],
+        const SizedBox(height: 18),
+        Align(
+          alignment: Alignment.centerRight,
+          child: PButton(_saving ? 'Saving…' : 'Save visit', onPressed: _saving ? null : _save),
+        ),
+      ],
+    );
   }
 }

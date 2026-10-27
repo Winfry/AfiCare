@@ -3,12 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/pregnancy_model.dart';
 import '../../models/womens_health_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_profile_provider.dart';
+import '../../providers/pregnancy_provider.dart';
 import '../../theme/patient_tokens.dart';
 import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
+import 'widgets/pregnancy_forms.dart';
 
 /// Women's health: where the patient is in life (trying, pregnant, …),
 /// her cycle, and her cervical and breast screening dates.
@@ -17,6 +20,10 @@ import 'widgets/patient_ui.dart';
 /// dashboard and reads the same stored record (see [WomensHealthRecord]),
 /// so nothing recorded there is lost. Account-holder only: the record
 /// lives on the signed-in user, so the page is adult-only in the nav.
+///
+/// "Pregnant" is not taken from that record but from the pregnancy record
+/// Maternal care uses ([PregnancyProvider]), so the two pages always
+/// agree: choosing it starts a pregnancy, and leaving it closes one.
 class WomensHealthScreen extends StatefulWidget {
   const WomensHealthScreen({super.key});
 
@@ -47,6 +54,21 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
     if (user == null) return;
     _record = _storedRecord(user.metadata);
     _loaded = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<PregnancyProvider>().load(user.id);
+    });
+  }
+
+  /// The life stage to show. An ongoing pregnancy always means
+  /// "Pregnant"; a stored "pregnant" with none ongoing means it was closed
+  /// in Maternal care, after a birth or otherwise.
+  static String _stageOf(WomensHealthRecord record, PregnancyProvider pregnancies) {
+    if (!pregnancies.loaded || (pregnancies.error != null && pregnancies.pregnancies.isEmpty)) {
+      return record.lifeStage;
+    }
+    if (pregnancies.current != null) return 'pregnant';
+    if (record.lifeStage != 'pregnant') return record.lifeStage;
+    return pregnancies.lastEnded?.outcome == 'birth' ? 'postpartum' : 'not_pregnant';
   }
 
   static WomensHealthRecord _storedRecord(Map<String, dynamic>? metadata) {
@@ -94,6 +116,7 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
 
     final today = DateUtils.dateOnly(DateTime.now());
     final age = context.watch<PatientProfileProvider>().profile?.age;
+    final pregnancies = context.watch<PregnancyProvider>();
 
     return PDetailScaffold(
       eyebrow: 'Your health, your pace',
@@ -126,7 +149,10 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
             ),
             _LifeStageCard(
               record: _record,
-              onStage: (stage) => _commit(_record.copyWith(lifeStage: stage)),
+              stage: _stageOf(_record, pregnancies),
+              pregnancy: pregnancies.current,
+              today: today,
+              onStage: _setStage,
               onCheck: (key, value) =>
                   _commit(_record.copyWith(checklist: {..._record.checklist, key: value})),
             ),
@@ -145,6 +171,21 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
   }
 
   // ── Actions ──────────────────────────────────────────────────────────
+
+  /// Choosing "Pregnant" starts a pregnancy; moving away from it closes
+  /// the ongoing one (as a birth for the after-birth stages, otherwise
+  /// asking gently how it ended). Cancelling either form changes nothing.
+  Future<void> _setStage(String stage) async {
+    final current = context.read<PregnancyProvider>().current;
+    if (stage == 'pregnant') {
+      if (current == null && !await showPregnancyDatesForm(context)) return;
+    } else if (current != null) {
+      final afterBirth = stage == 'postpartum' || stage == 'breastfeeding';
+      if (!await showEndPregnancyForm(context, current, outcome: afterBirth ? 'birth' : null)) return;
+    }
+    if (!mounted) return;
+    _commit(_record.copyWith(lifeStage: stage));
+  }
 
   Future<void> _logPeriod({required bool today}) async {
     final now = DateUtils.dateOnly(DateTime.now());
@@ -657,9 +698,21 @@ class _ScreeningFormState extends State<_ScreeningForm> {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _LifeStageCard extends StatelessWidget {
-  const _LifeStageCard({required this.record, required this.onStage, required this.onCheck});
+  const _LifeStageCard({
+    required this.record,
+    required this.stage,
+    required this.pregnancy,
+    required this.today,
+    required this.onStage,
+    required this.onCheck,
+  });
 
   final WomensHealthRecord record;
+
+  /// One of [WomensHealthRecord.lifeStages]' keys (see _stageOf).
+  final String stage;
+  final Pregnancy? pregnancy;
+  final DateTime today;
   final ValueChanged<String> onStage;
   final void Function(String key, bool value) onCheck;
 
@@ -677,7 +730,7 @@ class _LifeStageCard extends StatelessWidget {
               for (final e in WomensHealthRecord.lifeStages.entries)
                 _StageChip(
                   label: e.value,
-                  selected: record.lifeStage == e.key,
+                  selected: stage == e.key,
                   onTap: () => onStage(e.key),
                 ),
             ],
@@ -690,7 +743,7 @@ class _LifeStageCard extends StatelessWidget {
   }
 
   List<Widget> _forStage(BuildContext context) {
-    switch (record.lifeStage) {
+    switch (stage) {
       case 'trying':
         final total = WomensHealthRecord.preconceptionItems.length;
         final done = record.preconceptionDone;
@@ -713,9 +766,12 @@ class _LifeStageCard extends StatelessWidget {
             ),
         ];
       case 'pregnant':
+        final p = pregnancy;
         return [
           PCallout(
-            title: 'Congratulations',
+            title: p == null
+                ? 'Congratulations'
+                : 'Week ${p.weeksOn(today)} · due ${DateFormat('d MMM yyyy').format(p.dueDate)}',
             body: 'Your antenatal visits, scans and due date live in Maternal care.',
             trailing: PButton('Open', kind: PButtonKind.alt, dense: true, onPressed: () => context.go('/patient/anc')),
           ),

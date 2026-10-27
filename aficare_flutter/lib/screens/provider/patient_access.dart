@@ -2,10 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/pregnancy_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
@@ -531,6 +533,11 @@ class _PatientAccessState extends State<PatientAccess>
                 if (patient['alerts'] != null && (patient['alerts'] as List).isNotEmpty)
                   _buildAlertsCard(patient['alerts'] as List),
 
+                if (patient['pregnancy'] is Pregnancy) ...[
+                  _buildPregnancyCard(patient['pregnancy'] as Pregnancy),
+                  const SizedBox(height: 16),
+                ],
+
                 // Allergies
                 _buildAllergiesSection(patient['allergies'] as List? ?? []),
                 const SizedBox(height: 16),
@@ -573,6 +580,48 @@ class _PatientAccessState extends State<PatientAccess>
                       ),
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPregnancyCard(Pregnancy p) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final weeks = p.weeksOn(today);
+    final days = p.extraDaysOn(today);
+    final source = switch (p.dueDateSource) {
+      'scan' => 'by scan',
+      'clinician' => 'by a clinician',
+      _ => 'by LMP',
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.pink.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.pink.shade100),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.pregnant_woman, color: Colors.pink.shade400),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pregnant · ${weeks}w ${days}d (${Pregnancy.trimesterName(p.trimesterOn(today))})',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Due ${DateFormat('d MMM yyyy').format(p.dueDate)}, dated $source',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                 ),
               ],
             ),
@@ -1070,6 +1119,20 @@ class _PatientAccessState extends State<PatientAccess>
             .limit(20));
       } catch (e) { debugPrint('patient_access: failed to load prescriptions: $e'); _showError('Could not load prescriptions'); }
 
+      // Only shown when this provider is one of her doctors or nurses
+      // (041's provider_can_see_patient); otherwise nothing comes back,
+      // which is not an error.
+      Pregnancy? pregnancy;
+      try {
+        final row = await supabase
+            .from('pregnancies')
+            .select()
+            .eq('patient_id', patientId)
+            .eq('status', 'ongoing')
+            .maybeSingle();
+        if (row != null) pregnancy = Pregnancy.fromJson(row);
+      } catch (e) { debugPrint('patient_access: failed to load pregnancy: $e'); }
+
       final dobRaw = patientExtras?['date_of_birth'];
       final age = dobRaw != null ? _calcAge(DateTime.parse(dobRaw as String)) : null;
 
@@ -1112,6 +1175,7 @@ class _PatientAccessState extends State<PatientAccess>
           ],
           'conditions': List<String>.from(patientExtras?['chronic_conditions'] ?? []),
           'vitals': vitals,
+          'pregnancy': pregnancy,
         };
       });
 

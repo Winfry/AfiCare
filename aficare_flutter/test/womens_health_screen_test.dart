@@ -3,11 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:aficare_flutter/models/pregnancy_model.dart';
 import 'package:aficare_flutter/models/user_model.dart';
 import 'package:aficare_flutter/providers/auth_provider.dart';
 import 'package:aficare_flutter/providers/patient_profile_provider.dart';
+import 'package:aficare_flutter/providers/pregnancy_provider.dart';
 import 'package:aficare_flutter/screens/patient/womens_health_screen.dart';
 
+import 'helpers/fake_pregnancy_provider.dart';
 import 'helpers/smoke_harness.dart';
 
 /// An AuthProvider with a signed-in patient whose saves can be made to
@@ -51,7 +54,12 @@ UserModel _patient(Map<String, dynamic>? maternal) => UserModel(
       },
     );
 
-Future<_FakeAuth> _pump(WidgetTester tester, {required Size size, Map<String, dynamic>? maternal}) async {
+Future<_FakeAuth> _pump(
+  WidgetTester tester, {
+  required Size size,
+  Map<String, dynamic>? maternal,
+  FakePregnancyProvider? pregnancies,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -60,6 +68,7 @@ Future<_FakeAuth> _pump(WidgetTester tester, {required Size size, Map<String, dy
     providers: [
       ChangeNotifierProvider<AuthProvider>.value(value: auth),
       ChangeNotifierProvider(create: (_) => PatientProfileProvider()),
+      ChangeNotifierProvider<PregnancyProvider>.value(value: pregnancies ?? FakePregnancyProvider()),
     ],
     child: const MaterialApp(home: Scaffold(body: WomensHealthScreen())),
   ));
@@ -99,14 +108,104 @@ void main() {
 
   testWidgets('choosing a life stage saves it and keeps other metadata', (tester) async {
     final auth = await _pump(tester, size: const Size(1280, 900));
-    await tester.tap(find.text('Pregnant'));
+    await tester.tap(find.text('Trying to conceive'));
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(auth.saves, hasLength(1));
     expect(auth.saves.single['blood_type'], 'O+');
-    expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'pregnant');
+    expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'trying');
     expect(find.text('✓ Saved'), findsOneWidget);
-    expect(find.textContaining('Maternal care'), findsOneWidget);
+    expect(find.text('Getting ready for pregnancy'), findsOneWidget);
+  });
+
+  group('pregnancy', () {
+    final today = DateUtils.dateOnly(DateTime.now());
+    Pregnancy ongoing() => Pregnancy(
+          id: 'p1',
+          patientId: 'u1',
+          lmpDate: today.subtract(const Duration(days: 70)),
+          dueDate: Pregnancy.dueDateFromLmp(today.subtract(const Duration(days: 70))),
+        );
+
+    testWidgets('choosing Pregnant starts a pregnancy record first', (tester) async {
+      final pregnancies = FakePregnancyProvider();
+      final auth = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+
+      await tester.tap(find.text('Pregnant'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tell us about your pregnancy'), findsOneWidget);
+
+      await tester.tap(find.text('Choose a date'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(pregnancies.started, hasLength(1));
+      expect(pregnancies.started.single.dueDateSource, 'lmp');
+      expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'pregnant');
+      // The default date is 8 weeks ago.
+      expect(find.textContaining('Week 8 · due'), findsOneWidget);
+    });
+
+    testWidgets('closing the form without saving changes nothing', (tester) async {
+      final pregnancies = FakePregnancyProvider();
+      final auth = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+
+      await tester.tap(find.text('Pregnant'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(pregnancies.started, isEmpty);
+      expect(auth.saves, isEmpty);
+    });
+
+    testWidgets('an ongoing pregnancy shows as Pregnant whatever was saved before', (tester) async {
+      await _pump(
+        tester,
+        size: const Size(1280, 900),
+        maternal: {'pregnancy_status': 'not_pregnant'},
+        pregnancies: FakePregnancyProvider(pregnancies: [ongoing()]),
+      );
+      expect(find.textContaining('Week 10 · due'), findsOneWidget);
+    });
+
+    testWidgets('"Recently had a baby" closes the pregnancy as a birth', (tester) async {
+      final pregnancies = FakePregnancyProvider(pregnancies: [ongoing()]);
+      final auth = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+
+      await tester.tap(find.text('Recently had a baby'));
+      await tester.pumpAndSettle();
+      expect(find.text('Congratulations'), findsOneWidget);
+      expect(find.text('What happened?'), findsNothing);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(pregnancies.ended.single.$2, 'birth');
+      expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'postpartum');
+    });
+
+    testWidgets('"Not pregnant" asks how it ended, and "rather not say" is enough', (tester) async {
+      final pregnancies = FakePregnancyProvider(pregnancies: [ongoing()]);
+      await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+
+      await tester.tap(find.text('Not pregnant'));
+      await tester.pumpAndSettle();
+      expect(find.text('What happened?'), findsOneWidget);
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(pregnancies.ended, isEmpty);
+      expect(find.textContaining("I'd rather not say\"."), findsOneWidget);
+
+      await tester.tap(find.text("I'd rather not say"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(pregnancies.ended.single.$2, 'not_said');
+    });
   });
 
   testWidgets('a refused save is undone on screen and reported', (tester) async {
