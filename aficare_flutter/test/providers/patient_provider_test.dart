@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -84,74 +82,6 @@ void main() {
 
       expect(provider.isLoading, isFalse);
       expect(provider.error, isNotNull);
-    });
-  });
-
-  group('PatientProvider.generateAccessCode', () {
-    test('inserts an access code and returns it', () async {
-      fake.routeJson('/rest/v1/access_codes', <String, dynamic>{});
-
-      final provider = PatientProvider();
-      final code = await provider.generateAccessCode(
-        patientId: 'p1',
-        hoursValid: 4,
-        permissions: const ['view'],
-      );
-
-      expect(code, isNotNull);
-      expect(code!.length, 8);
-
-      final insert = fake.requestsTo('POST', 'access_codes').single;
-      final body = jsonDecode(insert.body) as Map<String, dynamic>;
-      expect(body, containsPair('patient_id', 'p1'));
-      expect(body, containsPair('permissions', ['view']));
-      expect(body, containsPair('is_used', false));
-    });
-
-    test('failure returns null and records error', () async {
-      fake.routeRaw(
-        '/rest/v1/access_codes',
-        http.Response('{"message":"denied"}', 403),
-      );
-
-      final provider = PatientProvider();
-      final code = await provider.generateAccessCode(
-        patientId: 'p1',
-        hoursValid: 4,
-        permissions: const [],
-      );
-
-      expect(code, isNull);
-      expect(provider.error, isNotNull);
-    });
-  });
-
-  group('PatientProvider.verifyAccessCode', () {
-    test('returns the joined patient detail on match', () async {
-      fake.routeJson('/rest/v1/access_codes', {
-        'id': 'ac1',
-        'code': 'ABC12345',
-        'patients': {'id': 'p1'},
-      });
-
-      final provider = PatientProvider();
-      final result = await provider.verifyAccessCode('ABC12345');
-
-      expect(result, isNotNull);
-      expect((result!['patients'] as Map)['id'], 'p1');
-
-      final req = fake.requestsTo('GET', 'access_codes').single;
-      expect(req.url.queryParameters['code'], 'eq.ABC12345');
-    });
-
-    test('returns null on server error', () async {
-      fake.routeRaw(
-        '/rest/v1/access_codes',
-        http.Response('{"message":"not found"}', 404),
-      );
-
-      final provider = PatientProvider();
-      expect(await provider.verifyAccessCode('NOPE'), isNull);
     });
   });
 

@@ -4,12 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/record_share_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/patient_tokens.dart';
 import 'widgets/patient_ui.dart';
 
 /// What a scanned QR turned out to be.
-enum ScannedKind { ownMedilinkId, medilinkId, shareLink, other }
+enum ScannedKind { ownMedilinkId, medilinkId, shareCode, other }
 
 /// A scanned QR, read honestly: the scanner only says what the code is.
 /// Scanning never verifies anyone and never shares a record, because no
@@ -24,7 +25,6 @@ class ScannedCode {
   final String? value;
 
   static final _medilinkId = RegExp(r'^ML-[A-Z0-9]+-[A-Z0-9]+$');
-  static final _shareLink = RegExp(r'^https?://\S+/v/([A-Za-z0-9-]+)/?$');
 
   static ScannedCode parse(String raw, {String? ownMedilinkId}) {
     final text = raw.trim();
@@ -33,9 +33,9 @@ class ScannedCode {
       final own = ownMedilinkId != null && upper == ownMedilinkId.toUpperCase();
       return ScannedCode(own ? ScannedKind.ownMedilinkId : ScannedKind.medilinkId, text, value: upper);
     }
-    final link = _shareLink.firstMatch(text);
-    if (link != null) {
-      return ScannedCode(ScannedKind.shareLink, text, value: link.group(1));
+    final shareCode = RecordShare.codeFromQr(text);
+    if (shareCode != null) {
+      return ScannedCode(ScannedKind.shareCode, text, value: shareCode);
     }
     return ScannedCode(ScannedKind.other, text);
   }
@@ -263,12 +263,12 @@ class _QRScannerState extends State<QRScanner> with WidgetsBindingObserver {
           'Only health workers can open a record from a MediLink ID. You can\'t see this '
               'person\'s record, and they can\'t see yours.',
         ),
-      ScannedKind.shareLink => (
-          'Record-sharing link',
+      ScannedKind.shareCode => (
+          'Share code',
           PTone.blue,
-          'This is an AfiCare record-sharing link',
-          'Someone made it so a health worker could view their records. '
-              'It doesn\'t open anything in your app.',
+          'This is an AfiCare share code',
+          'Someone made it so a doctor or nurse could see part of their records. '
+              'Only a doctor or nurse can open it. It doesn\'t open anything in your app.',
         ),
       ScannedKind.other => (
           'Not AfiCare',

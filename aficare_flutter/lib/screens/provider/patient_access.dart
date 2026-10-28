@@ -8,12 +8,18 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/pregnancy_model.dart';
+import '../../models/record_share_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/record_share_service.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
+import 'shared_record_view.dart';
 
 class PatientAccess extends StatefulWidget {
-  const PatientAccess({super.key});
+  const PatientAccess({super.key, this.shareService});
+
+  /// For tests; the app uses the real one.
+  final RecordShareService? shareService;
 
   @override
   State<PatientAccess> createState() => _PatientAccessState();
@@ -26,6 +32,10 @@ class _PatientAccessState extends State<PatientAccess>
   final _medilinkIdController = TextEditingController();
   bool _isLoading = false;
   Map<String, dynamic>? _patientData;
+
+  /// A record the patient shared by code (044): only what they chose.
+  SharedRecord? _shared;
+  late final RecordShareService _shares = widget.shareService ?? RecordShareService();
 
   @override
   void initState() {
@@ -60,7 +70,13 @@ class _PatientAccessState extends State<PatientAccess>
           ],
         ),
       ),
-      body: _patientData != null
+      body: _shared != null
+          ? SharedRecordView(
+              record: _shared!,
+              onBack: _clearPatientData,
+              onStartConsultation: _shared!.isDependant ? null : _startConsultation,
+            )
+          : _patientData != null
           ? _buildPatientRecordView()
           : TabBarView(
               controller: _tabController,
@@ -125,7 +141,7 @@ class _PatientAccessState extends State<PatientAccess>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Ask the patient to show their AfiCare MediLink QR code',
+                  'Scan the patient\'s share QR or their MediLink QR',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
                     fontSize: 14,
@@ -174,7 +190,8 @@ class _PatientAccessState extends State<PatientAccess>
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Ask the patient for their temporary access code',
+              'Ask the patient for their 8-character share code. You\'ll see only '
+              'what they chose to share.',
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontSize: 14,
@@ -184,20 +201,20 @@ class _PatientAccessState extends State<PatientAccess>
           ),
           const SizedBox(height: 40),
           Semantics(
-            label: 'Access code input field, enter 6 characters provided by the patient',
+            label: 'Share code from the patient, 8 letters and numbers',
             child: TextField(
             controller: _accessCodeController,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 32,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
-              letterSpacing: 8,
+              letterSpacing: 5,
             ),
             decoration: InputDecoration(
-              hintText: '------',
+              hintText: '--------',
               hintStyle: TextStyle(
-                fontSize: 32,
-                letterSpacing: 8,
+                fontSize: 26,
+                letterSpacing: 5,
                 color: Colors.grey.shade300,
               ),
               filled: true,
@@ -215,13 +232,13 @@ class _PatientAccessState extends State<PatientAccess>
               ),
             ),
             textCapitalization: TextCapitalization.characters,
-            maxLength: 6,
+            maxLength: 8,
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
               UpperCaseTextFormatter(),
             ],
             onChanged: (value) {
-              if (value.length == 6) {
+              if (value.length == 8) {
                 _verifyAccessCode(value);
               }
             },
@@ -247,11 +264,15 @@ class _PatientAccessState extends State<PatientAccess>
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Verify Code'),
+                  : const Text('Open shared record'),
             ),
           ),
           const SizedBox(height: 32),
-          _buildSecurityInfo(),
+          _buildSecurityInfo(
+            'Chosen by the patient',
+            'You see only the parts of the record the patient picked, until the code expires or '
+                'they stop it. Every opening is logged and the patient can see who opened it.',
+          ),
         ],
       ),
     );
@@ -351,15 +372,17 @@ class _PatientAccessState extends State<PatientAccess>
             ),
           ),
           const SizedBox(height: 32),
-          _buildSecurityInfo(),
-          const SizedBox(height: 24),
-          _buildRecentSearches(),
+          _buildSecurityInfo(
+            'Every access is logged',
+            'Open only the records of patients in your care. What you can see depends on your '
+                'part in their care.',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSecurityInfo() {
+  Widget _buildSecurityInfo(String title, String body) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -376,7 +399,7 @@ class _PatientAccessState extends State<PatientAccess>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Patient Consent Required',
+                  title,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.orange.shade900,
@@ -384,7 +407,7 @@ class _PatientAccessState extends State<PatientAccess>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Patient must explicitly grant access. All access is logged and audited.',
+                  body,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.orange.shade800,
@@ -395,55 +418,6 @@ class _PatientAccessState extends State<PatientAccess>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRecentSearches() {
-    final recentSearches = [
-      {'id': 'ML-NBO-847291', 'name': 'Jane Wanjiku', 'time': '2 hours ago'},
-      {'id': 'ML-NBO-639472', 'name': 'Peter Omondi', 'time': 'Yesterday'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Patients',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...recentSearches.map((search) => Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-              child: Text(
-                search['name']!.substring(0, 1),
-                style: TextStyle(
-                  color: AfiCareTheme.primaryGreen,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            title: Text(search['name']!),
-            subtitle: Text(search['id']!),
-            trailing: Text(
-              search['time']!,
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {
-              _medilinkIdController.text = search['id']!;
-              _searchMedilinkId(search['id']!);
-            },
-          ),
-        )),
-      ],
     );
   }
 
@@ -971,6 +945,12 @@ class _PatientAccessState extends State<PatientAccess>
   }
 
   void _processQRCode(String qrData) {
+    if (_isLoading) return;
+    final shareCode = RecordShare.codeFromQr(qrData);
+    if (shareCode != null) {
+      _verifyAccessCode(shareCode);
+      return;
+    }
     String? medilinkId;
     String? accessCode;
     try {
@@ -992,42 +972,29 @@ class _PatientAccessState extends State<PatientAccess>
     }
   }
 
+  /// Opens a patient's share (044). The database checks the code, keeps
+  /// it for the first doctor or nurse, logs the opening, and sends back
+  /// only the sections the patient chose.
   Future<void> _verifyAccessCode(String code) async {
-    if (code.length != 6) {
-      _showError('Please enter a valid 6-character code');
+    final normalised = RecordShare.normaliseCode(code);
+    if (normalised.length != 8) {
+      _showError('A share code has 8 letters and numbers');
       return;
     }
-
+    if (_isLoading) return;
     setState(() => _isLoading = true);
-
     try {
-      final supabase = Supabase.instance.client;
-      final response = await supabase
-          .from('access_codes')
-          .select('id, patient_id')
-          .eq('code', code)
-          .eq('is_used', false)
-          .gte('expires_at', DateTime.now().toIso8601String())
-          .single();
-
-      final codeId = response['id'] as String;
-      final patientId = response['patient_id'] as String;
-
-      try {
-        await supabase.from('access_codes').update({
-          'is_used': true,
-          'used_by': context.read<AuthProvider>().currentUser?.id,
-          'used_at': DateTime.now().toIso8601String(),
-        }).eq('id', codeId);
-      } catch (e) { debugPrint('patient_access: failed to load access_codes: $e'); _showError('Could not load access_codes'); }
-
-      await _logAudit(patientId, 'access_code');
-      await _loadPatientData(patientId);
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showError('Invalid or expired access code');
-      }
+      final record = await _shares.open(normalised);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _patientData = null;
+        _shared = record;
+      });
+    } on RecordShareException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError(e.message);
     }
   }
 
@@ -1216,18 +1183,19 @@ class _PatientAccessState extends State<PatientAccess>
   void _clearPatientData() {
     setState(() {
       _patientData = null;
+      _shared = null;
       _accessCodeController.clear();
       _medilinkIdController.clear();
     });
   }
 
   void _startConsultation() {
-    final patient = _patientData;
-    if (patient == null) return;
+    final patientId = _shared?.patientId ?? _patientData?['id'] as String?;
+    if (patientId == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ConsultationScreen(patientId: patient['id'] as String?),
+        builder: (_) => ConsultationScreen(patientId: patientId),
       ),
     );
   }

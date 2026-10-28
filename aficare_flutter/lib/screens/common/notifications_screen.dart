@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/record_share_service.dart';
 import '../../utils/theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -110,24 +111,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       } catch (e) { debugPrint('Notifications: failed to load consultations: $e'); _hadError = true; }
 
       try {
-        final res = await supabase
-            .from('access_codes')
-            .select('id, created_at, used_at')
-            .eq('patient_id', user.id)
-            .not('used_by', 'is', null)
-            .order('used_at', ascending: false)
-            .limit(10);
-        for (final a in res as List) {
-          final usedAt = DateTime.tryParse(a['used_at'] as String);
+        final shares = await RecordShareService(supabase).mine(user.id);
+        for (final s in shares.where((s) => s.openedAt != null).take(10)) {
           items.add(NotificationItem(
-            id: 'acc-${a['id']}',
+            id: 'acc-${s.id}',
             type: NotificationType.access,
-            title: 'Record access granted',
-            message: 'A healthcare provider accessed your medical records.',
-            timestamp: usedAt ?? now,
+            title: 'Shared records opened',
+            message: '${s.openedBy} opened the records you shared (${s.sectionLabels}).',
+            timestamp: s.openedAt!,
           ));
         }
-      } catch (e) { debugPrint('Notifications: failed to load access_codes: $e'); _hadError = true; }
+      } catch (e) { debugPrint('Notifications: failed to load shares: $e'); _hadError = true; }
     } else if (widget.userRole == 'provider') {
       try {
         final res = await supabase

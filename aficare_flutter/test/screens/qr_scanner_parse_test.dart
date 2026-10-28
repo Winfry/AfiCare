@@ -14,16 +14,18 @@ void main() {
       expect(ScannedCode.parse('ML-DEP-A1B2C3').kind, ScannedKind.medilinkId);
     });
 
-    test('recognises a record-sharing link and pulls out its code', () {
-      final code = ScannedCode.parse('https://api.aficare.example/v/K7PQ2M');
-      expect(code.kind, ScannedKind.shareLink);
-      expect(code.value, 'K7PQ2M');
+    test('recognises a share QR and pulls out its code', () {
+      final code = ScannedCode.parse('AFICARE-SHARE:K7PQ2MAB');
+      expect(code.kind, ScannedKind.shareCode);
+      expect(code.value, 'K7PQ2MAB');
     });
 
     test('anything else is not an AfiCare code', () {
       for (final raw in [
         'AFICARE:PROVIDER:PRV-NBO-1234', // the old fake format: nothing makes these
         'https://example.com/menu',
+        'https://api.aficare.example/v/K7PQ2M', // the old share link: it never opened anything
+        'AFICARE-SHARE:SHORT',
         'ML-',
         'hello',
       ]) {
