@@ -69,6 +69,32 @@ class MedicationReminder {
     };
   }
 
+  MedicationReminder copyWith({
+    String? medicationName,
+    String? dosage,
+    String? frequency,
+    List<ReminderTime>? times,
+    bool? isActive,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? notes,
+  }) {
+    return MedicationReminder(
+      id: id,
+      patientId: patientId,
+      medicationName: medicationName ?? this.medicationName,
+      dosage: dosage ?? this.dosage,
+      frequency: frequency ?? this.frequency,
+      times: times ?? this.times,
+      isActive: isActive ?? this.isActive,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      notes: notes ?? this.notes,
+      prescriptionId: prescriptionId,
+      createdAt: createdAt,
+    );
+  }
+
   static String frequencyLabel(String frequency) {
     switch (frequency) {
       case 'once_daily': return 'Once daily';

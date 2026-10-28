@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import '../services/medication_reminder_service.dart';
 import '../services/offline_cache.dart';
 import '../utils/router.dart' show updateRouterProfile;
 
@@ -433,6 +434,8 @@ class AuthProvider with ChangeNotifier {
     // type. These devices get shared, and one person's safety details
     // must not survive into the next person's session.
     await OfflineCache.clear();
+    // Their medicine alarms go too, or the next person gets them.
+    await MedicationReminderService().cancelAll();
     _currentUser = null;
     _error = null;
     updateRouterProfile(null);

@@ -168,4 +168,42 @@ void main() {
       expect(del.url.queryParameters['id'], 'eq.r1');
     });
   });
+
+  group('Alarms', () {
+    MedicationReminder reminder(Map<String, dynamic> changes) =>
+        MedicationReminder.fromJson({...reminderRow(), ...changes});
+
+    test('each alarm has its own id, the same every time, and fits Android', () {
+      const id = '3f2b8c1e-6a4d-4e2b-9c1a-7d5e8f9a0b1c';
+      final ids = [for (var i = 0; i < MedicationReminderService.maxTimesPerReminder; i++)
+        MedicationReminderService.notificationId(id, i)];
+      expect(ids.toSet().length, ids.length);
+      expect(MedicationReminderService.notificationId(id, 0), ids.first);
+      expect(ids.every((n) => n >= 0 && n <= 0x7FFFFFFF), isTrue);
+      expect(MedicationReminderService.notificationId('another-reminder', 0), isNot(ids.first));
+    });
+
+    test('an on reminder at set times rings; paused, "when needed" or ended ones do not', () {
+      final today = DateTime(2026, 10, 28, 9);
+      expect(MedicationReminderService.shouldRing(reminder({}), today), isTrue);
+      expect(MedicationReminderService.shouldRing(reminder({'is_active': false}), today), isFalse);
+      expect(MedicationReminderService.shouldRing(reminder({'frequency': 'as_needed'}), today), isFalse);
+      expect(MedicationReminderService.shouldRing(reminder({'times': <Object>[]}), today), isFalse);
+      expect(MedicationReminderService.shouldRing(reminder({'end_date': '2026-10-27'}), today), isFalse);
+      expect(MedicationReminderService.shouldRing(reminder({'end_date': '2026-10-28'}), today), isTrue,
+          reason: 'the last day still rings');
+    });
+
+    test("the alarm names a dependant, so it isn't taken as the parent's", () {
+      final r = reminder({});
+      expect(MedicationReminderService.notificationText(r), ('Time for your medicine', 'Amoxicillin · 500mg'));
+      expect(MedicationReminderService.notificationText(r, personName: 'Brian').$1, "Time for Brian's medicine");
+      expect(MedicationReminderService.notificationText(reminder({'dosage': ''})).$2, 'Amoxicillin');
+    });
+
+    test('turning a paused reminder back on makes it ring again', () {
+      final paused = reminder({'is_active': false});
+      expect(MedicationReminderService.shouldRing(paused.copyWith(isActive: true), DateTime(2026, 10, 28)), isTrue);
+    });
+  });
 }

@@ -16,6 +16,7 @@ import '../../providers/lab_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
 import '../../providers/care_team_provider.dart';
+import '../../services/medication_reminder_service.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../widgets/app_shell.dart';
@@ -78,6 +79,11 @@ class _PatientShellState extends State<PatientShell> {
     // as a tidy, healthy-looking summary of nothing.
     if (!failed && mounted) failed = _anyLoadFailed();
     if (mounted) setState(() => _loadFailed = failed);
+
+    // Put this phone's medicine alarms back in step with the saved
+    // reminders (after a reinstall, a new phone, or ones made on the
+    // website). Not awaited: nothing on screen depends on it.
+    MedicationReminderService().syncForAccount(id, dep.dependents);
 
     _maybeRouteToOnboarding(id);
   }

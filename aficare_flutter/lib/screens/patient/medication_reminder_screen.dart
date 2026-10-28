@@ -78,7 +78,9 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   Future<void> _toggle(MedicationReminder r) async {
     setState(() => _busyId = r.id);
     final turningOn = !r.isActive;
-    final ok = await _service.toggleReminder(r.id, turningOn, reminder: r);
+    final subject = ActivePatient.of(context, listen: false);
+    final ok = await _service.toggleReminder(r.id, turningOn,
+        reminder: r, personName: subject.isDependent ? subject.firstName : null);
     if (!mounted) return;
     setState(() => _busyId = null);
     if (ok) {
@@ -136,7 +138,11 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     final permissionGranted = await showPModal<bool>(
       context: context,
       title: subject.isDependent ? 'New reminder for ${subject.firstName}' : 'New reminder',
-      builder: (ctx) => _ReminderForm(patientId: subject.id, service: _service),
+      builder: (ctx) => _ReminderForm(
+        patientId: subject.id,
+        personName: subject.isDependent ? subject.firstName : null,
+        service: _service,
+      ),
     );
     if (permissionGranted == null || !mounted) return;
 
@@ -345,9 +351,13 @@ class _ReminderRow extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _ReminderForm extends StatefulWidget {
-  const _ReminderForm({required this.patientId, required this.service});
+  const _ReminderForm({required this.patientId, this.personName, required this.service});
 
   final String patientId;
+
+  /// The dependant's first name when it's their medicine, so the alarm
+  /// says whose it is.
+  final String? personName;
   final MedicationReminderService service;
 
   @override
@@ -417,6 +427,7 @@ class _ReminderFormState extends State<_ReminderForm> {
     final permissionGranted = await widget.service.requestPermission();
     final saved = await widget.service.saveReminder(
       patientId: widget.patientId,
+      personName: widget.personName,
       medicationName: _name.text.trim(),
       dosage: _dosage.text.trim(),
       frequency: _frequency,

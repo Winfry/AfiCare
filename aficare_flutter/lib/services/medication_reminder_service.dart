@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
+import '../models/dependent_profile_model.dart';
 import '../models/medication_reminder_model.dart';
 
 class MedicationReminderService {
@@ -12,8 +13,43 @@ class MedicationReminderService {
   MedicationReminderService._();
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  // A getter, so signing out can cancel alarms without Supabase being set up.
+  SupabaseClient get _supabase => Supabase.instance.client;
   bool _initialized = false;
+
+  /// Most alarms one reminder can have; notification ids leave room for
+  /// this many per reminder.
+  static const maxTimesPerReminder = 8;
+
+  /// The notification id for alarm [slot] of reminder [reminderId].
+  /// `String.hashCode` isn't promised to stay the same between app runs
+  /// (so a reminder could never be cancelled) and Android ids must fit in
+  /// 32 bits, so this hashes the id itself (FNV-1a).
+  static int notificationId(String reminderId, int slot) {
+    var h = 0x811c9dc5;
+    for (final c in reminderId.codeUnits) {
+      h ^= c;
+      h = (h * 0x01000193) & 0xFFFFFFFF;
+    }
+    return (h & 0x0FFFFFFF) * maxTimesPerReminder + slot;
+  }
+
+  /// Whether [r] should ring at all: on, at set times, and not ended.
+  /// "When needed" medicine has no alarm.
+  static bool shouldRing(MedicationReminder r, DateTime now) {
+    if (!r.isActive || r.frequency == 'as_needed' || r.times.isEmpty) return false;
+    final end = r.endDate;
+    if (end == null) return true;
+    return !DateTime(end.year, end.month, end.day).isBefore(DateTime(now.year, now.month, now.day));
+  }
+
+  /// What the notification says. For a dependant it names them, so a
+  /// parent doesn't give their own medicine at their child's time.
+  static (String, String) notificationText(MedicationReminder r, {String? personName}) {
+    final title = personName == null ? 'Time for your medicine' : "Time for $personName's medicine";
+    final dose = r.dosage.trim();
+    return (title, dose.isEmpty ? r.medicationName : '${r.medicationName} · $dose');
+  }
 
   bool get isInitialized => _initialized;
 
@@ -51,8 +87,10 @@ class MedicationReminderService {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (android != null) {
+        // Before Android 13 there is nothing to ask; whether notifications
+        // are switched on for AfiCare is the answer.
         final granted = await android.requestNotificationsPermission();
-        return granted ?? false;
+        return granted ?? await android.areNotificationsEnabled() ?? false;
       }
       final ios = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
@@ -68,20 +106,25 @@ class MedicationReminderService {
     return false;
   }
 
-  /// Schedule a daily or timed notification for a medication.
-  Future<void> scheduleReminder(MedicationReminder reminder) async {
+  /// Schedules a daily notification at each of [reminder]'s times.
+  /// [personName] is the dependant's first name when it's their medicine.
+  Future<void> scheduleReminder(MedicationReminder reminder, {String? personName}) async {
     if (kIsWeb || !_initialized) return;
+    if (!shouldRing(reminder, DateTime.now())) return;
 
-    for (var i = 0; i < reminder.times.length; i++) {
+    final mode = await _scheduleMode();
+    final (title, body) = notificationText(reminder, personName: personName);
+    final slots = reminder.times.length.clamp(0, maxTimesPerReminder);
+    for (var i = 0; i < slots; i++) {
       final time = reminder.times[i];
       try {
         final scheduledDate = _nextInstanceOfTime(time.hour, time.minute);
         final tzScheduled = tz.TZDateTime.from(scheduledDate, tz.local);
 
         await _plugin.zonedSchedule(
-          reminder.id.hashCode + i,
-          'Medication Reminder',
-          'Time to take ${reminder.medicationName} (${reminder.dosage})',
+          notificationId(reminder.id, i),
+          title,
+          body,
           tzScheduled,
           const NotificationDetails(
             android: AndroidNotificationDetails(
@@ -90,6 +133,7 @@ class MedicationReminderService {
               channelDescription: 'Reminders to take your medication on time',
               importance: Importance.high,
               priority: Priority.high,
+              category: AndroidNotificationCategory.reminder,
               icon: '@mipmap/ic_launcher',
             ),
             iOS: DarwinNotificationDetails(
@@ -98,7 +142,7 @@ class MedicationReminderService {
               presentSound: true,
             ),
           ),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          androidScheduleMode: mode,
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
           matchDateTimeComponents: DateTimeComponents.time,
         );
@@ -108,46 +152,82 @@ class MedicationReminderService {
     }
   }
 
-  /// Cancel all notifications for a medication reminder.
-  ///
-  /// A reminder schedules one notification per time slot, each using the id
-  /// `reminderId.hashCode + i`. This cancels every slot, not just the first.
-  Future<void> cancelReminder(String reminderId, {int? slotCount}) async {
-    if (kIsWeb || !_initialized) return;
-
-    var count = slotCount;
-    if (count == null) {
-      try {
-        final data = await _supabase
-            .from('medication_reminders')
-            .select('times')
-            .eq('id', reminderId)
-            .maybeSingle();
-        final times = data != null ? (data['times'] as List?) : null;
-        count = times?.length;
-      } catch (e) {
-        debugPrint('Failed to load reminder for cancel: $e');
-      }
-    }
-    if (count == null || count < 1) count = 1;
-
+  /// On time where the phone allows exact alarms; otherwise Android may
+  /// ring a few minutes late, which is better than not at all.
+  Future<AndroidScheduleMode> _scheduleMode() async {
     try {
-      for (var i = 0; i < count; i++) {
-        await _plugin.cancel(reminderId.hashCode + i);
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (await android?.canScheduleExactNotifications() == true) {
+        return AndroidScheduleMode.exactAllowWhileIdle;
+      }
+    } catch (e) {
+      debugPrint('Could not check exact alarms: $e');
+    }
+    return AndroidScheduleMode.inexactAllowWhileIdle;
+  }
+
+  /// Cancels every alarm of a medication reminder.
+  Future<void> cancelReminder(String reminderId) async {
+    if (kIsWeb || !_initialized) return;
+    try {
+      for (var i = 0; i < maxTimesPerReminder; i++) {
+        await _plugin.cancel(notificationId(reminderId, i));
       }
     } catch (e) {
       debugPrint('Failed to cancel notification: $e');
     }
   }
 
-  /// Cancel all medication notifications.
+  /// Cancels every medicine alarm on this phone, e.g. on sign-out, so the
+  /// next person to use it doesn't get them.
   Future<void> cancelAll() async {
-    if (kIsWeb || !_initialized) return;
+    if (kIsWeb) return;
+    await init();
+    if (!_initialized) return;
     try {
       await _plugin.cancelAll();
     } catch (e) {
       debugPrint('Failed to cancel all notifications: $e');
     }
+  }
+
+  /// Sets this phone's alarms to match the account's saved reminders: the
+  /// account holder's and their dependants'. Run when the app opens, so
+  /// alarms come back after a reinstall or on a new phone, and reminders
+  /// made on the website ring here too. Nothing changes if loading fails.
+  Future<void> syncForAccount(String ownId, List<DependentProfileModel> dependants) async {
+    if (kIsWeb) return;
+    await init();
+    if (!_initialized) return;
+
+    final List<MedicationReminder> reminders;
+    try {
+      final data = await _supabase
+          .from('medication_reminders')
+          .select()
+          .inFilter('patient_id', [ownId, ...dependants.map((d) => d.id)]);
+      reminders = (data as List).map((j) => MedicationReminder.fromJson(j)).toList();
+    } catch (e) {
+      debugPrint('Could not load reminders to set alarms: $e');
+      return;
+    }
+
+    final names = {for (final d in dependants) d.id: _firstName(d.fullName)};
+    try {
+      await _plugin.cancelAll();
+    } catch (e) {
+      debugPrint('Failed to clear alarms before setting them: $e');
+      return;
+    }
+    for (final r in reminders) {
+      await scheduleReminder(r, personName: r.patientId == ownId ? null : names[r.patientId]);
+    }
+  }
+
+  static String _firstName(String fullName) {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    return parts.first.isEmpty ? fullName : parts.first;
   }
 
   DateTime _nextInstanceOfTime(int hour, int minute) {
@@ -194,6 +274,7 @@ class MedicationReminderService {
     String? notes,
     String? prescriptionId,
     String? existingId,
+    String? personName,
   }) async {
     try {
       final reminder = MedicationReminder(
@@ -220,10 +301,9 @@ class MedicationReminderService {
         await _supabase.from('medication_reminders').insert(reminder.toJson());
       }
 
-      // Schedule local notifications
-      if (reminder.isActive) {
-        await scheduleReminder(reminder);
-      }
+      // An edit may have changed the times: clear the old alarms first.
+      if (existingId != null) await cancelReminder(existingId);
+      await scheduleReminder(reminder, personName: personName);
 
       return reminder;
     } catch (e) {
@@ -235,7 +315,8 @@ class MedicationReminderService {
   /// Returns whether the change was saved. Pass [reminder] when resuming
   /// so its notifications are scheduled again — pausing cancelled them,
   /// and without this a resumed reminder shows as on but never rings.
-  Future<bool> toggleReminder(String reminderId, bool isActive, {MedicationReminder? reminder}) async {
+  Future<bool> toggleReminder(String reminderId, bool isActive,
+      {MedicationReminder? reminder, String? personName}) async {
     try {
       await _supabase
           .from('medication_reminders')
@@ -245,7 +326,7 @@ class MedicationReminderService {
       if (!isActive) {
         await cancelReminder(reminderId);
       } else if (reminder != null) {
-        await scheduleReminder(reminder);
+        await scheduleReminder(reminder.copyWith(isActive: true), personName: personName);
       }
       return true;
     } catch (e) {
