@@ -49,6 +49,18 @@ class MentalHealthScreening {
     };
   }
 
+  /// PHQ-9 question 9: thoughts of being better off dead or of hurting
+  /// oneself (0-based position in [answers]).
+  static const selfHarmQuestion = 8;
+
+  /// Whether a PHQ-9's answers include any "yes" to question 9. Any answer
+  /// above "Not at all" needs a safety response whatever the total is:
+  /// someone can score "minimal" overall and still be at risk.
+  static bool selfHarmAnswered(String toolType, List<int> answers) =>
+      toolType == 'PHQ-9' && answers.length > selfHarmQuestion && answers[selfHarmQuestion] > 0;
+
+  bool get reportedSelfHarmThoughts => selfHarmAnswered(toolType, answers);
+
   static String severityFromScore(String toolType, int score) {
     if (toolType == 'PHQ-9') {
       if (score <= 4) return 'none';

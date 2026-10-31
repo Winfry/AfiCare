@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 import '../../models/mental_health_model.dart';
 import '../../utils/snackbar_utils.dart';
@@ -229,6 +230,15 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
                   ),
                 ],
               ),
+              if (latest.reportedSelfHarmThoughts) ...[
+                const SizedBox(height: 10),
+                const PCallout(
+                  tone: PTone.red,
+                  body: 'Last time you told us about thoughts of being better off dead or of hurting '
+                      "yourself. If they're still there, please talk to someone. The support lines "
+                      'are at the bottom of this page.',
+                ),
+              ],
             ] else
               Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -292,28 +302,13 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'If you or someone you know is in crisis, reach out:',
+            'If you or someone you know is in crisis, reach out. Tap a number to call.',
             style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
           ),
           const SizedBox(height: 10),
-          _crisisLine('Kenya Mental Health Crisis Line', '0800 723 253'),
-          const SizedBox(height: 6),
-          _crisisLine('Befrienders Kenya', '+254 722 178 177'),
-          const SizedBox(height: 6),
-          _crisisLine('Emergency', '999'),
+          const CrisisLines(),
         ],
       ),
-    );
-  }
-
-  Widget _crisisLine(String name, String number) {
-    return Row(
-      children: [
-        Icon(Icons.phone_rounded, size: 14, color: Colors.grey.shade600),
-        const SizedBox(width: 8),
-        Text('$name: ', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-        Text(number, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-      ],
     );
   }
 
@@ -342,15 +337,25 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
     }
   }
 
-  void _startScreening(String toolType) {
-    showModalBottomSheet(
+  Future<void> _startScreening(String toolType) async {
+    final result = await showModalBottomSheet<ScreeningOutcome>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ScreeningSheet(
-        toolType: toolType,
-        onComplete: () => _loadData(),
+      builder: (_) => _ScreeningSheet(toolType: toolType),
+    );
+    if (result == null || !mounted) return;
+    if (result.saved) _loadData();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${result.toolType} results'),
+        content: SingleChildScrollView(child: ScreeningResultView(outcome: result)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
       ),
     );
   }
@@ -374,8 +379,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
 // Screening bottom sheet
 class _ScreeningSheet extends StatefulWidget {
   final String toolType;
-  final VoidCallback onComplete;
-  const _ScreeningSheet({required this.toolType, required this.onComplete});
+  const _ScreeningSheet({required this.toolType});
 
   @override
   State<_ScreeningSheet> createState() => _ScreeningSheetState();
@@ -395,7 +399,9 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
     'Feeling bad about yourself',
     'Trouble concentrating on things',
     'Moving or speaking slowly, or being fidgety/restless',
-    'Thoughts that you would be better off dead',
+    // The full standard wording: leaving off the second half misses
+    // people who think of hurting themselves without wanting to die.
+    'Thoughts that you would be better off dead, or of hurting yourself in some way',
   ];
 
   static const _gad7Questions = [
@@ -572,77 +578,137 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
   }
 
   void _submitScreening() async {
+    if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
     final supabase = Supabase.instance.client;
     final patientId = supabase.auth.currentUser?.id;
-    if (patientId == null) return;
 
-    try {
-      final totalScore = _answers.fold(0, (int acc, a) => acc + a);
-      final severity = MentalHealthScreening.severityFromScore(widget.toolType, totalScore);
+    final answers = List<int>.of(_answers);
+    final totalScore = answers.fold(0, (int acc, a) => acc + a);
+    final severity = MentalHealthScreening.severityFromScore(widget.toolType, totalScore);
 
-      await supabase.from('mental_health_screenings').insert({
-        'patient_id': patientId,
-        'tool_type': widget.toolType,
-        'answers': _answers,
-        'total_score': totalScore,
-        'severity': severity,
-        'completed_at': DateTime.now().toIso8601String(),
-      });
-
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onComplete();
-        _showResultDialog(totalScore, severity);
+    var saved = false;
+    if (patientId != null) {
+      try {
+        await supabase.from('mental_health_screenings').insert({
+          'patient_id': patientId,
+          'tool_type': widget.toolType,
+          'answers': answers,
+          'total_score': totalScore,
+          'severity': severity,
+          'completed_at': DateTime.now().toIso8601String(),
+        });
+        saved = true;
+      } catch (e) {
+        debugPrint('Error saving screening: $e');
       }
-    } catch (e) {
-      debugPrint('Error saving screening: $e');
-      showErrorSnackBar(context, 'Could not save screening');
+    }
+
+    // The result is shown even if saving failed: someone who has just
+    // said they think of hurting themselves must see the support lines,
+    // whatever the connection is doing.
+    if (mounted) {
+      Navigator.pop(
+        context,
+        ScreeningOutcome(
+          toolType: widget.toolType,
+          answers: answers,
+          score: totalScore,
+          severity: severity,
+          saved: saved,
+        ),
+      );
     }
   }
 
-  void _showResultDialog(int score, String severity) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('${widget.toolType} Results'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Score: $score', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _severityColor(severity).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                MentalHealthScreening.severityLabel(severity),
-                style: TextStyle(fontWeight: FontWeight.w600, color: _severityColor(severity)),
-              ),
+}
+
+/// What a finished questionnaire hands back to the page.
+class ScreeningOutcome {
+  const ScreeningOutcome({
+    required this.toolType,
+    required this.answers,
+    required this.score,
+    required this.severity,
+    required this.saved,
+  });
+
+  final String toolType;
+  final List<int> answers;
+  final int score;
+  final String severity;
+  final bool saved;
+
+  bool get selfHarmThoughts => MentalHealthScreening.selfHarmAnswered(toolType, answers);
+}
+
+/// The result of a questionnaire. A "yes" to PHQ-9 question 9 comes first,
+/// with the support lines, whatever the total score says.
+class ScreeningResultView extends StatelessWidget {
+  const ScreeningResultView({super.key, required this.outcome});
+
+  final ScreeningOutcome outcome;
+
+  @override
+  Widget build(BuildContext context) {
+    final o = outcome;
+    final colour = _severityColor(o.severity);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (o.selfHarmThoughts) ...[
+          const PCallout(
+            tone: PTone.red,
+            title: "You don't have to carry this alone",
+            body: 'You said you have had thoughts of being better off dead or of hurting yourself. '
+                'Please talk to someone today: a person you trust, a health worker, or one of '
+                'these free lines. If you might act on these thoughts, call 999 or 112 now, or '
+                'go to the nearest hospital.',
+          ),
+          const SizedBox(height: 12),
+          const CrisisLines(),
+          const SizedBox(height: 16),
+        ],
+        Text('Score: ${o.score}',
+            textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: colour.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            child: Text(
+              MentalHealthScreening.severityLabel(o.severity),
+              style: TextStyle(fontWeight: FontWeight.w600, color: colour),
             ),
-            const SizedBox(height: 16),
-            Text(
-              _severityMessage(severity),
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
-          ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+        const SizedBox(height: 16),
+        Text(
+          message(o),
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        ),
+        if (!o.saved) ...[
+          const SizedBox(height: 12),
+          const PCallout(
+            tone: PTone.warn,
+            body: "This result couldn't be saved, so it won't appear on your page. "
+                'Check your connection and take it again later if you want it kept.',
           ),
         ],
-      ),
+      ],
     );
   }
 
-  String _severityMessage(String severity) {
-    switch (severity) {
+  static String message(ScreeningOutcome o) {
+    // "Keep monitoring" would be the wrong thing to say to someone who
+    // has just reported thoughts of self-harm, however low the total.
+    if (o.selfHarmThoughts && (o.severity == 'none' || o.severity == 'mild')) {
+      return 'Your other answers suggest milder symptoms, but the thoughts you described matter on '
+          'their own. Please talk to a health worker about them.';
+    }
+    switch (o.severity) {
       case 'none': return 'Your responses suggest minimal symptoms. Keep monitoring your mental health.';
       case 'mild': return 'You may be experiencing mild symptoms. Consider talking to a healthcare provider.';
       case 'moderate': return 'Moderate symptoms detected. We recommend consulting with a healthcare professional.';
@@ -652,7 +718,7 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
     }
   }
 
-  Color _severityColor(String severity) {
+  static Color _severityColor(String severity) {
     switch (severity) {
       case 'none': return const Color(0xFF2E7D32);
       case 'mild': return const Color(0xFFF9A825);
@@ -661,5 +727,55 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
       case 'severe': return const Color(0xFFB71C1C);
       default: return Colors.grey;
     }
+  }
+}
+
+/// Free support lines in Kenya. Each one dials when tapped.
+/// Checked October 2026: Kenya Red Cross 1199 is free and open 24 hours;
+/// Befrienders Kenya answers calls, SMS and WhatsApp, mostly in the daytime.
+class CrisisLines extends StatelessWidget {
+  const CrisisLines({super.key});
+
+  static const lines = [
+    ('Kenya Red Cross (free, 24 hours)', '1199'),
+    ('Befrienders Kenya (call, SMS or WhatsApp)', '0722 178 177'),
+    ('Emergency', '999 or 112'),
+  ];
+
+  Future<void> _call(BuildContext context, String number) async {
+    final dialable = number.split(' or ').first.replaceAll(' ', '');
+    try {
+      if (await launchUrl(Uri(scheme: 'tel', path: dialable))) return;
+    } catch (e) {
+      debugPrint('Could not start a call: $e');
+    }
+    if (context.mounted) showErrorSnackBar(context, 'Could not start a call. Dial $number yourself.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (name, number) in lines)
+          InkWell(
+            onTap: () => _call(context, number),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.phone_rounded, size: 16, color: Colors.grey.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(name, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                  ),
+                  Text(number, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
