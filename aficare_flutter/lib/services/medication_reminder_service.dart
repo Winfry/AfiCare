@@ -51,6 +51,56 @@ class MedicationReminderService {
     return (title, dose.isEmpty ? r.medicationName : '${r.medicationName} · $dose');
   }
 
+  /// Android's FLAG_INSISTENT: the sound repeats until the notification
+  /// is tapped, swiped away or the shade is opened.
+  static const _flagInsistent = 4;
+
+  /// How the alarm sounds. Gentle: the phone's notification sound, once.
+  /// Loud: the alarm sound on the alarm volume (so silent mode usually
+  /// doesn't mute it), repeating until the person deals with it.
+  /// Android fixes a channel's sound when it's first made, so each style
+  /// has its own channel.
+  static NotificationDetails notificationDetails(MedicationReminder r) {
+    if (r.isLoud) {
+      return NotificationDetails(
+        android: AndroidNotificationDetails(
+          'medication_alarms_loud',
+          'Loud medicine alarms',
+          channelDescription: 'Medicine alarms that ring until you tap them',
+          importance: Importance.max,
+          priority: Priority.max,
+          category: AndroidNotificationCategory.alarm,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+          sound: const UriAndroidNotificationSound('content://settings/system/alarm_alert'),
+          additionalFlags: Int32List.fromList(const [_flagInsistent]),
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
+      );
+    }
+    return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'medication_reminders',
+        'Medication Reminders',
+        channelDescription: 'Reminders to take your medication on time',
+        importance: Importance.high,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.reminder,
+        icon: '@mipmap/ic_launcher',
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+  }
+
   bool get isInitialized => _initialized;
 
   /// Initialize notifications — safe to call on web (no-op).
@@ -114,6 +164,7 @@ class MedicationReminderService {
 
     final mode = await _scheduleMode();
     final (title, body) = notificationText(reminder, personName: personName);
+    final details = notificationDetails(reminder);
     final slots = reminder.times.length.clamp(0, maxTimesPerReminder);
     for (var i = 0; i < slots; i++) {
       final time = reminder.times[i];
@@ -126,22 +177,7 @@ class MedicationReminderService {
           title,
           body,
           tzScheduled,
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'medication_reminders',
-              'Medication Reminders',
-              channelDescription: 'Reminders to take your medication on time',
-              importance: Importance.high,
-              priority: Priority.high,
-              category: AndroidNotificationCategory.reminder,
-              icon: '@mipmap/ic_launcher',
-            ),
-            iOS: DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
-            ),
-          ),
+          details,
           androidScheduleMode: mode,
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
           matchDateTimeComponents: DateTimeComponents.time,
@@ -275,6 +311,7 @@ class MedicationReminderService {
     String? prescriptionId,
     String? existingId,
     String? personName,
+    String alarmStyle = MedicationReminder.gentle,
   }) async {
     try {
       final reminder = MedicationReminder(
@@ -290,6 +327,7 @@ class MedicationReminderService {
         notes: notes,
         prescriptionId: prescriptionId,
         createdAt: DateTime.now(),
+        alarmStyle: alarmStyle,
       );
 
       if (existingId != null) {
@@ -331,6 +369,26 @@ class MedicationReminderService {
       return true;
     } catch (e) {
       debugPrint('Error toggling reminder: $e');
+      return false;
+    }
+  }
+
+  /// Switches [reminder] between a gentle and a loud alarm, and resets its
+  /// alarms on this phone to match. Returns whether the change was saved.
+  Future<bool> setAlarmStyle(MedicationReminder reminder, String style, {String? personName}) async {
+    try {
+      await _supabase
+          .from('medication_reminders')
+          .update({'alarm_style': style})
+          .eq('id', reminder.id)
+          .select('id')
+          .single();
+
+      await cancelReminder(reminder.id);
+      await scheduleReminder(reminder.copyWith(alarmStyle: style), personName: personName);
+      return true;
+    } catch (e) {
+      debugPrint('Error changing alarm style: $e');
       return false;
     }
   }

@@ -91,6 +91,27 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     }
   }
 
+  Future<void> _switchSound(MedicationReminder r) async {
+    setState(() => _busyId = r.id);
+    final style = r.isLoud ? MedicationReminder.gentle : MedicationReminder.loud;
+    final subject = ActivePatient.of(context, listen: false);
+    final ok = await _service.setAlarmStyle(r, style,
+        personName: subject.isDependent ? subject.firstName : null);
+    if (!mounted) return;
+    setState(() => _busyId = null);
+    if (ok) {
+      pToast(
+        context,
+        style == MedicationReminder.loud
+            ? '${r.medicationName} will now ring until you stop it'
+            : '${r.medicationName} will now ding once',
+      );
+      _loadReminders();
+    } else {
+      pToast(context, "Couldn't change that. Check your connection and try again.");
+    }
+  }
+
   Future<void> _delete(MedicationReminder r) async {
     final confirmed = await showPModal<bool>(
       context: context,
@@ -209,6 +230,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   reminders: active,
                   busyId: _busyId,
                   onToggle: _toggle,
+                  onSwitchSound: _switchSound,
                   onDelete: _delete,
                 ),
               ],
@@ -219,6 +241,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   reminders: paused,
                   busyId: _busyId,
                   onToggle: _toggle,
+                  onSwitchSound: _switchSound,
                   onDelete: _delete,
                 ),
               ],
@@ -252,12 +275,14 @@ class _ReminderList extends StatelessWidget {
     required this.reminders,
     required this.busyId,
     required this.onToggle,
+    required this.onSwitchSound,
     required this.onDelete,
   });
 
   final List<MedicationReminder> reminders;
   final String? busyId;
   final ValueChanged<MedicationReminder> onToggle;
+  final ValueChanged<MedicationReminder> onSwitchSound;
   final ValueChanged<MedicationReminder> onDelete;
 
   @override
@@ -271,6 +296,7 @@ class _ReminderList extends StatelessWidget {
               reminder: r,
               busy: busyId == r.id,
               onToggle: () => onToggle(r),
+              onSwitchSound: () => onSwitchSound(r),
               onDelete: () => onDelete(r),
             ),
         ],
@@ -284,23 +310,28 @@ class _ReminderRow extends StatelessWidget {
     required this.reminder,
     required this.busy,
     required this.onToggle,
+    required this.onSwitchSound,
     required this.onDelete,
   });
 
   final MedicationReminder reminder;
   final bool busy;
   final VoidCallback onToggle;
+  final VoidCallback onSwitchSound;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final r = reminder;
     final dosage = r.dosage.trim();
-    final when = r.frequency == 'as_needed'
+    // "When needed" medicine never rings, so it has no sound to choose.
+    final rings = r.frequency != 'as_needed';
+    final when = !rings
         ? 'As needed'
         : [
             MedicationReminder.frequencyLabel(r.frequency),
             r.times.map((t) => t.formatted).join(', '),
+            r.isLoud ? 'Loud alarm' : 'Gentle',
           ].where((s) => s.isNotEmpty).join(' · ');
 
     final controls = <Widget>[
@@ -311,6 +342,17 @@ class _ReminderRow extends StatelessWidget {
         dense: true,
         onPressed: busy ? null : onToggle,
       ),
+      if (rings)
+        IconButton(
+          tooltip: r.isLoud ? 'Make it gentle (one ding)' : 'Make it loud (rings until stopped)',
+          onPressed: busy ? null : onSwitchSound,
+          icon: Icon(
+            r.isLoud ? Icons.volume_up_rounded : Icons.volume_down_rounded,
+            size: 20,
+            color: r.isLoud ? PT.teal : PT.muted,
+          ),
+          visualDensity: VisualDensity.compact,
+        ),
       IconButton(
         tooltip: 'Delete reminder',
         onPressed: busy ? null : onDelete,
@@ -332,11 +374,11 @@ class _ReminderRow extends StatelessWidget {
               padding: const EdgeInsets.only(left: 53),
               child: Row(
                 children: [
-                  controls[0],
+                  controls.first,
                   const Spacer(),
                   controls[1],
                   const SizedBox(width: 4),
-                  controls[2],
+                  ...controls.skip(2),
                 ],
               ),
             )
@@ -396,6 +438,7 @@ class _ReminderFormState extends State<_ReminderForm> {
   final _dosage = TextEditingController();
   String _frequency = 'once_daily';
   List<ReminderTime> _times = _defaultTimes('once_daily');
+  String _alarmStyle = MedicationReminder.gentle;
   bool _saving = false;
   String? _error;
 
@@ -432,6 +475,7 @@ class _ReminderFormState extends State<_ReminderForm> {
       dosage: _dosage.text.trim(),
       frequency: _frequency,
       times: _times,
+      alarmStyle: _alarmStyle,
     );
     if (!mounted) return;
     if (saved != null) {
@@ -511,6 +555,35 @@ class _ReminderFormState extends State<_ReminderForm> {
                   ),
               ],
             ),
+        ],
+        if (!asNeeded) ...[
+          const SizedBox(height: 18),
+          Text('How it sounds', style: PT.label().copyWith(fontSize: 11)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              PChoicePill(
+                label: 'Gentle (one ding)',
+                selected: _alarmStyle == MedicationReminder.gentle,
+                onTap: () => setState(() => _alarmStyle = MedicationReminder.gentle),
+              ),
+              PChoicePill(
+                label: 'Loud (rings until stopped)',
+                selected: _alarmStyle == MedicationReminder.loud,
+                onTap: () => setState(() => _alarmStyle = MedicationReminder.loud),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _alarmStyle == MedicationReminder.loud
+                ? 'Uses the alarm sound and keeps ringing until you tap or swipe it away. '
+                    'It usually rings even on silent. Good for medicine that must not be missed.'
+                : "The phone's normal notification sound, once. Quiet on silent.",
+            style: PT.sub().copyWith(fontSize: 12),
+          ),
         ],
         if (_error != null) ...[
           const SizedBox(height: 14),

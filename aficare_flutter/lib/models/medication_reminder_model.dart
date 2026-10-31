@@ -12,6 +12,13 @@ class MedicationReminder {
   final String? prescriptionId;
   final DateTime createdAt;
 
+  /// [gentle] (one notification sound) or [loud] (the alarm sound,
+  /// repeating until tapped or swiped away).
+  final String alarmStyle;
+
+  static const gentle = 'gentle';
+  static const loud = 'loud';
+
   MedicationReminder({
     required this.id,
     required this.patientId,
@@ -25,7 +32,10 @@ class MedicationReminder {
     this.notes,
     this.prescriptionId,
     required this.createdAt,
+    this.alarmStyle = gentle,
   });
+
+  bool get isLoud => alarmStyle == loud;
 
   factory MedicationReminder.fromJson(Map<String, dynamic> json) {
     return MedicationReminder(
@@ -49,6 +59,7 @@ class MedicationReminder {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
           : DateTime.now(),
+      alarmStyle: json['alarm_style'] == loud ? loud : gentle,
     );
   }
 
@@ -66,6 +77,7 @@ class MedicationReminder {
       'notes': notes,
       'prescription_id': prescriptionId,
       'created_at': createdAt.toIso8601String(),
+      'alarm_style': alarmStyle,
     };
   }
 
@@ -78,6 +90,7 @@ class MedicationReminder {
     DateTime? startDate,
     DateTime? endDate,
     String? notes,
+    String? alarmStyle,
   }) {
     return MedicationReminder(
       id: id,
@@ -92,6 +105,7 @@ class MedicationReminder {
       notes: notes ?? this.notes,
       prescriptionId: prescriptionId,
       createdAt: createdAt,
+      alarmStyle: alarmStyle ?? this.alarmStyle,
     );
   }
 

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -204,6 +205,46 @@ void main() {
     test('turning a paused reminder back on makes it ring again', () {
       final paused = reminder({'is_active': false});
       expect(MedicationReminderService.shouldRing(paused.copyWith(isActive: true), DateTime(2026, 10, 28)), isTrue);
+    });
+
+    test('reminders are gentle unless loud was chosen, and the choice is saved', () {
+      expect(reminder({}).alarmStyle, MedicationReminder.gentle, reason: 'rows from before 045 have no style');
+      expect(reminder({'alarm_style': 'something else'}).isLoud, isFalse);
+      final loud = reminder({'alarm_style': 'loud'});
+      expect(loud.isLoud, isTrue);
+      expect(loud.toJson()['alarm_style'], 'loud');
+      expect(loud.copyWith(isActive: false).isLoud, isTrue, reason: 'pausing keeps the choice');
+    });
+
+    test('a gentle reminder dings once; a loud one rings on the alarm sound until stopped', () {
+      final gentle = MedicationReminderService.notificationDetails(reminder({})).android!;
+      expect(gentle.channelId, 'medication_reminders');
+      expect(gentle.additionalFlags, isNull);
+      expect(gentle.audioAttributesUsage, AudioAttributesUsage.notification);
+
+      final loud = MedicationReminderService.notificationDetails(reminder({'alarm_style': 'loud'})).android!;
+      expect(loud.channelId, isNot(gentle.channelId), reason: "Android won't change an existing channel's sound");
+      expect(loud.audioAttributesUsage, AudioAttributesUsage.alarm);
+      expect(loud.additionalFlags, [4], reason: 'FLAG_INSISTENT repeats the sound');
+      expect(loud.importance, Importance.max);
+    });
+
+    test('switching the sound saves it on that reminder only', () async {
+      fake.routeJson('/rest/v1/medication_reminders', {'id': 'r1'});
+
+      final ok = await MedicationReminderService().setAlarmStyle(reminder({}), MedicationReminder.loud);
+
+      expect(ok, isTrue);
+      final req = fake.requestsTo('PATCH', 'medication_reminders').single;
+      expect(jsonDecode(req.body), {'alarm_style': 'loud'});
+      expect(req.url.query, contains('id=eq.r1'));
+    });
+
+    test('switching the sound reports a failure instead of pretending', () async {
+      fake.routeRaw('/rest/v1/medication_reminders',
+          http.Response('{"message":"no"}', 500, headers: {'content-type': 'application/json'}));
+
+      expect(await MedicationReminderService().setAlarmStyle(reminder({}), MedicationReminder.loud), isFalse);
     });
   });
 }
