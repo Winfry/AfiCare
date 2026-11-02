@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/adherence_model.dart';
+import '../utils/dose_frequency.dart';
 
 class AdherenceProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -126,13 +127,8 @@ class AdherenceProvider with ChangeNotifier {
       // 2. Generate today's dose entries
       final now = DateTime.now();
       final doses = <Map<String, dynamic>>[];
-      // Spread doses across the day: morning, noon, evening, night
-      const hours = [8, 13, 18, 21];
-      for (int i = 0; i < timesPerDay; i++) {
-        final scheduledTime = DateTime(
-          now.year, now.month, now.day,
-          hours[i], 0,
-        );
+      for (final hour in DoseFrequency.hours(timesPerDay)) {
+        final scheduledTime = DateTime(now.year, now.month, now.day, hour);
         doses.add({
           'prescription_id': prescriptionId,
           'patient_id': patientId,
@@ -189,17 +185,9 @@ class AdherenceProvider with ChangeNotifier {
         final rxId = rx['id'] as String;
         if (existingRxIds.contains(rxId)) continue;
 
-        // Parse frequency to determine times per day
-        final freq = (rx['frequency'] as String?) ?? '';
-        int timesPerDay = _parseFrequency(freq);
-
-        const hours = [8, 13, 18, 21];
-        for (int i = 0; i < timesPerDay; i++) {
-          final scheduledTime = DateTime(
-            now.year, now.month, now.day,
-            i < hours.length ? hours[i] : 8,
-            0,
-          );
+        final perDay = DoseFrequency.perDay(rx['frequency'] as String?);
+        for (final hour in DoseFrequency.hours(perDay)) {
+          final scheduledTime = DateTime(now.year, now.month, now.day, hour);
           newDoses.add({
             'prescription_id': rxId,
             'patient_id': patientId,
@@ -215,22 +203,6 @@ class AdherenceProvider with ChangeNotifier {
     } catch (_) {
       // Non-critical — the tracker will just show whatever exists
     }
-  }
-
-  /// Parse a free-text frequency string into a number of doses per day.
-  int _parseFrequency(String freq) {
-    final f = freq.toLowerCase();
-    if (f.contains('once') || f.contains('1 time') || f.contains('1x')) return 1;
-    if (f.contains('twice') || f.contains('2 time') || f.contains('2x') || f.contains('2 times')) return 2;
-    if (f.contains('three') || f.contains('3 time') || f.contains('3x') || f.contains('3 times')) return 3;
-    if (f.contains('four') || f.contains('4 time') || f.contains('4x') || f.contains('4 times')) return 4;
-    // Try to extract a leading number
-    final match = RegExp(r'(\d+)').firstMatch(f);
-    if (match != null) {
-      final n = int.tryParse(match.group(1)!) ?? 1;
-      return n.clamp(1, 4);
-    }
-    return 1; // default to once daily
   }
 
   Future<void> loadToday(String patientId) async {

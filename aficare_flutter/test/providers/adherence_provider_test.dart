@@ -182,6 +182,21 @@ void main() {
       expect(doseBody, hasLength(2));
     });
 
+    test('twice a day is 12 hours apart', () async {
+      fake.routeJson('/rest/v1/prescriptions', {'id': 'rx-new', 'patient_id': 'p1'});
+      fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+
+      await AdherenceProvider().addMedication(
+        patientId: 'p1',
+        medicationName: 'Ibuprofen',
+        dosage: '200mg',
+        timesPerDay: 2,
+      );
+
+      final doses = jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List;
+      expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).hour), [8, 20]);
+    });
+
     test('failure returns false', () async {
       fake.routeRaw(
         '/rest/v1/prescriptions',
@@ -198,6 +213,51 @@ void main() {
 
       expect(ok, isFalse);
       expect(provider.error, isNotNull);
+    });
+  });
+
+  group('AdherenceProvider.ensureTodayDoses', () {
+    /// The dose rows made for each prescription, as clock hours.
+    Future<Map<String, List<int>>> dosesFor(List<Map<String, String>> prescriptions) async {
+      fake.routeJson('/rest/v1/prescriptions', prescriptions);
+      fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+      await AdherenceProvider().ensureTodayDoses('p1');
+      final posts = fake.requestsTo('POST', 'adherence_log');
+      final made = <String, List<int>>{};
+      for (final post in posts) {
+        for (final d in jsonDecode(post.body) as List) {
+          made
+              .putIfAbsent(d['prescription_id'] as String, () => [])
+              .add(DateTime.parse(d['scheduled_time'] as String).hour);
+        }
+      }
+      return made;
+    }
+
+    test('a doctor\'s shorthand gives the right number of doses today', () async {
+      final made = await dosesFor([
+        {'id': 'tds', 'frequency': 'TDS', 'status': 'active'},
+        {'id': 'bd', 'frequency': 'BD', 'status': 'active'},
+        {'id': 'q8', 'frequency': 'every 8 hours', 'status': 'active'},
+        {'id': 'od', 'frequency': 'Once daily', 'status': 'active'},
+        {'id': 'prn', 'frequency': 'PRN', 'status': 'active'},
+      ]);
+      expect(made['tds'], [8, 14, 20]);
+      expect(made['bd'], [8, 20]);
+      expect(made['q8'], [8, 14, 20], reason: 'every 8 hours is 3 doses, not 4');
+      expect(made['od'], [8]);
+      expect(made.containsKey('prn'), isFalse, reason: 'as-needed medicine has no fixed doses');
+    });
+
+    test('nothing is added when today\'s doses already exist', () async {
+      fake.routeJson('/rest/v1/prescriptions', [
+        {'id': 'tds', 'frequency': 'TDS', 'status': 'active'},
+      ]);
+      fake.routeJson('/rest/v1/adherence_log', [
+        {'prescription_id': 'tds'},
+      ]);
+      await AdherenceProvider().ensureTodayDoses('p1');
+      expect(fake.requestsTo('POST', 'adherence_log'), isEmpty);
     });
   });
 }

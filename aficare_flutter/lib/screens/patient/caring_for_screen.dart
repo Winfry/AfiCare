@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/caregiver_model.dart';
 import '../../services/caregiver_service.dart';
 import '../../theme/patient_tokens.dart';
+import '../../utils/dose_frequency.dart';
 import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
@@ -374,7 +375,7 @@ class _MedicinesSection extends StatelessWidget {
                   if ('${m['dosage'] ?? ''}'.trim().isNotEmpty) '${m['dosage']}',
                 ].join(' '),
                 subtitle: [
-                  if ('${m['frequency'] ?? ''}'.trim().isNotEmpty) '${m['frequency']}',
+                  if ('${m['frequency'] ?? ''}'.trim().isNotEmpty) DoseFrequency.explain('${m['frequency']}'),
                   if ('${m['duration'] ?? ''}'.trim().isNotEmpty) 'for ${m['duration']}',
                 ].join(' · '),
                 extraSubtitle: _extra(m),

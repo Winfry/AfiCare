@@ -8,6 +8,7 @@ import '../../providers/prescription_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../theme/patient_tokens.dart';
+import '../../utils/dose_frequency.dart';
 import 'adherence_log_screen.dart';
 import 'widgets/patient_ui.dart';
 
@@ -158,7 +159,7 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
                   PRow(
                     leadingEmoji: '💊',
                     title: p.medicationName,
-                    subtitle: '${p.dosage} · ${p.frequency}',
+                    subtitle: '${p.dosage} · ${DoseFrequency.explain(p.frequency)}',
                     extraSubtitle: p.instructions,
                   ),
               const SizedBox(height: 12),
