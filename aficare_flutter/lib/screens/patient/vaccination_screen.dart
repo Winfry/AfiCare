@@ -84,22 +84,34 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
     }
   }
 
-  int get _ageWeeks {
+  /// Null when the date of birth isn't known: then nothing is called due,
+  /// rather than treating everyone as a newborn.
+  int? get _ageWeeks {
     final dob = _dateOfBirth;
-    if (dob == null) return 0;
+    if (dob == null) return null;
     return (DateTime.now().difference(dob).inDays / 7).floor();
   }
 
-  List<VaccineSchedule> get _dueVaccines {
-    final administeredNames = _records.map((r) => r.vaccineName.toLowerCase()).toSet();
-    return VaccinationSchedule.kenyaEPI.where((schedule) {
-      if (_ageWeeks < schedule.minAgeWeeks) return false;
-      // Check if any record matches this vaccine type
-      final alreadyGiven = administeredNames.any((name) =>
-          name.contains(schedule.type.toLowerCase()) ||
-          name.contains(schedule.name.toLowerCase()));
-      return !alreadyGiven;
-    }).toList();
+  bool get _pastChildSchedule {
+    final age = _ageWeeks;
+    return age != null && age >= VaccinationSchedule.childScheduleEndsWeeks;
+  }
+
+  List<String> get _givenNames => VaccinationSchedule.givenNames(_records);
+
+  List<VaccineSchedule> get _dueVaccines =>
+      VaccinationSchedule.dueNow(ageWeeks: _ageWeeks, given: _givenNames);
+
+  String get _ageText {
+    final weeks = _ageWeeks;
+    if (weeks == null) return '—';
+    if (weeks < 52) return '$weeks wks';
+    final dob = _dateOfBirth!;
+    final now = DateTime.now();
+    var years = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) years--;
+    if (years < 2) return '${(weeks / 4.345).floor()} mths';
+    return '$years yrs';
   }
 
   @override
@@ -124,6 +136,26 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                   _buildStatsRow(),
                   const SizedBox(height: 16),
 
+                  if (_ageWeeks == null) ...[
+                    PCallout(
+                      title: 'Add a date of birth to see what is due',
+                      body: _subject.isDependent
+                          ? "We need ${_subject.firstName}'s date of birth to check the schedule. You can add it on their profile."
+                          : 'We need your date of birth to check the schedule. You can add it on your profile.',
+                      tone: PTone.blue,
+                    ),
+                    const SizedBox(height: 16),
+                  ] else if (_pastChildSchedule) ...[
+                    PCallout(
+                      title: 'This schedule is for young children',
+                      body: _subject.isDependent
+                          ? "${_subject.firstName} is past the baby and toddler vaccines below. Ask your clinic which vaccines they need at their age."
+                          : 'The vaccines below are for babies and toddlers. Ask your clinic which vaccines you need now, for example a tetanus booster, or vaccines before travel or pregnancy.',
+                      tone: PTone.blue,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Due Vaccines (if any)
                   if (_dueVaccines.isNotEmpty) ...[
                     const Text('Due / Overdue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFFF57F17))),
@@ -136,7 +168,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                   const Text('Kenya EPI Schedule', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                   const SizedBox(height: 4),
                   Text(
-                    'WHO-recommended Kenya childhood immunization schedule',
+                    "Kenya's childhood immunisation schedule, birth to 18 months",
                     style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                   ),
                   const SizedBox(height: 10),
@@ -161,11 +193,11 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   Widget _buildStatsRow() {
     return Row(
       children: [
-        _statCard('${_records.length}', 'Completed', Icons.check_circle_rounded, const Color(0xFF2E7D32)),
+        _statCard('${_givenNames.length}', 'Completed', Icons.check_circle_rounded, const Color(0xFF2E7D32)),
         const SizedBox(width: 12),
         _statCard('${_dueVaccines.length}', 'Due', Icons.schedule_rounded, const Color(0xFFF57F17)),
         const SizedBox(width: 12),
-        _statCard('$_ageWeeks', 'Age (wks)', Icons.cake_rounded, const Color(0xFF5C6BC0)),
+        _statCard(_ageText, 'Age', Icons.cake_rounded, const Color(0xFF5C6BC0)),
       ],
     );
   }
@@ -192,7 +224,8 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   }
 
   Widget _buildDueVaccineCard(VaccineSchedule schedule) {
-    final isOverdue = _ageWeeks > (schedule.maxAgeWeeks ?? schedule.minAgeWeeks + 4);
+    final isOverdue =
+        VaccinationSchedule.stateFor(schedule, ageWeeks: _ageWeeks, given: _givenNames) == VaccineState.overdue;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -224,6 +257,9 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
               children: [
                 Text(schedule.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(schedule.description, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                if (isOverdue)
+                  Text('Ask your clinic about a catch-up dose',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
               ],
             ),
           ),
@@ -276,8 +312,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                 ),
               ),
               ...entry.value.map((v) {
-                final isGiven = _records.any((r) =>
-                    r.vaccineName.toLowerCase().contains(v.type.toLowerCase()));
+                final isGiven = VaccinationSchedule.isGiven(v, _givenNames);
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
@@ -320,6 +355,9 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   }
 
   Widget _buildCompletedCard(VaccinationRecord record) {
+    // Once the next dose is on the card too, its old "Next" date is done.
+    final next = VaccinationSchedule.nextInSeries(record.vaccineName);
+    final showNext = record.nextDueDate != null && (next == null || !VaccinationSchedule.isGiven(next, _givenNames));
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -353,7 +391,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
               ],
             ),
           ),
-          if (record.nextDueDate != null)
+          if (showNext)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -382,6 +420,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
       builder: (_) => _AddVaccinationSheet(
         patientId: _subject.id,
         patientName: _subject.isDependent ? _subject.fullName : null,
+        dateOfBirth: _dateOfBirth,
         onComplete: () => _loadData(_subject),
       ),
     );
@@ -393,8 +432,12 @@ class _AddVaccinationSheet extends StatefulWidget {
   const _AddVaccinationSheet({
     required this.patientId,
     required this.patientName,
+    required this.dateOfBirth,
     required this.onComplete,
   });
+
+  /// Used to work out when the next dose in the series is due.
+  final DateTime? dateOfBirth;
 
   /// Whose card this record belongs to — the active profile, which may be
   /// a dependant.
@@ -481,7 +524,7 @@ class _AddVaccinationSheetState extends State<_AddVaccinationSheet> {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: _selectedDate,
-                        firstDate: DateTime(2020),
+                        firstDate: widget.dateOfBirth ?? DateTime(1940),
                         lastDate: DateTime.now(),
                       );
                       if (picked != null) setState(() => _selectedDate = picked);
@@ -551,20 +594,12 @@ class _AddVaccinationSheetState extends State<_AddVaccinationSheet> {
     }
 
     try {
-      // Find the schedule for this vaccine to set next due date
-      final schedule = VaccinationSchedule.kenyaEPI.firstWhere(
-        (v) => v.name == _selectedVaccine,
-        orElse: () => VaccinationSchedule.kenyaEPI.first,
+      final schedule = VaccinationSchedule.kenyaEPI.firstWhere((v) => v.name == _selectedVaccine);
+      final nextDue = VaccinationSchedule.nextDueDate(
+        schedule.name,
+        given: _selectedDate,
+        dateOfBirth: widget.dateOfBirth,
       );
-
-      DateTime? nextDue;
-      final nextSchedule = VaccinationSchedule.kenyaEPI.firstWhere(
-        (v) => v.name != _selectedVaccine && v.type == schedule.type,
-        orElse: () => schedule,
-      );
-      if (nextSchedule.name != _selectedVaccine) {
-        nextDue = DateTime.now().add(const Duration(days: 28)); // ~4 weeks default
-      }
 
       await _supabase.from('vaccination_records').insert({
         'patient_id': patientId,
@@ -584,14 +619,17 @@ class _AddVaccinationSheetState extends State<_AddVaccinationSheet> {
           const SnackBar(content: Text('Vaccination recorded'), backgroundColor: Color(0xFF2E7D32)),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text("Couldn't save the record. Check your connection and try again."),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
-    setState(() => _isSubmitting = false);
+    if (mounted) setState(() => _isSubmitting = false);
   }
 
   @override

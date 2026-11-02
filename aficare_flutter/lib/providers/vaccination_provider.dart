@@ -81,13 +81,8 @@ class VaccinationProvider with ChangeNotifier {
     }
   }
 
-  List<VaccineSchedule> getDueVaccines(int ageWeeks) {
-    final administered = _records.map((r) => r.vaccineName).toSet();
-    return VaccinationSchedule.kenyaEPI.where((schedule) {
-      if (ageWeeks < schedule.minAgeWeeks) return false;
-      final alreadyGiven = administered.any((name) =>
-          name.toLowerCase().contains(schedule.type.toLowerCase()));
-      return !alreadyGiven;
-    }).toList();
-  }
+  List<VaccineSchedule> getDueVaccines(int? ageWeeks) => VaccinationSchedule.dueNow(
+        ageWeeks: ageWeeks,
+        given: VaccinationSchedule.givenNames(_records),
+      );
 }

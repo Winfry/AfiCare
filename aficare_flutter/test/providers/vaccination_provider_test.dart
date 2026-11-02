@@ -113,24 +113,28 @@ void main() {
   });
 
   group('VaccinationProvider.getDueVaccines', () {
-    test('excludes vaccines already administered by name match', () async {
+    test('each dose counts on its own, and only given doses count', () async {
       fake.routeJson('/rest/v1/vaccination_records', [
         record(vaccineName: 'BCG'),
-        record(id: 'r2', vaccineName: 'OPV 1', status: 'scheduled'),
+        record(id: 'r2', vaccineName: 'OPV 1'),
+        record(id: 'r3', vaccineName: 'PCV 1', status: 'scheduled'),
       ]);
 
       final provider = VaccinationProvider();
       await provider.loadRecords('p1');
 
-      final due = provider.getDueVaccines(16);
-      final dueNames = due.map((v) => v.type.toLowerCase()).toSet();
-      expect(dueNames.contains('bcg'), isFalse);
-      expect(dueNames.contains('opv'), isFalse);
-      expect(due, isNotEmpty);
+      final due = provider.getDueVaccines(12).map((v) => v.name).toSet();
+      expect(due, isNot(contains('BCG')));
+      expect(due, isNot(contains('OPV 1')));
+      expect(due, contains('OPV 2'), reason: 'OPV 1 does not tick OPV 2');
+      expect(due, contains('PCV 1'), reason: 'planned is not given');
+      expect(due, isNot(contains('OPV 3')), reason: 'not old enough yet');
+    });
 
-      final noRecords = VaccinationProvider();
-      final allDue = noRecords.getDueVaccines(16);
-      expect(allDue, isNotEmpty);
+    test('nothing is due for an adult or an unknown age', () {
+      final provider = VaccinationProvider();
+      expect(provider.getDueVaccines(30 * 52), isEmpty);
+      expect(provider.getDueVaccines(null), isEmpty);
     });
   });
 }
