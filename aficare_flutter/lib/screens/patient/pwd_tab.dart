@@ -11,8 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/disability_profile.dart';
+import '../../models/pwd_patient_guidance.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../utils/theme.dart';
+import 'widgets/crisis_lines.dart';
 import 'widgets/patient_ui.dart';
 
 class PwdTab extends StatefulWidget {
@@ -33,7 +35,6 @@ class _PwdTabState extends State<PwdTab> {
   bool _isSaving = false;
   bool _isLoading = true;
 
-  final _engine = const PwdRuleEngine();
   static SupabaseClient get _sb => Supabase.instance.client;
 
   @override
@@ -112,9 +113,12 @@ class _PwdTabState extends State<PwdTab> {
       return inShell ? const PLoadingPage() : const Center(child: CircularProgressIndicator());
     }
 
-    final recommendations = _hasPwdCondition && !_profile.isEmpty
-        ? _engine.getRecommendations(_profile)
-        : <PwdRecommendation>[];
+    // The patient's own wording of the engine's suggestions: the
+    // clinician wording (priority badges, "document risk level") belongs
+    // on the consultation screen, not here.
+    final active = _hasPwdCondition && !_profile.isEmpty;
+    final tips = active ? PwdPatientGuidance.tipsFor(_profile) : <PwdPatientTip>[];
+    final offerSupport = active && PwdPatientGuidance.offersSupportLines(_profile);
 
     final sections = <Widget>[
           _buildToggleCard(),
@@ -131,8 +135,12 @@ class _PwdTabState extends State<PwdTab> {
             _buildSaveButton(),
             const SizedBox(height: 24),
           ],
-          if (recommendations.isNotEmpty) ...[
-            _buildRecommendationsSection(recommendations),
+          if (offerSupport) ...[
+            _buildSupportCard(),
+            const SizedBox(height: 16),
+          ],
+          if (tips.isNotEmpty) ...[
+            _buildTipsSection(tips),
             const SizedBox(height: 24),
           ],
           _buildCaregiverSection(),
@@ -750,11 +758,52 @@ class _PwdTabState extends State<PwdTab> {
   }
 
   // ----------------------------------------------------------------
-  // Recommendations from rule engine
+  // Support, for anyone who records a mental health condition
   // ----------------------------------------------------------------
 
-  Widget _buildRecommendationsSection(
-      List<PwdRecommendation> recommendations) {
+  Widget _buildSupportCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AfiCareTheme.primaryGreen.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AfiCareTheme.primaryGreen.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.favorite_rounded, color: AfiCareTheme.primaryGreen, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "You don't have to carry this alone",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'If things ever feel too heavy, or you have thoughts of hurting '
+            'yourself, talk to someone today: a person you trust, your '
+            'clinic, or one of these lines. Tap a number to call.',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+          ),
+          const SizedBox(height: 6),
+          const CrisisLines(),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // Suggestions, in the patient's own words
+  // ----------------------------------------------------------------
+
+  Widget _buildTipsSection(List<PwdPatientTip> tips) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -762,11 +811,12 @@ class _PwdTabState extends State<PwdTab> {
           children: [
             const Icon(Icons.lightbulb_outline, color: AfiCareTheme.primaryGreen),
             const SizedBox(width: 8),
-            const Text(
-              'Recommended for You',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const Expanded(
+              child: Text(
+                'Things to ask your clinic about',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
-            const Spacer(),
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -775,7 +825,7 @@ class _PwdTabState extends State<PwdTab> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                '${recommendations.length} items',
+                '${tips.length}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AfiCareTheme.primaryGreen,
@@ -787,29 +837,27 @@ class _PwdTabState extends State<PwdTab> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Based on your profile. Share this list with your provider.',
+          "Based on what you've told us. These are ideas to talk through "
+          "with your clinic, not a diagnosis. Your clinic will say what's "
+          'right for you.',
           style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
         ),
         const SizedBox(height: 12),
-        ...recommendations
-            .where((r) => r.category != RecommendationCategory.providerNote)
-            .map((r) => _buildRecommendationCard(r)),
+        ...tips.map(_buildTipCard),
       ],
     );
   }
 
-  Widget _buildRecommendationCard(PwdRecommendation rec) {
-    final color  = _priorityColor(rec.priority);
-    final label  = _priorityLabel(rec.priority);
-    final icon   = _categoryIcon(rec.category);
-
+  Widget _buildTipCard(PwdPatientTip tip) {
     return Semantics(
-      label: '$label: ${rec.title}. ${rec.description}',
+      container: true,
+      label: '${tip.title}. ${tip.body} ${tip.ask}',
+      excludeSemantics: true,
       child: Card(
         margin: const EdgeInsets.only(bottom: 10),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color.withOpacity(0.3)),
+          side: BorderSide(color: Colors.grey.shade300),
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -819,64 +867,46 @@ class _PwdTabState extends State<PwdTab> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: AfiCareTheme.primaryGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(_categoryIcon(tip.category), color: AfiCareTheme.primaryGreen, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      tip.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      tip.body,
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    ),
+                    const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(Icons.arrow_forward_rounded, size: 16, color: AfiCareTheme.primaryGreen),
+                        ),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            rec.title,
+                            tip.ask,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: color,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AfiCareTheme.primaryGreenDark,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      rec.description,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    if (rec.actionLabel != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        rec.actionLabel!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -886,20 +916,6 @@ class _PwdTabState extends State<PwdTab> {
       ),
     );
   }
-
-  Color _priorityColor(RecommendationPriority p) => switch (p) {
-        RecommendationPriority.critical => Colors.red.shade700,
-        RecommendationPriority.high     => Colors.orange.shade700,
-        RecommendationPriority.medium   => Colors.amber.shade700,
-        RecommendationPriority.low      => Colors.green.shade700,
-      };
-
-  String _priorityLabel(RecommendationPriority p) => switch (p) {
-        RecommendationPriority.critical => 'CRITICAL',
-        RecommendationPriority.high     => 'HIGH',
-        RecommendationPriority.medium   => 'MEDIUM',
-        RecommendationPriority.low      => 'LOW',
-      };
 
   IconData _categoryIcon(RecommendationCategory c) => switch (c) {
         RecommendationCategory.healthCheck    => Icons.medical_services,
