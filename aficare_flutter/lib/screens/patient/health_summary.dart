@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../models/active_patient.dart';
 import '../../models/consultation_model.dart';
+import '../../models/vital_readings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
@@ -14,9 +15,9 @@ import '../../theme/patient_tokens.dart';
 import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
-/// Health Records — the patient's own summary: a derived health score,
-/// their latest visit and vitals, a trend across visits, and the way in
-/// to lab results, prescriptions and visit history.
+/// Health Records — the patient's own summary: the readings from their
+/// latest visit, that visit, a trend across visits, and the way in to lab
+/// results, prescriptions and visit history.
 class HealthSummary extends StatefulWidget {
   const HealthSummary({super.key});
 
@@ -68,7 +69,6 @@ class _HealthSummaryState extends State<HealthSummary> {
 
     final latest = consultations.isEmpty ? null : consultations.first;
     final vitals = latest?.vitalSigns;
-    final score = _healthScore(vitals);
 
     return PDetailScaffold(
       eyebrow: 'Records',
@@ -80,7 +80,7 @@ class _HealthSummaryState extends State<HealthSummary> {
         'Share summary',
         kind: PButtonKind.alt,
         icon: Icons.ios_share,
-        onPressed: () => _share(subject, vitals, score),
+        onPressed: () => _share(subject, latest),
       ),
       children: [
         if (patient.isLoading)
@@ -100,7 +100,7 @@ class _HealthSummaryState extends State<HealthSummary> {
           PGrid(
             columns: 3,
             children: [
-              _scoreCard(score),
+              _latestReadingsCard(latest),
               _recentVisitCard(latest),
               _allergiesCard(subject),
             ],
@@ -129,12 +129,66 @@ class _HealthSummaryState extends State<HealthSummary> {
 
   // ── Top row ───────────────────────────────────────────────────────────
 
-  Widget _scoreCard(int? score) {
-    final (label, tone) = _scoreInfo(score);
-    return PScore(
-      label: 'Health score',
-      value: score?.toString() ?? '—',
-      badge: PBadge(label, tone: tone),
+  /// What the latest visit's readings were, each on its own. Not a score:
+  /// one visit's readings are not a measure of overall health, and adding
+  /// them up hid a dangerous one among normal ones.
+  Widget _latestReadingsCard(ConsultationModel? latest) {
+    final readings = latest == null ? const <VitalReading>[] : VitalReadings.of(latest.vitalSigns);
+    if (latest == null || readings.isEmpty) {
+      return PCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Latest readings', style: PT.label()),
+            const SizedBox(height: 7),
+            Text('None recorded yet', style: PT.h3()),
+            const SizedBox(height: 4),
+            Text(
+              latest == null
+                  ? 'Readings like blood pressure and temperature appear here after a visit.'
+                  : 'No readings were recorded at your last visit.',
+              style: PT.sub(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final unusual = VitalReadings.unusual(latest.vitalSigns);
+    final now = DateTime.now();
+    final ago = VitalReadings.howLongAgo(latest.timestamp, now);
+    final stale = now.difference(latest.timestamp).inDays > VitalReadings.staleAfterDays;
+    final headline = unusual.isEmpty
+        ? (readings.length == 1 ? 'In the usual range' : 'All in the usual range')
+        : unusual.length == 1
+            ? 'One outside the usual range'
+            : '${unusual.length} outside the usual range';
+
+    return PCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Latest readings', style: PT.label()),
+          const SizedBox(height: 7),
+          Text(headline, style: PT.h3()),
+          if (unusual.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final r in unusual) PBadge('${r.name}: ${r.status}', tone: _tone(r.level))],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'From your visit on ${DateFormat('d MMM yyyy').format(latest.timestamp)}'
+            '${ago == null ? '' : ' ($ago)'}.${stale ? ' These may be out of date.' : ''}',
+            style: PT.sub(),
+          ),
+          const SizedBox(height: 4),
+          Text('Readings from one visit, not a measure of your overall health.', style: PT.rowSub()),
+        ],
+      ),
     );
   }
 
@@ -212,7 +266,7 @@ class _HealthSummaryState extends State<HealthSummary> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PCardTitle('Health trend'),
+          const PCardTitle('Blood pressure trend'),
           if (points.length < 2)
             const PEmpty(
               emoji: '📈',
@@ -289,17 +343,9 @@ class _HealthSummaryState extends State<HealthSummary> {
   // ── Detail cards ──────────────────────────────────────────────────────
 
   Widget _vitalsCard(VitalSigns v) {
-    final rows = <Widget>[
-      if (v.temperature != null)
-        _vitalRow('Temperature', '${v.temperature!.toStringAsFixed(1)} °C', _tempTone(v.temperature)),
-      if (v.systolicBP != null && v.diastolicBP != null)
-        _vitalRow('Blood pressure', '${v.bloodPressure} mmHg', _bpTone(v.systolicBP, v.diastolicBP)),
-      if (v.pulseRate != null)
-        _vitalRow('Heart rate', '${v.pulseRate} bpm', _hrTone(v.pulseRate)),
-      if (v.oxygenSaturation != null)
-        _vitalRow('Oxygen (SpO₂)', '${v.oxygenSaturation}%', _spo2Tone(v.oxygenSaturation)),
-      if (_bmi(v) != null)
-        _vitalRow('BMI', _bmi(v)!.toStringAsFixed(1), _bmiTone(_bmi(v))),
+    final rows = [
+      for (final r in VitalReadings.of(v))
+        PRow(title: r.name, subtitle: r.value, trailing: [PBadge(r.status, tone: _tone(r.level))]),
     ];
 
     return PCard(
@@ -313,14 +359,6 @@ class _HealthSummaryState extends State<HealthSummary> {
             ...rows,
         ],
       ),
-    );
-  }
-
-  Widget _vitalRow(String label, String value, (String, PTone) status) {
-    return PRow(
-      title: label,
-      subtitle: value,
-      trailing: [PBadge(status.$1, tone: status.$2)],
     );
   }
 
@@ -382,75 +420,12 @@ class _HealthSummaryState extends State<HealthSummary> {
 
   // ── Derived values ────────────────────────────────────────────────────
 
-  int? _healthScore(VitalSigns? v) {
-    if (v == null) return null;
-    int checks = 0, passed = 0;
-    void check(bool applicable, bool ok) {
-      if (!applicable) return;
-      checks++;
-      if (ok) passed++;
-    }
-
-    check(v.temperature != null, v.temperature != null && v.temperature! >= 36.1 && v.temperature! <= 37.2);
-    check(v.systolicBP != null, v.systolicBP != null && v.systolicBP! >= 90 && v.systolicBP! <= 120);
-    check(v.diastolicBP != null, v.diastolicBP != null && v.diastolicBP! >= 60 && v.diastolicBP! <= 80);
-    check(v.pulseRate != null, v.pulseRate != null && v.pulseRate! >= 60 && v.pulseRate! <= 100);
-    check(v.oxygenSaturation != null, v.oxygenSaturation != null && v.oxygenSaturation! >= 95);
-
-    if (checks == 0) return null;
-    return ((passed / checks) * 100).round();
-  }
-
-  (String, PTone) _scoreInfo(int? score) {
-    if (score == null) return ('No data', PTone.gray);
-    if (score >= 80) return ('Excellent', PTone.ok);
-    if (score >= 60) return ('Good', PTone.ok);
-    if (score >= 40) return ('Fair', PTone.warn);
-    return ('Needs attention', PTone.red);
-  }
-
-  (String, PTone) _tempTone(double? t) {
-    if (t == null) return ('No data', PTone.gray);
-    if (t < 36.1) return ('Low', PTone.blue);
-    if (t <= 37.2) return ('Normal', PTone.ok);
-    if (t <= 38.0) return ('Low fever', PTone.warn);
-    return ('Fever', PTone.red);
-  }
-
-  (String, PTone) _bpTone(int? sys, int? dia) {
-    if (sys == null || dia == null) return ('No data', PTone.gray);
-    if (sys < 90 || dia < 60) return ('Low', PTone.blue);
-    if (sys <= 120 && dia <= 80) return ('Normal', PTone.ok);
-    if (sys <= 130) return ('Elevated', PTone.warn);
-    return ('High', PTone.red);
-  }
-
-  (String, PTone) _hrTone(int? hr) {
-    if (hr == null) return ('No data', PTone.gray);
-    if (hr < 60) return ('Low', PTone.blue);
-    if (hr <= 100) return ('Normal', PTone.ok);
-    return ('High', PTone.red);
-  }
-
-  (String, PTone) _spo2Tone(double? s) {
-    if (s == null) return ('No data', PTone.gray);
-    if (s >= 95) return ('Normal', PTone.ok);
-    if (s >= 90) return ('Low', PTone.warn);
-    return ('Critical', PTone.red);
-  }
-
-  (String, PTone) _bmiTone(double? bmi) {
-    if (bmi == null) return ('No data', PTone.gray);
-    if (bmi < 18.5) return ('Underweight', PTone.blue);
-    if (bmi < 25) return ('Normal', PTone.ok);
-    if (bmi < 30) return ('Overweight', PTone.warn);
-    return ('Obese', PTone.red);
-  }
-
-  double? _bmi(VitalSigns v) {
-    if (v.weight == null || v.height == null || v.height! <= 0) return null;
-    return v.weight! / (v.height! * v.height!);
-  }
+  static PTone _tone(ReadingLevel level) => switch (level) {
+        ReadingLevel.usual => PTone.ok,
+        ReadingLevel.low => PTone.blue,
+        ReadingLevel.watch => PTone.warn,
+        ReadingLevel.high => PTone.red,
+      };
 
   String _vitalsSummary(VitalSigns v) {
     final parts = <String>[
@@ -464,23 +439,19 @@ class _HealthSummaryState extends State<HealthSummary> {
   /// Headed with the *active* patient. Sharing a dependant's vitals under
   /// the guardian's name and MediLink ID would hand a clinician a
   /// mislabelled record.
-  void _share(ActivePatient subject, VitalSigns? v, int? score) {
+  void _share(ActivePatient subject, ConsultationModel? latest) {
     final sb = StringBuffer();
     sb.writeln('AfiCare MediLink — Health Summary');
     sb.writeln('Patient: ${subject.fullName.isEmpty ? 'Unknown' : subject.fullName}');
     sb.writeln('MediLink ID: ${subject.medilinkId ?? 'N/A'}');
     sb.writeln('Date: ${DateFormat('d MMM yyyy').format(DateTime.now())}');
-    sb.writeln('');
-    sb.writeln('Health Score: ${score?.toString() ?? 'No data'}');
-    if (v != null) {
+    final readings = latest == null ? const <VitalReading>[] : VitalReadings.of(latest.vitalSigns);
+    if (latest != null && readings.isNotEmpty) {
       sb.writeln('');
-      sb.writeln('Latest Vital Signs:');
-      if (v.temperature != null) {
-        sb.writeln('  Temperature: ${v.temperature!.toStringAsFixed(1)}°C');
+      sb.writeln('Latest readings (visit on ${DateFormat('d MMM yyyy').format(latest.timestamp)}):');
+      for (final r in readings) {
+        sb.writeln('  ${r.name}: ${r.value} (${r.status})');
       }
-      sb.writeln('  Blood Pressure: ${v.bloodPressure} mmHg');
-      if (v.pulseRate != null) sb.writeln('  Heart Rate: ${v.pulseRate} bpm');
-      if (v.oxygenSaturation != null) sb.writeln('  SpO₂: ${v.oxygenSaturation}%');
     }
     Share.share(sb.toString());
   }
