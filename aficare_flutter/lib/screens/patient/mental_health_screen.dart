@@ -64,7 +64,9 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
     return PSliverPage(
       eyebrow: 'Private, and yours',
       title: 'Mental wellbeing',
-      subtitle: 'A gentle check-in. No score here is a diagnosis, and nobody sees this unless you choose to share it.',
+      subtitle: 'A gentle check-in. No score here is a diagnosis. Only you can see your moods and '
+          'check-ins: not your doctors, not other staff, not caregivers. If you want your doctor to '
+          'know, tell them or show them.',
       slivers: [
           SliverToBoxAdapter(
             child: Padding(

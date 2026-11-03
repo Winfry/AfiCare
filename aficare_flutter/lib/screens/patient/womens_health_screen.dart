@@ -8,6 +8,7 @@ import '../../models/womens_health_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../providers/pregnancy_provider.dart';
+import '../../services/womens_health_service.dart';
 import '../../theme/patient_tokens.dart';
 import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
@@ -18,14 +19,22 @@ import 'widgets/pregnancy_forms.dart';
 ///
 /// Replaces the Maternal and Women's Health tabs of the old full
 /// dashboard and reads the same stored record (see [WomensHealthRecord]),
-/// so nothing recorded there is lost. Account-holder only: the record
-/// lives on the signed-in user, so the page is adult-only in the nav.
+/// so nothing recorded there is lost. Account-holder only, so the page
+/// is adult-only in the nav.
+///
+/// The record is private to her: it lives in its own table that only she
+/// can read (migration 047, [WomensHealthService]). It used to be kept in
+/// the account row, which staff can read; a copy found there is moved
+/// over and removed from the account row the first time the page opens.
 ///
 /// "Pregnant" is not taken from that record but from the pregnancy record
 /// Maternal care uses ([PregnancyProvider]), so the two pages always
 /// agree: choosing it starts a pregnancy, and leaving it closes one.
 class WomensHealthScreen extends StatefulWidget {
-  const WomensHealthScreen({super.key});
+  const WomensHealthScreen({super.key, this.service});
+
+  /// For tests.
+  final WomensHealthService? service;
 
   @override
   State<WomensHealthScreen> createState() => _WomensHealthScreenState();
@@ -34,11 +43,17 @@ class WomensHealthScreen extends StatefulWidget {
 enum _SaveState { idle, saving, saved, failed }
 
 class _WomensHealthScreenState extends State<WomensHealthScreen> {
+  late final WomensHealthService _service = widget.service ?? WomensHealthService();
   late WomensHealthRecord _record;
+
+  /// What is actually stored, to go back to when a save fails.
+  late WomensHealthRecord _stored;
   bool _loaded = false;
+  bool _loadFailed = false;
+  bool _started = false;
 
   /// Saves run one after another so two quick changes can never write
-  /// over each other with stale metadata.
+  /// over each other.
   Future<void> _queue = Future.value();
   int _pending = 0;
   _SaveState _saveState = _SaveState.idle;
@@ -49,14 +64,44 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_loaded) return;
+    if (_started) return;
     final user = context.read<AuthProvider>().currentUser;
     if (user == null) return;
-    _record = _storedRecord(user.metadata);
-    _loaded = true;
+    _started = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<PregnancyProvider>().load(user.id);
+      if (!mounted) return;
+      context.read<PregnancyProvider>().load(user.id);
+      _load();
     });
+  }
+
+  Future<void> _load() async {
+    final auth = context.read<AuthProvider>();
+    final user = auth.currentUser;
+    if (user == null) return;
+    if (_loadFailed) setState(() => _loadFailed = false);
+    try {
+      var raw = await _service.load(user.id);
+      if (raw == null) {
+        // Saved by an earlier version, in the account row that staff can
+        // read: move it to her private record, then take it out of there.
+        final old = user.metadata?['maternal_health'];
+        if (old is Map) {
+          raw = Map<String, dynamic>.from(old);
+          await _service.save(user.id, raw);
+          final meta = Map<String, dynamic>.from(user.metadata ?? const {})..remove('maternal_health');
+          await auth.updateProfile(metadata: meta);
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _record = _stored = WomensHealthRecord.fromJson(raw);
+        _loaded = true;
+      });
+    } catch (e) {
+      debugPrint("Women's health load failed: $e");
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   /// The life stage to show. An ongoing pregnancy always means
@@ -71,11 +116,6 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
     return pregnancies.lastEnded?.outcome == 'birth' ? 'postpartum' : 'not_pregnant';
   }
 
-  static WomensHealthRecord _storedRecord(Map<String, dynamic>? metadata) {
-    final raw = metadata?['maternal_health'];
-    return WomensHealthRecord.fromJson(raw is Map ? Map<String, dynamic>.from(raw) : null);
-  }
-
   /// Shows [next] at once and saves it. If the save fails, the page goes
   /// back to what is actually stored, so it never shows unsaved data as
   /// though it were kept.
@@ -85,17 +125,24 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
       _pending++;
       _saveState = _SaveState.saving;
     });
-    final auth = context.read<AuthProvider>();
+    final patientId = context.read<AuthProvider>().currentUser?.id;
     var ok = false;
     _queue = _queue.then((_) async {
-      final meta = Map<String, dynamic>.from(auth.currentUser?.metadata ?? const {});
-      meta['maternal_health'] = _record.toJson();
-      ok = await auth.updateProfile(metadata: meta);
+      final toSave = _record;
+      try {
+        if (patientId == null) throw StateError('Not signed in');
+        await _service.save(patientId, toSave.toJson());
+        _stored = toSave;
+        ok = true;
+      } catch (e) {
+        debugPrint("Women's health save failed: $e");
+        ok = false;
+      }
       if (!mounted) return;
       setState(() {
         _pending--;
         if (!ok) {
-          _record = _storedRecord(auth.currentUser?.metadata);
+          _record = _stored;
           _saveState = _SaveState.failed;
         } else if (_pending == 0 && _saveState != _SaveState.failed) {
           _saveState = _SaveState.saved;
@@ -112,6 +159,13 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadFailed) {
+      return PDetailScaffold(
+        eyebrow: 'Your health, your pace',
+        title: "Women's health",
+        children: [PLoadError(what: "your women's health record", onRetry: _load)],
+      );
+    }
     if (!_loaded) return const PLoadingPage();
 
     final today = DateUtils.dateOnly(DateTime.now());
@@ -121,7 +175,7 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
     return PDetailScaffold(
       eyebrow: 'Your health, your pace',
       title: "Women's health",
-      subtitle: 'Your cycle, your screenings and where you are in life, kept together in your record.',
+      subtitle: 'Your cycle, your screenings and where you are in life. Private to you.',
       action: _SaveStatus(state: _saveState),
       children: [
         _Summary(record: _record, today: today, age: age),
@@ -162,9 +216,11 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
         const SizedBox(height: 16),
         const PCallout(
           title: 'Who can see this',
-          body: 'This is part of your AfiCare record. You and the clinicians caring for you can see it, '
-              'so they can give you the right advice. Anyone you have given caregiver access can see '
-              'it too, depending on the access you chose.',
+          body: 'Only you. Your cycle, periods, screenings and life stage are kept apart from the rest '
+              'of your record: doctors, nurses, other staff and caregivers cannot see them. If you want '
+              'a clinician to know something, tell them at your visit.\n\n'
+              'A pregnancy is different: once you add one, it is shared with the doctors and nurses '
+              'caring for you, as on Maternal care, so they can look after you and your baby.',
         ),
       ],
     );

@@ -9,26 +9,48 @@ import 'package:aficare_flutter/providers/auth_provider.dart';
 import 'package:aficare_flutter/providers/patient_profile_provider.dart';
 import 'package:aficare_flutter/providers/pregnancy_provider.dart';
 import 'package:aficare_flutter/screens/patient/womens_health_screen.dart';
+import 'package:aficare_flutter/services/womens_health_service.dart';
 
 import 'helpers/fake_pregnancy_provider.dart';
 import 'helpers/smoke_harness.dart';
 
-/// An AuthProvider with a signed-in patient whose saves can be made to
-/// succeed or fail, without touching Supabase.
+/// Her private Women's health record, in memory.
+class _FakeRecords extends WomensHealthService {
+  _FakeRecords(this.stored) : super(null);
+
+  Map<String, dynamic>? stored;
+  bool saveSucceeds = true;
+  bool loadFails = false;
+  final saves = <Map<String, dynamic>>[];
+
+  @override
+  Future<Map<String, dynamic>?> load(String patientId) async {
+    if (loadFails) throw Exception('offline');
+    return stored == null ? null : Map<String, dynamic>.from(stored!);
+  }
+
+  @override
+  Future<void> save(String patientId, Map<String, dynamic> record) async {
+    saves.add(Map<String, dynamic>.from(record));
+    if (!saveSucceeds) throw Exception('refused');
+    stored = Map<String, dynamic>.from(record);
+  }
+}
+
+/// An AuthProvider with a signed-in patient, without touching Supabase.
+/// Its account row is only written to take an old copy out of it.
 class _FakeAuth extends AuthProvider {
   _FakeAuth(this._user);
 
   UserModel _user;
-  bool saveSucceeds = true;
-  final saves = <Map<String, dynamic>>[];
+  final accountSaves = <Map<String, dynamic>>[];
 
   @override
   UserModel? get currentUser => _user;
 
   @override
   Future<bool> updateProfile({String? fullName, String? phone, Map<String, dynamic>? metadata}) async {
-    saves.add(Map<String, dynamic>.from(metadata ?? const {}));
-    if (!saveSucceeds) return false;
+    accountSaves.add(Map<String, dynamic>.from(metadata ?? const {}));
     _user = UserModel(
       id: _user.id,
       email: _user.email,
@@ -42,7 +64,7 @@ class _FakeAuth extends AuthProvider {
   }
 }
 
-UserModel _patient(Map<String, dynamic>? maternal) => UserModel(
+UserModel _patient(Map<String, dynamic>? oldCopy) => UserModel(
       id: 'u1',
       email: 'test@example.com',
       fullName: 'Amina Test',
@@ -50,30 +72,36 @@ UserModel _patient(Map<String, dynamic>? maternal) => UserModel(
       createdAt: DateTime(2026, 1, 1),
       metadata: {
         'blood_type': 'O+',
-        if (maternal != null) 'maternal_health': maternal,
+        if (oldCopy != null) 'maternal_health': oldCopy,
       },
     );
 
-Future<_FakeAuth> _pump(
+/// [maternal] is her private record; [oldCopy] is one an earlier version
+/// left in the account row.
+Future<(_FakeRecords, _FakeAuth)> _pump(
   WidgetTester tester, {
   required Size size,
   Map<String, dynamic>? maternal,
+  Map<String, dynamic>? oldCopy,
   FakePregnancyProvider? pregnancies,
+  bool loadFails = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final auth = _FakeAuth(_patient(maternal));
+  final auth = _FakeAuth(_patient(oldCopy));
+  final records = _FakeRecords(maternal)..loadFails = loadFails;
   await tester.pumpWidget(MultiProvider(
     providers: [
       ChangeNotifierProvider<AuthProvider>.value(value: auth),
       ChangeNotifierProvider(create: (_) => PatientProfileProvider()),
       ChangeNotifierProvider<PregnancyProvider>.value(value: pregnancies ?? FakePregnancyProvider()),
     ],
-    child: const MaterialApp(home: Scaffold(body: WomensHealthScreen())),
+    child: MaterialApp(home: Scaffold(body: WomensHealthScreen(service: records))),
   ));
+  await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
-  return auth;
+  return (records, auth);
 }
 
 void main() {
@@ -106,14 +134,14 @@ void main() {
     });
   }
 
-  testWidgets('choosing a life stage saves it and keeps other metadata', (tester) async {
-    final auth = await _pump(tester, size: const Size(1280, 900));
+  testWidgets('choosing a life stage saves it to her private record', (tester) async {
+    final (records, auth) = await _pump(tester, size: const Size(1280, 900));
     await tester.tap(find.text('Trying to conceive'));
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(auth.saves, hasLength(1));
-    expect(auth.saves.single['blood_type'], 'O+');
-    expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'trying');
+    expect(records.saves, hasLength(1));
+    expect(records.saves.single['pregnancy_status'], 'trying');
+    expect(auth.accountSaves, isEmpty, reason: 'nothing goes into the account row any more');
     expect(find.text('✓ Saved'), findsOneWidget);
     expect(find.text('Getting ready for pregnancy'), findsOneWidget);
   });
@@ -129,7 +157,7 @@ void main() {
 
     testWidgets('choosing Pregnant starts a pregnancy record first', (tester) async {
       final pregnancies = FakePregnancyProvider();
-      final auth = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+      final (records, _) = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
 
       await tester.tap(find.text('Pregnant'));
       await tester.pumpAndSettle();
@@ -144,14 +172,14 @@ void main() {
 
       expect(pregnancies.started, hasLength(1));
       expect(pregnancies.started.single.dueDateSource, 'lmp');
-      expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'pregnant');
+      expect(records.saves.single['pregnancy_status'], 'pregnant');
       // The default date is 8 weeks ago.
       expect(find.textContaining('Week 8 · due'), findsOneWidget);
     });
 
     testWidgets('closing the form without saving changes nothing', (tester) async {
       final pregnancies = FakePregnancyProvider();
-      final auth = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+      final (records, _) = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
 
       await tester.tap(find.text('Pregnant'));
       await tester.pumpAndSettle();
@@ -159,7 +187,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(pregnancies.started, isEmpty);
-      expect(auth.saves, isEmpty);
+      expect(records.saves, isEmpty);
     });
 
     testWidgets('an ongoing pregnancy shows as Pregnant whatever was saved before', (tester) async {
@@ -174,7 +202,7 @@ void main() {
 
     testWidgets('"Recently had a baby" closes the pregnancy as a birth', (tester) async {
       final pregnancies = FakePregnancyProvider(pregnancies: [ongoing()]);
-      final auth = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
+      final (records, _) = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);
 
       await tester.tap(find.text('Recently had a baby'));
       await tester.pumpAndSettle();
@@ -184,7 +212,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(pregnancies.ended.single.$2, 'birth');
-      expect((auth.saves.single['maternal_health'] as Map)['pregnancy_status'], 'postpartum');
+      expect(records.saves.single['pregnancy_status'], 'postpartum');
     });
 
     testWidgets('"Not pregnant" asks how it ended, and "rather not say" is enough', (tester) async {
@@ -209,8 +237,8 @@ void main() {
   });
 
   testWidgets('a refused save is undone on screen and reported', (tester) async {
-    final auth = await _pump(tester, size: const Size(1280, 900), maternal: {'pregnancy_status': 'not_pregnant'});
-    auth.saveSucceeds = false;
+    final (records, _) = await _pump(tester, size: const Size(1280, 900), maternal: {'pregnancy_status': 'not_pregnant'});
+    records.saveSucceeds = false;
     await tester.tap(find.text('Trying to conceive'));
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -220,14 +248,67 @@ void main() {
   });
 
   testWidgets('logging a period today predicts the next one', (tester) async {
-    final auth = await _pump(tester, size: const Size(1280, 900));
+    final (records, _) = await _pump(tester, size: const Size(1280, 900));
     await tester.tap(find.text('My period started today'));
     await tester.pump(const Duration(milliseconds: 300));
 
-    final saved = auth.saves.single['maternal_health'] as Map;
+    final saved = records.saves.single;
     final today = DateUtils.dateOnly(DateTime.now());
     expect(saved['last_period_start'], today.toIso8601String().split('T').first);
     expect(find.text('Day 1'), findsOneWidget);
     expect(find.text('My period started today'), findsNothing);
+  });
+
+  group('privacy', () {
+    testWidgets('an old copy in the account row is moved to her private record and removed', (tester) async {
+      final (records, auth) = await _pump(
+        tester,
+        size: const Size(1280, 900),
+        oldCopy: {'pregnancy_status': 'trying', 'cycle_length': 40},
+      );
+
+      expect(records.stored, {'pregnancy_status': 'trying', 'cycle_length': 40});
+      expect(auth.accountSaves.single.containsKey('maternal_health'), isFalse);
+      expect(auth.accountSaves.single['blood_type'], 'O+', reason: 'the rest of the account row is kept');
+      expect(find.text('40 days'), findsOneWidget, reason: 'nothing is lost');
+    });
+
+    testWidgets('her private record wins over an old copy, which is left alone', (tester) async {
+      final (records, auth) = await _pump(
+        tester,
+        size: const Size(1280, 900),
+        maternal: {'cycle_length': 30},
+        oldCopy: {'cycle_length': 40},
+      );
+      expect(find.text('30 days'), findsOneWidget);
+      expect(records.saves, isEmpty);
+      expect(auth.accountSaves, isEmpty);
+    });
+
+    testWidgets('if her record cannot be loaded it says so, and does not fall back to the old copy',
+        (tester) async {
+      final (records, _) = await _pump(
+        tester,
+        size: const Size(1280, 900),
+        oldCopy: {'cycle_length': 40},
+        loadFails: true,
+      );
+      expect(find.text("Could not load your women's health record"), findsOneWidget);
+      expect(find.text('40 days'), findsNothing);
+
+      records.loadFails = false;
+      records.stored = {'cycle_length': 33};
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+      expect(find.text('33 days'), findsOneWidget);
+    });
+
+    testWidgets('the page says only she can see it, and that a pregnancy is shared', (tester) async {
+      await _pump(tester, size: const Size(1280, 900));
+      expect(find.textContaining('Only you.'), findsOneWidget);
+      expect(find.textContaining('caregivers cannot see them'), findsOneWidget);
+      expect(find.textContaining('A pregnancy is different'), findsOneWidget);
+      expect(find.textContaining('Anyone you have given caregiver access'), findsNothing);
+    });
   });
 }
