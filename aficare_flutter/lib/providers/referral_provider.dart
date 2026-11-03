@@ -13,25 +13,35 @@ class ReferralProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Who referred each referral loaded for a patient, by referral id.
+  Map<String, String> get referrerNames => _referrerNames;
+  Map<String, String> _referrerNames = {};
+
+  /// The referrals of [patientId], an account or a dependant profile,
+  /// through `my_referrals()` (migration 048). It finds them however they
+  /// were saved (doctors use the MediLink ID, CHWs the account id) and
+  /// only for the person themselves or the guardian of that dependant.
   Future<void> loadPatientReferrals(String patientId) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _supabase
-          .from('referrals')
-          .select()
-          .eq('patient_id', patientId)
-          .order('created_at', ascending: false);
-
-      _referrals = (response as List)
-          .map((json) => ReferralModel.fromJson(json))
-          .toList();
+      final response = await _supabase.rpc('my_referrals', params: {'p_patient_id': patientId});
+      final rows = [for (final r in response as List) Map<String, dynamic>.from(r as Map)];
+      _referrals = rows.map(ReferralModel.fromJson).toList();
+      _referrerNames = {
+        for (final r in rows)
+          if ((r['from_provider_name'] as String?)?.trim().isNotEmpty ?? false)
+            r['id'] as String: (r['from_provider_name'] as String).trim(),
+      };
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      debugPrint('my_referrals failed: $e');
+      _referrals = [];
+      _referrerNames = {};
+      _error = 'Could not load referrals.';
       _isLoading = false;
       notifyListeners();
     }

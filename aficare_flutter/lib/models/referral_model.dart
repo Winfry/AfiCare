@@ -39,19 +39,21 @@ class ReferralModel {
   factory ReferralModel.fromJson(Map<String, dynamic> json) {
     return ReferralModel(
       id: json['id'] as String,
-      patientId: json['patient_id'] as String,
-      fromProviderId: json['from_provider_id'] as String,
+      // Older rows can have blanks here; a blank must not stop the rest
+      // of the list from showing.
+      patientId: json['patient_id'] as String? ?? '',
+      fromProviderId: json['from_provider_id'] as String? ?? '',
       fromFacility: json['from_facility'] as String?,
-      toFacility: json['to_facility'] as String,
+      toFacility: json['to_facility'] as String? ?? 'Another facility',
       toDepartment: json['to_department'] as String?,
       toSpecialist: json['to_specialist'] as String?,
-      reason: json['reason'] as String,
+      reason: json['reason'] as String? ?? '',
       clinicalNotes: json['clinical_notes'] as String?,
       urgency: _urgencyFromString(json['urgency'] as String? ?? 'routine'),
       status: _statusFromString(json['status'] as String? ?? 'pending'),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       respondedAt: json['responded_at'] != null
-          ? DateTime.parse(json['responded_at'] as String)
+          ? DateTime.tryParse(json['responded_at'] as String)?.toLocal()
           : null,
       responseNotes: json['response_notes'] as String?,
     );

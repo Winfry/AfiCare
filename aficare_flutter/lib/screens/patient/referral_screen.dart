@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/referral_model.dart';
 import '../../providers/auth_provider.dart';
@@ -22,9 +21,6 @@ class PatientReferralScreen extends StatefulWidget {
 }
 
 class _PatientReferralScreenState extends State<PatientReferralScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  Map<String, String> _fromProviderCache = {};
-
   @override
   void initState() {
     super.initState();
@@ -40,23 +36,7 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
     final id = dep.activePatientId ?? auth.currentUser?.id;
     if (id == null) return;
 
-    final provider = Provider.of<ReferralProvider>(context, listen: false);
-    await provider.loadPatientReferrals(id);
-
-    final names = <String, String>{};
-    for (final r in provider.referrals) {
-      names[r.fromProviderId] = await _providerName(r.fromProviderId);
-    }
-    if (mounted) setState(() => _fromProviderCache = names);
-  }
-
-  Future<String> _providerName(String pid) async {
-    try {
-      final res = await _supabase.from('users').select('full_name').eq('id', pid).maybeSingle();
-      return (res != null && res['full_name'] != null) ? res['full_name'] as String : 'Your doctor';
-    } catch (_) {
-      return 'Your doctor';
-    }
+    await Provider.of<ReferralProvider>(context, listen: false).loadPatientReferrals(id);
   }
 
   @override
@@ -84,7 +64,11 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
           const SizedBox(height: 16),
         ],
         const PHeading('Referral history'),
-        if (provider.isLoading)
+        if (provider.error != null)
+          // Already said above; "No referrals yet" here would be a claim
+          // we cannot make.
+          const SizedBox.shrink()
+        else if (provider.isLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
@@ -102,7 +86,7 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
             columns: 2,
             children: [
               for (final r in referrals)
-                _referralCard(r, _fromProviderCache[r.fromProviderId] ?? 'Your doctor'),
+                _referralCard(r, provider.referrerNames[r.id] ?? 'your doctor'),
             ],
           ),
       ],
@@ -110,6 +94,7 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
   }
 
   Widget _referralCard(ReferralModel r, String providerName) {
+    final reason = r.reason.trim().isEmpty ? 'Reason not given' : r.reason.trim();
     return PCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +107,7 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
             children: [
               Expanded(
                 child: Text(
-                  r.toDepartment == null ? r.reason : '${r.toFacility} · ${r.reason}',
+                  r.toDepartment == null ? reason : '${r.toFacility} · $reason',
                   style: PT.sub(),
                 ),
               ),
@@ -197,7 +182,7 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
 
   String _statusDescription(ReferralStatus s, String facility) => switch (s) {
         ReferralStatus.pending =>
-          '$facility has received your referral. You will be notified when they respond.',
+          '$facility has your referral. Their response will show here.',
         ReferralStatus.accepted =>
           '$facility has accepted your referral. Follow up as directed.',
         ReferralStatus.completed =>

@@ -47,30 +47,53 @@ void main() {
   }
 
   group('ReferralProvider.loadPatientReferrals', () {
-    test('populates referrals for a patient', () async {
-      fake.routeJson('/rest/v1/referrals', [
-        referralRow(),
-        referralRow(id: 'r2', reason: 'Shortness of breath', status: 'completed'),
+    test('asks my_referrals for that person, and keeps who referred', () async {
+      fake.routeJson('/rest/v1/rpc/my_referrals', [
+        {...referralRow(), 'from_provider_name': 'Dr Kamau'},
+        {...referralRow(id: 'r2', reason: 'Shortness of breath', status: 'completed'), 'from_provider_name': null},
       ]);
 
       final provider = ReferralProvider();
       await provider.loadPatientReferrals('p1');
 
+      final call = fake.requestsTo('POST', 'rpc/my_referrals').single;
+      expect(jsonDecode(call.body), {'p_patient_id': 'p1'});
+      expect(fake.requestsTo('GET', '/rest/v1/referrals'), isEmpty, reason: 'not the table directly');
       expect(provider.isLoading, isFalse);
       expect(provider.error, isNull);
       expect(provider.referrals, hasLength(2));
-      expect(provider.referrals.first.patientId, 'p1');
       expect(provider.referrals.first.urgency, ReferralUrgency.urgent);
+      expect(provider.referrerNames, {'r1': 'Dr Kamau'});
+    });
+
+    test('blanks in a row do not stop the list', () async {
+      fake.routeJson('/rest/v1/rpc/my_referrals', [
+        {'id': 'r3', 'patient_id': null, 'from_provider_id': null, 'to_facility': null, 'reason': null, 'created_at': null},
+      ]);
+      final provider = ReferralProvider();
+      await provider.loadPatientReferrals('p1');
+      expect(provider.error, isNull);
+      expect(provider.referrals.single.toFacility, 'Another facility');
+      expect(provider.referrals.single.reason, '');
     });
 
     test('empty response leaves an empty list', () async {
-      fake.routeJson('/rest/v1/referrals', <Object?>[]);
+      fake.routeJson('/rest/v1/rpc/my_referrals', <Object?>[]);
 
       final provider = ReferralProvider();
       await provider.loadPatientReferrals('p1');
 
       expect(provider.referrals, isEmpty);
       expect(provider.error, isNull);
+    });
+
+    test('a failure is an error, not an empty list', () async {
+      fake.routeRaw('/rest/v1/rpc/my_referrals',
+          http.Response('{"message":"boom"}', 500, headers: {'content-type': 'application/json'}));
+      final provider = ReferralProvider();
+      await provider.loadPatientReferrals('p1');
+      expect(provider.error, isNotNull);
+      expect(provider.error, isNot(contains('boom')));
     });
   });
 
@@ -160,7 +183,7 @@ void main() {
       fake.routeJson('/rest/v1/referrals', [referralRow()]);
 
       final provider = ReferralProvider();
-      await provider.loadPatientReferrals('p1');
+      await provider.loadProviderReferrals('prov-1');
 
       final ok = await provider.updateReferralStatus(
         'r1',
@@ -185,7 +208,7 @@ void main() {
       fake.routeJson('/rest/v1/referrals', [referralRow()]);
 
       final provider = ReferralProvider();
-      await provider.loadPatientReferrals('p1');
+      await provider.loadProviderReferrals('prov-1');
 
       // Only fail the subsequent PATCH (the load already happened above).
       fake.routeRaw(
