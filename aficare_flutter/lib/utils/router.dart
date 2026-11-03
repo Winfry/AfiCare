@@ -428,7 +428,7 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) {
                 final dep = context.read<DependentProvider>();
                 final id = dep.activePatientId ?? context.read<AuthProvider>().currentUser?.id ?? '';
-                return _patientPage(state, PwdTab(patientId: id));
+                return _patientPage(state, PwdTab(patientId: id, isOwnRecord: !dep.isViewingDependent));
               },
             ),
             GoRoute(

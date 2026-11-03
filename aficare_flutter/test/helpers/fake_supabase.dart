@@ -43,6 +43,13 @@ class FakeSupabase {
     _rawRoutes[pathPrefix] = response;
   }
 
+  /// Forget both kinds of route for [pathPrefix], e.g. to let a request
+  /// that failed succeed on a retry.
+  void clearRoute(String pathPrefix) {
+    _jsonRoutes.remove(pathPrefix);
+    _rawRoutes.remove(pathPrefix);
+  }
+
   /// Captured requests whose HTTP method is [method] and whose path contains
   /// [pathPart], in the order the app made them.
   Iterable<http.Request> requestsTo(String method, String pathPart) {

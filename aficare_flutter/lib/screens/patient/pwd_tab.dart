@@ -6,12 +6,15 @@
 // via the consultation screen's PWD Assessment section.
 // ================================================================
 
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/caregiver_model.dart';
 import '../../models/disability_profile.dart';
 import '../../models/pwd_patient_guidance.dart';
+import '../../services/caregiver_service.dart';
 import '../../services/pwd_rule_engine.dart';
 import '../../utils/theme.dart';
 import 'widgets/crisis_lines.dart';
@@ -20,7 +23,17 @@ import 'widgets/patient_ui.dart';
 class PwdTab extends StatefulWidget {
   final String patientId;
 
-  const PwdTab({super.key, required this.patientId});
+  /// False on a dependant's profile. Caregiver access shares the account
+  /// holder's own record, so it is not offered there.
+  final bool isOwnRecord;
+
+  /// For tests.
+  final CaregiverService? caregiverService;
+
+  const PwdTab({super.key, required this.patientId, this.isOwnRecord = true, this.caregiverService});
+
+  /// The real caregiver sharing page.
+  static const caregiverRoute = '/patient/caregiver-portal';
 
   @override
   State<PwdTab> createState() => _PwdTabState();
@@ -35,6 +48,12 @@ class _PwdTabState extends State<PwdTab> {
   bool _isSaving = false;
   bool _isLoading = true;
 
+  // ---- Caregiver access (the account holder's real grants) ----
+  late final CaregiverService _caregivers = widget.caregiverService ?? CaregiverService();
+  List<CaregiverAccess>? _grants;
+  bool _grantsLoading = false;
+  bool _grantsFailed = false;
+
   static SupabaseClient get _sb => Supabase.instance.client;
 
   @override
@@ -42,6 +61,7 @@ class _PwdTabState extends State<PwdTab> {
     super.initState();
     _profile = DisabilityProfile.empty(widget.patientId);
     _loadProfile();
+    if (widget.isOwnRecord) _loadGrants(first: true);
   }
 
   Future<void> _loadProfile() async {
@@ -143,8 +163,10 @@ class _PwdTabState extends State<PwdTab> {
             _buildTipsSection(tips),
             const SizedBox(height: 24),
           ],
-          _buildCaregiverSection(),
-          const SizedBox(height: 24),
+          if (widget.isOwnRecord) ...[
+            _buildCaregiverSection(),
+            const SizedBox(height: 24),
+          ],
           _buildProviderNoteCard(),
     ];
 
@@ -928,11 +950,71 @@ class _PwdTabState extends State<PwdTab> {
       };
 
   // ----------------------------------------------------------------
-  // Caregiver section
+  // Caregiver access
+  //
+  // The real thing lives on the "Share with a caregiver" page (codes
+  // made and checked in the database, migration 036). This used to be a
+  // separate copy whose 6-letter code was made up on the phone and could
+  // not be entered anywhere; now it shows who really can see the record
+  // and links to that page.
   // ----------------------------------------------------------------
 
+  /// [first] is the call from initState, before the first build.
+  Future<void> _loadGrants({bool first = false}) async {
+    void start() {
+      _grantsLoading = true;
+      _grantsFailed = false;
+    }
+
+    first ? start() : setState(start);
+    try {
+      final grants = await _caregivers.myGrants();
+      if (mounted) setState(() => _grants = grants);
+    } on CaregiverException {
+      if (mounted) setState(() => _grantsFailed = true);
+    } finally {
+      if (mounted) setState(() => _grantsLoading = false);
+    }
+  }
+
+  Future<void> _openCaregiverPage() async {
+    await context.push(PwdTab.caregiverRoute);
+    if (mounted) _loadGrants();
+  }
+
   Widget _buildCaregiverSection() {
-    final caregiver = _profile.caregiver;
+    final now = DateTime.now();
+    final live = (_grants ?? const <CaregiverAccess>[]).where((g) => g.isLiveAt(now)).toList();
+    final oldNote = _profile.caregiver;
+    final oldName = oldNote?.name.trim() ?? '';
+    final oldNoteStillMatters = oldNote != null &&
+        oldNote.isActive &&
+        oldName.isNotEmpty &&
+        !live.any((g) => (g.caregiverName ?? '').trim().toLowerCase() == oldName.toLowerCase());
+
+    final Widget status;
+    if (_grantsLoading && _grants == null) {
+      status = Text('Checking who you share with…', style: TextStyle(fontSize: 13, color: Colors.grey.shade700));
+    } else if (_grantsFailed) {
+      status = Row(
+        children: [
+          Expanded(
+            child: Text(
+              "Couldn't check who you share with.",
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+            ),
+          ),
+          TextButton(onPressed: () => _loadGrants(), child: const Text('Try again')),
+        ],
+      );
+    } else if (live.isEmpty) {
+      status = Text(
+        'No one has caregiver access right now.',
+        style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+      );
+    } else {
+      status = Column(children: [for (final g in live) _buildGrantRow(g, now)]);
+    }
 
     return Card(
       child: Padding(
@@ -944,38 +1026,52 @@ class _PwdTabState extends State<PwdTab> {
               children: [
                 Icon(Icons.people, color: AfiCareTheme.primaryBlue),
                 SizedBox(width: 8),
-                Text(
-                  'Caregiver / Guardian Access',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Caregiver access',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              'A designated caregiver can view selected parts of your '
-              'medical record using a private access code.',
-              style:
-                  TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              'Someone you trust, such as family, a friend or a carer, can '
+              'follow part of your care from their own AfiCare account. They '
+              'can look, not change anything, and you can stop it at any time.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
-            const SizedBox(height: 16),
-            if (caregiver != null && caregiver.isActive) ...[
-              _buildActiveCaregiverCard(caregiver),
+            const SizedBox(height: 14),
+            status,
+            if (oldNoteStillMatters) ...[
               const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Text(
+                  'You noted $oldName as your caregiver on this page before. '
+                  "That didn't give them access to anything. To share with "
+                  '$oldName, make a code for them and they enter it in their '
+                  'own AfiCare account.',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF6D4C00)),
+                ),
+              ),
             ],
+            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _showCaregiverDialog(),
-                icon: Icon(caregiver != null
-                    ? Icons.edit
-                    : Icons.person_add),
-                label: Text(caregiver != null
-                    ? 'Change Caregiver'
-                    : 'Add Caregiver'),
+                onPressed: _openCaregiverPage,
+                icon: Icon(live.isEmpty ? Icons.person_add : Icons.manage_accounts),
+                label: Text(live.isEmpty ? 'Share with a caregiver' : 'Manage caregiver access'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: BorderSide(color: AfiCareTheme.primaryBlue),
+                  side: const BorderSide(color: AfiCareTheme.primaryBlue),
                   foregroundColor: AfiCareTheme.primaryBlue,
                 ),
               ),
@@ -986,327 +1082,37 @@ class _PwdTabState extends State<PwdTab> {
     );
   }
 
-  Widget _buildActiveCaregiverCard(CaregiverDesignation c) {
-    final codeValid = c.codeIsValid;
+  Widget _buildGrantRow(CaregiverAccess g, DateTime now) {
+    final relationship = CaregiverRelationship.label(g.relationship);
+    final active = g.statusAt(now) == CaregiverGrantStatus.active;
+    final name = g.caregiverName?.trim();
+    final who = active && name != null && name.isNotEmpty ? name : 'Code ${CaregiverAccess.formatCode(g.accessCode)}';
+    final title = relationship == null ? who : '$who · $relationship';
+    final detail = active
+        ? 'Can see: ${CaregiverAccess.accessLevelScope(g.accessLevel)}'
+        : 'Not entered yet · works until ${DateFormat('d MMM, HH:mm').format(g.codeExpiresAt!.toLocal())}';
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: AfiCareTheme.primaryBlue.withOpacity(0.15),
-                child: Text(
-                  c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    color: AfiCareTheme.primaryBlue,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      c.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    Text(
-                      '${c.relationship} · ${c.phone}',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade700),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Icon(
+            active ? Icons.visibility_outlined : Icons.key_rounded,
+            size: 20,
+            color: AfiCareTheme.primaryBlue,
           ),
-          const SizedBox(height: 12),
-          // Permissions
-          Text(
-            'Can access:',
-            style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: c.permissions
-                .map((p) => Chip(
-                      label: Text(p,
-                          style: const TextStyle(fontSize: 11)),
-                      backgroundColor: Colors.blue.shade100,
-                      padding: EdgeInsets.zero,
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 12),
-          // Access code row
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Access Code',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    if (codeValid) ...[
-                      Text(
-                        c.accessCode!,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
-                          color: AfiCareTheme.primaryBlue,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                      Text(
-                        'Expires ${_formatExpiry(c.codeExpiry!)}',
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                    ] else
-                      Text(
-                        'No active code',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey.shade600),
-                      ),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _generateCaregiverCode,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: Text(codeValid ? 'Refresh' : 'Generate'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AfiCareTheme.primaryBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatExpiry(DateTime expiry) {
-    final diff = expiry.difference(DateTime.now());
-    if (diff.inHours >= 1) return 'in ${diff.inHours}h';
-    return 'in ${diff.inMinutes}m';
-  }
-
-  void _generateCaregiverCode() {
-    if (_profile.caregiver == null) return;
-    final chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rng   = Random();
-    final code  = List.generate(6, (_) => chars[rng.nextInt(chars.length)])
-        .join();
-    final expiry = DateTime.now().add(const Duration(hours: 24));
-
-    setState(() {
-      _profile = _profile.copyWith(
-        caregiver: _profile.caregiver!.copyWith(
-          accessCode: code,
-          codeExpiry: expiry,
-        ),
-        lastUpdated: DateTime.now(),
-        updatedBy: 'patient',
-      );
-    });
-
-    // Persist code to Supabase so the caregiver can use it from any device
-    _sb.from('disability_profiles').upsert(
-      _profile.toMap(),
-      onConflict: 'patient_id',
-    ).then((_) {}).catchError((_) {});
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Caregiver code $code generated — valid 24 hours'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  // ----------------------------------------------------------------
-  // Add / edit caregiver dialog
-  // ----------------------------------------------------------------
-
-  void _showCaregiverDialog() {
-    final nameController = TextEditingController(
-        text: _profile.caregiver?.name ?? '');
-    final phoneController = TextEditingController(
-        text: _profile.caregiver?.phone ?? '');
-    String relationship =
-        _profile.caregiver?.relationship ?? kCaregiverRelationships.first;
-    List<String> permissions =
-        List.from(_profile.caregiver?.permissions ?? ['Emergency contacts', 'Current medications', 'Known allergies']);
-
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModal) => Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Caregiver Details',
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: nameController,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Caregiver full name',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone number',
-                    prefixIcon: Icon(Icons.phone),
-                    hintText: '+254...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: relationship,
-                  decoration: const InputDecoration(
-                    labelText: 'Relationship',
-                    prefixIcon: Icon(Icons.people),
-                    border: OutlineInputBorder(),
-                  ),
-                  items: kCaregiverRelationships
-                      .map((r) => DropdownMenuItem(
-                            value: r,
-                            child: Text(r),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setModal(() => relationship = v);
-                    }
-                  },
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'What can this caregiver access?',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                ...kCaregiverPermissions.map((perm) {
-                  final checked = permissions.contains(perm);
-                  return CheckboxListTile(
-                    title: Text(perm, style: const TextStyle(fontSize: 14)),
-                    value: checked,
-                    activeColor: AfiCareTheme.primaryBlue,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (v) {
-                      setModal(() {
-                        v! ? permissions.add(perm) : permissions.remove(perm);
-                      });
-                    },
-                  );
-                }),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (nameController.text.trim().isEmpty ||
-                          phoneController.text.trim().isEmpty) return;
-                      final newCaregiver = CaregiverDesignation(
-                        name:         nameController.text.trim(),
-                        phone:        phoneController.text.trim(),
-                        relationship: relationship,
-                        permissions:  permissions,
-                        designatedAt: DateTime.now(),
-                        isActive:     true,
-                      );
-                      setState(() {
-                        _profile = _profile.copyWith(
-                          caregiver:   newCaregiver,
-                          lastUpdated: DateTime.now(),
-                          updatedBy:   'patient',
-                        );
-                      });
-                      Navigator.pop(ctx);
-                      // Persist caregiver designation to Supabase
-                      _sb.from('disability_profiles').upsert(
-                        _profile.toMap(),
-                        onConflict: 'patient_id',
-                      ).then((_) {}).catchError((_) {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              '${nameController.text.trim()} added as caregiver'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AfiCareTheme.primaryGreen,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text('Save Caregiver'),
-                  ),
-                ),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text(detail, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
