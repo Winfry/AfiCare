@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../models/anc_reading_checks.dart';
 import '../../models/anc_visit_model.dart';
 import '../../models/pregnancy_model.dart';
 import '../../providers/auth_provider.dart';
@@ -52,6 +54,7 @@ class _AncScreenState extends State<AncScreen> {
           _StartCard(onStart: _start)
         else ...[
           _ProgressHero(pregnancy: current, visitsDone: pregnancies.visitsOf(current).length, today: today),
+          _StandingAlerts(visits: pregnancies.visitsOf(current)),
           const _SeekCareCallout(),
           const SizedBox(height: 22),
           const PHeading('Antenatal visits'),
@@ -108,18 +111,107 @@ class _AncScreenState extends State<AncScreen> {
   }
 
   Future<void> _addVisit(Pregnancy p) async {
-    final dangerSigns = await showPModal<List<String>>(
+    final alerts = await showPModal<List<AncAlert>>(
       context: context,
       title: 'Add a visit',
       builder: (_) => _VisitForm(pregnancy: p),
     );
-    if (dangerSigns == null || !mounted) return;
-    pToast(
-      context,
-      dangerSigns.isEmpty
-          ? 'Visit saved.'
-          : 'Visit saved. You noted danger signs: if you have not been seen for them yet, get care today.',
+    if (alerts == null || !mounted) return;
+    if (alerts.isEmpty) {
+      pToast(context, 'Visit saved.');
+      return;
+    }
+    // Anything the readings call for is said again once saved, in full,
+    // rather than in a toast that disappears.
+    await showPModal<void>(
+      context: context,
+      title: 'Visit saved',
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            alerts.length == 1
+                ? 'One thing from this visit needs your attention:'
+                : '${alerts.length} things from this visit need your attention:',
+            style: PT.sub(),
+          ),
+          const SizedBox(height: 12),
+          AncAlertList(alerts: alerts),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.centerRight,
+            child: PButton('I understand', onPressed: () => Navigator.pop(ctx)),
+          ),
+        ],
+      ),
     );
+  }
+}
+
+/// [alerts] as callouts, most urgent first, each with a call button when
+/// it is an emergency.
+class AncAlertList extends StatelessWidget {
+  const AncAlertList({super.key, required this.alerts});
+
+  final List<AncAlert> alerts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final (i, a) in alerts.indexed) ...[
+          if (i > 0) const SizedBox(height: 10),
+          AncAlertCallout(title: a.title, body: a.body, level: a.level),
+        ],
+      ],
+    );
+  }
+}
+
+class AncAlertCallout extends StatelessWidget {
+  const AncAlertCallout({super.key, required this.title, required this.body, required this.level});
+
+  final String title;
+  final String body;
+  final AncLevel level;
+
+  static PTone toneOf(AncLevel level) => switch (level) {
+        AncLevel.urgent => PTone.red,
+        AncLevel.soon => PTone.warn,
+        AncLevel.ask => PTone.blue,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PCallout(tone: toneOf(level), title: title, body: body),
+        if (level == AncLevel.urgent) ...[
+          const SizedBox(height: 8),
+          const EmergencyCallButton(),
+        ],
+      ],
+    );
+  }
+}
+
+/// Dials 999 (112 works too). If the phone can't start a call, says so.
+class EmergencyCallButton extends StatelessWidget {
+  const EmergencyCallButton({super.key});
+
+  Future<void> _call(BuildContext context) async {
+    try {
+      if (await launchUrl(Uri(scheme: 'tel', path: '999'))) return;
+    } catch (e) {
+      debugPrint('Could not start a call: $e');
+    }
+    if (context.mounted) pToast(context, 'Could not start a call. Dial 999 or 112 yourself.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PButton('Call 999', kind: PButtonKind.red, icon: Icons.phone_rounded, onPressed: () => _call(context));
   }
 }
 
@@ -242,6 +334,36 @@ class _HeroStat extends StatelessWidget {
   }
 }
 
+/// Readings from her visits that still need attention: the latest of
+/// each kind, until a newer normal one replaces it.
+class _StandingAlerts extends StatelessWidget {
+  const _StandingAlerts({required this.visits});
+
+  final List<AncVisit> visits;
+
+  @override
+  Widget build(BuildContext context) {
+    final standing = AncReadingChecks.standing(visits);
+    if (standing.isEmpty) return const SizedBox(height: 0);
+    final fmt = DateFormat('d MMMM');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          for (final (i, s) in standing.indexed) ...[
+            if (i > 0) const SizedBox(height: 10),
+            AncAlertCallout(
+              title: '${s.alert.badge} · visit on ${fmt.format(s.visit.visitDate.toLocal())}',
+              body: s.alert.later,
+              level: s.alert.level,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _SeekCareCallout extends StatelessWidget {
   const _SeekCareCallout();
 
@@ -279,15 +401,22 @@ class _VisitList extends StatelessWidget {
       );
     }
     return PCard(
-      child: Column(children: [for (final v in visits) _VisitRow(visit: v)]),
+      child: Column(children: [
+        for (final v in visits)
+          _VisitRow(visit: v, alerts: AncReadingChecks.forVisit(v, previous: AncReadingChecks.previousOf(v, visits))),
+      ]),
     );
   }
 }
 
 class _VisitRow extends StatelessWidget {
-  const _VisitRow({required this.visit});
+  const _VisitRow({required this.visit, required this.alerts});
 
   final AncVisit visit;
+
+  /// What this visit's readings called for, so a worrying reading never
+  /// looks like a normal one.
+  final List<AncAlert> alerts;
 
   @override
   Widget build(BuildContext context) {
@@ -304,10 +433,28 @@ class _VisitRow extends StatelessWidget {
       title: 'Visit ${visit.visitNumber} · ${visit.gestationalWeeks} weeks',
       subtitle: checks.isEmpty ? 'No measurements recorded' : checks.join(' · '),
       extraSubtitle: visit.facility.trim().isEmpty ? null : visit.facility.trim(),
-      trailing: [if (visit.dangerSigns.isNotEmpty) const PBadge('Danger signs', tone: PTone.red)],
-      below: visit.dangerSigns.isEmpty
+      below: alerts.isEmpty && visit.dangerSigns.isEmpty
           ? null
-          : Text('Noted: ${visit.dangerSigns.join(', ')}', style: PT.rowSub().copyWith(color: PT.danger)),
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (alerts.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final a in alerts) PBadge(a.badge, tone: AncAlertCallout.toneOf(a.level)),
+                      ],
+                    ),
+                  ),
+                if (visit.dangerSigns.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text('Noted: ${visit.dangerSigns.join(', ')}', style: PT.rowSub().copyWith(color: PT.danger)),
+                ],
+              ],
+            ),
     );
   }
 
@@ -387,11 +534,60 @@ class _VisitFormState extends State<_VisitForm> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // The warnings follow the readings as they are typed.
+    for (final c in [_sys, _dia, _weight, _hb, _fhr, _fundal]) {
+      c.addListener(_readingsChanged);
+    }
+  }
+
+  void _readingsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
     for (final c in [_sys, _dia, _weight, _hb, _fhr, _fundal, _facility, _notes]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// The number in [c] if it is a sensible one, else null. Used for the
+  /// live warnings, which say nothing about half-typed or mistyped numbers
+  /// (saving explains those).
+  double? _peek(TextEditingController c, double min, double max) {
+    final v = double.tryParse(c.text.trim().replaceAll(',', '.'));
+    return v == null || v < min || v > max ? null : v;
+  }
+
+  /// Her visit before [date] in this pregnancy, for the weight check.
+  AncVisit? _previousVisit(DateTime date) {
+    AncVisit? best;
+    for (final v in context.read<PregnancyProvider>().visitsOf(widget.pregnancy)) {
+      if (!DateUtils.dateOnly(v.visitDate.toLocal()).isBefore(date)) continue;
+      if (best == null || v.visitDate.isAfter(best.visitDate)) best = v;
+    }
+    return best;
+  }
+
+  List<AncAlert> _alerts() {
+    final sys = _peek(_sys, 60, 250)?.round();
+    final dia = _peek(_dia, 30, 150)?.round();
+    final bpOk = sys != null && dia != null && sys > dia;
+    return AncReadingChecks.check(
+      weeks: widget.pregnancy.weeksOn(_date),
+      systolic: bpOk ? sys : null,
+      diastolic: bpOk ? dia : null,
+      hb: _peek(_hb, 3, 25),
+      babyHeartRate: _peek(_fhr, 60, 220)?.round(),
+      fundalHeight: _peek(_fundal, 5, 50),
+      weight: _peek(_weight, 25, 250),
+      date: _date,
+      previous: _previousVisit(_date),
+      dangerSigns: AncVisit.dangerSignsList.where(_signs.contains).toList(),
+    );
   }
 
   Future<void> _pickDate() async {
@@ -431,11 +627,18 @@ class _VisitFormState extends State<_VisitForm> {
     if (_error == null && (sys == null) != (dia == null)) {
       _error = 'Enter both blood pressure numbers, or neither.';
     }
+    if (_error == null && sys != null && dia != null && sys <= dia) {
+      _error = 'The top blood pressure number should be bigger than the bottom one. '
+          'Check you have not swapped them.';
+    }
     if (_error != null) {
       setState(() {});
       return;
     }
 
+    // Worked out before saving: the visit is then one of "her visits",
+    // and would otherwise be compared with itself.
+    final alerts = _alerts();
     setState(() => _saving = true);
     final pregnancies = context.read<PregnancyProvider>();
     // A visit today is stamped with the current time; an earlier one at
@@ -456,7 +659,7 @@ class _VisitFormState extends State<_VisitForm> {
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pop(context, _signs.toList());
+      Navigator.pop(context, alerts);
     } else {
       setState(() {
         _saving = false;
@@ -479,6 +682,7 @@ class _VisitFormState extends State<_VisitForm> {
   @override
   Widget build(BuildContext context) {
     final weeks = widget.pregnancy.weeksOn(_date);
+    final alerts = _alerts();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -522,14 +726,6 @@ class _VisitFormState extends State<_VisitForm> {
               ),
           ],
         ),
-        if (_signs.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const PCallout(
-            tone: PTone.red,
-            body: 'If you have not been seen for these yet, please get care today. Call 999 or go to the '
-                'nearest facility if it is severe.',
-          ),
-        ],
         const SizedBox(height: 15),
         PField(
           label: 'Notes',
@@ -540,6 +736,10 @@ class _VisitFormState extends State<_VisitForm> {
             decoration: pInput(hint: 'Anything your clinic told you'),
           ),
         ),
+        if (alerts.isNotEmpty) ...[
+          const SizedBox(height: 15),
+          AncAlertList(alerts: alerts),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 12),
           PCallout(tone: PTone.red, body: _error!),

@@ -152,5 +152,146 @@ void main() {
     expect(saved.diastolicBP, 76);
     expect(saved.gestationalWeeks, 24);
     expect(find.text('Visit 1 · 24 weeks'), findsOneWidget);
+    expect(find.text('Visit saved.'), findsOneWidget, reason: 'a normal visit gets the usual short message');
+    expect(find.text('I understand'), findsNothing);
+  });
+
+  group('readings that need care', () {
+    Future<FakePregnancyProvider> openForm(WidgetTester tester, {List<AncVisit> visits = const []}) async {
+      final pregnancies = FakePregnancyProvider(pregnancies: [ongoing], visits: visits);
+      await _pump(tester, pregnancies, size: const Size(1280, 2400));
+      await tester.tap(find.text('Add a visit').first);
+      await tester.pumpAndSettle();
+      return pregnancies;
+    }
+
+    Future<void> type(WidgetTester tester, int field, String text) async {
+      await tester.enterText(find.byType(TextField).at(field), text);
+      await tester.pump();
+    }
+
+    Future<void> save(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Save visit'));
+      await tester.tap(find.text('Save visit'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Akinyi types 160/110: the warning shows before she saves, with a call button', (tester) async {
+      await openForm(tester);
+      await type(tester, 0, '160');
+      expect(find.text('Your blood pressure is dangerously high'), findsNothing, reason: 'needs both numbers');
+
+      await type(tester, 1, '110');
+      expect(find.text('Your blood pressure is dangerously high'), findsOneWidget);
+      expect(find.text('Call 999'), findsOneWidget);
+
+      await type(tester, 0, '118');
+      await type(tester, 1, '76');
+      expect(find.text('Your blood pressure is dangerously high'), findsNothing, reason: 'it follows the numbers');
+      expect(find.text('Call 999'), findsNothing);
+    });
+
+    testWidgets('saving 160/110 says it again in full, labels the visit, and keeps a reminder on the page',
+        (tester) async {
+      final pregnancies = await openForm(tester);
+      await type(tester, 0, '160');
+      await type(tester, 1, '110');
+      await save(tester);
+
+      expect(pregnancies.addedVisits.single.systolicBP, 160);
+      expect(find.text('Visit saved'), findsOneWidget);
+      expect(find.text('One thing from this visit needs your attention:'), findsOneWidget);
+      expect(find.text('Your blood pressure is dangerously high'), findsOneWidget);
+      expect(find.text('Visit saved.'), findsNothing, reason: 'not the everyday toast');
+
+      await tester.tap(find.text('I understand'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Very high BP'), findsOneWidget, reason: 'the label on the visit');
+      expect(find.textContaining('Very high BP · visit on'), findsOneWidget, reason: 'the reminder at the top');
+      expect(find.textContaining('If you have not been checked since, get care today'), findsOneWidget);
+      expect(find.text('Call 999'), findsOneWidget);
+
+      // The reminder sits above the visit list.
+      final reminder = tester.getTopLeft(find.textContaining('Very high BP · visit on')).dy;
+      final list = tester.getTopLeft(find.text('Antenatal visits')).dy;
+      expect(reminder, lessThan(list));
+    });
+
+    testWidgets('high blood pressure with a severe headache: go now', (tester) async {
+      await openForm(tester);
+      await type(tester, 0, '150');
+      await type(tester, 1, '95');
+      expect(find.text('Your blood pressure is high for pregnancy'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Severe headache'));
+      await tester.tap(find.text('Severe headache'));
+      await tester.pump();
+      expect(find.text('Go to a hospital now'), findsOneWidget);
+      expect(find.text('Your blood pressure is high for pregnancy'), findsNothing, reason: 'replaced by the stronger one');
+      expect(find.text('You noted danger signs'), findsNothing, reason: 'part of the same warning');
+    });
+
+    testWidgets('Hb 6.8, a slow baby heart rate and a small bump are each explained', (tester) async {
+      await openForm(tester);
+      await type(tester, 3, '6.8');
+      expect(find.text('Your blood level (Hb) is very low'), findsOneWidget);
+
+      await type(tester, 4, '105');
+      expect(find.text("Your baby's heart rate is outside the usual range"), findsOneWidget);
+
+      await type(tester, 5, '19');
+      expect(find.text('Your bump measured smaller than usual'), findsOneWidget);
+    });
+
+    testWidgets('fast weight gain is compared with her last visit', (tester) async {
+      final lastVisit = AncVisit(
+        id: 'v1',
+        patientId: 'u1',
+        pregnancyId: 'p1',
+        visitNumber: 1,
+        gestationalWeeks: 22,
+        trimester: 'second',
+        visitDate: today.subtract(const Duration(days: 14)),
+        weight: 64,
+      );
+      await openForm(tester, visits: [lastVisit]);
+      await type(tester, 2, '66.5');
+      expect(find.text('You gained weight faster than usual'), findsOneWidget);
+      await type(tester, 2, '65');
+      expect(find.text('You gained weight faster than usual'), findsNothing);
+    });
+
+    testWidgets('swapped blood pressure numbers are caught', (tester) async {
+      final pregnancies = await openForm(tester);
+      await type(tester, 0, '70');
+      await type(tester, 1, '110');
+      await save(tester);
+      expect(find.textContaining('should be bigger than the bottom one'), findsOneWidget);
+      expect(pregnancies.addedVisits, isEmpty);
+      expect(find.text('Your blood pressure is dangerously high'), findsNothing,
+          reason: 'no warning from numbers that are the wrong way round');
+    });
+
+    testWidgets('a newer normal reading clears the reminder; the old visit keeps its label', (tester) async {
+      AncVisit at(String id, int n, int daysAgo, int sys, int dia) => AncVisit(
+            id: id,
+            patientId: 'u1',
+            pregnancyId: 'p1',
+            visitNumber: n,
+            gestationalWeeks: 24 - daysAgo ~/ 7,
+            trimester: 'second',
+            visitDate: today.subtract(Duration(days: daysAgo)),
+            systolicBP: sys,
+            diastolicBP: dia,
+          );
+      await _pump(
+        tester,
+        FakePregnancyProvider(pregnancies: [ongoing], visits: [at('v2', 2, 1, 118, 76), at('v1', 1, 8, 162, 104)]),
+        size: const Size(1280, 2400),
+      );
+      expect(find.textContaining('· visit on'), findsNothing);
+      expect(find.text('Very high BP'), findsOneWidget);
+    });
   });
 }
