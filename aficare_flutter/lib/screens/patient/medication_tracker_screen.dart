@@ -72,10 +72,13 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
 
   Future<void> _mark(AdherenceLogModel dose, AdherenceStatus status) async {
     final ad = Provider.of<AdherenceProvider>(context, listen: false);
-    await ad.markStatus(dose.id, status);
-    if (mounted) {
-      pToast(context, status == AdherenceStatus.taken ? 'Dose marked as taken' : 'Dose skipped');
+    final ok = await ad.markStatus(dose.id, status);
+    if (!mounted) return;
+    if (!ok) {
+      pToast(context, ad.error ?? "We couldn't save that. Please try again.");
+      return;
     }
+    pToast(context, status == AdherenceStatus.taken ? 'Dose marked as taken' : 'Dose skipped');
   }
 
   @override
@@ -343,102 +346,143 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
   // ── Add medication ────────────────────────────────────────────────────
 
   Future<void> _openAddMedication() async {
-    final nameCtrl = TextEditingController();
-    final dosageCtrl = TextEditingController();
-    final instructionsCtrl = TextEditingController();
-    var timesPerDay = 1;
-    var submitting = false;
-
-    await showPModal<void>(
+    final result = await showPModal<AddMedicationResult>(
       context: context,
       title: 'Add a medication',
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'This is added as a self-tracked medication so AfiCare can remind you and '
-              'record each dose.',
-              style: PT.sub(),
-            ),
-            const SizedBox(height: 16),
-            PFormGrid([
-              PField(
-                label: 'Medication name',
-                child: TextField(
-                  controller: nameCtrl,
-                  decoration: pInput(hint: 'e.g. Amoxicillin'),
-                ),
-              ),
-              PField(
-                label: 'Dosage',
-                child: TextField(
-                  controller: dosageCtrl,
-                  decoration: pInput(hint: 'e.g. 250 mg, 1 tablet'),
-                ),
-              ),
-              PField(
-                label: 'Times per day',
-                child: DropdownButtonFormField<int>(
-                  value: timesPerDay,
-                  decoration: pInput(),
-                  items: [
-                    for (int i = 1; i <= 6; i++)
-                      DropdownMenuItem(value: i, child: Text('$i time${i == 1 ? '' : 's'} a day')),
-                  ],
-                  onChanged: (v) => setSheetState(() => timesPerDay = v ?? 1),
-                ),
-              ),
-              PField(
-                label: 'Instructions (optional)',
-                child: TextField(
-                  controller: instructionsCtrl,
-                  decoration: pInput(hint: 'e.g. after food'),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 18),
-            PButton(
-              submitting ? 'Saving…' : 'Save medication',
-              expand: true,
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      if (nameCtrl.text.trim().isEmpty) {
-                        pToast(ctx, 'Please enter a medication name.');
-                        return;
-                      }
-                      if (dosageCtrl.text.trim().isEmpty) {
-                        pToast(ctx, 'Please enter a dosage, e.g. 500 mg.');
-                        return;
-                      }
-                      setSheetState(() => submitting = true);
-
-                      final ad = Provider.of<AdherenceProvider>(context, listen: false);
-                      final ok = await ad.addMedication(
-                        patientId: _patientId,
-                        medicationName: nameCtrl.text.trim(),
-                        dosage: dosageCtrl.text.trim(),
-                        timesPerDay: timesPerDay,
-                        instructions: instructionsCtrl.text.trim().isEmpty
-                            ? null
-                            : instructionsCtrl.text.trim(),
-                      );
-
-                      if (!ctx.mounted) return;
-                      Navigator.pop(ctx);
-                      if (!mounted) return;
-                      pToast(context, ok ? 'Medication added' : 'Could not add that medication');
-                      if (ok) _load();
-                    },
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => _AddMedicationForm(patientId: _patientId),
     );
+    if (result == null || !mounted) return;
+    pToast(
+      context,
+      result == AddMedicationResult.added
+          ? 'Medication added'
+          : "Medication added. Today's doses will appear when you're back online.",
+    );
+    _load();
+  }
+}
 
-    nameCtrl.dispose();
-    dosageCtrl.dispose();
-    instructionsCtrl.dispose();
+/// The "Add a medication" form. Its own widget, so its text boxes live
+/// exactly as long as it does (they were thrown away while the dialog
+/// was still closing). Pops with the result once something was saved;
+/// stays open, with what she typed, when nothing was.
+class _AddMedicationForm extends StatefulWidget {
+  const _AddMedicationForm({required this.patientId});
+
+  final String patientId;
+
+  @override
+  State<_AddMedicationForm> createState() => _AddMedicationFormState();
+}
+
+class _AddMedicationFormState extends State<_AddMedicationForm> {
+  final _name = TextEditingController();
+  final _dosage = TextEditingController();
+  final _instructions = TextEditingController();
+  int _timesPerDay = 1;
+  bool _submitting = false;
+  String? _problem;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _dosage.dispose();
+    _instructions.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_name.text.trim().isEmpty) {
+      setState(() => _problem = 'Please enter the name of the medicine.');
+      return;
+    }
+    if (_dosage.text.trim().isEmpty) {
+      setState(() => _problem = 'Please enter a dosage, e.g. 500 mg.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _problem = null;
+    });
+
+    final ad = context.read<AdherenceProvider>();
+    final result = await ad.addMedication(
+      patientId: widget.patientId,
+      medicationName: _name.text.trim(),
+      dosage: _dosage.text.trim(),
+      timesPerDay: _timesPerDay,
+      instructions: _instructions.text.trim().isEmpty ? null : _instructions.text.trim(),
+    );
+    if (!mounted) return;
+    if (result == AddMedicationResult.failed) {
+      // Nothing was saved: the form stays, with what she typed, so trying
+      // again cannot make a copy.
+      setState(() {
+        _submitting = false;
+        _problem = ad.error ?? "We couldn't add this medicine. Please try again.";
+      });
+      return;
+    }
+    Navigator.pop(context, result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'This is added as a self-tracked medication so AfiCare can remind you and '
+          'record each dose.',
+          style: PT.sub(),
+        ),
+        const SizedBox(height: 16),
+        PFormGrid([
+          PField(
+            label: 'Medication name',
+            child: TextField(
+              controller: _name,
+              decoration: pInput(hint: 'e.g. Amoxicillin'),
+            ),
+          ),
+          PField(
+            label: 'Dosage',
+            child: TextField(
+              controller: _dosage,
+              decoration: pInput(hint: 'e.g. 250 mg, 1 tablet'),
+            ),
+          ),
+          PField(
+            label: 'Times per day',
+            child: DropdownButtonFormField<int>(
+              value: _timesPerDay,
+              decoration: pInput(),
+              items: [
+                for (int i = 1; i <= 6; i++)
+                  DropdownMenuItem(value: i, child: Text('$i time${i == 1 ? '' : 's'} a day')),
+              ],
+              onChanged: _submitting ? null : (v) => setState(() => _timesPerDay = v ?? 1),
+            ),
+          ),
+          PField(
+            label: 'Instructions (optional)',
+            child: TextField(
+              controller: _instructions,
+              decoration: pInput(hint: 'e.g. after food'),
+            ),
+          ),
+        ]),
+        if (_problem != null) ...[
+          const SizedBox(height: 14),
+          PCallout(tone: PTone.red, body: _problem!),
+        ],
+        const SizedBox(height: 18),
+        PButton(
+          _submitting ? 'Saving…' : 'Save medication',
+          expand: true,
+          onPressed: _submitting ? null : _save,
+        ),
+      ],
+    );
   }
 }

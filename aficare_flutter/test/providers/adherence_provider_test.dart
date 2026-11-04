@@ -169,7 +169,7 @@ void main() {
         instructions: 'with food',
       );
 
-      expect(ok, isTrue);
+      expect(ok, AddMedicationResult.added);
 
       final rxInsert = fake.requestsTo('POST', 'prescriptions').single;
       final rxBody = jsonDecode(rxInsert.body) as Map<String, dynamic>;
@@ -197,22 +197,107 @@ void main() {
       expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).hour), [8, 20]);
     });
 
-    test('failure returns false', () async {
+    for (final (times, hours) in [
+      (5, [6, 10, 14, 18, 22]),
+      (6, [6, 10, 14, 18, 22, 2]),
+    ]) {
+      test('$times times a day saves, with $times doses spread across the day', () async {
+        fake.routeJson('/rest/v1/prescriptions', {'id': 'rx-new', 'patient_id': 'p1'});
+        fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+
+        final result = await AdherenceProvider().addMedication(
+          patientId: 'p1',
+          medicationName: 'Salbutamol',
+          dosage: '2 puffs',
+          timesPerDay: times,
+        );
+
+        expect(result, AddMedicationResult.added);
+        final rx = jsonDecode(fake.requestsTo('POST', 'prescriptions').single.body) as Map;
+        expect(rx['frequency'], '$times times a day');
+        final doses = jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List;
+        expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).hour), hours);
+        expect(doses.every((d) => d['prescription_id'] == 'rx-new' && d['status'] == 'pending'), isTrue);
+      });
+    }
+
+    test('every choice from 1 to 6 saves', () async {
+      for (var times = 1; times <= 6; times++) {
+        fake.reset();
+        fake.routeJson('/rest/v1/prescriptions', {'id': 'rx-$times', 'patient_id': 'p1'});
+        fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+        final result = await AdherenceProvider().addMedication(
+          patientId: 'p1',
+          medicationName: 'Medicine',
+          dosage: '1 tablet',
+          timesPerDay: times,
+        );
+        expect(result, AddMedicationResult.added, reason: '$times a day');
+        final doses = jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List;
+        expect(doses, hasLength(times));
+      }
+    });
+
+    test('if the medicine cannot be saved, nothing is saved and she is told plainly', () async {
       fake.routeRaw(
         '/rest/v1/prescriptions',
-        http.Response('{"message":"denied"}', 403),
+        http.Response('{"message":"denied"}', 403, headers: {'content-type': 'application/json'}),
       );
 
       final provider = AdherenceProvider();
-      final ok = await provider.addMedication(
+      final result = await provider.addMedication(
         patientId: 'p1',
         medicationName: 'Ibuprofen',
         dosage: '200mg',
         timesPerDay: 2,
       );
 
+      expect(result, AddMedicationResult.failed);
+      expect(fake.requestsTo('POST', 'adherence_log'), isEmpty, reason: 'no doses for a medicine that was not saved');
+      expect(provider.error, contains("couldn't add this medicine"));
+      expect(provider.error, isNot(contains('denied')));
+    });
+
+    test("if today's doses cannot be saved, it tries again, then says the medicine is saved without them", () async {
+      fake.routeJson('/rest/v1/prescriptions', {'id': 'rx-new', 'patient_id': 'p1'});
+      fake.routeRaw('/rest/v1/adherence_log',
+          http.Response('{"message":"boom"}', 500, headers: {'content-type': 'application/json'}));
+
+      final result = await AdherenceProvider().addMedication(
+        patientId: 'p1',
+        medicationName: 'Ibuprofen',
+        dosage: '200mg',
+        timesPerDay: 5,
+      );
+
+      expect(result, AddMedicationResult.addedDosesLater);
+      expect(fake.requestsTo('POST', 'prescriptions'), hasLength(1), reason: 'the medicine is saved once');
+      expect(fake.requestsTo('POST', 'adherence_log'), hasLength(2), reason: 'tried twice');
+    });
+
+    test('the doses that could not be saved are added the next time the tracker loads', () async {
+      fake.routeJson('/rest/v1/prescriptions', [
+        {'id': 'rx-new', 'frequency': '5 times a day', 'status': 'active'},
+      ]);
+      fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+      await AdherenceProvider().ensureTodayDoses('p1');
+      final doses = jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List;
+      expect(doses, hasLength(5));
+    });
+  });
+
+  group('AdherenceProvider.markStatus confirmation', () {
+    test('a change the database did not make is a failure, and nothing changes on screen', () async {
+      fake.routeJson('/rest/v1/adherence_log', [dose(status: 'pending')]);
+      final provider = AdherenceProvider();
+      await provider.loadToday('p1');
+      fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+
+      final ok = await provider.markStatus('d1', AdherenceStatus.taken);
+
       expect(ok, isFalse);
-      expect(provider.error, isNotNull);
+      expect(provider.today.single.status, AdherenceStatus.pending);
+      expect(provider.error, contains("couldn't save that"));
     });
   });
 

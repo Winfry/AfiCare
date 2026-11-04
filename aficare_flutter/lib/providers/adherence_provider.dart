@@ -4,6 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/adherence_model.dart';
 import '../utils/dose_frequency.dart';
 
+/// What happened when a medicine was added (see
+/// [AdherenceProvider.addMedication]).
+enum AddMedicationResult {
+  /// The medicine and today's doses are saved.
+  added,
+
+  /// The medicine is saved; today's doses will be added when the tracker
+  /// next loads.
+  addedDosesLater,
+
+  /// Nothing was saved.
+  failed,
+}
+
 class AdherenceProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -96,15 +110,22 @@ class AdherenceProvider with ChangeNotifier {
     return bars;
   }
 
-  /// Patient adds their own medication: creates a self-prescribed
-  /// prescription row + generates today's dose entries.
-  Future<bool> addMedication({
+  /// Patient adds their own medication: a self-prescribed prescription,
+  /// then today's dose entries.
+  ///
+  /// Never leaves her guessing: [AddMedicationResult.failed] means nothing
+  /// was saved, so trying again cannot make a copy;
+  /// [AddMedicationResult.addedDosesLater] means the medicine is saved but
+  /// today's doses are not yet, and [ensureTodayDoses] adds them the next
+  /// time the tracker loads.
+  Future<AddMedicationResult> addMedication({
     required String patientId,
     required String medicationName,
     required String dosage,
     required int timesPerDay,
     String? instructions,
   }) async {
+    final String prescriptionId;
     try {
       // 1. Create a self-prescribed prescription
       final rxResponse = await _supabase
@@ -121,34 +142,38 @@ class AdherenceProvider with ChangeNotifier {
           })
           .select()
           .single();
+      prescriptionId = rxResponse['id'] as String;
+    } catch (e) {
+      debugPrint('Adding a medication failed: $e');
+      _error = "We couldn't add this medicine. Check your connection and try again.";
+      notifyListeners();
+      return AddMedicationResult.failed;
+    }
 
-      final prescriptionId = rxResponse['id'] as String;
-
-      // 2. Generate today's dose entries
-      final now = DateTime.now();
-      final doses = <Map<String, dynamic>>[];
-      for (final hour in DoseFrequency.hours(timesPerDay)) {
-        final scheduledTime = DateTime(now.year, now.month, now.day, hour);
-        doses.add({
+    // 2. Today's doses, spread across the day (up to 6).
+    final now = DateTime.now();
+    final doses = [
+      for (final hour in DoseFrequency.hours(timesPerDay))
+        {
           'prescription_id': prescriptionId,
           'patient_id': patientId,
-          'scheduled_time': scheduledTime.toIso8601String(),
+          'scheduled_time': DateTime(now.year, now.month, now.day, hour).toIso8601String(),
           'status': 'pending',
-        });
-      }
-
-      if (doses.isNotEmpty) {
+        },
+    ];
+    var dosesSaved = doses.isEmpty;
+    for (var attempt = 0; attempt < 2 && !dosesSaved; attempt++) {
+      try {
         await _supabase.from('adherence_log').insert(doses);
+        dosesSaved = true;
+      } catch (e) {
+        debugPrint("Adding today's doses failed (attempt ${attempt + 1}): $e");
       }
-
-      // 3. Reload today's doses
-      await loadToday(patientId);
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
     }
+
+    // 3. Reload today's doses
+    await loadToday(patientId);
+    return dosesSaved ? AddMedicationResult.added : AddMedicationResult.addedDosesLater;
   }
 
   /// Ensures today's doses exist for all active prescriptions.
@@ -277,7 +302,9 @@ class AdherenceProvider with ChangeNotifier {
             : null,
         'skipped_reason': status == AdherenceStatus.skipped ? reason : null,
       };
-      await _supabase.from('adherence_log').update(updates).eq('id', logId);
+      // .select() so a change the database quietly refused is caught.
+      final rows = await _supabase.from('adherence_log').update(updates).eq('id', logId).select('id');
+      if ((rows as List).isEmpty) throw StateError('No dose was changed');
 
       final idx = _today.indexWhere((d) => d.id == logId);
       if (idx != -1) {
@@ -291,7 +318,8 @@ class AdherenceProvider with ChangeNotifier {
       }
       return true;
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Marking a dose failed: $e');
+      _error = "We couldn't save that. Check your connection and try again.";
       notifyListeners();
       return false;
     }
