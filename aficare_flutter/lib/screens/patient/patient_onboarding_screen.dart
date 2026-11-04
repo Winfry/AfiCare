@@ -6,25 +6,30 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../models/facility_model.dart';
 import '../../models/patient_profile_model.dart';
-import '../../providers/admin_facility_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../theme/patient_tokens.dart';
-import '../../utils/snackbar_utils.dart';
+import 'widgets/facility_picker.dart';
 import 'widgets/patient_ui.dart';
 
 /// First-run onboarding, shown once a patient has created their MediLink
 /// ID. Four steps: Welcome → About you → Your care → Your MediLink ID.
 ///
-/// The saving logic is unchanged from the original wizard: the profile
-/// goes through [PatientProfileProvider.saveProfile], the home facility
-/// is written to `users.facility_id`, and anyone the patient cares for is
-/// created through [DependentProvider.addDependent].
+/// The profile goes through [PatientProfileProvider.saveProfile], the
+/// home facility is written to `users.facility_id`, and anyone the
+/// patient cares for is created through [DependentProvider.addDependent],
+/// once each: going Back and Continue again never adds them twice, and a
+/// step that could not be saved is never shown as done.
 class PatientOnboardingScreen extends StatefulWidget {
-  const PatientOnboardingScreen({super.key});
+  const PatientOnboardingScreen({super.key, this.facilityService, this.startAtStep = 0});
+
+  /// For tests.
+  final FacilitySearchService? facilityService;
+
+  /// For tests: the step to open on.
+  final int startAtStep;
 
   @override
   State<PatientOnboardingScreen> createState() => _PatientOnboardingScreenState();
@@ -45,8 +50,9 @@ class _NewDependent {
 }
 
 class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
-  int _step = 0;
+  late int _step = widget.startAtStep;
   bool _saving = false;
+  late final FacilitySearchService _facilitySearch = widget.facilityService ?? FacilitySearchService();
 
   // Step 2 — About you
   DateTime? _dob;
@@ -59,18 +65,43 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
   final _emergencyPhoneController = TextEditingController();
 
   // Step 3 — Your care
-  String? _facilityId;
+  /// The home facility chosen on this step.
+  FacilityChoice? _facility;
+
+  /// The home facility as stored, so it is only written when it changes.
+  String? _savedFacilityId;
+
   final _dependents = <_NewDependent>[];
-  List<FacilityModel> _facilities = const [];
+
+  /// Those already stored. Kept so going Back and Continue again never
+  /// adds the same person twice.
+  final _savedDependents = <_NewDependent>{};
+
+  /// Those whose last save failed, to show on the list.
+  final _failedDependents = <_NewDependent>{};
 
   @override
   void initState() {
     super.initState();
     _prefillFromSaved();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadFacilities();
+      _loadSavedFacility();
       _loadSavedIfMissing();
     });
+  }
+
+  /// Shows the home facility already on her account, if any.
+  Future<void> _loadSavedFacility() async {
+    final id = Provider.of<AuthProvider>(context, listen: false).currentUser?.facilityId;
+    if (id == null || id.isEmpty) return;
+    _savedFacilityId = id;
+    try {
+      final found = await _facilitySearch.byId(id);
+      if (mounted && found != null && _facility == null) setState(() => _facility = found);
+    } catch (e) {
+      // She can still search for it; nothing is lost.
+      debugPrint('patient_onboarding_screen: loading the home facility failed: $e');
+    }
   }
 
   /// Opening /onboarding directly (a page refresh) skips the shell, so
@@ -98,13 +129,6 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
     _allergies.addAll(saved.allergies);
     _emergencyNameController.text = saved.emergencyContactName ?? '';
     _emergencyPhoneController.text = saved.emergencyContactPhone ?? '';
-  }
-
-  Future<void> _loadFacilities() async {
-    final provider = Provider.of<AdminFacilityProvider>(context, listen: false);
-    await provider.loadFacilities();
-    if (!mounted) return;
-    setState(() => _facilities = provider.facilities);
   }
 
   @override
@@ -154,33 +178,61 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
     return provider.saveProfile(profile);
   }
 
-  Future<void> _saveFacilityAndDependents() async {
+  /// Saves the home facility (if it changed) and everyone not yet
+  /// stored. Returns what went wrong, or null when all of it was saved.
+  Future<String?> _saveCare() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final dep = Provider.of<DependentProvider>(context, listen: false);
     final userId = auth.currentUser?.id;
-    if (userId == null) return;
+    if (userId == null) return 'Please sign in again to save this.';
 
-    if (_facilityId != null) {
+    final problems = <String>[];
+
+    final chosen = _facility;
+    if (chosen != null && chosen.id != _savedFacilityId) {
       try {
+        // .select() so a change the database quietly refused is caught.
         await Supabase.instance.client
             .from('users')
-            .update({'facility_id': _facilityId}).eq('id', userId);
+            .update({'facility_id': chosen.id})
+            .eq('id', userId)
+            .select('id')
+            .single();
+        _savedFacilityId = chosen.id;
       } catch (e) {
         debugPrint('patient_onboarding_screen: saving home facility failed: $e');
-        if (mounted) showErrorSnackBar(context, 'Could not save your home facility');
+        problems.add("We couldn't save your home facility.");
       }
     }
 
-    for (final d in _dependents) {
-      await dep.addDependent(
+    final notAdded = <String>[];
+    for (final d in List.of(_dependents)) {
+      if (_savedDependents.contains(d)) continue;
+      final ok = await dep.addDependent(
         guardianId: userId,
         fullName: d.name,
         relationship: d.relationship,
         dateOfBirth: d.dob,
         allergies: d.allergies,
       );
+      if (ok) {
+        _savedDependents.add(d);
+        _failedDependents.remove(d);
+      } else {
+        _failedDependents.add(d);
+        notAdded.add(d.name);
+      }
     }
+    if (notAdded.isNotEmpty) {
+      problems.add("We couldn't add ${_joinNames(notAdded)}.");
+    }
+
+    if (problems.isEmpty) return null;
+    return '${problems.join(' ')} Check your connection and try again.';
   }
+
+  static String _joinNames(List<String> names) =>
+      names.length == 1 ? names.single : '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
 
   Future<void> _markSkipped() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -254,12 +306,59 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
 
   Future<void> _continueFromCare() async {
     setState(() => _saving = true);
-    await _saveFacilityAndDependents();
+    final problem = await _saveCare();
     if (!mounted) return;
+    if (problem != null) {
+      // Stay here, with everything still filled in and what did save
+      // marked as added, so trying again saves only what is missing.
+      setState(() => _saving = false);
+      _showSnack(problem);
+      return;
+    }
     setState(() {
       _saving = false;
       _step = 3;
     });
+  }
+
+  /// "Skip for now" after adding people who are not saved yet asks
+  /// first, rather than quietly dropping them.
+  Future<void> _skipFromCare() async {
+    final unsaved = _dependents.where((d) => !_savedDependents.contains(d)).toList();
+    if (unsaved.isEmpty) {
+      _goTo(3);
+      return;
+    }
+    final names = _joinNames([for (final d in unsaved) d.name]);
+    final choice = await showPModal<bool>(
+      context: context,
+      title: 'Skip without adding $names?',
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$names won't be added. You can add people later from People I care for.",
+            style: PT.sub(),
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              PButton('Skip anyway', kind: PButtonKind.alt, onPressed: () => Navigator.pop(ctx, false)),
+              PButton('Add them', onPressed: () => Navigator.pop(ctx, true)),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice) {
+      _continueFromCare();
+    } else {
+      _goTo(3);
+    }
   }
 
   Future<void> _skipFromWelcome() async {
@@ -324,15 +423,20 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
                             onContinue: _continueFromProfile,
                           ),
                         2 => _YourCareStep(
-                            facilities: _facilities,
-                            facilityId: _facilityId,
+                            facility: _facility,
+                            facilityService: _facilitySearch,
                             dependents: _dependents,
-                            onFacilityChanged: (v) => setState(() => _facilityId = v),
+                            saved: _savedDependents,
+                            failed: _failedDependents,
+                            onFacilityChanged: (f) => setState(() => _facility = f),
                             onAddDependent: _addDependent,
-                            onRemoveDependent: (d) => setState(() => _dependents.remove(d)),
+                            onRemoveDependent: (d) => setState(() {
+                              _dependents.remove(d);
+                              _failedDependents.remove(d);
+                            }),
                             saving: _saving,
                             onContinue: _continueFromCare,
-                            onSkip: () => _goTo(3),
+                            onSkip: _skipFromCare,
                           ),
                         _ => _MediLinkStep(
                             fullName: context.watch<AuthProvider>().currentUser?.fullName ?? '',
@@ -791,9 +895,11 @@ class _AboutYouStep extends StatelessWidget {
 
 class _YourCareStep extends StatelessWidget {
   const _YourCareStep({
-    required this.facilities,
-    required this.facilityId,
+    required this.facility,
+    required this.facilityService,
     required this.dependents,
+    required this.saved,
+    required this.failed,
     required this.onFacilityChanged,
     required this.onAddDependent,
     required this.onRemoveDependent,
@@ -802,10 +908,16 @@ class _YourCareStep extends StatelessWidget {
     required this.onSkip,
   });
 
-  final List<FacilityModel> facilities;
-  final String? facilityId;
+  final FacilityChoice? facility;
+  final FacilitySearchService facilityService;
   final List<_NewDependent> dependents;
-  final ValueChanged<String?> onFacilityChanged;
+
+  /// Already stored: shown as added, and not removable here.
+  final Set<_NewDependent> saved;
+
+  /// Their last save failed.
+  final Set<_NewDependent> failed;
+  final ValueChanged<FacilityChoice> onFacilityChanged;
   final VoidCallback onAddDependent;
   final ValueChanged<_NewDependent> onRemoveDependent;
   final bool saving;
@@ -832,23 +944,7 @@ class _YourCareStep extends StatelessWidget {
                 style: PT.rowSub(),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                value: facilityId,
-                isExpanded: true,
-                decoration: pInput(),
-                hint: Text(
-                  facilities.isEmpty ? 'Loading facilities…' : 'Choose a facility',
-                  style: PT.sub(),
-                ),
-                items: [
-                  for (final f in facilities)
-                    DropdownMenuItem(
-                      value: f.id,
-                      child: Text(f.name, overflow: TextOverflow.ellipsis, style: PT.body()),
-                    ),
-                ],
-                onChanged: facilities.isEmpty ? null : onFacilityChanged,
-              ),
+              FacilityPicker(selected: facility, onChanged: onFacilityChanged, service: facilityService),
             ],
           ),
         ),
@@ -872,14 +968,26 @@ class _YourCareStep extends StatelessWidget {
                     leading: PAvatar(initials: _initials(d.name), size: 38, isDependent: true),
                     title: d.name,
                     subtitle: _describe(d),
+                    extraSubtitle: saved.contains(d)
+                        ? 'Added ✓'
+                        : failed.contains(d)
+                            ? 'Not added yet. Continue tries again.'
+                            : null,
                     trailing: [
-                      IconButton(
-                        onPressed: () => onRemoveDependent(d),
-                        icon: const Icon(Icons.close_rounded, size: 18, color: PT.muted),
-                        tooltip: 'Remove ${d.name}',
-                      ),
+                      if (saved.contains(d))
+                        const PBadge('Added', tone: PTone.ok)
+                      else
+                        IconButton(
+                          onPressed: () => onRemoveDependent(d),
+                          icon: const Icon(Icons.close_rounded, size: 18, color: PT.muted),
+                          tooltip: 'Remove ${d.name}',
+                        ),
                     ],
                   ),
+              if (saved.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('You can change or remove people later in People I care for.', style: PT.rowSub()),
+              ],
               const SizedBox(height: 12),
               PButton('+ Add someone', kind: PButtonKind.alt, onPressed: onAddDependent),
             ],
