@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/message_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dependent_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../theme/patient_tokens.dart';
 import '../../widgets/provider_avatar.dart';
@@ -25,17 +26,34 @@ bool _prefersIllustratedAvatar(String? roleName, UserModel? cached) {
 /// list-then-push on narrow ones. Rendered inside the patient shell, so
 /// it carries no app bar of its own.
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key});
+  const MessagesScreen({super.key, this.openWithId, this.openWithName, this.aboutPatientId});
+
+  /// Opens a conversation with this person straight away: "Message" on
+  /// a care team member or an appointment lands here.
+  final String? openWithId;
+  final String? openWithName;
+
+  /// Who the conversation is about, when it is a dependant's clinician.
+  final String? aboutPatientId;
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
+}
+
+/// The conversation open in the chat pane.
+class _ChatTarget {
+  const _ChatTarget(this.id, this.name, {this.about});
+  final String id;
+  final String name;
+  final String? about;
 }
 
 class _MessagesScreenState extends State<MessagesScreen> {
   bool _isLoading = true;
   bool _loadFailed = false;
   String _search = '';
-  ConversationSummary? _selected;
+  _ChatTarget? _selected;
+  bool _openedFromLink = false;
 
   @override
   void initState() {
@@ -60,6 +78,46 @@ class _MessagesScreenState extends State<MessagesScreen> {
         _loadFailed = failed;
       });
     }
+    final to = widget.openWithId;
+    if (!_openedFromLink && to != null && to.isNotEmpty && mounted) {
+      _openedFromLink = true;
+      final name = widget.openWithName?.trim();
+      _openChat(_ChatTarget(to, name == null || name.isEmpty ? 'Your clinician' : name, about: widget.aboutPatientId));
+    }
+  }
+
+  /// Opens [t] beside the list on wide screens, or on its own on phones.
+  Future<void> _openChat(_ChatTarget t) async {
+    if (!PT.isTablet(context)) {
+      setState(() => _selected = t);
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(counterpartId: t.id, counterpartName: t.name, aboutPatientId: t.about),
+      ),
+    );
+    _load();
+  }
+
+  /// Lets her pick a clinician to write to, then opens that conversation.
+  Future<void> _newMessage() async {
+    final picked = await showPModal<MessageContact>(
+      context: context,
+      title: 'New message',
+      builder: (_) => const _ContactPicker(),
+    );
+    if (picked == null || !mounted) return;
+    // About the profile she is looking at if this clinician cares for
+    // them; about the one person they care for otherwise.
+    final active = context.read<DependentProvider>().activePatientId;
+    final about = picked.caresFor.contains(active)
+        ? active
+        : picked.caresFor.length == 1
+            ? picked.caresFor.single
+            : null;
+    _openChat(_ChatTarget(picked.id, picked.name, about: about));
   }
 
   @override
@@ -107,7 +165,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PCardTitle('Conversations'),
+          PCardTitle(
+            'Conversations',
+            trailing: PButton('New message', icon: Icons.edit_outlined, dense: true, onPressed: _newMessage),
+          ),
           TextField(
             onChanged: (v) => setState(() => _search = v),
             decoration: pInput(hint: 'Search messages…').copyWith(
@@ -119,10 +180,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
             child: _loadFailed && convos.isEmpty
                 ? PLoadError(what: 'your conversations', onRetry: _load)
                 : convos.isEmpty
-                ? const PEmpty(
+                ? PEmpty(
                     emoji: '💬',
                     title: 'No messages yet',
-                    body: 'Conversations with your care team will appear here.',
+                    body: 'Write to a doctor or nurse who cares for you or your family. '
+                        'Your conversations will appear here.',
+                    action: PButton('Write a message', kind: PButtonKind.alt, onPressed: _newMessage),
                   )
                 : RefreshIndicator(
                     onRefresh: _load,
@@ -139,7 +202,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _conversationRow(ConversationSummary c, {required bool isWide}) {
-    final selected = isWide && _selected?.counterpartId == c.counterpartId;
+    final selected = isWide && _selected?.id == c.counterpartId;
     final cached = context.read<MessageProvider>().cachedUser(c.counterpartId);
 
     final avatar = _prefersIllustratedAvatar(c.counterpartRole, cached)
@@ -165,22 +228,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(PT.rRow),
-          onTap: () async {
-            if (isWide) {
-              setState(() => _selected = c);
-            } else {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChatScreen(
-                    counterpartId: c.counterpartId,
-                    counterpartName: c.counterpartName,
-                  ),
-                ),
-              );
-              _load();
-            }
-          },
+          onTap: () => _openChat(_ChatTarget(c.counterpartId, c.counterpartName)),
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -229,22 +277,27 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _chatPane() {
-    if (_selected == null) {
-      return const PCard(
+    final t = _selected;
+    if (t == null) {
+      return PCard(
         child: Center(
           child: PEmpty(
             emoji: '💬',
             title: 'Select a conversation',
-            body: 'Choose someone on the left to read and reply to your messages.',
+            body: 'Choose someone on the left to read and reply, or start a new conversation.',
+            action: PButton('New message', kind: PButtonKind.alt, onPressed: _newMessage),
           ),
         ),
       );
     }
     return ChatScreen(
-      key: ValueKey(_selected!.counterpartId),
+      key: ValueKey(t.id),
       embedded: true,
-      counterpartId: _selected!.counterpartId,
-      counterpartName: _selected!.counterpartName,
+      counterpartId: t.id,
+      counterpartName: t.name,
+      aboutPatientId: t.about,
+      // A message sent from a new conversation should show in the list.
+      onSent: _load,
     );
   }
 
@@ -269,11 +322,19 @@ class ChatScreen extends StatefulWidget {
   /// embedded inside the split-pane layout.
   final bool embedded;
 
+  /// Who the conversation is about, when it is a dependant's clinician.
+  final String? aboutPatientId;
+
+  /// Called after a message is sent.
+  final VoidCallback? onSent;
+
   const ChatScreen({
     super.key,
     required this.counterpartId,
     required this.counterpartName,
     this.embedded = false,
+    this.aboutPatientId,
+    this.onSent,
   });
 
   @override
@@ -324,16 +385,25 @@ class _ChatScreenState extends State<ChatScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final mp = Provider.of<MessageProvider>(context, listen: false);
     final id = auth.currentUser?.id;
+    var ok = false;
     if (id != null) {
-      final ok = await mp.sendMessage(
+      ok = await mp.sendMessage(
         senderId: id,
         receiverId: widget.counterpartId,
         content: text,
+        patientId: widget.aboutPatientId,
       );
-      if (ok) _controller.clear();
     }
-    if (mounted) setState(() => _sending = false);
-    _scrollToBottom();
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (ok) {
+      _controller.clear();
+      widget.onSent?.call();
+      _scrollToBottom();
+    } else {
+      // Her words stay in the box, so nothing she wrote is lost.
+      pToast(context, "Your message wasn't sent. Check your connection and try again.");
+    }
   }
 
   @override
@@ -457,7 +527,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   builder: (context, mp, _) {
                     if (mp.thread.isEmpty) {
                       return Center(
-                        child: Text('Start the conversation', style: PT.sub()),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Write your first message to ${widget.counterpartName}.\n'
+                            'For an emergency, call 999 or 112 rather than waiting for a reply.',
+                            textAlign: TextAlign.center,
+                            style: PT.sub(),
+                          ),
+                        ),
                       );
                     }
                     return ListView.builder(
@@ -554,6 +632,78 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The people she may write to, to pick one. Pops the chosen
+/// [MessageContact].
+class _ContactPicker extends StatefulWidget {
+  const _ContactPicker();
+
+  @override
+  State<_ContactPicker> createState() => _ContactPickerState();
+}
+
+class _ContactPickerState extends State<_ContactPicker> {
+  late Future<List<MessageContact>> _contacts;
+
+  @override
+  void initState() {
+    super.initState();
+    _contacts = context.read<MessageProvider>().loadContacts();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<MessageContact>>(
+      future: _contacts,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(child: CircularProgressIndicator(color: PT.teal)),
+          );
+        }
+        if (snap.hasError) {
+          return PLoadError(
+            what: 'who you can message',
+            onRetry: () => setState(() => _contacts = context.read<MessageProvider>().loadContacts()),
+          );
+        }
+        final contacts = snap.data ?? const <MessageContact>[];
+        if (contacts.isEmpty) {
+          return const PEmpty(
+            emoji: '👩🏾‍⚕️',
+            title: 'No one to message yet',
+            body: 'Once you have an appointment or a visit with a doctor or nurse, or they join '
+                'your care team, you can write to them here.',
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Doctors and nurses who care for you or your family.', style: PT.sub()),
+            const SizedBox(height: 12),
+            for (final c in contacts)
+              PRow(
+                leading: ProviderAvatarSmall(
+                  name: c.name,
+                  role: c.role == 'nurse' ? UserRole.nurse : UserRole.doctor,
+                  gender: c.gender,
+                  photoUrl: c.photoUrl,
+                  radius: 19,
+                ),
+                title: c.name,
+                subtitle: c.caresForNames.isEmpty
+                    ? c.roleLabel
+                    : '${c.roleLabel} · Looks after ${c.caresForNames.join(' and ')}',
+                trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+                onTap: () => Navigator.pop(context, c),
+              ),
+          ],
+        );
+      },
     );
   }
 }

@@ -352,7 +352,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           'Message',
           kind: PButtonKind.alt,
           dense: true,
-          onPressed: () => context.go('/patient/messages'),
+          onPressed: () => context.go(PatientRoutes.messageTo(m.providerId, name: name, patientId: m.patientId)),
         ),
       ],
     );

@@ -401,7 +401,15 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: 'messages',
-              pageBuilder: (context, state) => _patientPage(state, const MessagesScreen()),
+              // ?to=<id>&name=<name>&about=<patient id> opens that chat.
+              pageBuilder: (context, state) => _patientPage(
+                state,
+                MessagesScreen(
+                  openWithId: state.uri.queryParameters['to'],
+                  openWithName: state.uri.queryParameters['name'],
+                  aboutPatientId: state.uri.queryParameters['about'],
+                ),
+              ),
             ),
             GoRoute(
               path: 'records',

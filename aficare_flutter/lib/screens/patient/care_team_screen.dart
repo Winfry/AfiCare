@@ -8,6 +8,7 @@ import '../../providers/dependent_provider.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/default_avatars.dart';
 import '../../widgets/provider_avatar.dart';
+import 'patient_nav.dart';
 import 'widgets/patient_ui.dart';
 
 /// Care Team — the people involved in this patient's care. Reads the
@@ -101,7 +102,7 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
             'Message',
             kind: PButtonKind.alt,
             dense: true,
-            onPressed: () => context.go('/patient/messages'),
+            onPressed: () => context.go(PatientRoutes.messageTo(m.providerId, name: name, patientId: m.patientId)),
           ),
         ],
       ),

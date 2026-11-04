@@ -15,6 +15,15 @@ abstract final class PatientRoutes {
   static const medications = '/patient/medications';
   static const records = '/patient/records';
   static const messages = '/patient/messages';
+
+  /// Messages, opened on a conversation with [providerId] ([name] shown
+  /// until it loads), about [patientId] when that is a dependant.
+  static String messageTo(String providerId, {String? name, String? patientId}) =>
+      Uri(path: messages, queryParameters: {
+        'to': providerId,
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        if (patientId != null && patientId.isNotEmpty) 'about': patientId,
+      }).toString();
   static const more = '/patient/more';
   static const profile = '/patient/profile';
   static const dependents = '/patient/dependents';

@@ -8,6 +8,7 @@ class MessageProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   List<ConversationSummary> _conversations = [];
+  List<MessageContact> _contacts = [];
   List<MessageModel> _thread = [];
   final Map<String, UserModel> _userCache = {};
   bool _isLoading = false;
@@ -15,6 +16,9 @@ class MessageProvider with ChangeNotifier {
   String? _error;
 
   List<ConversationSummary> get conversations => _conversations;
+
+  /// Who the patient may start a conversation with (see [loadContacts]).
+  List<MessageContact> get contacts => _contacts;
   List<MessageModel> get thread => _thread;
   bool get isLoading => _isLoading;
   bool get isThreadLoading => _isThreadLoading;
@@ -108,6 +112,20 @@ class MessageProvider with ChangeNotifier {
       _isThreadLoading = false;
       notifyListeners();
     }
+  }
+
+  /// The clinicians the signed-in patient may write to: her care team
+  /// and her dependants', anyone she has an appointment or consultation
+  /// with, and anyone who has written to her (`message_contacts()`,
+  /// migration 049, which the database also enforces on sending).
+  /// Throws when they could not be loaded.
+  Future<List<MessageContact>> loadContacts() async {
+    final rows = await _supabase.rpc('message_contacts');
+    _contacts = [
+      for (final r in rows as List) MessageContact.fromJson(Map<String, dynamic>.from(r as Map)),
+    ];
+    notifyListeners();
+    return _contacts;
   }
 
   Future<bool> sendMessage({
