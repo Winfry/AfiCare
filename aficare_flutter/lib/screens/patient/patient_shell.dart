@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/dependent_profile_model.dart';
 import '../../providers/auth_provider.dart';
@@ -18,9 +17,9 @@ import '../../providers/prescription_provider.dart';
 import '../../providers/care_team_provider.dart';
 import '../../services/medication_reminder_service.dart';
 import '../../theme/patient_tokens.dart';
-import '../../utils/snackbar_utils.dart';
 import '../../widgets/app_shell.dart';
 import 'patient_nav.dart';
+import 'patient_search.dart';
 import 'widgets/patient_ui.dart';
 
 /// The patient app's frame: sidebar, top bar, phone bottom bar and the
@@ -457,7 +456,7 @@ class _PatientShellState extends State<PatientShell> {
       onBottomNavSelect: (i) => context.go(patientBottomRoutes[i]),
       onSearch: _openSearch,
       onAvatarTap: () => _openSwitcher(fromTop: true),
-      searchHint: 'Search appointments, medications, or anything...',
+      searchHint: 'Search pages, your medicines, appointments…',
       avatarLabel: _initials(displayName),
       avatarColor: isDependent ? PT.avatarDepBg : PT.avatarBg,
       topBarLeading: _Breadcrumb(trail: crumbs),
@@ -545,7 +544,16 @@ class _PatientShellState extends State<PatientShell> {
     return '$years year${years == 1 ? '' : 's'}';
   }
 
+  /// Searches the pages and the viewed profile's own medicines,
+  /// appointments and care team, which the shell has already loaded.
   void _openSearch() {
+    final dep = context.read<DependentProvider>();
+    final isDependent = dep.isViewingDependent;
+    // As on the More page: the account holder's gender decides which
+    // adult pages are listed, and adult pages are hidden for a child.
+    final gender = context.read<PatientProfileProvider>().profile?.gender ??
+        context.read<AuthProvider>().currentUser?.gender;
+    final child = isDependent ? dep.activeDependent?.fullName.trim().split(RegExp(r'\s+')).first : null;
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -553,7 +561,13 @@ class _PatientShellState extends State<PatientShell> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => const _SearchSheet(),
+      builder: (ctx) => PatientSearchSheet(
+        pages: patientSearchPages(isDependent: isDependent, gender: gender),
+        medicines: context.read<PrescriptionProvider>().prescriptions,
+        appointments: context.read<AppointmentProvider>().appointments,
+        careTeam: context.read<CareTeamProvider>().members,
+        forName: child == null || child.isEmpty ? null : child,
+      ),
     );
   }
 }
@@ -668,125 +682,6 @@ class _MiniProfileButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Search sheet
-// ═══════════════════════════════════════════════════════════════════════
-
-class _SearchSheet extends StatefulWidget {
-  const _SearchSheet();
-
-  @override
-  State<_SearchSheet> createState() => _SearchSheetState();
-}
-
-class _SearchSheetState extends State<_SearchSheet> {
-  final _queryCtrl = TextEditingController();
-  List<Map<String, dynamic>> _results = [];
-  bool _searching = false;
-
-  @override
-  void dispose() {
-    _queryCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final query = _queryCtrl.text.trim();
-    if (query.isEmpty) return;
-    setState(() => _searching = true);
-    try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('id, full_name, role, medilink_id')
-          .ilike('full_name', '%$query%')
-          .limit(15);
-      if (mounted) {
-        setState(() {
-          _results = List<Map<String, dynamic>>.from(response as List);
-          _searching = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('patient_shell: searching patients failed: $e');
-      if (!mounted) return;
-      showErrorSnackBar(context, 'Could not search patients');
-      setState(() => _searching = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      builder: (context, scrollController) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: PT.line,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _queryCtrl,
-                autofocus: true,
-                onSubmitted: (_) => _search(),
-                decoration: pInput(hint: 'Search appointments, medications, or anything...').copyWith(
-                  prefixIcon: const Icon(Icons.search, size: 18, color: PT.muted),
-                  suffixIcon: IconButton(
-                    icon: _searching
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.arrow_forward, size: 18),
-                    onPressed: _search,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _results.isEmpty && !_searching
-                    ? Center(
-                        child: Text(
-                          _queryCtrl.text.trim().isEmpty ? 'Type a name to search' : 'No results found',
-                          style: PT.sub(),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: scrollController,
-                        itemCount: _results.length,
-                        itemBuilder: (context, index) {
-                          final r = _results[index];
-                          final name = r['full_name'] as String? ?? '';
-                          final role = r['role'] as String? ?? '';
-                          return PRow(
-                            leading: PAvatar(
-                              initials: name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            ),
-                            title: name,
-                            subtitle: role.isNotEmpty ? role : 'Patient',
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

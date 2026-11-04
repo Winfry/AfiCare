@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:aficare_flutter/screens/patient/patient_search.dart';
 import 'package:aficare_flutter/screens/patient/patient_shell.dart';
 import 'package:aficare_flutter/screens/provider/provider_shell.dart';
 import 'package:aficare_flutter/screens/admin/admin_dashboard.dart';
@@ -41,6 +42,23 @@ void main() {
     final exception = await pumpShell(tester, const PatientShell(location: '/patient', child: SizedBox()));
     expect(exception, isNull);
     expect(find.byType(AppShell), findsOneWidget);
+  });
+
+  testWidgets('PatientShell: Search opens the patient search, with the pages she can open', (tester) async {
+    useCleanSurface(tester);
+    await pumpShell(tester, const PatientShell(location: '/patient', child: SizedBox()));
+
+    await tester.tap(find.byTooltip('Search').first);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.byType(PatientSearchSheet), findsOneWidget);
+    expect(find.text('Go to'), findsOneWidget);
+
+    await tester.enterText(find.descendant(of: find.byType(PatientSearchSheet), matching: find.byType(TextField)), 'vaccine');
+    await tester.pump();
+    expect(find.descendant(of: find.byType(PatientSearchSheet), matching: find.text('Vaccinations')), findsOneWidget);
   });
 
   testWidgets('ProviderShell builds without throwing', (tester) async {

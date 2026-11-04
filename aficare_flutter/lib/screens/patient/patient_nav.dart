@@ -195,6 +195,17 @@ bool isPatientSidebarRoute(String location) {
   return patientSidebar.values.any((g) => g.any((d) => d.route == section));
 }
 
+/// Every page the profile being viewed can open, once each, for search:
+/// adult-only pages are left out on a dependant's profile, and a page
+/// about one sex's health when the account holder's gender differs.
+List<PatientDest> patientSearchPages({required bool isDependent, String? gender}) {
+  final seen = <String>{};
+  return [
+    for (final d in _allDests)
+      if (!(isDependent && d.adultOnly) && d.shownFor(gender) && seen.add(d.route)) d,
+  ];
+}
+
 /// True when the page at [location] must not be shown under a dependant.
 bool isPatientAdultOnly(String location) => patientDestFor(location)?.adultOnly ?? false;
 
