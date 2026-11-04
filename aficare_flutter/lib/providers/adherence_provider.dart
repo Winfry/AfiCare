@@ -157,7 +157,8 @@ class AdherenceProvider with ChangeNotifier {
         {
           'prescription_id': prescriptionId,
           'patient_id': patientId,
-          'scheduled_time': DateTime(now.year, now.month, now.day, hour).toIso8601String(),
+          // A true time: Kenyan 08:00 is sent as 05:00 UTC (see 052).
+          'scheduled_time': DateTime(now.year, now.month, now.day, hour).toUtc().toIso8601String(),
           'status': 'pending',
         },
     ];
@@ -197,8 +198,8 @@ class AdherenceProvider with ChangeNotifier {
           .from('adherence_log')
           .select('prescription_id')
           .eq('patient_id', patientId)
-          .gte('scheduled_time', start.toIso8601String())
-          .lt('scheduled_time', end.toIso8601String());
+          .gte('scheduled_time', start.toUtc().toIso8601String())
+          .lt('scheduled_time', end.toUtc().toIso8601String());
 
       final existingRxIds = (existing as List)
           .map((e) => e['prescription_id'] as String)
@@ -216,7 +217,7 @@ class AdherenceProvider with ChangeNotifier {
           newDoses.add({
             'prescription_id': rxId,
             'patient_id': patientId,
-            'scheduled_time': scheduledTime.toIso8601String(),
+            'scheduled_time': scheduledTime.toUtc().toIso8601String(),
             'status': 'pending',
           });
         }
@@ -244,8 +245,8 @@ class AdherenceProvider with ChangeNotifier {
           .from('adherence_log')
           .select('*, prescriptions(medication_name, dosage)')
           .eq('patient_id', patientId)
-          .gte('scheduled_time', start.toIso8601String())
-          .lt('scheduled_time', end.toIso8601String())
+          .gte('scheduled_time', start.toUtc().toIso8601String())
+          .lt('scheduled_time', end.toUtc().toIso8601String())
           .order('scheduled_time', ascending: true);
 
       _today = (response as List)
@@ -272,7 +273,7 @@ class AdherenceProvider with ChangeNotifier {
           .from('adherence_log')
           .select('*, prescriptions(medication_name, dosage)')
           .eq('patient_id', patientId)
-          .gte('scheduled_time', since.toIso8601String())
+          .gte('scheduled_time', since.toUtc().toIso8601String())
           .order('scheduled_time', ascending: false);
 
       _history = (response as List)
@@ -298,7 +299,7 @@ class AdherenceProvider with ChangeNotifier {
                 ? 'skipped'
                 : 'pending',
         'taken_time': status == AdherenceStatus.taken
-            ? DateTime.now().toIso8601String()
+            ? DateTime.now().toUtc().toIso8601String()
             : null,
         'skipped_reason': status == AdherenceStatus.skipped ? reason : null,
       };

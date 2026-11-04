@@ -194,7 +194,7 @@ void main() {
       );
 
       final doses = jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List;
-      expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).hour), [8, 20]);
+      expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).toLocal().hour), [8, 20]);
     });
 
     for (final (times, hours) in [
@@ -216,7 +216,7 @@ void main() {
         final rx = jsonDecode(fake.requestsTo('POST', 'prescriptions').single.body) as Map;
         expect(rx['frequency'], '$times times a day');
         final doses = jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List;
-        expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).hour), hours);
+        expect(doses.map((d) => DateTime.parse(d['scheduled_time'] as String).toLocal().hour), hours);
         expect(doses.every((d) => d['prescription_id'] == 'rx-new' && d['status'] == 'pending'), isTrue);
       });
     }
@@ -313,7 +313,7 @@ void main() {
         for (final d in jsonDecode(post.body) as List) {
           made
               .putIfAbsent(d['prescription_id'] as String, () => [])
-              .add(DateTime.parse(d['scheduled_time'] as String).hour);
+              .add(DateTime.parse(d['scheduled_time'] as String).toLocal().hour);
         }
       }
       return made;
@@ -343,6 +343,59 @@ void main() {
       ]);
       await AdherenceProvider().ensureTodayDoses('p1');
       expect(fake.requestsTo('POST', 'adherence_log'), isEmpty);
+    });
+  });
+
+  group('true times (migration 052)', () {
+    test('doses are sent as UTC instants of the local clock time', () async {
+      fake.routeJson('/rest/v1/prescriptions', {'id': 'rx-new', 'patient_id': 'p1'});
+      fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+      await AdherenceProvider().addMedication(
+        patientId: 'p1',
+        medicationName: 'Ibuprofen',
+        dosage: '200mg',
+        timesPerDay: 1,
+      );
+      final sent = (jsonDecode(fake.requestsTo('POST', 'adherence_log').single.body) as List).single
+          as Map<String, dynamic>;
+      final text = sent['scheduled_time'] as String;
+      final now = DateTime.now();
+      expect(text.endsWith('Z'), isTrue, reason: 'says it is UTC');
+      expect(DateTime.parse(text), DateTime(now.year, now.month, now.day, 8).toUtc(),
+          reason: "8 o'clock on her phone");
+    });
+
+    test("today's doses are asked for between her midnights, as UTC", () async {
+      fake.routeJson('/rest/v1/adherence_log', <Object?>[]);
+      await AdherenceProvider().loadToday('p1');
+      final url = fake.requestsTo('GET', 'adherence_log').single.url.toString();
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+      expect(Uri.decodeFull(url), contains('scheduled_time=gte.$start'));
+    });
+
+    test("a stored time is shown in the phone's own time", () {
+      final m = AdherenceLogModel.fromJson({
+        'id': 'd1',
+        'prescription_id': 'rx1',
+        'patient_id': 'p1',
+        'scheduled_time': '2026-11-04T05:00:00+00:00',
+        'taken_time': '2026-11-04T05:10:00+00:00',
+        'status': 'taken',
+      });
+      expect(m.scheduledTime.isUtc, isFalse);
+      expect(m.scheduledTime, DateTime.utc(2026, 11, 4, 5).toLocal());
+      expect(m.takenTime, DateTime.utc(2026, 11, 4, 5, 10).toLocal());
+      expect(m.toJson()['scheduled_time'], '2026-11-04T05:00:00.000Z');
+    });
+
+    test('marking a dose taken sends the time as UTC', () async {
+      fake.routeJson('/rest/v1/adherence_log', [dose(status: 'pending')]);
+      final provider = AdherenceProvider();
+      await provider.loadToday('p1');
+      await provider.markStatus('d1', AdherenceStatus.taken);
+      final body = jsonDecode(fake.requestsTo('PATCH', 'adherence_log').single.body) as Map;
+      expect((body['taken_time'] as String).endsWith('Z'), isTrue);
     });
   });
 }

@@ -39,14 +39,15 @@ class AdherenceLogModel {
       id: json['id'] as String,
       prescriptionId: json['prescription_id'] as String,
       patientId: json['patient_id'] as String,
-      scheduledTime: DateTime.parse(json['scheduled_time'] as String),
+      // Stored as true times (migration 052); shown in the phone's time.
+      scheduledTime: DateTime.parse(json['scheduled_time'] as String).toLocal(),
       takenTime: json['taken_time'] != null
-          ? DateTime.parse(json['taken_time'] as String)
+          ? DateTime.parse(json['taken_time'] as String).toLocal()
           : null,
       skippedReason: json['skipped_reason'] as String?,
       status: _statusFromString(json['status'] as String? ?? 'pending'),
       notedAt: json['noted_at'] != null
-          ? DateTime.parse(json['noted_at'] as String)
+          ? DateTime.parse(json['noted_at'] as String).toLocal()
           : DateTime.now(),
       medicationName: medName ?? json['medication_name'] as String?,
       dosage: dose ?? json['dosage'] as String?,
@@ -58,11 +59,11 @@ class AdherenceLogModel {
       'id': id,
       'prescription_id': prescriptionId,
       'patient_id': patientId,
-      'scheduled_time': scheduledTime.toIso8601String(),
-      'taken_time': takenTime?.toIso8601String(),
+      'scheduled_time': scheduledTime.toUtc().toIso8601String(),
+      'taken_time': takenTime?.toUtc().toIso8601String(),
       'skipped_reason': skippedReason,
       'status': _statusToString(status),
-      'noted_at': notedAt.toIso8601String(),
+      'noted_at': notedAt.toUtc().toIso8601String(),
     };
   }
 
