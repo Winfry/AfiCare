@@ -5,8 +5,54 @@ import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../models/medical_expense_model.dart';
+import '../../theme/patient_tokens.dart';
+import '../../utils/money.dart';
 import '../../utils/theme.dart';
 import 'widgets/patient_ui.dart';
+
+/// Asks "Delete this expense?", naming it and its amount. True only
+/// when she confirms.
+Future<bool> askToDeleteExpense(BuildContext context, MedicalExpenseModel expense) async {
+  final sure = await showPModal<bool>(
+    context: context,
+    title: 'Delete this expense?',
+    builder: (ctx) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${expense.description} · ${Money.kes(expense.amount)} · '
+          '${DateFormat('d MMM yyyy').format(expense.date)}\n\nThis cannot be undone.',
+          style: PT.sub(),
+        ),
+        const SizedBox(height: 20),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            PButton('Keep it', kind: PButtonKind.alt, onPressed: () => Navigator.pop(ctx, false)),
+            PButton('Delete', kind: PButtonKind.red, onPressed: () => Navigator.pop(ctx, true)),
+          ],
+        ),
+      ],
+    ),
+  );
+  return sure == true;
+}
+
+/// Asks before deleting [expense], then deletes it. True only when the
+/// database confirmed it is gone; on failure she is told and nothing is
+/// removed.
+Future<bool> confirmAndDeleteExpense(BuildContext context, MedicalExpenseModel expense) async {
+  final sure = await askToDeleteExpense(context, expense);
+  if (!sure || !context.mounted) return false;
+  final provider = context.read<ExpenseProvider>();
+  final ok = await provider.deleteExpense(expense.id);
+  if (context.mounted) {
+    pToast(context, ok ? 'Expense deleted.' : (provider.error ?? "We couldn't delete this expense."));
+  }
+  return ok;
+}
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -24,10 +70,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {
     final user = context.read<AuthProvider>().currentUser;
     if (user != null) {
-      context.read<ExpenseProvider>().loadExpenses(user.id);
+      await context.read<ExpenseProvider>().loadExpenses(user.id);
     }
   }
 
@@ -46,9 +92,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ),
       builder: (ctx) => _ExpenseFormSheet(
         existing: existing,
-        onSave: () {
+        onDone: (message) {
           Navigator.pop(ctx);
-          _loadData();
+          pToast(context, message);
         },
       ),
     );
@@ -61,6 +107,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         if (provider.isLoading && provider.expenses.isEmpty) {
           return const PLoadingPage();
         }
+        // Nothing arrived: say so, never "no expenses".
+        if (provider.loadError != null && provider.expenses.isEmpty) {
+          return PDetailScaffold(
+            eyebrow: 'What care costs',
+            title: 'Expenses',
+            children: [PLoadError(what: 'your expenses', onRetry: _loadData)],
+          );
+        }
 
         final filtered = _filtered(provider.expenses);
 
@@ -68,7 +122,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         // sits directly under it (no other viewport between), so
         // pull-to-refresh still triggers.
         return RefreshIndicator(
-          onRefresh: () async => _loadData(),
+          onRefresh: _loadData,
           child: PSliverPage(
             eyebrow: 'What care costs',
             title: 'Expenses',
@@ -88,23 +142,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               child: const Icon(Icons.add),
             ),
             slivers: [
+              if (provider.loadError != null)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: PCallout(
+                      tone: PTone.warn,
+                      body: "We couldn't refresh your expenses, so this may not be up to date.",
+                      trailing: PButton('Retry', kind: PButtonKind.alt, dense: true, onPressed: _loadData),
+                    ),
+                  ),
+                ),
               SliverToBoxAdapter(child: _buildSummary(provider)),
               SliverToBoxAdapter(child: _buildCategoryFilter()),
               if (filtered.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
+                  hasScrollBody: false,
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.receipt_long,
-                            size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('No expenses recorded yet',
-                            style: TextStyle(
-                                fontSize: 16, color: Colors.grey)),
-                        SizedBox(height: 8),
-                        Text('Tap + to add your first expense',
-                            style: TextStyle(color: Colors.grey)),
+                        const Icon(Icons.receipt_long, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          provider.expenses.isEmpty
+                              ? 'No expenses recorded yet'
+                              : 'No ${_filterCategory?.label.toLowerCase() ?? ''} expenses',
+                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Tap + to add one', style: TextStyle(color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -127,7 +194,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildSummary(ExpenseProvider provider) {
-    final f = NumberFormat('#,##0');
     // Was a full-bleed tinted band under the old app bar; inside the shell
     // it is just the top of the page, so no tint and no side padding.
     return Container(
@@ -140,7 +206,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               Expanded(
                 child: _summaryCard(
                   'Total Spent',
-                  'KES ${f.format(provider.totalSpent)}',
+                  Money.kes(provider.totalSpent),
                   Icons.account_balance_wallet,
                 ),
               ),
@@ -148,7 +214,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               Expanded(
                 child: _summaryCard(
                   'This Month',
-                  'KES ${f.format(provider.spentThisMonth)}',
+                  Money.kes(provider.spentThisMonth),
                   Icons.calendar_month,
                 ),
               ),
@@ -250,7 +316,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text('${e.key.label}  ${NumberFormat('#,##0').format(e.value)}',
+                  Text('${e.key.label}  ${Money.kes(e.value)}',
                       style: const TextStyle(fontSize: 11)),
                 ],
               ),
@@ -294,8 +360,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildExpenseTile(MedicalExpenseModel expense) {
-    final f = NumberFormat('#,##0');
-    final dateF = DateFormat('MMM d, yyyy');
+    final dateF = DateFormat('d MMM yyyy');
 
     IconData categoryIcon;
     switch (expense.category) {
@@ -322,7 +387,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         color: Colors.red,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      onDismissed: (_) => context.read<ExpenseProvider>().deleteExpense(expense.id),
+      // Asks first, and lets the card go only once the database has
+      // deleted it; otherwise it slides back.
+      confirmDismiss: (_) => confirmAndDeleteExpense(context, expense),
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
@@ -337,7 +404,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             style: const TextStyle(fontSize: 12),
           ),
           trailing: Text(
-            'KES ${f.format(expense.amount)}',
+            Money.kes(expense.amount),
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 15,
@@ -353,9 +420,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
 class _ExpenseFormSheet extends StatefulWidget {
   final MedicalExpenseModel? existing;
-  final VoidCallback onSave;
 
-  const _ExpenseFormSheet({this.existing, required this.onSave});
+  /// Called with what to tell her once it is saved or deleted.
+  final ValueChanged<String> onDone;
+
+  const _ExpenseFormSheet({this.existing, required this.onDone});
 
   @override
   State<_ExpenseFormSheet> createState() => _ExpenseFormSheetState();
@@ -371,13 +440,17 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
   late TextEditingController _notesCtrl;
   bool _saving = false;
 
+  /// Shown in the sheet itself: a message on the page behind it would be
+  /// hidden by the sheet.
+  String? _problem;
+
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
     _category = e?.category ?? ExpenseCategory.medication;
-    _amountCtrl = TextEditingController(
-        text: e != null ? e.amount.toStringAsFixed(0) : '');
+    // Never rounded: 150.50 stays 150.50.
+    _amountCtrl = TextEditingController(text: e != null ? Money.forEditing(e.amount) : '');
     _descCtrl = TextEditingController(text: e?.description ?? '');
     _date = e?.date ?? DateTime.now();
     _facilityCtrl = TextEditingController(text: e?.facilityName ?? '');
@@ -396,16 +469,21 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _saving = true);
-
     final user = context.read<AuthProvider>().currentUser;
-    if (user == null) return;
+    if (user == null) {
+      setState(() => _problem = 'Please sign in again to save this.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _problem = null;
+    });
 
     final expense = MedicalExpenseModel(
       id: widget.existing?.id ?? '',
       patientId: widget.existing?.patientId ?? user.id,
       category: _category,
-      amount: double.tryParse(_amountCtrl.text) ?? 0,
+      amount: Money.parse(_amountCtrl.text)!,
       description: _descCtrl.text.trim(),
       date: _date,
       facilityName: _facilityCtrl.text.trim().isEmpty
@@ -424,18 +502,33 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
       ok = await provider.addExpense(expense);
     }
 
-    if (mounted) {
-      setState(() => _saving = false);
-      if (ok) {
-        widget.onSave();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.error ?? 'Failed to save'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      widget.onDone(widget.existing != null ? 'Changes saved.' : 'Expense added.');
+    } else {
+      // Everything she typed stays in the form.
+      setState(() => _problem = provider.error ?? "We couldn't save this expense.");
+    }
+  }
+
+  Future<void> _delete() async {
+    final existing = widget.existing;
+    if (existing == null) return;
+    final provider = context.read<ExpenseProvider>();
+    final sure = await askToDeleteExpense(context, existing);
+    if (!mounted || !sure) return;
+    setState(() {
+      _saving = true;
+      _problem = null;
+    });
+    final ok = await provider.deleteExpense(existing.id);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      widget.onDone('Expense deleted.');
+    } else {
+      setState(() => _problem = provider.error ?? "We couldn't delete this expense.");
     }
   }
 
@@ -479,21 +572,14 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _amountCtrl,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Amount (KES)',
+                  hintText: 'e.g. 1500 or 150.50',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.money),
                 ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Enter amount';
-                  }
-                  if (double.tryParse(v.trim()) == null) {
-                    return 'Invalid amount';
-                  }
-                  return null;
-                },
+                validator: (v) => Money.problemWith(v ?? ''),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -516,7 +602,7 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: _date,
-                    firstDate: DateTime(2020),
+                    firstDate: DateTime(2000),
                     lastDate: DateTime.now(),
                   );
                   if (picked != null) {
@@ -529,7 +615,7 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.calendar_today),
                   ),
-                  child: Text(DateFormat('MMM d, yyyy').format(_date)),
+                  child: Text(DateFormat('d MMM yyyy').format(_date)),
                 ),
               ),
               const SizedBox(height: 16),
@@ -551,6 +637,10 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                   prefixIcon: Icon(Icons.notes),
                 ),
               ),
+              if (_problem != null) ...[
+                const SizedBox(height: 16),
+                PCallout(tone: PTone.red, body: _problem!),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -575,6 +665,17 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                   ),
                 ),
               ),
+              if (widget.existing != null) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: _saving ? null : _delete,
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    label: const Text('Delete this expense', style: TextStyle(color: Colors.red)),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
             ],
           ),
