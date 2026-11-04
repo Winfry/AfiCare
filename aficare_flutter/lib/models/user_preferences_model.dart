@@ -17,6 +17,13 @@ class UserPreferencesModel {
   /// Accessibility: allow text-to-speech for dashboard content.
   final bool textToSpeech;
 
+  /// The theme the app actually uses. Dark is not offered for now: the
+  /// patient pages are drawn in fixed light colours, so a dark theme
+  /// turned their text white on white cards. A saved "dark" (chosen
+  /// before it was withdrawn) shows as light.
+  AppThemePreference get effectiveTheme =>
+      theme == AppThemePreference.dark ? AppThemePreference.light : theme;
+
   UserPreferencesModel({
     required this.userId,
     this.theme = AppThemePreference.light,

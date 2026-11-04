@@ -77,20 +77,18 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 12),
+                                // No Dark: see UserPreferencesModel.effectiveTheme.
                                 SegmentedButton<AppThemePreference>(
                                   segments: const [
                                     ButtonSegment(
                                         value: AppThemePreference.light,
                                         label: Text('Light')),
                                     ButtonSegment(
-                                        value: AppThemePreference.dark,
-                                        label: Text('Dark')),
-                                    ButtonSegment(
                                         value:
                                             AppThemePreference.highContrast,
-                                        label: Text('Contrast')),
+                                        label: Text('High contrast')),
                                   ],
-                                  selected: {prefs.theme},
+                                  selected: {prefs.effectiveTheme},
                                   onSelectionChanged: (s) =>
                                       _save(prefs.copyWith(theme: s.first)),
                                 ),

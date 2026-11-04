@@ -179,13 +179,13 @@ class _RootAppState extends State<_RootApp> {
   @override
   Widget build(BuildContext context) {
     final prefs = Provider.of<PreferencesProvider>(context).prefs;
-    final themePref = prefs?.theme ?? AppThemePreference.light;
+    final themePref = prefs?.effectiveTheme ?? AppThemePreference.light;
     final textScale = prefs?.textScale ?? 1.0;
     final reduceMotion = prefs?.reduceMotion ?? false;
 
     final ThemeData theme = switch (themePref) {
-      AppThemePreference.light => AfiCareTheme.lightTheme,
-      AppThemePreference.dark => AfiCareTheme.darkTheme,
+      // Never dark: see UserPreferencesModel.effectiveTheme.
+      AppThemePreference.light || AppThemePreference.dark => AfiCareTheme.lightTheme,
       AppThemePreference.highContrast => AfiCareTheme.highContrastTheme,
     };
 
@@ -193,10 +193,9 @@ class _RootAppState extends State<_RootApp> {
       title: 'AfiCare MediLink',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      darkTheme: AfiCareTheme.darkTheme,
-      themeMode: themePref == AppThemePreference.dark
-          ? ThemeMode.dark
-          : ThemeMode.light,
+      // The phone's own dark mode is not followed either, for the same
+      // reason.
+      themeMode: ThemeMode.light,
       builder: (context, child) {
         final media = MediaQuery.of(context);
         return MediaQuery(
