@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/patient_profile_model.dart';
@@ -6,6 +9,7 @@ import '../../presentation/auth/register/patient/utils/phone_formatter.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../utils/theme.dart';
+import 'widgets/patient_photo_avatar.dart';
 import 'widgets/patient_ui.dart';
 import 'widgets/pin_account_dialogs.dart';
 
@@ -21,6 +25,82 @@ class PatientProfileEditScreen extends StatefulWidget {
 class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
   bool _isLoading = true;
   bool _saving = false;
+  bool _savingPhoto = false;
+
+  /// Takes, chooses or removes her photo. It is saved straight away (not
+  /// with Save), and the message says whether it really was.
+  Future<void> _changePhoto() async {
+    final auth = context.read<AuthProvider>();
+    final hasPhoto = (auth.currentUser?.photoUrl ?? '').isNotEmpty;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                'Only you, anyone you look after the account for, and the '
+                'clinicians caring for you can see your photo.',
+              ),
+            ),
+            if (!kIsWeb)
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(sheet, 'camera'),
+              ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose a photo'),
+              onTap: () => Navigator.pop(sheet, 'gallery'),
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Remove photo', style: TextStyle(color: Colors.red)),
+                onTap: () => Navigator.pop(sheet, 'remove'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    Uint8List? bytes;
+    var contentType = 'image/jpeg';
+    if (choice != 'remove') {
+      final XFile? picked;
+      try {
+        picked = await ImagePicker().pickImage(
+          source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 85,
+        );
+      } catch (e) {
+        debugPrint('Photo picker failed: $e');
+        if (mounted) pToast(context, "Couldn't open your photos. Check AfiCare may use them.");
+        return;
+      }
+      if (picked == null || !mounted) return;
+      bytes = await picked.readAsBytes();
+      final type = picked.mimeType ?? '';
+      if (type.startsWith('image/')) {
+        contentType = type;
+      } else if (picked.name.toLowerCase().endsWith('.png')) {
+        contentType = 'image/png';
+      }
+    }
+
+    setState(() => _savingPhoto = true);
+    final problem = await auth.setPatientPhoto(bytes, contentType: contentType);
+    if (!mounted) return;
+    setState(() => _savingPhoto = false);
+    pToast(context, problem ?? (bytes == null ? 'Photo removed' : 'Photo saved'));
+  }
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -72,7 +152,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
         _chronic = List.of(p.chronicConditions);
         _emContactName.text = p.emergencyContactName ?? '';
         _emContactPhone.text = p.emergencyContactPhone ?? '';
-        _insuranceProvider.text = p.insuranceId != null ? '' : '';
+        _insuranceProvider.text = p.insuranceProvider ?? '';
         _policyNumber.text = p.insuranceId ?? '';
       }
     }
@@ -128,6 +208,9 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
       insuranceId: _policyNumber.text.trim().isEmpty
           ? null
           : _policyNumber.text.trim(),
+      insuranceProvider: _insuranceProvider.text.trim().isEmpty
+          ? null
+          : _insuranceProvider.text.trim(),
     );
     final profileOk = await pp.saveProfile(profile);
     final ok = userOk && profileOk;
@@ -187,38 +270,49 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
                 Center(
-                  child: Column(
-                    children: [
-                      Stack(
+                  child: Semantics(
+                    button: true,
+                    label: 'Change photo',
+                    child: InkWell(
+                      onTap: _savingPhoto ? null : _changePhoto,
+                      customBorder: const CircleBorder(),
+                      child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor:
-                                AfiCareTheme.primaryGreen.withOpacity(0.1),
-                            child: Icon(Icons.person,
-                                size: 50,
-                                color: AfiCareTheme.primaryGreen),
+                          Stack(
+                            children: [
+                              Consumer<AuthProvider>(
+                                builder: (context, auth, _) => PatientPhotoAvatar(
+                                  name: auth.currentUser?.fullName ?? '',
+                                  storedPhoto: auth.currentUser?.photoUrl,
+                                  size: 100,
+                                ),
+                              ),
+                              if (_savingPhoto)
+                                const Positioned.fill(
+                                  child: Center(child: CircularProgressIndicator()),
+                                ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: AfiCareTheme.primaryGreen,
+                                  child: const Icon(Icons.camera_alt,
+                                      size: 16, color: Colors.white),
+                                ),
+                              ),
+                            ],
                           ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AfiCareTheme.primaryGreen,
-                              child: const Icon(Icons.camera_alt,
-                                  size: 16, color: Colors.white),
-                            ),
-                          ),
+                          const SizedBox(height: 8),
+                          Text(_savingPhoto ? 'SAVING PHOTO…' : 'CHANGE PHOTO',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  letterSpacing: 0.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: PT.muted)),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text('CHANGE PHOTO',
-                          style: TextStyle(
-                              fontSize: 11,
-                              letterSpacing: 0.5,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[700])),
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -297,7 +391,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
                                 style: TextStyle(
                                     color: _dob != null
                                         ? Colors.black87
-                                        : Colors.grey[500]),
+                                        : PT.muted),
                               ),
                             ),
                           ),
@@ -349,7 +443,12 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
                 const SizedBox(height: 24),
                 _sectionHeader(Icons.shield_outlined, 'Insurance'),
                 _label('Provider'),
-                TextField(controller: _insuranceProvider),
+                TextField(
+                  controller: _insuranceProvider,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                      hintText: 'e.g. SHA, AAR, Jubilee, CIC'),
+                ),
                 const SizedBox(height: 16),
                 _label('Policy Number'),
                 TextField(controller: _policyNumber),
@@ -382,7 +481,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
       child: Text(text,
           style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[700],
+              color: PT.muted,
               fontWeight: FontWeight.w600)),
     );
   }

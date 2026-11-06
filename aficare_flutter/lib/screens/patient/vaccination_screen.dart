@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/active_patient.dart';
 import '../../theme/app_colors.dart';
@@ -169,7 +170,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                   const SizedBox(height: 4),
                   Text(
                     "Kenya's childhood immunisation schedule, birth to 18 months",
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                    style: TextStyle(color: PT.muted, fontSize: 12),
                   ),
                   const SizedBox(height: 10),
                   _buildScheduleList(),
@@ -216,7 +217,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 6),
             Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: color)),
-            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+            Text(label, style: TextStyle(fontSize: 11, color: PT.muted, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -256,10 +257,10 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(schedule.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(schedule.description, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                Text(schedule.description, style: TextStyle(fontSize: 12, color: PT.muted)),
                 if (isOverdue)
                   Text('Ask your clinic about a catch-up dose',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                      style: TextStyle(fontSize: 12, color: PT.muted)),
               ],
             ),
           ),
@@ -334,11 +335,11 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                               decoration: isGiven ? TextDecoration.lineThrough : null,
-                              color: isGiven ? Colors.grey.shade500 : AppColors.textPrimary,
+                              color: isGiven ? PT.muted : AppColors.textPrimary,
                             )),
                             Text(v.description, style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey.shade400,
+                              color: PT.muted,
                             )),
                           ],
                         ),
@@ -384,10 +385,10 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                 Text(record.vaccineName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(
                   '${record.dateGiven.day}/${record.dateGiven.month}/${record.dateGiven.year}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 12, color: PT.muted),
                 ),
                 if (record.facility != null && record.facility!.isNotEmpty)
-                  Text(record.facility!, style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+                  Text(record.facility!, style: TextStyle(fontSize: 11, color: PT.muted)),
               ],
             ),
           ),

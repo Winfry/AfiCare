@@ -265,7 +265,7 @@ class _PatientShellState extends State<PatientShell> {
         Container(
           margin: const EdgeInsets.only(top: 6),
           padding: const EdgeInsets.only(top: 6),
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
           child: Column(
             children: [
               _switcherAction(
@@ -330,7 +330,7 @@ class _PatientShellState extends State<PatientShell> {
                 ),
               ),
               if (selected)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(left: 6),
                   child: Icon(Icons.check, size: 18, color: PT.teal),
                 ),
@@ -424,7 +424,7 @@ class _PatientShellState extends State<PatientShell> {
         railGroupStyle: PT.navGroup(),
         topBarHeight: PT.topBarHeight,
         topBarBottomBorder:
-            isDependent ? const BorderSide(color: PT.teal, width: 3) : const BorderSide(color: PT.line),
+            isDependent ? BorderSide(color: PT.teal, width: 3) : BorderSide(color: PT.line),
         searchFill: PT.searchFill,
         searchRadius: PT.rButton,
         searchMaxWidth: 580,
@@ -593,7 +593,7 @@ class _PatientBrandMark extends StatelessWidget {
               color: const Color(0xFFF5F9FB),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.favorite_border_rounded, size: 21, color: PT.teal),
+            child: Icon(Icons.favorite_border_rounded, size: 21, color: PT.teal),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -691,11 +691,12 @@ class _MiniProfileButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 
 /// The design's `.iconbtn`: white, hairline border, blue glyph.
-final ButtonStyle _topIconStyle = IconButton.styleFrom(
+// A getter, not a stored value, so it follows High contrast.
+ButtonStyle get _topIconStyle => IconButton.styleFrom(
   fixedSize: const Size(42, 42),
   backgroundColor: PT.white,
   foregroundColor: PT.teal,
-  side: const BorderSide(color: PT.line),
+  side: BorderSide(color: PT.line),
   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
 );
 
@@ -721,7 +722,7 @@ class _Breadcrumb extends StatelessWidget {
             TextSpan(
               text: trail[i],
               style: i == trail.length - 1
-                  ? const TextStyle(fontWeight: FontWeight.w700, color: PT.ink)
+                  ? TextStyle(fontWeight: FontWeight.w700, color: PT.ink)
                   : null,
             ),
           ],

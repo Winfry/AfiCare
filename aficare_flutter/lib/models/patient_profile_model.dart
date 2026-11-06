@@ -9,7 +9,12 @@ class PatientProfileModel {
   final String? emergencyContactName;
   final String? emergencyContactPhone;
   final String? address;
+
+  /// Her insurance policy or member number.
   final String? insuranceId;
+
+  /// Who insures her, as she wrote it (e.g. "SHA", "AAR", "Jubilee").
+  final String? insuranceProvider;
 
   PatientProfileModel({
     required this.id,
@@ -22,6 +27,7 @@ class PatientProfileModel {
     this.emergencyContactPhone,
     this.address,
     this.insuranceId,
+    this.insuranceProvider,
   });
 
   int? get age {
@@ -49,6 +55,7 @@ class PatientProfileModel {
       emergencyContactPhone: json['emergency_contact_phone'] as String?,
       address: json['address'] as String?,
       insuranceId: json['insurance_id'] as String?,
+      insuranceProvider: json['insurance_provider'] as String?,
     );
   }
 
@@ -64,6 +71,7 @@ class PatientProfileModel {
       'emergency_contact_phone': emergencyContactPhone,
       'address': address,
       'insurance_id': insuranceId,
+      'insurance_provider': insuranceProvider,
     };
   }
 
@@ -77,6 +85,7 @@ class PatientProfileModel {
     String? emergencyContactPhone,
     String? address,
     String? insuranceId,
+    String? insuranceProvider,
   }) {
     return PatientProfileModel(
       id: id,
@@ -90,6 +99,7 @@ class PatientProfileModel {
           emergencyContactPhone ?? this.emergencyContactPhone,
       address: address ?? this.address,
       insuranceId: insuranceId ?? this.insuranceId,
+      insuranceProvider: insuranceProvider ?? this.insuranceProvider,
     );
   }
 

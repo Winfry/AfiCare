@@ -14,6 +14,7 @@ import '../../services/record_share_service.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
 import 'shared_record_view.dart';
+import '../patient/widgets/patient_photo_avatar.dart';
 
 class PatientAccess extends StatefulWidget {
   const PatientAccess({super.key, this.shareService});
@@ -440,16 +441,16 @@ class _PatientAccessState extends State<PatientAccess>
             ),
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.white,
-                  child: Text(
-                    patient['name'].substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: AfiCareTheme.primaryBlue,
-                    ),
+                // Her photo when she has one (private: the link is made
+                // for this clinician, and only works while they care
+                // for her), otherwise her initials.
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  child: PatientPhotoAvatar(
+                    name: patient['name'] as String,
+                    storedPhoto: patient['photo'] as String?,
+                    size: 94,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -1053,7 +1054,7 @@ class _PatientAccessState extends State<PatientAccess>
 
       final userResp = await supabase
           .from('users')
-          .select('full_name, medilink_id, phone, email, gender')
+          .select('full_name, medilink_id, phone, email, gender, photo_url')
           .eq('id', patientId)
           .single();
 
@@ -1128,6 +1129,7 @@ class _PatientAccessState extends State<PatientAccess>
         _patientData = {
           'id': patientId,
           'name': userResp['full_name'] ?? 'Patient',
+          'photo': userResp['photo_url'],
           'medilinkId': userResp['medilink_id'] ?? patientId,
           'age': age,
           'gender': userResp['gender'] != null

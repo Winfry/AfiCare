@@ -920,7 +920,7 @@ class _CheckRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
+                duration: PT.motion(context, const Duration(milliseconds: 150)),
                 width: 22,
                 height: 22,
                 margin: const EdgeInsets.only(top: 1),
@@ -1046,8 +1046,8 @@ class _InfoTileState extends State<_InfoTile> {
                       Expanded(child: Text(widget.title, style: PT.rowTitle())),
                       AnimatedRotation(
                         turns: _open ? .5 : 0,
-                        duration: const Duration(milliseconds: 180),
-                        child: const Icon(Icons.expand_more, color: PT.muted, size: 20),
+                        duration: PT.motion(context, const Duration(milliseconds: 180)),
+                        child: Icon(Icons.expand_more, color: PT.muted, size: 20),
                       ),
                     ],
                   ),
@@ -1055,7 +1055,7 @@ class _InfoTileState extends State<_InfoTile> {
               ),
             ),
             AnimatedSize(
-              duration: const Duration(milliseconds: 180),
+              duration: PT.motion(context, const Duration(milliseconds: 180)),
               alignment: Alignment.topCenter,
               child: !_open
                   ? const SizedBox(width: double.infinity)

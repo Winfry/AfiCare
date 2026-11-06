@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -122,10 +123,10 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                         children: [
                           Icon(Icons.receipt_long_rounded, size: 48, color: Colors.grey.shade300),
                           const SizedBox(height: 12),
-                          Text('No receipts yet', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                          Text('No receipts yet', style: TextStyle(color: PT.muted, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 4),
                           Text('Upload receipts to track healthcare spending',
-                              textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                              textAlign: TextAlign.center, style: TextStyle(color: PT.muted, fontSize: 13)),
                         ],
                       ),
                     )
@@ -156,7 +157,7 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                 children: [
                   Icon(icon, color: AppColors.canopy, size: 20),
                   const SizedBox(width: 8),
-                  Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 14)),
+                  Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: PT.muted, fontSize: 14)),
                 ],
               ),
       ),
@@ -188,10 +189,10 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 2),
                 Text(receipt.serviceType ?? 'Healthcare',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    style: TextStyle(fontSize: 12, color: PT.muted)),
                 Text(
                     '${receipt.date.day}/${receipt.date.month}/${receipt.date.year}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+                    style: TextStyle(fontSize: 11, color: PT.muted)),
               ],
             ),
           ),
@@ -202,7 +203,7 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.canopy)),
               if (receipt.paymentMethod != null)
                 Text(Receipt.paymentMethodLabel(receipt.paymentMethod!),
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+                    style: TextStyle(fontSize: 10, color: PT.muted)),
             ],
           ),
         ],
@@ -212,7 +213,7 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
 
   Widget _noPicture() => Container(
         color: Colors.grey.shade100,
-        child: Icon(Icons.receipt_rounded, color: Colors.grey.shade400, size: 24),
+        child: Icon(Icons.receipt_rounded, color: PT.muted, size: 24),
       );
 
   Widget _thumbnail(String stored) {

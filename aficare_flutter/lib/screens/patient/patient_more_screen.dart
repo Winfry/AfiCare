@@ -83,7 +83,7 @@ class _MoreTile extends StatelessWidget {
       color: PT.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(PT.rRow),
-        side: const BorderSide(color: PT.line),
+        side: BorderSide(color: PT.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(PT.rRow),

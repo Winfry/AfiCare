@@ -183,7 +183,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
 
   Widget _sharedCard() {
     if (_sharedLoading) {
-      return const PCard(
+      return PCard(
         padding: EdgeInsets.all(30),
         child: Center(child: CircularProgressIndicator(strokeWidth: 2.5, color: PT.teal)),
       );
@@ -211,7 +211,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
                       if (CaregiverRelationship.asTheir(s.relationship) case final who?) who,
                       if (s.since != null) 'since ${DateFormat('d MMM yyyy').format(s.since!)}',
                     ].join(' · '),
-                    trailing: const [Icon(Icons.chevron_right_rounded, color: PT.muted)],
+                    trailing: [Icon(Icons.chevron_right_rounded, color: PT.muted)],
                     onTap: () => _openShared(s),
                   ),
               ],
@@ -634,7 +634,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
                       ? '${_dob!.day}/${_dob!.month}/${_dob!.year}'
                       : 'Tap to select',
                   style: TextStyle(
-                    color: _dob != null ? Colors.black87 : Colors.grey[500],
+                    color: _dob != null ? Colors.black87 : PT.muted,
                   ),
                 ),
               ),
@@ -682,7 +682,7 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             Text(
               'Anything they react badly to — medicines, foods. This is what a '
               'clinician checks first.',
-              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 12.5, color: PT.muted),
             ),
             const SizedBox(height: 8),
             Row(

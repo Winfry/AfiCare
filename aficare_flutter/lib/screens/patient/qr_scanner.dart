@@ -128,7 +128,7 @@ class _QRScannerState extends State<QRScanner> with WidgetsBindingObserver {
         fixedSize: const Size(42, 42),
         backgroundColor: PT.white,
         foregroundColor: PT.teal,
-        side: const BorderSide(color: PT.line),
+        side: BorderSide(color: PT.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );

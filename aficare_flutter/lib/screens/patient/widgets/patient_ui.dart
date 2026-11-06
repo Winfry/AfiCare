@@ -345,7 +345,7 @@ class PSubPageBar extends StatelessWidget implements PreferredSizeWidget {
               fixedSize: const Size(42, 42),
               backgroundColor: PT.white,
               foregroundColor: PT.teal,
-              side: const BorderSide(color: PT.line),
+              side: BorderSide(color: PT.line),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
           ),
@@ -367,9 +367,9 @@ class PLoadingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const spinner = Center(child: CircularProgressIndicator(color: PT.teal));
+    final spinner = Center(child: CircularProgressIndicator(color: PT.teal));
     if (PatientShellScope.inShell(context)) return spinner;
-    return const Scaffold(backgroundColor: PT.page, body: spinner);
+    return Scaffold(backgroundColor: PT.page, body: spinner);
   }
 }
 
@@ -381,7 +381,7 @@ PreferredSizeWidget _standaloneBar(BuildContext context, VoidCallback? onBack) {
     surfaceTintColor: PT.page,
     elevation: 0,
     leading: IconButton(
-      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
+      icon: Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
       onPressed: onBack ??
           () {
             if (Navigator.of(context).canPop()) {
@@ -774,7 +774,7 @@ class PChoicePill extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (selected) ...[const Icon(Icons.check_rounded, size: 14, color: PT.teal), const SizedBox(width: 4)],
+                if (selected) ...[Icon(Icons.check_rounded, size: 14, color: PT.teal), const SizedBox(width: 4)],
                 Text(label, style: PT.label().copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -1108,7 +1108,9 @@ class PCallout extends StatelessWidget {
                   Text(title!, style: PT.body().copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                 ],
-                Text(body, style: PT.sub().copyWith(color: const Color(0xFF5D7179))),
+                Text(body,
+                    style: PT.sub().copyWith(
+                        color: PT.highContrast ? PT.ink : const Color(0xFF5D7179))),
               ],
             ),
           ),
@@ -1529,10 +1531,14 @@ class PToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // Screen readers announce it as a switch that is on or off.
+    return Semantics(
+      toggled: value,
+      onTap: () => onChanged(!value),
+      child: GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: PT.motion(context, const Duration(milliseconds: 150)),
         width: 44,
         height: 26,
         decoration: BoxDecoration(
@@ -1542,7 +1548,7 @@ class PToggle extends StatelessWidget {
         child: Stack(
           children: [
             AnimatedAlign(
-              duration: const Duration(milliseconds: 150),
+              duration: PT.motion(context, const Duration(milliseconds: 150)),
               alignment: value ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
                 margin: const EdgeInsets.all(3),
@@ -1553,6 +1559,7 @@ class PToggle extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -1592,7 +1599,7 @@ Future<T?> showPModal<T>({
                     child: InkWell(
                       borderRadius: BorderRadius.circular(9),
                       onTap: () => Navigator.pop(ctx),
-                      child: const SizedBox(
+                      child: SizedBox(
                         width: 34,
                         height: 34,
                         child: Icon(Icons.close, size: 18, color: PT.muted),
@@ -1651,15 +1658,15 @@ InputDecoration pInput({String? hint}) => InputDecoration(
       hintStyle: PT.sub(),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: PT.line),
+        borderSide: BorderSide(color: PT.line),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: PT.line),
+        borderSide: BorderSide(color: PT.line),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: PT.teal, width: 1.5),
+        borderSide: BorderSide(color: PT.teal, width: 1.5),
       ),
     );
 
@@ -1667,14 +1674,22 @@ InputDecoration pInput({String? hint}) => InputDecoration(
 // Toast — `.toast`
 // ═══════════════════════════════════════════════════════════════════════
 
-void pToast(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message, style: PT.body().copyWith(color: Colors.white)),
-      backgroundColor: PT.navy,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      duration: const Duration(milliseconds: 2300),
-    ),
-  );
+/// A short message at the bottom of the screen. With [actionLabel] it
+/// carries one button, and stays up longer so there is time to press it.
+void pToast(BuildContext context, String message, {String? actionLabel, VoidCallback? onAction}) {
+  final hasAction = actionLabel != null && onAction != null;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message, style: PT.body().copyWith(color: Colors.white)),
+        backgroundColor: PT.navy,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: Duration(milliseconds: hasAction ? 8000 : 2300),
+        action: hasAction
+            ? SnackBarAction(label: actionLabel, textColor: PT.gold, onPressed: onAction)
+            : null,
+      ),
+    );
 }

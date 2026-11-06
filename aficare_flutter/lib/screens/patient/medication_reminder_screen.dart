@@ -4,10 +4,45 @@ import '../../models/active_patient.dart';
 import '../../models/medication_reminder_model.dart';
 import '../../services/medication_reminder_service.dart';
 import '../../theme/patient_tokens.dart';
+import '../../utils/dose_frequency.dart';
 import 'widgets/patient_ui.dart';
 
+/// A reminder to start from: the medicine just added on the Medication
+/// plan, so she doesn't type it twice. Travels in the page address
+/// (`/patient/medication-reminders?medicine=…&dosage=…&perDay=…`).
+class ReminderDraft {
+  const ReminderDraft({required this.medicine, this.dosage = '', required this.perDay});
+
+  final String medicine;
+  final String dosage;
+  final int perDay;
+
+  static ReminderDraft? fromQuery(Map<String, String> q) {
+    final medicine = q['medicine']?.trim() ?? '';
+    if (medicine.isEmpty) return null;
+    final perDay = int.tryParse(q['perDay'] ?? '') ?? 1;
+    return ReminderDraft(
+      medicine: medicine,
+      dosage: q['dosage']?.trim() ?? '',
+      perDay: perDay.clamp(1, DoseFrequency.maxPerDay),
+    );
+  }
+
+  String toLocation() => Uri(
+        path: '/patient/medication-reminders',
+        queryParameters: {
+          'medicine': medicine,
+          if (dosage.isNotEmpty) 'dosage': dosage,
+          'perDay': '$perDay',
+        },
+      ).toString();
+}
+
 class MedicationReminderScreen extends StatefulWidget {
-  const MedicationReminderScreen({super.key});
+  const MedicationReminderScreen({super.key, this.draft});
+
+  /// When set, the New reminder form opens straight away, filled in.
+  final ReminderDraft? draft;
 
   @override
   State<MedicationReminderScreen> createState() => _MedicationReminderScreenState();
@@ -29,6 +64,8 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
   ActivePatient get _subject => ActivePatient.of(context);
 
+  bool _draftOpened = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,8 +78,15 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     final subject = _subject;
     if (subject.id.isNotEmpty && subject.id != _loadedFor) {
       _loadedFor = subject.id;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadReminders();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await _loadReminders();
+        // Opened from "Set a reminder" after adding a medicine: go
+        // straight to the form, once.
+        if (mounted && widget.draft != null && !_draftOpened) {
+          _draftOpened = true;
+          _add(draft: widget.draft);
+        }
       });
     }
   }
@@ -150,7 +194,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     }
   }
 
-  Future<void> _add() async {
+  Future<void> _add({ReminderDraft? draft}) async {
     // Captured now so the reminder is filed against the profile that was
     // on screen when Add was tapped.
     final subject = ActivePatient.of(context, listen: false);
@@ -163,6 +207,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         patientId: subject.id,
         personName: subject.isDependent ? subject.firstName : null,
         service: _service,
+        draft: draft,
       ),
     );
     if (permissionGranted == null || !mounted) return;
@@ -190,7 +235,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
       eyebrow: 'A small nudge',
       title: subject.isDependent ? "${subject.firstName}'s reminders" : 'Medicine reminders',
       subtitle: 'Set to the times you actually take things, not the times a form suggested.',
-      action: PButton('Add a reminder', icon: Icons.add, onPressed: _add),
+      action: PButton('Add a reminder', icon: Icons.add, onPressed: () => _add()),
       slivers: [
         SliverToBoxAdapter(
           child: Column(
@@ -220,7 +265,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                     emoji: '⏰',
                     title: 'No reminders yet',
                     body: 'Add one for each medicine, at the times you really take it.',
-                    action: PButton('Add a reminder', icon: Icons.add, onPressed: _add),
+                    action: PButton('Add a reminder', icon: Icons.add, onPressed: () => _add()),
                   ),
                 ),
               if (active.isNotEmpty) ...[
@@ -356,7 +401,7 @@ class _ReminderRow extends StatelessWidget {
       IconButton(
         tooltip: 'Delete reminder',
         onPressed: busy ? null : onDelete,
-        icon: const Icon(Icons.delete_outline_rounded, size: 20, color: PT.muted),
+        icon: Icon(Icons.delete_outline_rounded, size: 20, color: PT.muted),
         visualDensity: VisualDensity.compact,
       ),
     ];
@@ -393,9 +438,12 @@ class _ReminderRow extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _ReminderForm extends StatefulWidget {
-  const _ReminderForm({required this.patientId, this.personName, required this.service});
+  const _ReminderForm({required this.patientId, this.personName, required this.service, this.draft});
 
   final String patientId;
+
+  /// What to fill the form with, when it comes from a medicine just added.
+  final ReminderDraft? draft;
 
   /// The dependant's first name when it's their medicine, so the alarm
   /// says whose it is.
@@ -412,27 +460,30 @@ class _ReminderFormState extends State<_ReminderForm> {
     ('twice_daily', 'Twice a day'),
     ('three_times', '3 times a day'),
     ('four_times', '4 times a day'),
+    ('five_times', '5 times a day'),
+    ('six_times', '6 times a day'),
     ('as_needed', 'As needed'),
   ];
 
   /// Starting times for each frequency; the person can change any of them.
-  static List<ReminderTime> _defaultTimes(String frequency) => switch (frequency) {
-        'twice_daily' => [ReminderTime(hour: 8, minute: 0), ReminderTime(hour: 20, minute: 0)],
-        'three_times' => [
-            ReminderTime(hour: 8, minute: 0),
-            ReminderTime(hour: 14, minute: 0),
-            ReminderTime(hour: 20, minute: 0),
-          ],
-        'four_times' => [
-            ReminderTime(hour: 8, minute: 0),
-            ReminderTime(hour: 12, minute: 0),
-            ReminderTime(hour: 17, minute: 0),
-            ReminderTime(hour: 22, minute: 0),
-          ],
-        // No alarm: a medicine taken only when needed shouldn't ring daily.
-        'as_needed' => [],
-        _ => [ReminderTime(hour: 8, minute: 0)],
-      };
+  /// The same hours the Medication plan gives each dose, so an alarm rings
+  /// when the tracker expects that dose.
+  static List<ReminderTime> _defaultTimes(String frequency) {
+    final perDay = MedicationReminder.perDay(frequency);
+    return [for (final h in DoseFrequency.hours(perDay)) ReminderTime(hour: h, minute: 0)];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.draft;
+    if (draft != null) {
+      _name.text = draft.medicine;
+      _dosage.text = draft.dosage;
+      _frequency = MedicationReminder.frequencyFor(draft.perDay);
+      _times = _defaultTimes(_frequency);
+    }
+  }
 
   final _name = TextEditingController();
   final _dosage = TextEditingController();
@@ -534,7 +585,7 @@ class _ReminderFormState extends State<_ReminderForm> {
               Expanded(child: Text('Remind me at', style: PT.label().copyWith(fontSize: 11))),
               TextButton.icon(
                 onPressed: () => _pickTime(null),
-                icon: const Icon(Icons.add, size: 16, color: PT.teal),
+                icon: Icon(Icons.add, size: 16, color: PT.teal),
                 label: Text('Add a time', style: PT.button().copyWith(color: PT.teal, fontSize: 13)),
               ),
             ],
@@ -550,7 +601,7 @@ class _ReminderFormState extends State<_ReminderForm> {
                   IconButton(
                     tooltip: 'Remove this time',
                     onPressed: () => setState(() => _times.removeAt(i)),
-                    icon: const Icon(Icons.close_rounded, size: 18, color: PT.muted),
+                    icon: Icon(Icons.close_rounded, size: 18, color: PT.muted),
                     visualDensity: VisualDensity.compact,
                   ),
               ],

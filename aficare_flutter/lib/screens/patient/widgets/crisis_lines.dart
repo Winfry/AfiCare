@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/patient_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../utils/snackbar_utils.dart';
@@ -38,10 +39,10 @@ class CrisisLines extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  Icon(Icons.phone_rounded, size: 16, color: Colors.grey.shade700),
+                  Icon(Icons.phone_rounded, size: 16, color: PT.muted),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(name, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                    child: Text(name, style: TextStyle(color: PT.muted, fontSize: 13)),
                   ),
                   Text(number, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ],

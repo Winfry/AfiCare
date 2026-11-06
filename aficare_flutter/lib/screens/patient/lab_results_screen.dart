@@ -80,7 +80,7 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
           onSelect: (i) => setState(() => _filter = i),
         ),
         if (_isLoading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 50),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           )

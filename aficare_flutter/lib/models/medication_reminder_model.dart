@@ -3,7 +3,7 @@ class MedicationReminder {
   final String patientId;
   final String medicationName;
   final String dosage;
-  final String frequency; // 'once_daily', 'twice_daily', 'three_times', 'four_times', 'as_needed'
+  final String frequency; // 'once_daily', 'twice_daily', 'three_times', 'four_times', 'five_times', 'six_times', 'as_needed'
   final List<ReminderTime> times;
   final bool isActive;
   final DateTime? startDate;
@@ -115,10 +115,33 @@ class MedicationReminder {
       case 'twice_daily': return 'Twice daily';
       case 'three_times': return '3 times daily';
       case 'four_times': return '4 times daily';
+      case 'five_times': return '5 times daily';
+      case 'six_times': return '6 times daily';
       case 'as_needed': return 'As needed';
       default: return frequency;
     }
   }
+
+  static const _byCount = {
+    1: 'once_daily',
+    2: 'twice_daily',
+    3: 'three_times',
+    4: 'four_times',
+    5: 'five_times',
+    6: 'six_times',
+  };
+
+  /// How many alarms a day [frequency] means (0 for "as needed").
+  static int perDay(String frequency) {
+    if (frequency == 'as_needed') return 0;
+    for (final e in _byCount.entries) {
+      if (e.value == frequency) return e.key;
+    }
+    return 1;
+  }
+
+  /// The frequency for [perDay] doses a day (1–6).
+  static String frequencyFor(int perDay) => _byCount[perDay.clamp(1, 6)]!;
 
   static String frequencyIcon(String frequency) {
     switch (frequency) {
@@ -126,6 +149,8 @@ class MedicationReminder {
       case 'twice_daily': return '💊💊';
       case 'three_times': return '💊💊💊';
       case 'four_times': return '💊💊💊💊';
+      case 'five_times': return '💊💊💊💊💊';
+      case 'six_times': return '💊💊💊💊💊💊';
       case 'as_needed': return '📦';
       default: return '💊';
     }

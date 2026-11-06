@@ -10,19 +10,29 @@ import 'package:google_fonts/google_fonts.dart';
 class PT {
   PT._();
 
+  // ── High contrast ───────────────────────────────────────────────────
+  // When the patient turns on High contrast (Accessibility), the colours
+  // that carry text, lines and status switch to darker ones: grey text
+  // becomes near-black, faint dividers become visible lines. Set by
+  // HighContrastScope from her saved preference; never set it elsewhere.
+  static bool highContrast = false;
+  static Color _pick(Color normal, Color strong) => highContrast ? strong : normal;
+
   // ── Palette ─────────────────────────────────────────────────────────
   // Values come from the approved patient prototype: navy rail, blue
   // accents, warm paper ground. Field names are deliberately unchanged
   // from the earlier teal set so every screen inherits this without edits.
-  static const Color navy   = Color(0xFF17405B); // deep blue
-  static const Color teal   = Color(0xFF2A5F85); // primary accent (blue)
-  static const Color green  = Color(0xFF2D7F62);
-  static const Color page   = Color(0xFFF7F8F5); // warm paper
-  static const Color ink    = Color(0xFF20303F);
-  static const Color muted  = Color(0xFF717F88);
-  static const Color line   = Color(0xFFE5E8EA);
-  static const Color danger = Color(0xFFBD6256); // coral
-  static const Color warn   = Color(0xFFB0751D); // gold
+  // The second colour of each pair is the High contrast one (every text
+  // colour on it is at least 7:1 against white, WCAG AAA).
+  static Color get navy   => _pick(const Color(0xFF17405B), const Color(0xFF0E2B3E)); // deep blue
+  static Color get teal   => _pick(const Color(0xFF2A5F85), const Color(0xFF173F5E)); // primary accent (blue)
+  static Color get green  => _pick(const Color(0xFF2D7F62), const Color(0xFF175340));
+  static Color get page   => _pick(const Color(0xFFF7F8F5), const Color(0xFFFFFFFF)); // warm paper
+  static Color get ink    => _pick(const Color(0xFF20303F), const Color(0xFF0A141D));
+  static Color get muted  => _pick(const Color(0xFF717F88), const Color(0xFF2F3B45));
+  static Color get line   => _pick(const Color(0xFFE5E8EA), const Color(0xFF6E7B85));
+  static Color get danger => _pick(const Color(0xFFBD6256), const Color(0xFF8A2F25)); // coral
+  static Color get warn   => _pick(const Color(0xFFB0751D), const Color(0xFF6E450B)); // gold
   static const Color white  = Color(0xFFFFFFFF);
   static const Color gold   = Color(0xFFE5B867); // rail active stripe
 
@@ -57,15 +67,15 @@ class PT {
   // Green stays for "ok": the prototype uses blue for confirmed states,
   // but in a health app green should keep meaning normal/taken.
   static const Color badgeOkBg    = Color(0xFFE5F1EC);
-  static const Color badgeOkFg    = Color(0xFF2D7F62);
+  static Color get badgeOkFg      => _pick(const Color(0xFF2D7F62), const Color(0xFF14503C));
   static const Color badgeWarnBg  = Color(0xFFFFF5DF);
-  static const Color badgeWarnFg  = Color(0xFF8C6A31);
+  static Color get badgeWarnFg    => _pick(const Color(0xFF8C6A31), const Color(0xFF5A3F12));
   static const Color badgeRedBg   = Color(0xFFFFF0ED);
-  static const Color badgeRedFg   = Color(0xFFA14D43);
+  static Color get badgeRedFg     => _pick(const Color(0xFFA14D43), const Color(0xFF7A2A21));
   static const Color badgeBlueBg  = Color(0xFFE6EEF4);
-  static const Color badgeBlueFg  = Color(0xFF315F74);
+  static Color get badgeBlueFg    => _pick(const Color(0xFF315F74), const Color(0xFF173F52));
   static const Color badgeGrayBg  = Color(0xFFF0F5F9);
-  static const Color badgeGrayFg  = Color(0xFF717F88);
+  static Color get badgeGrayFg    => _pick(const Color(0xFF717F88), const Color(0xFF2F3B45));
 
   // ── Component surfaces ──────────────────────────────────────────────
   static const Color calloutBg       = Color(0xFFE6EEF4);
@@ -74,8 +84,8 @@ class PT {
   static const Color viewingBorder   = Color(0xFFF1DFB9);
   static const Color searchFill      = Color(0xFFF0F5F9);
   static const Color tabsTrack       = Color(0xFFEDEFF1);
-  static const Color progressTrack   = Color(0xFFEDEFF1);
-  static const Color timelineLine    = Color(0xFFDCE6EC);
+  static Color get progressTrack     => _pick(const Color(0xFFEDEFF1), const Color(0xFFB9C2C8));
+  static Color get timelineLine      => _pick(const Color(0xFFDCE6EC), const Color(0xFF6E7B85));
   static const Color timelineRing    = Color(0xFFE6EEF4);
   static const Color avatarBg        = Color(0xFFDCE9EF);
   static const Color avatarDepBg     = Color(0xFFF4DCA9);
@@ -83,7 +93,7 @@ class PT {
   static const Color stepNumBg       = Color(0xFFE6EEF4);
   static const Color stepDoneBg      = Color(0xFFF6F9FA);
   static const Color closeBtnBg      = Color(0xFFF0F5F9);
-  static const Color toggleOff       = Color(0xFFD5DCE0);
+  static Color get toggleOff         => _pick(const Color(0xFFD5DCE0), const Color(0xFF6E7B85));
 
   // ── Radii ───────────────────────────────────────────────────────────
   static const double rCard   = 22;
@@ -119,6 +129,11 @@ class PT {
   /// container, because that is what the spec's CSS media queries do --
   /// a container-relative check collapses grids too early inside the
   /// sidebar layout and inside modals.
+  /// How long an animation runs: [normal], or no time at all when she
+  /// (or her phone) asked for reduced motion.
+  static Duration motion(BuildContext c, Duration normal) =>
+      MediaQuery.disableAnimationsOf(c) ? Duration.zero : normal;
+
   static bool isMobile(BuildContext c) => MediaQuery.sizeOf(c).width < bpMobile;
   static bool isTablet(BuildContext c) => MediaQuery.sizeOf(c).width < bpTablet;
 
@@ -129,9 +144,9 @@ class PT {
 
   /// Fraunces at the design's weight and tracking. Use for display text
   /// only — never for body copy, rows or buttons.
-  static TextStyle serif({required double fontSize, Color color = ink, double height = 1.15}) =>
+  static TextStyle serif({required double fontSize, Color? color, double height = 1.15}) =>
       GoogleFonts.fraunces(
-          fontSize: fontSize, fontWeight: FontWeight.w500, letterSpacing: -.5, color: color, height: height);
+          fontSize: fontSize, fontWeight: FontWeight.w500, letterSpacing: -.5, color: color ?? ink, height: height);
 
   static TextStyle h1() => serif(fontSize: 34, height: 1.13);
   static TextStyle h2() => serif(fontSize: 30, color: white, height: 1.15);

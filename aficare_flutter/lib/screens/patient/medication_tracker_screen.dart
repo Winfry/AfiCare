@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +11,7 @@ import '../../providers/dependent_provider.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/dose_frequency.dart';
 import 'adherence_log_screen.dart';
+import 'medication_reminder_screen.dart' show ReminderDraft;
 import 'widgets/patient_ui.dart';
 
 /// Medications — what you take, when you take it, and what needs
@@ -95,7 +97,7 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
             action: PButton('+ Add', onPressed: _openAddMedication),
           ),
           if (_isLoading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 60),
               child: Center(child: CircularProgressIndicator(color: PT.teal)),
             )
@@ -346,17 +348,21 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
   // ── Add medication ────────────────────────────────────────────────────
 
   Future<void> _openAddMedication() async {
-    final result = await showPModal<AddMedicationResult>(
+    final added = await showPModal<(AddMedicationResult, ReminderDraft)>(
       context: context,
       title: 'Add a medication',
       builder: (_) => _AddMedicationForm(patientId: _patientId),
     );
-    if (result == null || !mounted) return;
+    if (added == null || !mounted) return;
+    final (result, draft) = added;
+    // Adding a medicine sets no alarm, so offer one, filled in with it.
     pToast(
       context,
       result == AddMedicationResult.added
-          ? 'Medication added'
-          : "Medication added. Today's doses will appear when you're back online.",
+          ? 'Medication added. It has no alarm yet.'
+          : "Medication added. Today's doses will appear when you're back online. It has no alarm yet.",
+      actionLabel: 'Set a reminder',
+      onAction: () => context.go(draft.toLocation()),
     );
     _load();
   }
@@ -423,7 +429,13 @@ class _AddMedicationFormState extends State<_AddMedicationForm> {
       });
       return;
     }
-    Navigator.pop(context, result);
+    Navigator.pop(
+      context,
+      (
+        result,
+        ReminderDraft(medicine: _name.text.trim(), dosage: _dosage.text.trim(), perDay: _timesPerDay),
+      ),
+    );
   }
 
   @override
@@ -432,8 +444,8 @@ class _AddMedicationFormState extends State<_AddMedicationForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'This is added as a self-tracked medication so AfiCare can remind you and '
-          'record each dose.',
+          'AfiCare will list each dose so you can mark it taken. '
+          'To be reminded, set an alarm for it afterwards.',
           style: PT.sub(),
         ),
         const SizedBox(height: 16),

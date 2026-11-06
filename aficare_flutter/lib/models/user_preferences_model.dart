@@ -17,6 +17,9 @@ class UserPreferencesModel {
   /// Accessibility: allow text-to-speech for dashboard content.
   final bool textToSpeech;
 
+  /// Accessibility: draw all text bold.
+  final bool boldText;
+
   /// The theme the app actually uses. Dark is not offered for now: the
   /// patient pages are drawn in fixed light colours, so a dark theme
   /// turned their text white on white cards. A saved "dark" (chosen
@@ -34,6 +37,7 @@ class UserPreferencesModel {
     this.textScale = 1.0,
     this.reduceMotion = false,
     this.textToSpeech = false,
+    this.boldText = false,
   });
 
   factory UserPreferencesModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,7 @@ class UserPreferencesModel {
       textScale: (json['text_scale'] as num?)?.toDouble() ?? 1.0,
       reduceMotion: (json['reduce_motion'] as bool?) ?? false,
       textToSpeech: (json['text_to_speech'] as bool?) ?? false,
+      boldText: (json['bold_text'] as bool?) ?? false,
     );
   }
 
@@ -61,6 +66,7 @@ class UserPreferencesModel {
       'text_scale': textScale,
       'reduce_motion': reduceMotion,
       'text_to_speech': textToSpeech,
+      'bold_text': boldText,
     };
   }
 
@@ -73,6 +79,7 @@ class UserPreferencesModel {
     double? textScale,
     bool? reduceMotion,
     bool? textToSpeech,
+    bool? boldText,
   }) {
     return UserPreferencesModel(
       userId: userId,
@@ -84,6 +91,7 @@ class UserPreferencesModel {
       textScale: textScale ?? this.textScale,
       reduceMotion: reduceMotion ?? this.reduceMotion,
       textToSpeech: textToSpeech ?? this.textToSpeech,
+      boldText: boldText ?? this.boldText,
     );
   }
 

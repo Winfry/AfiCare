@@ -196,7 +196,7 @@ class _ShareRecordsState extends State<ShareRecords> {
                 : null,
           ),
           if (_isLoading && _shares.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(child: CircularProgressIndicator(color: PT.teal)),
             )
@@ -465,8 +465,8 @@ class _ShareRecordsState extends State<ShareRecords> {
           version: QrVersions.auto,
           size: 170,
           backgroundColor: Colors.white,
-          eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: PT.navy),
-          dataModuleStyle: const QrDataModuleStyle(
+          eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: PT.navy),
+          dataModuleStyle: QrDataModuleStyle(
             dataModuleShape: QrDataModuleShape.square,
             color: PT.navy,
           ),

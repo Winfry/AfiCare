@@ -254,7 +254,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               style: const TextStyle(
                   fontSize: 18, fontWeight: FontWeight.bold)),
           Text(label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              style: TextStyle(fontSize: 12, color: PT.muted)),
         ],
       ),
     );
@@ -352,7 +352,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         onSelected: (_) => setState(() => _filterCategory = category),
         selectedColor: AfiCareTheme.primaryGreen.withOpacity(0.2),
         labelStyle: TextStyle(
-          color: selected ? AfiCareTheme.primaryGreen : Colors.grey[700],
+          color: selected ? AfiCareTheme.primaryGreen : PT.muted,
           fontWeight: selected ? FontWeight.bold : FontWeight.normal,
         ),
       ),

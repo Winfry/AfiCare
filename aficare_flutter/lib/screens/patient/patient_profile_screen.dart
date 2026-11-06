@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/theme.dart';
 import 'patient_profile_edit_screen.dart';
 import 'patient_settings_screen.dart';
+import 'widgets/patient_photo_avatar.dart';
 import 'widgets/patient_ui.dart';
 
 /// Profile & MediLink ID page, reached from the More page (/patient/profile).
@@ -23,11 +25,9 @@ class PatientProfileScreen extends StatelessWidget {
       subtitle: 'Your details, and the ID that links your care together across facilities.',
       children: [
           Center(
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: AfiCareTheme.primaryGreen.withOpacity(0.1),
-              child: Icon(Icons.person,
-                  size: 48, color: AfiCareTheme.primaryGreen),
+            child: PatientPhotoAvatar(
+              name: user?.fullName ?? '',
+              storedPhoto: user?.photoUrl,
             ),
           ),
           const SizedBox(height: 12),
@@ -38,7 +38,7 @@ class PatientProfileScreen extends StatelessWidget {
           ),
           Center(
             child: Text(user?.medilinkId ?? user?.email ?? '',
-                style: TextStyle(color: Colors.grey[600])),
+                style: TextStyle(color: PT.muted)),
           ),
           const SizedBox(height: 24),
           _tile(context, Icons.edit, 'Edit Profile',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
@@ -97,7 +98,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Center(child: Text('No claims found.', style: TextStyle(color: Colors.grey.shade400))),
+                child: Center(child: Text('No claims found.', style: TextStyle(color: PT.muted))),
               ),
             )
           else
@@ -132,10 +133,10 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
                     const SizedBox(height: 8),
                     Text('NHIF was replaced by SHA, the Social Health Authority, in October 2024. Claims are made '
                         'through your facility. Surgery and some specialist procedures need approval first.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                        style: TextStyle(fontSize: 12, color: PT.muted)),
                     const SizedBox(height: 8),
                     Text('This list is your own record. For the real status of a claim, ask your facility or insurer.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                        style: TextStyle(fontSize: 12, color: PT.muted, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -164,7 +165,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: sel ? AppColors.canopy : AppColors.borderSubtle),
               ),
-              child: Center(child: Text(tabs[i], style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : Colors.grey.shade700))),
+              child: Center(child: Text(tabs[i], style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : PT.muted))),
             ),
           );
         },
@@ -181,7 +182,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
           Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: color)),
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+          Text(label, style: TextStyle(fontSize: 10, color: PT.muted)),
         ]),
       ),
     );
@@ -205,10 +206,10 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
               ),
               const SizedBox(width: 8),
               Text(InsuranceClaim.insuranceTypeLabel(claim.insuranceType),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 12, color: PT.muted)),
               const Spacer(),
               Text('${claim.dateOfService.day}/${claim.dateOfService.month}/${claim.dateOfService.year}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                  style: TextStyle(fontSize: 12, color: PT.muted)),
             ],
           ),
           const SizedBox(height: 10),
@@ -393,7 +394,7 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: sel ? AppColors.canopy : AppColors.borderSubtle),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : Colors.grey.shade700)),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : PT.muted)),
       ),
     );
   }

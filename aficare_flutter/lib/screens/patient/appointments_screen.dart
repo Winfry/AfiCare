@@ -137,7 +137,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             ),
           ),
           if (_isLoading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 60),
               child: Center(child: CircularProgressIndicator(color: PT.teal)),
             )
@@ -312,7 +312,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 ),
               ),
               if (ct.isLoading)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(child: CircularProgressIndicator(color: PT.teal)),
                 )
@@ -828,7 +828,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(9),
                       onTap: () => Navigator.pop(context),
-                      child: const SizedBox(
+                      child: SizedBox(
                         width: 34,
                         height: 34,
                         child: Icon(Icons.close, size: 18, color: PT.muted),
@@ -1053,7 +1053,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
           border: Border.all(color: PT.line),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const SizedBox(
+        child: SizedBox(
           width: 16,
           height: 16,
           child: CircularProgressIndicator(strokeWidth: 2, color: PT.teal),
@@ -1134,7 +1134,7 @@ class _ConfirmationSheetState extends State<_ConfirmationSheet> {
               height: 56,
               alignment: Alignment.center,
               decoration: const BoxDecoration(shape: BoxShape.circle, color: PT.calloutBg),
-              child: const Icon(Icons.check_rounded, size: 30, color: PT.teal),
+              child: Icon(Icons.check_rounded, size: 30, color: PT.teal),
             ),
           ),
           const SizedBox(height: 14),

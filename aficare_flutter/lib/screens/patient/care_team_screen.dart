@@ -53,7 +53,7 @@ class _CareTeamScreenState extends State<CareTeamScreen> {
       subtitle: 'People involved in your care.',
       children: [
         if (ct.isLoading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           )

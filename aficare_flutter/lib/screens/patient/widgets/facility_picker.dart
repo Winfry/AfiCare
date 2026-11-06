@@ -178,7 +178,7 @@ class _FacilityPickerState extends State<FacilityPicker> {
             }
           },
           decoration: pInput(hint: 'Search by name or town, e.g. Tamia or Kisumu').copyWith(
-            prefixIcon: const Icon(Icons.search, size: 18, color: PT.muted),
+            prefixIcon: Icon(Icons.search, size: 18, color: PT.muted),
           ),
         ),
         const SizedBox(height: 10),
@@ -202,7 +202,7 @@ class _FacilityPickerState extends State<FacilityPicker> {
       case _SearchState.idle:
         return [Text('Type at least 2 letters of its name or town.', style: PT.rowSub())];
       case _SearchState.searching:
-        return const [
+        return [
           Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: PT.teal))),
@@ -232,7 +232,7 @@ class _FacilityPickerState extends State<FacilityPicker> {
               leading: const PSoftIcon(Icons.local_hospital_outlined, size: 38),
               title: f.name,
               subtitle: f.place ?? '',
-              trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+              trailing: [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
               onTap: () => _pick(f),
             ),
           if (_results.length >= FacilitySearchService.maxResults)

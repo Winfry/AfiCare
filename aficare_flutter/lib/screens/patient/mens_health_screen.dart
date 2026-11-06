@@ -149,7 +149,7 @@ class _MensHealthScreenState extends State<MensHealthScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           else
-                            const Icon(Icons.chevron_right_rounded, color: PT.muted),
+                            Icon(Icons.chevron_right_rounded, color: PT.muted),
                         ],
                         onTap: _savingType == null ? () => _start(tool) : null,
                       ),
@@ -201,7 +201,7 @@ class _MensHealthScreenState extends State<MensHealthScreen> {
           : '${tool.levelLabel(s.riskLevel)} · ${tool.scoreText(s.riskScore)}',
       trailing: [
         Text(_date(s.completedAt), style: PT.label()),
-        if (open != null) const Icon(Icons.chevron_right_rounded, color: PT.muted),
+        if (open != null) Icon(Icons.chevron_right_rounded, color: PT.muted),
       ],
       onTap: open,
     );

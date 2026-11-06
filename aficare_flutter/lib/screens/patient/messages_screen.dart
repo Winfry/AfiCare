@@ -135,7 +135,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         ),
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: PT.teal))
+              ? Center(child: CircularProgressIndicator(color: PT.teal))
               : Consumer<MessageProvider>(
                   builder: (context, mp, _) {
                     final convos = mp.conversations
@@ -172,7 +172,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           TextField(
             onChanged: (v) => setState(() => _search = v),
             decoration: pInput(hint: 'Search messages…').copyWith(
-              prefixIcon: const Icon(Icons.search, size: 18, color: PT.muted),
+              prefixIcon: Icon(Icons.search, size: 18, color: PT.muted),
             ),
           ),
           const SizedBox(height: 12),
@@ -418,7 +418,7 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _paneHeader(),
-            const Divider(height: 1, color: PT.line),
+            Divider(height: 1, color: PT.line),
             Expanded(child: _chatBody(myId)),
           ],
         ),
@@ -458,7 +458,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
-            const Divider(height: 1, color: PT.line),
+            Divider(height: 1, color: PT.line),
             Expanded(child: _chatBody(myId)),
           ],
         ),
@@ -472,7 +472,7 @@ class _ChatScreenState extends State<ChatScreen> {
         surfaceTintColor: PT.page,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: PT.ink),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Row(
@@ -522,7 +522,7 @@ class _ChatScreenState extends State<ChatScreen> {
       children: [
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: PT.teal))
+              ? Center(child: CircularProgressIndicator(color: PT.teal))
               : Consumer<MessageProvider>(
                   builder: (context, mp, _) {
                     if (mp.thread.isEmpty) {
@@ -596,7 +596,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: PT.line)),
         ),
         child: Row(
@@ -660,7 +660,7 @@ class _ContactPickerState extends State<_ContactPicker> {
       future: _contacts,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Padding(
+          return Padding(
             padding: EdgeInsets.symmetric(vertical: 30),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           );
@@ -698,7 +698,7 @@ class _ContactPickerState extends State<_ContactPicker> {
                 subtitle: c.caresForNames.isEmpty
                     ? c.roleLabel
                     : '${c.roleLabel} · Looks after ${c.caresForNames.join(' and ')}',
-                trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+                trailing: [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
                 onTap: () => Navigator.pop(context, c),
               ),
           ],

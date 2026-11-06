@@ -147,6 +147,8 @@ CustomTransitionPage<void> _patientPage(GoRouterState state, Widget child) {
     transitionDuration: const Duration(milliseconds: 250),
     reverseTransitionDuration: const Duration(milliseconds: 150),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      // Reduce motion (hers or the phone's): the page simply appears.
+      if (MediaQuery.disableAnimationsOf(context)) return child;
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
       return FadeTransition(
         opacity: curved,
@@ -365,7 +367,10 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: 'medication-reminders',
-              pageBuilder: (context, state) => _patientPage(state, const MedicationReminderScreen()),
+              pageBuilder: (context, state) => _patientPage(
+                state,
+                MedicationReminderScreen(draft: ReminderDraft.fromQuery(state.uri.queryParameters)),
+              ),
             ),
             GoRoute(
               path: 'mens-health',

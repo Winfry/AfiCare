@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/user_preferences_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/preferences_provider.dart';
-import '../../services/tts_service.dart';
+import '../../theme/patient_tokens.dart';
 import '../../utils/theme.dart';
 import 'widgets/patient_ui.dart';
 import 'widgets/pin_account_dialogs.dart';
@@ -63,163 +64,59 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
                 return ListView(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   children: [
-                    _sectionLabel('APPEARANCE'),
+                    if (pp.loadFailed) ...[
+                      PLoadError(what: 'your settings', onRetry: _retryLoad),
+                      const SizedBox(height: 20),
+                    ],
+                    _sectionLabel('LANGUAGE'),
                     _card(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Theme',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 12),
-                                // No Dark: see UserPreferencesModel.effectiveTheme.
-                                SegmentedButton<AppThemePreference>(
-                                  segments: const [
-                                    ButtonSegment(
-                                        value: AppThemePreference.light,
-                                        label: Text('Light')),
-                                    ButtonSegment(
-                                        value:
-                                            AppThemePreference.highContrast,
-                                        label: Text('High contrast')),
-                                  ],
-                                  selected: {prefs.effectiveTheme},
-                                  onSelectionChanged: (s) =>
-                                      _save(prefs.copyWith(theme: s.first)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          ListTile(
-                            title: const Text('Language'),
-                            subtitle: Text(_languageLabel(prefs.language)),
-                            trailing: const Icon(Icons.expand_more),
-                            onTap: () => _pickLanguage(prefs),
-                          ),
-                        ],
+                      child: ListTile(
+                        title: const Text('Language'),
+                        subtitle: Text(_languageLabel(prefs.language)),
+                        trailing: const Icon(Icons.expand_more),
+                        onTap: () => _pickLanguage(prefs),
                       ),
                     ),
                     const SizedBox(height: 20),
                     _sectionLabel('ACCESSIBILITY'),
                     _card(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.format_size,
-                                        color: AfiCareTheme.primaryGreen),
-                                    const SizedBox(width: 10),
-                                    const Expanded(
-                                      child: Text('Text size',
-                                          style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600)),
-                                    ),
-                                    Text(
-                                      '${(prefs.textScale * 100).round()}%',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                                Slider(
-                                  value: prefs.textScale.clamp(0.85, 1.6),
-                                  min: 0.85,
-                                  max: 1.6,
-                                  divisions: 15,
-                                  activeColor: AfiCareTheme.primaryGreen,
-                                  onChanged: (v) => _save(
-                                      prefs.copyWith(textScale: v)),
-                                ),
-                                Text(
-                                  'Live preview — Habari, Amina 👋',
-                                  style: TextStyle(
-                                      fontSize: 14 * prefs.textScale,
-                                      fontWeight: FontWeight.w600,
-                                      color: AfiCareTheme.primaryGreen),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          SwitchListTile(
-                            secondary: Icon(Icons.motion_photos_off,
-                                color: AfiCareTheme.primaryGreen),
-                            title: const Text('Reduce motion'),
-                            subtitle: const Text(
-                                'Minimise animations and transitions'),
-                            value: prefs.reduceMotion,
-                            onChanged: (v) => _save(
-                                prefs.copyWith(reduceMotion: v)),
-                          ),
-                          const Divider(height: 1),
-                          SwitchListTile(
-                            secondary: Icon(Icons.record_voice_over,
-                                color: AfiCareTheme.primaryGreen),
-                            title: const Text('Text-to-speech'),
-                            subtitle: const Text(
-                                'Read dashboard content out loud'),
-                            value: prefs.textToSpeech,
-                            onChanged: (v) =>
-                                _save(prefs.copyWith(textToSpeech: v)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: () => _testVoice(),
-                                icon: const Icon(Icons.volume_up),
-                                label: const Text('Test voice'),
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: ListTile(
+                        leading: Icon(Icons.accessibility_new,
+                            color: AfiCareTheme.primaryGreen),
+                        title: const Text('Accessibility'),
+                        subtitle: Text(_accessibilitySummary(prefs)),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.go('/patient/accessibility'),
                       ),
                     ),
                     const SizedBox(height: 20),
                     _sectionLabel('NOTIFICATIONS'),
+                    // AfiCare's only alerts today are the medicine alarms
+                    // set on the phone. There were Push / Email / SMS
+                    // switches here that nothing read; they come back
+                    // only when something actually sends those messages.
                     _card(
                       child: Column(
                         children: [
-                          SwitchListTile(
-                            secondary: Icon(Icons.notifications,
+                          ListTile(
+                            leading: Icon(Icons.alarm,
                                 color: AfiCareTheme.primaryGreen),
-                            title: const Text('Push Notifications'),
-                            value: prefs.notificationsEnabled,
-                            onChanged: (v) => _save(prefs.copyWith(
-                                notificationsEnabled: v)),
+                            title: const Text('Medicine alarms'),
+                            subtitle: const Text(
+                                'Set them on the Medicine reminders page. '
+                                'They ring on your phone, at the times you choose.'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () =>
+                                context.go('/patient/medication-reminders'),
                           ),
                           const Divider(height: 1),
-                          SwitchListTile(
-                            secondary: Icon(Icons.email,
-                                color: AfiCareTheme.primaryGreen),
-                            title: const Text('Email Updates'),
-                            value: prefs.emailNotifications,
-                            onChanged: (v) => _save(
-                                prefs.copyWith(emailNotifications: v)),
-                          ),
-                          const Divider(height: 1),
-                          SwitchListTile(
-                            secondary: Icon(Icons.sms,
-                                color: AfiCareTheme.primaryGreen),
-                            title: const Text('SMS Alerts'),
-                            value: prefs.smsNotifications,
-                            onChanged: (v) =>
-                                _save(prefs.copyWith(smsNotifications: v)),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              "AfiCare doesn't send text messages (SMS) or "
+                              'emails yet.',
+                              style: TextStyle(fontSize: 13, color: PT.muted),
+                            ),
                           ),
                         ],
                       ),
@@ -280,7 +177,7 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
                     Center(
                       child: Text('© 2026 AfiCare Health Systems',
                           style: TextStyle(
-                              color: Colors.grey[500], fontSize: 12)),
+                              color: PT.muted, fontSize: 12)),
                     ),
                   ],
                 );
@@ -295,7 +192,7 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
       child: Text(label,
           style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: PT.muted,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5)),
     );
@@ -312,51 +209,66 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
     );
   }
 
-  String _languageLabel(String code) {
-    switch (code) {
-      case 'sw':
-        return 'Kiswahili';
-      case 'fr':
-        return 'Français';
-      default:
-        return 'English (US)';
-    }
+  // Only English is complete. Kiswahili covers the home page so far, and
+  // says so. Français was offered but nothing was translated; anyone who
+  // chose it sees English, which is what they were getting.
+  static const _languages = {
+    'en': 'English',
+    'sw': 'Kiswahili',
+  };
+
+  String _languageLabel(String code) => code == 'sw'
+      ? 'Kiswahili: only the home page so far, the rest is in English'
+      : 'English';
+
+  String _accessibilitySummary(UserPreferencesModel prefs) {
+    final on = [
+      if ((prefs.textScale - 1.0).abs() > 0.01)
+        'text ${(prefs.textScale * 100).round()}%',
+      if (prefs.boldText) 'bold text',
+      if (prefs.effectiveTheme == AppThemePreference.highContrast)
+        'high contrast',
+      if (prefs.reduceMotion) 'reduce motion',
+      if (prefs.textToSpeech) 'read aloud',
+    ];
+    return on.isEmpty
+        ? 'Text size, bold text, high contrast, motion, read aloud'
+        : 'On: ${on.join(', ')}';
   }
 
-  void _testVoice() {
-    final ok = tts.speak('Hello. This is AfiCare. Welcome back.');
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(tts.isSupported
-          ? (ok ? 'Speaking now...' : 'Voice unavailable in this browser.')
-          : 'Text-to-speech is not supported on this device.'),
-      backgroundColor: ok ? Colors.green : Colors.orange.shade800,
-    ));
+  Future<void> _retryLoad() async {
+    final id = context.read<AuthProvider>().currentUser?.id;
+    if (id != null) await context.read<PreferencesProvider>().loadPreferences(id);
   }
 
   void _pickLanguage(UserPreferencesModel prefs) {
+    final current = prefs.language == 'sw' ? 'sw' : 'en';
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final entry in {
-            'en': 'English (US)',
-            'sw': 'Kiswahili',
-            'fr': 'Français',
-          }.entries)
-            ListTile(
-              title: Text(entry.value),
-              trailing: prefs.language == entry.key
-                  ? Icon(Icons.check, color: AfiCareTheme.primaryGreen)
-                  : null,
-              onTap: () {
-                _save(prefs.copyWith(language: entry.key));
-                Navigator.pop(context);
-              },
-            ),
-        ],
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final entry in _languages.entries)
+              ListTile(
+                title: Text(entry.value),
+                subtitle: entry.key == 'sw'
+                    ? const Text(
+                        'Only the home page is in Kiswahili so far.')
+                    : null,
+                trailing: current == entry.key
+                    ? Icon(Icons.check, color: AfiCareTheme.primaryGreen)
+                    : null,
+                onTap: () {
+                  Navigator.pop(sheet);
+                  if (entry.key != prefs.language) {
+                    _save(prefs.copyWith(language: entry.key));
+                  }
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

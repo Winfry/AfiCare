@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../services/medication_reminder_service.dart';
 import '../services/offline_cache.dart';
+import '../services/patient_photo_service.dart';
 import '../utils/router.dart' show updateRouterProfile;
 
 class AuthProvider with ChangeNotifier {
@@ -522,6 +523,21 @@ class AuthProvider with ChangeNotifier {
       _error = e.toString();
       return false;
     }
+  }
+
+  /// Saves (or, with null [bytes], removes) the signed-in patient's own
+  /// photo. Patients' photos are private: see [PatientPhotoService].
+  /// Returns null when it worked, or what went wrong in her words.
+  Future<String?> setPatientPhoto(Uint8List? bytes, {String contentType = 'image/jpeg'}) async {
+    final user = _currentUser;
+    if (user == null) return 'Please sign in again.';
+    final photos = PatientPhotoService();
+    final problem = bytes == null
+        ? await photos.remove(user.id)
+        : await photos.save(user.id, bytes, contentType: contentType);
+    if (problem == null) await _loadUserProfile(user.id);
+    notifyListeners();
+    return problem;
   }
 
   // ── Phone number and PIN of a PIN account ──────────────────────────

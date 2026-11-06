@@ -804,7 +804,7 @@ class _NextVisitCardState extends State<_NextVisitCard> {
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.only(top: 15),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
             child: Row(
               children: [
                 const PSoftIcon(Icons.wb_sunny_outlined, size: 34),
@@ -871,7 +871,7 @@ class _ActionTile extends StatelessWidget {
       color: PT.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: PT.line),
+        side: BorderSide(color: PT.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -936,7 +936,7 @@ class _ActivityCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       border: i == recent.length - 1
                           ? null
-                          : const Border(bottom: BorderSide(color: PT.line)),
+                          : Border(bottom: BorderSide(color: PT.line)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

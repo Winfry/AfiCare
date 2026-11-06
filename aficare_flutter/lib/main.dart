@@ -36,6 +36,7 @@ import 'providers/kmpdc_verification_provider.dart';
 import 'providers/nck_verification_provider.dart';
 import 'models/user_preferences_model.dart';
 import 'utils/theme.dart';
+import 'theme/patient_tokens.dart';
 import 'utils/router.dart';
 import 'config/supabase_config.dart';
 import 'services/offline_cache.dart';
@@ -182,6 +183,18 @@ class _RootAppState extends State<_RootApp> {
     final themePref = prefs?.effectiveTheme ?? AppThemePreference.light;
     final textScale = prefs?.textScale ?? 1.0;
     final reduceMotion = prefs?.reduceMotion ?? false;
+    final boldText = prefs?.boldText ?? false;
+
+    // The patient pages draw with their own colours (PT), not the theme,
+    // so High contrast switches those too. Pages built before the switch
+    // are redrawn once, straight after this frame.
+    final highContrast = themePref == AppThemePreference.highContrast;
+    if (PT.highContrast != highContrast) {
+      PT.highContrast = highContrast;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _redrawEverything();
+      });
+    }
 
     final ThemeData theme = switch (themePref) {
       // Never dark: see UserPreferencesModel.effectiveTheme.
@@ -201,13 +214,25 @@ class _RootAppState extends State<_RootApp> {
         return MediaQuery(
           data: media.copyWith(
             textScaler: TextScaler.linear(textScale),
-            disableAnimations: reduceMotion,
+            // Her choice in AfiCare, or the phone's own setting.
+            disableAnimations: reduceMotion || media.disableAnimations,
+            boldText: boldText || media.boldText,
           ),
           child: child!,
         );
       },
       routerConfig: appRouter,
     );
+  }
+
+  /// Marks every widget below the app for rebuilding, so pages that are
+  /// already open pick up the new patient colours.
+  void _redrawEverything() {
+    void redraw(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(redraw);
+    }
+    (context as Element).visitChildren(redraw);
   }
 }
 

@@ -69,7 +69,7 @@ class _PatientReferralScreenState extends State<PatientReferralScreen> {
           // we cannot make.
           const SizedBox.shrink()
         else if (provider.isLoading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           )

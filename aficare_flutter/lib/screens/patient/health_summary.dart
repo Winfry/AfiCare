@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../models/active_patient.dart';
+import '../../models/appointment_model.dart';
 import '../../models/consultation_model.dart';
 import '../../models/vital_readings.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dependent_provider.dart';
 import '../../providers/patient_profile_provider.dart';
@@ -41,9 +43,11 @@ class _HealthSummaryState extends State<HealthSummary> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final dep = Provider.of<DependentProvider>(context, listen: false);
     final patient = Provider.of<PatientProvider>(context, listen: false);
+    final appts = Provider.of<AppointmentProvider>(context, listen: false);
     final id = dep.activePatientId ?? auth.currentUser?.id;
     if (id == null) return;
-    await patient.loadConsultations(id);
+    // Appointments too: a follow-up shows whether it has been booked.
+    await Future.wait([patient.loadConsultations(id), appts.loadAppointments(id)]);
     // Captured now: `error` is shared with access-code generation.
     if (mounted) setState(() => _loadFailed = patient.error != null);
   }
@@ -84,7 +88,7 @@ class _HealthSummaryState extends State<HealthSummary> {
       ),
       children: [
         if (patient.isLoading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 50),
             child: Center(child: CircularProgressIndicator(color: PT.teal)),
           )
@@ -121,7 +125,7 @@ class _HealthSummaryState extends State<HealthSummary> {
             const SizedBox(height: 16),
             _recommendationsCard(latest.recommendations),
           ],
-          ..._followUpSection(consultations),
+          ..._followUpSection(consultations, context.watch<AppointmentProvider>()),
         ],
       ],
     );
@@ -297,14 +301,14 @@ class _HealthSummaryState extends State<HealthSummary> {
             leadingEmoji: '🧪',
             title: 'Lab results',
             subtitle: 'Tests and results',
-            trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+            trailing: [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
             onTap: () => context.go('/patient/labs'),
           ),
           PRow(
             leadingEmoji: '💊',
             title: 'Prescriptions',
             subtitle: 'Current and past',
-            trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+            trailing: [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
             onTap: () => context.go(PatientRoutes.medications),
           ),
           PRow(
@@ -313,7 +317,7 @@ class _HealthSummaryState extends State<HealthSummary> {
             subtitle: consultations.isEmpty
                 ? 'No visits yet'
                 : '${consultations.length} recorded visit${consultations.length == 1 ? '' : 's'}',
-            trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+            trailing: [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
             onTap: consultations.isEmpty ? null : () => _showVisits(context, consultations),
           ),
         ],
@@ -378,7 +382,7 @@ class _HealthSummaryState extends State<HealthSummary> {
                     width: 6,
                     height: 6,
                     margin: const EdgeInsets.only(top: 7, right: 10),
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: PT.teal),
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: PT.teal),
                   ),
                   Expanded(child: Text(r, style: PT.body())),
                 ],
@@ -389,7 +393,12 @@ class _HealthSummaryState extends State<HealthSummary> {
     );
   }
 
-  List<Widget> _followUpSection(List<ConsultationModel> consultations) {
+  /// The follow-ups a clinician asked for that are still ahead, each with
+  /// the truth about its booking. A follow-up date on a visit is only the
+  /// doctor's request: it used to show "Scheduled" though nothing was
+  /// booked, so a patient could wait for an appointment that didn't exist.
+  List<Widget> _followUpSection(
+      List<ConsultationModel> consultations, AppointmentProvider appts) {
     final now = DateTime.now();
     final upcoming = consultations
         .where((c) => c.followUpRequired && c.followUpDate != null && c.followUpDate!.isAfter(now))
@@ -397,6 +406,11 @@ class _HealthSummaryState extends State<HealthSummary> {
       ..sort((a, b) => a.followUpDate!.compareTo(b.followUpDate!));
 
     if (upcoming.isEmpty) return const [];
+
+    // Without the appointments we can't tell booked from not booked, so
+    // say that rather than guess either way.
+    final known = appts.error == null && !appts.isLoading;
+    final day = DateFormat('EEE d MMM');
 
     return [
       const SizedBox(height: 16),
@@ -406,12 +420,30 @@ class _HealthSummaryState extends State<HealthSummary> {
           children: [
             const PCardTitle('Follow-ups due'),
             for (final c in upcoming)
-              PRow(
-                leadingEmoji: '📅',
-                title: c.chiefComplaint.isEmpty ? 'Follow-up' : c.chiefComplaint,
-                subtitle: DateFormat('EEEE, d MMM yyyy').format(c.followUpDate!),
-                trailing: const [PBadge('Scheduled', tone: PTone.blue)],
-              ),
+              Builder(builder: (context) {
+                final booking = known ? followUpBooking(c, appts.appointments) : null;
+                final List<Widget> badge;
+                if (!known) {
+                  badge = [
+                    PBadge(appts.isLoading ? 'Checking…' : "Couldn't check", tone: PTone.gray),
+                  ];
+                } else if (booking == null) {
+                  badge = const [PBadge('Not booked', tone: PTone.warn)];
+                } else if (booking.status == AppointmentStatus.confirmed) {
+                  badge = [PBadge('Booked · ${day.format(booking.scheduledAt.toLocal())}', tone: PTone.ok)];
+                } else {
+                  badge = [PBadge('Requested · ${day.format(booking.scheduledAt.toLocal())}', tone: PTone.blue)];
+                }
+                return PRow(
+                  leadingEmoji: '📅',
+                  title: c.chiefComplaint.isEmpty ? 'Follow-up' : c.chiefComplaint,
+                  subtitle: 'Your clinician asked to see you around '
+                      '${DateFormat('EEEE, d MMM yyyy').format(c.followUpDate!)}',
+                  extraSubtitle: known && booking == null ? 'Tap to book it.' : null,
+                  trailing: badge,
+                  onTap: () => context.go(PatientRoutes.appointments),
+                );
+              }),
           ],
         ),
       ),
@@ -489,7 +521,7 @@ class _BarChart extends StatelessWidget {
                       const SizedBox(height: 4),
                       Container(
                         height: (((values[i] - floor) / span) * 110).clamp(6, 110).toDouble(),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -526,4 +558,26 @@ class _BarChart extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The appointment that books [visit]'s follow-up, or null when none does.
+///
+/// An appointment counts when it is still on (requested or confirmed) and
+/// either was made for this visit, or comes after the visit and within
+/// two weeks either side of the date the clinician asked for. When several
+/// do, the one nearest that date wins. Cancelled and past (completed)
+/// appointments never count.
+AppointmentModel? followUpBooking(ConsultationModel visit, List<AppointmentModel> appointments) {
+  final due = visit.followUpDate;
+  if (due == null) return null;
+  final candidates = appointments.where((a) {
+    if (a.status != AppointmentStatus.pending && a.status != AppointmentStatus.confirmed) {
+      return false;
+    }
+    if (a.consultationId == visit.id) return true;
+    return a.scheduledAt.isAfter(visit.timestamp) &&
+        a.scheduledAt.difference(due).inDays.abs() <= 14;
+  }).toList()
+    ..sort((a, b) => a.scheduledAt.difference(due).abs().compareTo(b.scheduledAt.difference(due).abs()));
+  return candidates.isEmpty ? null : candidates.first;
 }

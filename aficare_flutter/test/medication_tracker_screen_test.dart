@@ -93,7 +93,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull, reason: 'no crash');
-    expect(find.text('Medication added'), findsOneWidget);
+    expect(find.text('Medication added. It has no alarm yet.'), findsOneWidget);
+    expect(find.text('Set a reminder'), findsOneWidget, reason: 'adding sets no alarm, so one is offered');
     final saved = jsonDecode(fake.requestsTo('POST', rx).single.body) as Map;
     expect(saved['frequency'], '6 times a day');
     final doses = jsonDecode(fake.requestsTo('POST', log).first.body) as List;
@@ -114,7 +115,7 @@ void main() {
     expect(find.textContaining('boom'), findsNothing);
     expect(find.text('Salbutamol'), findsOneWidget, reason: 'still in the form');
     expect(find.text('5 times a day'), findsOneWidget);
-    expect(find.text('Medication added'), findsNothing);
+    expect(find.textContaining('Medication added'), findsNothing);
     expect(fake.requestsTo('POST', log), isEmpty);
 
     // Trying again works, and saves it once.
@@ -122,7 +123,8 @@ void main() {
     fake.routeJson(rx, {'id': 'rx-new', 'patient_id': 'mary'});
     await tester.tap(find.text('Save medication'));
     await tester.pumpAndSettle();
-    expect(find.text('Medication added'), findsOneWidget);
+    expect(find.text('Medication added. It has no alarm yet.'), findsOneWidget);
+    expect(find.text('Set a reminder'), findsOneWidget, reason: 'adding sets no alarm, so one is offered');
     expect(fake.requestsTo('POST', rx), hasLength(2), reason: 'the first attempt saved nothing');
   });
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
+import 'package:aficare_flutter/models/appointment_model.dart';
 import 'package:aficare_flutter/models/consultation_model.dart';
 import 'package:aficare_flutter/models/user_model.dart';
+import 'package:aficare_flutter/providers/appointment_provider.dart';
 import 'package:aficare_flutter/providers/auth_provider.dart';
 import 'package:aficare_flutter/providers/dependent_provider.dart';
 import 'package:aficare_flutter/providers/patient_profile_provider.dart';
@@ -71,6 +74,7 @@ void main() {
         ChangeNotifierProvider<DependentProvider>(create: (_) => DependentProvider()),
         ChangeNotifierProvider<PatientProvider>(create: (_) => _FakePatient(visits)),
         ChangeNotifierProvider(create: (_) => PatientProfileProvider()),
+        ChangeNotifierProvider(create: (_) => AppointmentProvider()),
       ],
       child: const MaterialApp(home: Scaffold(body: HealthSummary())),
     ));
@@ -145,5 +149,96 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     expect(find.text('4 outside the usual range'), findsOneWidget);
+  });
+
+  group('follow-ups tell the truth about booking', () {
+    final now = DateTime.now();
+    final due = DateTime(now.year, now.month, now.day).add(const Duration(days: 20));
+
+    ConsultationModel visitWithFollowUp() => ConsultationModel(
+          id: 'visit-1',
+          patientId: 'mary',
+          providerId: 'dr',
+          timestamp: now.subtract(const Duration(days: 3)),
+          chiefComplaint: 'Blood pressure check',
+          symptoms: const [],
+          vitalSigns: VitalSigns(systolicBP: 150, diastolicBP: 95),
+          triageLevel: 'non_urgent',
+          diagnoses: const [],
+          recommendations: const [],
+          followUpRequired: true,
+          followUpDate: due,
+        );
+
+    Map<String, Object?> appt(DateTime when, String status, {String? consultationId}) => {
+          'id': 'a-${when.millisecondsSinceEpoch}-$status',
+          'patient_id': 'mary',
+          'provider_id': 'dr',
+          'scheduled_at': when.toUtc().toIso8601String(),
+          'type': 'in-person',
+          'status': status,
+          if (consultationId != null) 'consultation_id': consultationId,
+        };
+
+    testWidgets('never says "Scheduled" when nothing is booked', (tester) async {
+      fake.routeJson('/rest/v1/appointments', <Object?>[]);
+      await pump(tester, [visitWithFollowUp()]);
+      await tester.pumpAndSettle();
+      expect(find.text('Scheduled'), findsNothing);
+      expect(find.text('Not booked'), findsOneWidget);
+      expect(find.text('Tap to book it.'), findsOneWidget);
+    });
+
+    testWidgets('a confirmed appointment near the date shows as booked, with its day', (tester) async {
+      final when = due.add(const Duration(days: 2, hours: 9));
+      fake.routeJson('/rest/v1/appointments', [appt(when, 'confirmed')]);
+      await pump(tester, [visitWithFollowUp()]);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Booked · '), findsOneWidget);
+      expect(find.text('Not booked'), findsNothing);
+    });
+
+    testWidgets('a request not yet confirmed says Requested', (tester) async {
+      fake.routeJson('/rest/v1/appointments', [appt(due.add(const Duration(hours: 10)), 'pending')]);
+      await pump(tester, [visitWithFollowUp()]);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Requested · '), findsOneWidget);
+    });
+
+    testWidgets('a cancelled appointment does not count', (tester) async {
+      fake.routeJson('/rest/v1/appointments', [appt(due.add(const Duration(hours: 10)), 'cancelled')]);
+      await pump(tester, [visitWithFollowUp()]);
+      await tester.pumpAndSettle();
+      expect(find.text('Not booked'), findsOneWidget);
+    });
+
+    testWidgets('when appointments fail to load it says it could not check, not "Not booked"', (tester) async {
+      fake.routeRaw('/rest/v1/appointments',
+          http.Response('{"message":"boom"}', 500, headers: {'content-type': 'application/json'}));
+      await pump(tester, [visitWithFollowUp()]);
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't check"), findsOneWidget);
+      expect(find.text('Not booked'), findsNothing);
+    });
+
+    test('matching rules', () {
+      final visit = visitWithFollowUp();
+      AppointmentModel a(DateTime when, String status, {String? consultationId}) =>
+          AppointmentModel.fromJson(appt(when, status, consultationId: consultationId));
+
+      // Within two weeks either side counts; the nearest wins.
+      final near = a(due.add(const Duration(days: 1)), 'confirmed');
+      final far = a(due.add(const Duration(days: 10)), 'confirmed');
+      expect(followUpBooking(visit, [far, near])!.id, near.id);
+      // More than two weeks away is a different appointment.
+      expect(followUpBooking(visit, [a(due.add(const Duration(days: 30)), 'confirmed')]), isNull);
+      // Before the visit itself can't be its follow-up.
+      expect(followUpBooking(visit, [a(now.subtract(const Duration(days: 10)), 'confirmed')]), isNull);
+      // One made for this visit counts whenever it is.
+      expect(followUpBooking(visit, [a(due.add(const Duration(days: 40)), 'pending', consultationId: 'visit-1')]),
+          isNotNull);
+      // Completed or cancelled never count.
+      expect(followUpBooking(visit, [a(due, 'cancelled'), a(due, 'completed')]), isNull);
+    });
   });
 }

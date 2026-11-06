@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
 import '../../models/mental_health_model.dart';
@@ -150,7 +151,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
                     Text(MoodEntry.moodEmoji(mood), style: const TextStyle(fontSize: 36)),
                     const SizedBox(height: 4),
                     Text(MoodEntry.moodLabel(mood), style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600,
+                      fontSize: 12, fontWeight: FontWeight.w600, color: PT.muted,
                     )),
                   ],
                 ),
@@ -198,11 +199,11 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
                     children: [
                       Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                       const SizedBox(height: 2),
-                      Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                      Text(subtitle, style: TextStyle(color: PT.muted, fontSize: 12)),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+                Icon(Icons.chevron_right_rounded, color: PT.muted),
               ],
             ),
             if (latest != null) ...[
@@ -224,11 +225,11 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Score: ${latest.totalScore}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  Text('Score: ${latest.totalScore}', style: TextStyle(color: PT.muted, fontSize: 13)),
                   const Spacer(),
                   Text(
                     _formatDate(latest.completedAt),
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                    style: TextStyle(color: PT.muted, fontSize: 12),
                   ),
                 ],
               ),
@@ -275,7 +276,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
             children: [
               Text(MoodEntry.moodEmoji(entry.mood), style: const TextStyle(fontSize: 20)),
               const SizedBox(height: 4),
-              Text(day, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+              Text(day, style: TextStyle(fontSize: 11, color: PT.muted, fontWeight: FontWeight.w600)),
             ],
           );
         }).toList(),
@@ -305,7 +306,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
           const SizedBox(height: 10),
           Text(
             'If you or someone you know is in crisis, reach out. Tap a number to call.',
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            style: TextStyle(color: PT.muted, fontSize: 13),
           ),
           const SizedBox(height: 10),
           const CrisisLines(),
@@ -465,7 +466,7 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
                     const SizedBox(width: 10),
                     Text(
                       '${_currentQuestion + 1}/$_totalQuestions',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: PT.muted),
                     ),
                   ],
                 ),
@@ -482,7 +483,7 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
                 children: [
                   Text(
                     'Over the last 2 weeks, how often have you been bothered by:',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                    style: TextStyle(color: PT.muted, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -551,7 +552,7 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
           });
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: PT.motion(context, const Duration(milliseconds: 200)),
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
@@ -689,7 +690,7 @@ class ScreeningResultView extends StatelessWidget {
         Text(
           message(o),
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          style: TextStyle(color: PT.muted, fontSize: 13),
         ),
         if (!o.saved) ...[
           const SizedBox(height: 12),

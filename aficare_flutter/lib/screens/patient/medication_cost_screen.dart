@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../theme/app_colors.dart';
@@ -112,7 +113,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Center(child: Text('No purchases recorded.', style: TextStyle(color: Colors.grey.shade400))),
+                child: Center(child: Text('No purchases recorded.', style: TextStyle(color: PT.muted))),
               ),
             )
           else
@@ -191,7 +192,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 6),
           Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color)),
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+          Text(label, style: TextStyle(fontSize: 10, color: PT.muted)),
         ]),
       ),
     );
@@ -216,7 +217,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
               children: [
                 Text(c.medicationName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 Text('${c.dosage} x ${c.quantity} • ${MedicationCost.paymentMethodLabel(c.paymentMethod)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    style: TextStyle(fontSize: 12, color: PT.muted)),
               ],
             ),
           ),
@@ -400,7 +401,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: sel ? AppColors.canopy : AppColors.borderSubtle),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : Colors.grey.shade700)),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : PT.muted)),
       ),
     );
   }

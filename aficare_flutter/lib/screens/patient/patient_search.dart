@@ -311,7 +311,7 @@ class _PatientSearchSheetState extends State<PatientSearchSheet> {
                       ? 'Search pages, your medicines, appointments…'
                       : "Search ${widget.forName}'s medicines, appointments…",
                 ).copyWith(
-                  prefixIcon: const Icon(Icons.search, size: 18, color: PT.muted),
+                  prefixIcon: Icon(Icons.search, size: 18, color: PT.muted),
                   suffixIcon: query.isEmpty
                       ? null
                       : IconButton(
@@ -380,7 +380,7 @@ class _PatientSearchSheetState extends State<PatientSearchSheet> {
         leading: PSoftIcon(h.icon, size: 38),
         title: h.title,
         subtitle: h.subtitle,
-        trailing: const [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
+        trailing: [Icon(Icons.chevron_right, size: 18, color: PT.muted)],
         onTap: () => _open(h.route),
       );
 }

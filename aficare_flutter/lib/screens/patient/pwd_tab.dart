@@ -7,6 +7,7 @@
 // ================================================================
 
 import 'package:flutter/material.dart';
+import '../../theme/patient_tokens.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -264,7 +265,7 @@ class _PwdTabState extends State<PwdTab> {
             const SizedBox(height: 4),
             Text(
               'Sharing this helps us provide better, more prepared care.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 13, color: PT.muted),
             ),
             const SizedBox(height: 12),
             Row(
@@ -290,7 +291,7 @@ class _PwdTabState extends State<PwdTab> {
         child: GestureDetector(
           onTap: () => setState(() => _hasPwdCondition = value),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: PT.motion(context, const Duration(milliseconds: 200)),
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
               color: isSelected
@@ -339,7 +340,7 @@ class _PwdTabState extends State<PwdTab> {
             const SizedBox(height: 4),
             Text(
               'Select all that apply.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 13, color: PT.muted),
             ),
             const SizedBox(height: 16),
             ...DisabilityType.values.map((type) {
@@ -369,7 +370,7 @@ class _PwdTabState extends State<PwdTab> {
                       });
                     },
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+                      duration: PT.motion(context, const Duration(milliseconds: 150)),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: isSelected
@@ -386,7 +387,7 @@ class _PwdTabState extends State<PwdTab> {
                       child: Row(
                         children: [
                           AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
+                            duration: PT.motion(context, const Duration(milliseconds: 150)),
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
@@ -397,7 +398,7 @@ class _PwdTabState extends State<PwdTab> {
                               border: Border.all(
                                 color: isSelected
                                     ? AfiCareTheme.primaryBlue
-                                    : Colors.grey.shade400,
+                                    : PT.muted,
                               ),
                             ),
                             child: isSelected
@@ -425,7 +426,7 @@ class _PwdTabState extends State<PwdTab> {
                                   type.description,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey.shade700,
+                                    color: PT.muted,
                                   ),
                                 ),
                               ],
@@ -478,7 +479,7 @@ class _PwdTabState extends State<PwdTab> {
                       );
                     }),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+                      duration: PT.motion(context, const Duration(milliseconds: 150)),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: isSelected
@@ -530,7 +531,7 @@ class _PwdTabState extends State<PwdTab> {
                                   severity.description,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey.shade700,
+                                    color: PT.muted,
                                   ),
                                 ),
                               ],
@@ -628,7 +629,7 @@ class _PwdTabState extends State<PwdTab> {
           );
         }),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: PT.motion(context, const Duration(milliseconds: 150)),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           decoration: BoxDecoration(
             color: isSelected
@@ -647,7 +648,7 @@ class _PwdTabState extends State<PwdTab> {
               Icon(icon,
                   color: isSelected
                       ? AfiCareTheme.primaryGreen
-                      : Colors.grey.shade600),
+                      : PT.muted),
               const SizedBox(height: 8),
               Text(
                 label,
@@ -706,7 +707,7 @@ class _PwdTabState extends State<PwdTab> {
             const SizedBox(height: 4),
             Text(
               'Select all that apply.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 13, color: PT.muted),
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -812,7 +813,7 @@ class _PwdTabState extends State<PwdTab> {
             'If things ever feel too heavy, or you have thoughts of hurting '
             'yourself, talk to someone today: a person you trust, your '
             'clinic, or one of these lines. Tap a number to call.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+            style: TextStyle(fontSize: 13, color: PT.ink),
           ),
           const SizedBox(height: 6),
           const CrisisLines(),
@@ -862,7 +863,7 @@ class _PwdTabState extends State<PwdTab> {
           "Based on what you've told us. These are ideas to talk through "
           "with your clinic, not a diagnosis. Your clinic will say what's "
           'right for you.',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+          style: TextStyle(fontSize: 13, color: PT.muted),
         ),
         const SizedBox(height: 12),
         ...tips.map(_buildTipCard),
@@ -906,7 +907,7 @@ class _PwdTabState extends State<PwdTab> {
                     const SizedBox(height: 6),
                     Text(
                       tip.body,
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                      style: TextStyle(fontSize: 13, color: PT.muted),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -994,14 +995,14 @@ class _PwdTabState extends State<PwdTab> {
 
     final Widget status;
     if (_grantsLoading && _grants == null) {
-      status = Text('Checking who you share with…', style: TextStyle(fontSize: 13, color: Colors.grey.shade700));
+      status = Text('Checking who you share with…', style: TextStyle(fontSize: 13, color: PT.muted));
     } else if (_grantsFailed) {
       status = Row(
         children: [
           Expanded(
             child: Text(
               "Couldn't check who you share with.",
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+              style: TextStyle(fontSize: 13, color: PT.ink),
             ),
           ),
           TextButton(onPressed: () => _loadGrants(), child: const Text('Try again')),
@@ -1010,7 +1011,7 @@ class _PwdTabState extends State<PwdTab> {
     } else if (live.isEmpty) {
       status = Text(
         'No one has caregiver access right now.',
-        style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+        style: TextStyle(fontSize: 13, color: PT.ink),
       );
     } else {
       status = Column(children: [for (final g in live) _buildGrantRow(g, now)]);
@@ -1039,7 +1040,7 @@ class _PwdTabState extends State<PwdTab> {
               'Someone you trust, such as family, a friend or a carer, can '
               'follow part of your care from their own AfiCare account. They '
               'can look, not change anything, and you can stop it at any time.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 13, color: PT.muted),
             ),
             const SizedBox(height: 14),
             status,
@@ -1108,7 +1109,7 @@ class _PwdTabState extends State<PwdTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(detail, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                Text(detail, style: TextStyle(fontSize: 12, color: PT.muted)),
               ],
             ),
           ),

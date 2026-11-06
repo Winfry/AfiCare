@@ -174,6 +174,7 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
           : existing?.emergencyContactPhone,
       address: existing?.address,
       insuranceId: existing?.insuranceId,
+      insuranceProvider: existing?.insuranceProvider,
     );
     return provider.saveProfile(profile);
   }
@@ -536,7 +537,7 @@ class _WizardBar extends StatelessWidget {
                         border: Border.all(color: PT.line),
                         borderRadius: BorderRadius.circular(PT.rButton),
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: PT.ink),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: PT.ink),
                     ),
                   ),
                 )
@@ -758,7 +759,7 @@ class _AboutYouStep extends StatelessWidget {
                   readOnly: true,
                   onTap: onPickDob,
                   decoration: pInput(hint: 'DD/MM/YYYY').copyWith(
-                    suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18, color: PT.muted),
+                    suffixIcon: Icon(Icons.calendar_today_outlined, size: 18, color: PT.muted),
                   ),
                 ),
               ),
@@ -979,7 +980,7 @@ class _YourCareStep extends StatelessWidget {
                       else
                         IconButton(
                           onPressed: () => onRemoveDependent(d),
-                          icon: const Icon(Icons.close_rounded, size: 18, color: PT.muted),
+                          icon: Icon(Icons.close_rounded, size: 18, color: PT.muted),
                           tooltip: 'Remove ${d.name}',
                         ),
                     ],
@@ -1135,7 +1136,7 @@ class _AddDependentFormState extends State<_AddDependentForm> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today_outlined, size: 17, color: PT.muted),
+                    Icon(Icons.calendar_today_outlined, size: 17, color: PT.muted),
                     const SizedBox(width: 9),
                     Expanded(
                       child: Text(
@@ -1248,8 +1249,8 @@ class _MediLinkStep extends StatelessWidget {
                   version: QrVersions.auto,
                   size: 168,
                   backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: PT.navy),
-                  dataModuleStyle: const QrDataModuleStyle(
+                  eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: PT.navy),
+                  dataModuleStyle: QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
                     color: PT.navy,
                   ),
