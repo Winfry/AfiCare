@@ -40,7 +40,7 @@ class PrescriptionModel {
       frequency: json['frequency'] as String,
       duration: json['duration'] as String,
       instructions: json['instructions'] as String?,
-      issuedAt: DateTime.parse(json['issued_at'] as String),
+      issuedAt: DateTime.parse(json['issued_at'] as String).toLocal(),
       expiresAt: json['expires_at'] != null
           ? DateTime.parse(json['expires_at'] as String)
           : null,

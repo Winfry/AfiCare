@@ -63,7 +63,9 @@ void main() {
       expect(provider.error, isNull);
       expect(provider.appointments, hasLength(2));
       expect(provider.appointments.first.patientId, 'p1');
-      expect(provider.appointments.first.scheduledAt.isUtc, isTrue);
+      // Shown in the phone's own time (4d-4), the same moment.
+      expect(provider.appointments.first.scheduledAt.isUtc, isFalse);
+      expect(provider.appointments.first.scheduledAt.isAtSameMomentAs(DateTime.utc(2026, 6, 1, 9)), isTrue);
       expect(provider.appointments.first.type, AppointmentType.inPerson);
       expect(provider.appointments.first.status, AppointmentStatus.confirmed);
       expect(provider.appointments.last.type, AppointmentType.telehealth);

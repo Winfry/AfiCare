@@ -43,8 +43,8 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen> {
       final apptResp = await supabase
           .from('appointments')
           .select('id')
-          .gte('scheduled_at', DateTime(now.year, now.month, now.day).toIso8601String())
-          .lt('scheduled_at', DateTime(now.year, now.month, now.day + 1).toIso8601String());
+          .gte('scheduled_at', DateTime(now.year, now.month, now.day).toUtc().toIso8601String())
+          .lt('scheduled_at', DateTime(now.year, now.month, now.day + 1).toUtc().toIso8601String());
 
       if (mounted) {
         setState(() {

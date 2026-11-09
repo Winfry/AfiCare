@@ -244,7 +244,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         children: [
           PCardTitle(
             'Next appointment',
-            trailing: next == null ? null : _statusBadge(next.status),
+            trailing: next == null ? null : _statusBadge(next),
           ),
           if (next == null)
             const PEmpty(
@@ -391,7 +391,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 subtitle:
                     '${DateFormat('HH:mm').format(a.scheduledAt)} · ${_facilityLine(a)}',
                 trailing: [
-                  _statusBadge(a.status),
+                  _statusBadge(a),
                   if (showManage)
                     PButton(
                       'Manage',
@@ -426,8 +426,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   String _typeLabel(AppointmentType t) =>
       t == AppointmentType.inPerson ? 'In person' : 'Telehealth';
 
-  Widget _statusBadge(AppointmentStatus s) => switch (s) {
+  /// A visit whose time has gone by without the clinic ever agreeing to it
+  /// didn't happen as booked: it used to say "Pending" forever.
+  Widget _statusBadge(AppointmentModel a) => switch (a.status) {
         AppointmentStatus.confirmed => const PBadge('Confirmed', tone: PTone.ok),
+        AppointmentStatus.pending when a.scheduledAt.isBefore(DateTime.now()) =>
+          const PBadge('Never confirmed', tone: PTone.gray),
         AppointmentStatus.pending => const PBadge('Pending', tone: PTone.warn),
         AppointmentStatus.completed => const PBadge('Completed', tone: PTone.blue),
         AppointmentStatus.cancelled => const PBadge('Cancelled', tone: PTone.gray),
@@ -692,6 +696,12 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
       pToast(context, 'Please select a date and time.');
       return;
     }
+    final chosen = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day,
+        _selectedTime!.hour, _selectedTime!.minute);
+    if (!chosen.isAfter(DateTime.now())) {
+      pToast(context, 'That time has already passed. Please choose a later time.');
+      return;
+    }
     // Every appointment needs a real doctor or nurse: there is no shared
     // queue that an unassigned booking would land in.
     if (!_isRescheduling && _selectedProvider == null) {
@@ -776,11 +786,21 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
   }
 
   Future<void> _pickDate() async {
+    // Today is allowed (a visit can move to later today; the time is
+    // checked on submit). The first date used to be tomorrow, while a
+    // same-day appointment opened the picker on today, which throws.
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final last = today.add(const Duration(days: 365));
+    var initial = _selectedDate ?? today.add(const Duration(days: 1));
+    initial = DateTime(initial.year, initial.month, initial.day);
+    if (initial.isBefore(today)) initial = today;
+    if (initial.isAfter(last)) initial = last;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now().add(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: initial,
+      firstDate: today,
+      lastDate: last,
     );
     if (picked != null) setState(() => _selectedDate = picked);
   }

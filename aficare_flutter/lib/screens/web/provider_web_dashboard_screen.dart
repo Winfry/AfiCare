@@ -134,7 +134,7 @@ class _ProviderWebDashboardScreenState extends State<ProviderWebDashboardScreen>
       final now = DateTime.now();
       final upcoming = <Map<String, dynamic>>[];
       for (final map in rows) {
-        final when = DateTime.tryParse(map['scheduled_at'] as String);
+        final when = DateTime.tryParse(map['scheduled_at'] as String)?.toLocal();
         if (when != null && when.isAfter(now)) {
           upcoming.add({
             'name': patients[map['id']]?.label ?? 'Patient',

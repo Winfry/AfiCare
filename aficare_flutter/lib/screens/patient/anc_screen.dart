@@ -58,7 +58,7 @@ class _AncScreenState extends State<AncScreen> {
           const _SeekCareCallout(),
           const SizedBox(height: 22),
           const PHeading('Antenatal visits'),
-          _VisitList(visits: pregnancies.visitsOf(current), onAdd: () => _addVisit(current)),
+          _VisitList(pregnancy: current, visits: pregnancies.visitsOf(current), onAdd: () => _addVisit(current)),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -383,8 +383,11 @@ class _SeekCareCallout extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _VisitList extends StatelessWidget {
-  const _VisitList({required this.visits, required this.onAdd});
+  const _VisitList({required this.pregnancy, required this.visits, required this.onAdd});
 
+  final Pregnancy pregnancy;
+
+  /// Newest first.
   final List<AncVisit> visits;
   final VoidCallback onAdd;
 
@@ -402,17 +405,28 @@ class _VisitList extends StatelessWidget {
     }
     return PCard(
       child: Column(children: [
-        for (final v in visits)
-          _VisitRow(visit: v, alerts: AncReadingChecks.forVisit(v, previous: AncReadingChecks.previousOf(v, visits))),
+        // Numbered and dated from today's facts, not what was stored when
+        // each visit was saved: a visit added late (with an earlier date)
+        // used to take the next number, and changing the pregnancy dates
+        // left every old visit at its old week.
+        for (final (i, v) in visits.indexed)
+          _VisitRow(
+            visit: v,
+            number: visits.length - i,
+            weeks: pregnancy.weeksOn(v.visitDate.toLocal()),
+            alerts: AncReadingChecks.forVisit(v, previous: AncReadingChecks.previousOf(v, visits)),
+          ),
       ]),
     );
   }
 }
 
 class _VisitRow extends StatelessWidget {
-  const _VisitRow({required this.visit, required this.alerts});
+  const _VisitRow({required this.visit, required this.number, required this.weeks, required this.alerts});
 
   final AncVisit visit;
+  final int number;
+  final int weeks;
 
   /// What this visit's readings called for, so a worrying reading never
   /// looks like a normal one.
@@ -430,7 +444,7 @@ class _VisitRow extends StatelessWidget {
     ];
     return PRow(
       leading: _DateBox(date: when),
-      title: 'Visit ${visit.visitNumber} · ${visit.gestationalWeeks} weeks',
+      title: 'Visit $number · $weeks weeks',
       subtitle: checks.isEmpty ? 'No measurements recorded' : checks.join(' · '),
       extraSubtitle: visit.facility.trim().isEmpty ? null : visit.facility.trim(),
       below: alerts.isEmpty && visit.dangerSigns.isEmpty

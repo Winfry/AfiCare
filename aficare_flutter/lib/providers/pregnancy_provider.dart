@@ -183,7 +183,8 @@ class PregnancyProvider with ChangeNotifier {
     final row = {
       'patient_id': pregnancy.patientId,
       'pregnancy_id': pregnancy.id,
-      'visit_number': visitsOf(pregnancy).length + 1,
+      // Its place by date (a visit entered late may be an earlier one).
+      'visit_number': visitsOf(pregnancy).where((v) => !v.visitDate.isAfter(visitDate)).length + 1,
       'gestational_weeks': weeks,
       'trimester': Pregnancy.trimesterForWeeks(weeks),
       'visit_date': visitDate.toUtc().toIso8601String(),

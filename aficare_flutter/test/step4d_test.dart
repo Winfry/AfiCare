@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:aficare_flutter/models/appointment_model.dart';
+import 'package:aficare_flutter/models/lab_model.dart';
 import 'package:aficare_flutter/providers/appointment_provider.dart';
 import 'package:aficare_flutter/providers/dependent_provider.dart';
 import 'package:aficare_flutter/providers/patient_profile_provider.dart';
@@ -202,6 +203,56 @@ void main() {
       expect(apt.appointments.single.status, AppointmentStatus.confirmed);
       expect(await apt.rescheduleAppointment('ap1', when.add(const Duration(days: 1))), isTrue);
       expect(apt.appointments.single.status, AppointmentStatus.pending);
+    });
+  });
+
+  group('4d-4: times are the real times', () {
+    test('an appointment is sent as UTC and read back as local time', () {
+      final local = DateTime(2026, 11, 10, 10, 0);
+      final json = AppointmentModel(
+        id: 'a', patientId: 'p', providerId: 'd', scheduledAt: local,
+        type: AppointmentType.inPerson, status: AppointmentStatus.pending,
+      ).toJson();
+      final sent = json['scheduled_at'] as String;
+      expect(sent, endsWith('Z'), reason: 'a bare clock time was read by the database as UTC');
+      expect(DateTime.parse(sent).isAtSameMomentAs(local), isTrue);
+
+      final back = AppointmentModel.fromJson({...json, 'type': 'in-person', 'status': 'pending'});
+      expect(back.scheduledAt.isUtc, isFalse);
+      expect(back.scheduledAt, local);
+    });
+
+    test('a new time is sent to the reschedule function as UTC', () async {
+      final when = DateTime.now().add(const Duration(days: 3));
+      fake.routeJson('/rest/v1/appointments', [
+        {
+          'id': 'ap1', 'patient_id': 'p1', 'provider_id': 'dr1',
+          'scheduled_at': when.toUtc().toIso8601String(), 'status': 'confirmed', 'type': 'in-person',
+        },
+      ]);
+      fake.routeJson('/rest/v1/rpc/reschedule_appointment', null);
+      final apt = AppointmentProvider();
+      await apt.loadAppointments('p1');
+      final later = DateTime(when.year, when.month, when.day, 15, 30);
+      await apt.rescheduleAppointment('ap1', later);
+      final body = jsonDecode(fake.requestsTo('POST', 'rpc/reschedule_appointment').single.body) as Map;
+      expect(body['new_scheduled_at'], later.toUtc().toIso8601String());
+    });
+
+    test('lab times are local, and a re-run test shows its newest result', () {
+      final order = LabOrderModel.fromJson({
+        'id': 'o1', 'patient_id': 'p1', 'provider_id': 'd1', 'test_name': 'Hb',
+        'ordered_at': '2026-11-01T06:00:00Z', 'status': 'completed',
+        'lab_results': [
+          {'id': 'r1', 'lab_order_id': 'o1', 'result_value': '9.1', 'resulted_at': '2026-11-02T07:00:00Z'},
+          {'id': 'r2', 'lab_order_id': 'o1', 'result_value': '11.4', 'resulted_at': '2026-11-05T07:00:00Z'},
+          {'id': 'r0', 'lab_order_id': 'o1', 'result_value': '?', 'resulted_at': null},
+        ],
+      });
+      expect(order.orderedAt.isUtc, isFalse);
+      expect(order.orderedAt.isAtSameMomentAs(DateTime.utc(2026, 11, 1, 6)), isTrue);
+      expect(order.result!.id, 'r2');
+      expect(order.result!.resultedAt!.isUtc, isFalse);
     });
   });
 }

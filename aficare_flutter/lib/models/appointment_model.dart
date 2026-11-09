@@ -39,7 +39,7 @@ class AppointmentModel {
       patientId: json['patient_id'] as String,
       providerId: json['provider_id'] as String,
       facilityId: json['facility_id'] as String?,
-      scheduledAt: DateTime.parse(json['scheduled_at'] as String),
+      scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
       durationMinutes: (json['duration_minutes'] as int?) ?? 30,
       type: _typeFromString(json['type'] as String),
       status: _statusFromString(json['status'] as String),
@@ -57,7 +57,9 @@ class AppointmentModel {
       'patient_id': patientId,
       'provider_id': providerId,
       'facility_id': facilityId,
-      'scheduled_at': scheduledAt.toIso8601String(),
+      // Sent as UTC ("…Z"): a bare local time was read by the database as
+      // UTC, so every appointment was stored 3 hours late.
+      'scheduled_at': scheduledAt.toUtc().toIso8601String(),
       'duration_minutes': durationMinutes,
       'type': _typeToString(type),
       'status': _statusToString(status),

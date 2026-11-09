@@ -97,7 +97,7 @@ class AppointmentProvider with ChangeNotifier {
     try {
       await _supabase.rpc('reschedule_appointment', params: {
         'target_appointment_id': id,
-        'new_scheduled_at': newScheduledAt.toIso8601String(),
+        'new_scheduled_at': newScheduledAt.toUtc().toIso8601String(),
       });
       final idx = _appointments.indexWhere((a) => a.id == id);
       if (idx != -1) {

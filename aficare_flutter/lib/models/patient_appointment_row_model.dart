@@ -17,7 +17,7 @@ class PatientAppointmentRowModel {
   factory PatientAppointmentRowModel.fromJson(Map<String, dynamic> json, {String? providerName}) {
     return PatientAppointmentRowModel(
       id: json['id'] as String,
-      scheduledAt: DateTime.parse(json['scheduled_at'] as String),
+      scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
       status: json['status'] as String? ?? 'pending',
       providerName: providerName ?? 'Unknown',
     );

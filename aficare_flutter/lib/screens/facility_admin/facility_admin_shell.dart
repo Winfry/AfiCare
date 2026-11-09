@@ -1201,7 +1201,7 @@ class _AppointmentsTab extends StatelessWidget {
 
   String _formatDateTime(String? iso) {
     if (iso == null) return '-';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '-';
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';

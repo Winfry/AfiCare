@@ -47,7 +47,17 @@ class LabOrderModel {
     LabResultModel? result;
     final rawResults = json['lab_results'];
     if (rawResults is List && rawResults.isNotEmpty) {
-      result = LabResultModel.fromJson(rawResults.first as Map<String, dynamic>);
+      // A re-run test has more than one result: show the newest, not
+      // whichever the database happened to list first.
+      final all = rawResults.whereType<Map<String, dynamic>>().map(LabResultModel.fromJson).toList()
+        ..sort((a, b) {
+          final x = a.resultedAt, y = b.resultedAt;
+          if (x == null && y == null) return 0;
+          if (x == null) return 1;
+          if (y == null) return -1;
+          return y.compareTo(x);
+        });
+      if (all.isNotEmpty) result = all.first;
     } else if (rawResults is Map<String, dynamic>) {
       result = LabResultModel.fromJson(rawResults);
     } else if (json['result'] is Map<String, dynamic>) {
@@ -63,7 +73,7 @@ class LabOrderModel {
       testCategory: json['test_category'] as String? ?? 'other',
       priority: _priorityFromString(json['priority'] as String? ?? 'routine'),
       status: _statusFromString(json['status'] as String? ?? 'ordered'),
-      orderedAt: DateTime.parse(json['ordered_at'] as String),
+      orderedAt: DateTime.parse(json['ordered_at'] as String).toLocal(),
       notes: json['notes'] as String?,
       result: result,
     );
@@ -180,7 +190,7 @@ class LabResultModel {
       flag: _flagFromString(json['result_flag'] as String? ?? 'normal'),
       performedBy: json['performed_by'] as String?,
       resultedAt: json['resulted_at'] != null
-          ? DateTime.parse(json['resulted_at'] as String)
+          ? DateTime.parse(json['resulted_at'] as String).toLocal()
           : null,
       notes: json['notes'] as String?,
     );

@@ -46,7 +46,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             .order('scheduled_at', ascending: true)
             .limit(20);
         for (final a in res as List) {
-          final when = DateTime.tryParse(a['scheduled_at'] as String);
+          final when = DateTime.tryParse(a['scheduled_at'] as String)?.toLocal();
           if (when != null &&
               when.isAfter(now) &&
               (a['status'] == 'pending' || a['status'] == 'confirmed')) {
@@ -170,7 +170,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             .order('scheduled_at', ascending: true)
             .limit(20);
         for (final a in res as List) {
-          final when = DateTime.tryParse(a['scheduled_at'] as String);
+          final when = DateTime.tryParse(a['scheduled_at'] as String)?.toLocal();
           final isToday = when != null &&
               when.year == now.year &&
               when.month == now.month &&

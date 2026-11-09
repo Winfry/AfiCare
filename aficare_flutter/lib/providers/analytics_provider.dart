@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -191,7 +192,9 @@ class AnalyticsProvider with ChangeNotifier {
           .limit(5000);
       final counts = <String, int>{};
       for (final r in response as List) {
-        final date = (r['scheduled_at'] as String).substring(0, 10);
+        final at = DateTime.tryParse(r['scheduled_at'] as String? ?? '')?.toLocal();
+        if (at == null) continue;
+        final date = DateFormat('yyyy-MM-dd').format(at);
         counts[date] = (counts[date] ?? 0) + 1;
       }
       _appointmentTrend = counts.entries
