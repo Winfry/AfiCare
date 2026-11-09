@@ -1231,8 +1231,8 @@ class _MediLinkStep extends StatelessWidget {
         const _StepHead(
           eyebrow: 'All set',
           title: 'This is your MediLink ID',
-          body: 'Show this at any AfiCare facility. Scanning it lets them ask for access — nothing '
-              'is shared until you agree.',
+          body: 'Show this at any AfiCare facility. A health worker who scans it or types it in can '
+              'open your record, and every time they do, it is recorded.',
         ),
         PCard(
           child: Column(
@@ -1265,9 +1265,10 @@ class _MediLinkStep extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         const PCallout(
-          title: 'You decide who sees what',
-          body: 'Your records are only shared when you approve it, and you can take that back at '
-              'any time from Share Records.',
+          title: 'Who can see your records',
+          body: 'The health workers caring for you, and anyone you give your MediLink ID to. To show '
+              'someone only some of your record, for a set time, make a share in Share Records; '
+              'you can stop it at any time.',
         ),
         const SizedBox(height: 20),
         PButton('Go to my health space', expand: true, onPressed: onFinish),

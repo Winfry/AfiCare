@@ -348,9 +348,11 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
   // ── Add medication ────────────────────────────────────────────────────
 
   Future<void> _openAddMedication() async {
+    final child = Provider.of<DependentProvider>(context, listen: false).activeDependent;
     final added = await showPModal<(AddMedicationResult, ReminderDraft)>(
       context: context,
-      title: 'Add a medication',
+      // Names the child, so a parent can see whose list it goes on.
+      title: child == null ? 'Add a medication' : 'Add a medication for ${child.fullName.split(' ').first}',
       builder: (_) => _AddMedicationForm(patientId: _patientId),
     );
     if (added == null || !mounted) return;

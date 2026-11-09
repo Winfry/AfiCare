@@ -6,6 +6,7 @@ import '../models/prescription_model.dart';
 import '../models/radiology_model.dart';
 import '../models/triage_model.dart';
 import '../models/referral_model.dart';
+import '../services/patient_lookup.dart';
 
 class ProviderPatientProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -51,6 +52,19 @@ class ProviderPatientProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // A whole MediLink ID opens that patient (logged; 056). Anything
+      // else searches only the patients already in this clinician's care:
+      // the database no longer lets staff read every account.
+      if (PatientLookup.looksLikeMedilinkId(query)) {
+        final found = await PatientLookup.byMedilinkId(query);
+        _searchResults = [
+          if (found != null)
+            {'id': found.id, 'full_name': found.fullName, 'medilink_id': found.medilinkId},
+        ];
+        _isSearching = false;
+        notifyListeners();
+        return;
+      }
       final q = query.toLowerCase();
       final response = await _supabase
           .from('users')

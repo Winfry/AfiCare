@@ -94,13 +94,15 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     _details = data == null ? const _EmergencyDetails() : _EmergencyDetails.fromRow(data);
   }
 
-  /// What the page shows. Where this person's emergency details have no
-  /// blood type or allergies yet, their main profile's are used instead:
-  /// "none on file" beside a profile that lists penicillin is the one
-  /// answer this screen must never give.
+  /// What the page shows. Where this person's emergency details have never
+  /// had a blood type or allergies saved, their main profile's are used
+  /// instead: "none on file" beside a profile that lists penicillin is the
+  /// one answer this screen must never give. Once she has saved them here,
+  /// what she saved is shown, so removing an allergy or clearing the blood
+  /// type sticks (it used to come straight back from the main profile).
   _EmergencyDetails _shown(ActivePatient subject) => _details.copyWith(
-        bloodType: _details.bloodType ?? subject.bloodType,
-        allergies: _details.allergies.isNotEmpty ? _details.allergies : (subject.allergies ?? const []),
+        bloodType: _details.bloodTypeSaved ? _details.bloodType : (_details.bloodType ?? subject.bloodType),
+        allergies: _details.allergiesSaved ? _details.allergies : (subject.allergies ?? const []),
       );
 
   List<String> _conditions(ActivePatient subject) {
@@ -233,11 +235,16 @@ class _EmergencyDetails {
     this.contact2Phone = '',
     this.contact2Relationship = '',
     this.notes = '',
+    this.bloodTypeSaved = false,
+    this.allergiesSaved = false,
   });
 
   factory _EmergencyDetails.fromRow(Map<String, dynamic> row) => _EmergencyDetails(
-        bloodType: row['blood_type'] as String?,
+        // '' is a blood type she cleared on purpose ("not known").
+        bloodType: (row['blood_type'] as String?)?.trim().isEmpty ?? true ? null : row['blood_type'] as String,
+        bloodTypeSaved: row['blood_type'] != null,
         allergies: (row['allergies'] as List?)?.cast<String>() ?? const [],
+        allergiesSaved: row['allergies'] != null,
         contactName: row['emergency_contact_name'] as String? ?? '',
         contactPhone: row['emergency_contact_phone'] as String? ?? '',
         contactRelationship: row['emergency_contact_relationship'] as String? ?? '',
@@ -257,9 +264,16 @@ class _EmergencyDetails {
   final String contact2Relationship;
   final String notes;
 
+  /// Whether a blood type / allergy list was ever saved here (even an
+  /// empty one), so the main profile's isn't shown in its place.
+  final bool bloodTypeSaved;
+  final bool allergiesSaved;
+
   _EmergencyDetails copyWith({String? bloodType, List<String>? allergies}) => _EmergencyDetails(
         bloodType: bloodType ?? this.bloodType,
         allergies: allergies ?? this.allergies,
+        bloodTypeSaved: bloodTypeSaved,
+        allergiesSaved: allergiesSaved,
         contactName: contactName,
         contactPhone: contactPhone,
         contactRelationship: contactRelationship,
@@ -273,7 +287,8 @@ class _EmergencyDetails {
     String? orNull(String s) => s.trim().isEmpty ? null : s.trim();
     return {
       'patient_id': patientId,
-      'blood_type': bloodType,
+      // '' rather than null: a blood type she cleared stays cleared.
+      'blood_type': bloodType ?? '',
       'allergies': allergies,
       'emergency_contact_name': contactName.trim(),
       'emergency_contact_phone': contactPhone.trim(),

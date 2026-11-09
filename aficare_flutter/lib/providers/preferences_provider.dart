@@ -21,6 +21,16 @@ class PreferencesProvider with ChangeNotifier {
   /// defaults over the settings she really chose.
   bool get loadFailed => _loadFailed;
 
+  /// Forgets the signed-in person's settings (on sign-out), so the next
+  /// person on the phone doesn't get her text size or contrast.
+  void clear() {
+    if (_prefs == null && !_loadFailed && _error == null) return;
+    _prefs = null;
+    _loadFailed = false;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> loadPreferences(String userId) async {
     _isLoading = true;
     _error = null;

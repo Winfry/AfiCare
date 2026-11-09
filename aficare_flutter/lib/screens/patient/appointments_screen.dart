@@ -745,6 +745,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         facilityName: _selectedFacility?.name ?? '',
         scheduledAt: scheduledAt,
         isTelehealth: _isTelehealth,
+        rescheduled: _isRescheduling,
       );
     } else {
       pToast(context,
@@ -757,6 +758,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
     required String facilityName,
     required DateTime scheduledAt,
     required bool isTelehealth,
+    bool rescheduled = false,
   }) {
     showModalBottomSheet<void>(
       context: context,
@@ -768,6 +770,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         facilityName: facilityName,
         scheduledAt: scheduledAt,
         isTelehealth: isTelehealth,
+        rescheduled: rescheduled,
       ),
     );
   }
@@ -1074,12 +1077,16 @@ class _ConfirmationSheet extends StatefulWidget {
     required this.facilityName,
     required this.scheduledAt,
     required this.isTelehealth,
+    this.rescheduled = false,
   });
 
   final String providerName;
   final String facilityName;
   final DateTime scheduledAt;
   final bool isTelehealth;
+
+  /// A moved appointment: it needs the clinic's OK again.
+  final bool rescheduled;
 
   @override
   State<_ConfirmationSheet> createState() => _ConfirmationSheetState();
@@ -1139,11 +1146,16 @@ class _ConfirmationSheetState extends State<_ConfirmationSheet> {
             ),
           ),
           const SizedBox(height: 14),
-          Center(child: Text('Appointment requested', style: PT.h3().copyWith(fontSize: 20))),
+          Center(
+            child: Text(widget.rescheduled ? 'New time requested' : 'Appointment requested',
+                style: PT.h3().copyWith(fontSize: 20)),
+          ),
           const SizedBox(height: 6),
           Center(
             child: Text(
-              'Your provider will confirm shortly. You can see it under Upcoming.',
+              widget.rescheduled
+                  ? 'The clinic needs to agree to the new time. Until they do, it shows as Pending under Upcoming.'
+                  : 'Your provider will confirm shortly. You can see it under Upcoming.',
               textAlign: TextAlign.center,
               style: PT.sub(),
             ),

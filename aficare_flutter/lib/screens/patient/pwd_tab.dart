@@ -48,6 +48,11 @@ class _PwdTabState extends State<PwdTab> {
   // ---- UI state ----
   bool _isSaving = false;
   bool _isLoading = true;
+  /// The saved profile didn't load. Saving the empty form would then
+  /// overwrite what she saved before, so the form isn't shown.
+  bool _loadFailed = false;
+  /// Whether she has a saved profile (so "No" has something to clear).
+  bool _rowExists = false;
 
   // ---- Caregiver access (the account holder's real grants) ----
   late final CaregiverService _caregivers = widget.caregiverService ?? CaregiverService();
@@ -66,22 +71,89 @@ class _PwdTabState extends State<PwdTab> {
   }
 
   Future<void> _loadProfile() async {
+    if (mounted && (_loadFailed || !_isLoading)) {
+      setState(() {
+        _isLoading = true;
+        _loadFailed = false;
+      });
+    }
     try {
       final data = await _sb
           .from('disability_profiles')
           .select()
           .eq('patient_id', widget.patientId)
           .maybeSingle();
+      // No row simply means nothing saved yet.
+      _rowExists = data != null;
       if (data != null && mounted) {
         setState(() {
           _profile = DisabilityProfile.fromMap(data);
           _hasPwdCondition = !_profile.isEmpty;
         });
       }
-    } catch (_) {
-      // Profile not yet created — use the empty default
+    } catch (e) {
+      debugPrint('Loading the disability profile failed: $e');
+      _loadFailed = true;
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// The fields the patient fills in. A clinician's diagnosis, notes and
+  /// referrals are never sent from here: the whole profile used to be
+  /// saved, so a form that failed to load (or was opened before the
+  /// doctor wrote) wiped the doctor's notes.
+  static Map<String, dynamic> _patientFields(DisabilityProfile p) {
+    final m = p.toMap();
+    for (final clinicianOnly in ['clinical_diagnosis', 'provider_notes', 'specialist_referrals']) {
+      m.remove(clinicianOnly);
+    }
+    return m;
+  }
+
+  /// "No / Prefer not to say" with a saved profile: ask, then clear her
+  /// answers (the doctor's notes stay). It used to only hide the form.
+  Future<void> _chooseNo() async {
+    if (!_rowExists || _profile.isEmpty) {
+      setState(() => _hasPwdCondition = false);
+      return;
+    }
+    final clear = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove what you saved?'),
+        content: const Text('Your disability details will be removed from your record. '
+            "Anything your clinician wrote stays. You can add them again at any time."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep them')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (clear != true || !mounted) return;
+    setState(() => _isSaving = true);
+    try {
+      final empty = DisabilityProfile.empty(widget.patientId);
+      final rows = await _sb
+          .from('disability_profiles')
+          .update(_patientFields(empty)..remove('patient_id'))
+          .eq('patient_id', widget.patientId)
+          .select('patient_id');
+      if ((rows as List).isEmpty) throw StateError('nothing was changed');
+      if (!mounted) return;
+      setState(() {
+        _profile = empty.copyWith(
+          clinicalDiagnosis: _profile.clinicalDiagnosis,
+          providerNotes: _profile.providerNotes,
+        );
+        _hasPwdCondition = false;
+      });
+      pToast(context, 'Your disability details were removed');
+    } catch (e) {
+      debugPrint('Clearing the disability profile failed: $e');
+      if (mounted) pToast(context, "Couldn't remove them. Check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -90,12 +162,15 @@ class _PwdTabState extends State<PwdTab> {
   // ----------------------------------------------------------------
 
   Future<void> _saveProfile() async {
+    if (_loadFailed) return;
     setState(() => _isSaving = true);
     try {
-      await _sb.from('disability_profiles').upsert(
-        _profile.toMap(),
-        onConflict: 'patient_id',
-      );
+      final rows = await _sb
+          .from('disability_profiles')
+          .upsert(_patientFields(_profile), onConflict: 'patient_id')
+          .select('patient_id');
+      if ((rows as List).isEmpty) throw StateError('nothing was saved');
+      _rowExists = true;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -106,10 +181,11 @@ class _PwdTabState extends State<PwdTab> {
         );
       }
     } catch (e) {
+      debugPrint('Saving the disability profile failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not save profile: $e'),
+          const SnackBar(
+            content: Text("Couldn't save your profile. Check your connection and try again."),
             backgroundColor: Colors.red,
           ),
         );
@@ -140,6 +216,17 @@ class _PwdTabState extends State<PwdTab> {
     final active = _hasPwdCondition && !_profile.isEmpty;
     final tips = active ? PwdPatientGuidance.tipsFor(_profile) : <PwdPatientTip>[];
     final offerSupport = active && PwdPatientGuidance.offersSupportLines(_profile);
+
+    if (_loadFailed) {
+      final error = PLoadError(what: 'your disability profile', onRetry: _loadProfile);
+      return inShell
+          ? PDetailScaffold(
+              eyebrow: 'Care that fits you',
+              title: 'PWD / disability support',
+              children: [error],
+            )
+          : Padding(padding: const EdgeInsets.all(16), child: error);
+    }
 
     final sections = <Widget>[
           _buildToggleCard(),
@@ -289,7 +376,11 @@ class _PwdTabState extends State<PwdTab> {
         selected: isSelected,
         label: label,
         child: GestureDetector(
-          onTap: () => setState(() => _hasPwdCondition = value),
+          onTap: _isSaving
+              ? null
+              : value
+                  ? () => setState(() => _hasPwdCondition = true)
+                  : _chooseNo,
           child: AnimatedContainer(
             duration: PT.motion(context, const Duration(milliseconds: 200)),
             padding: const EdgeInsets.symmetric(vertical: 14),

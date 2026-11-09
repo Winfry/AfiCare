@@ -180,7 +180,10 @@ class AdherenceProvider with ChangeNotifier {
           .from('prescriptions')
           .insert({
             'patient_id': patientId,
-            'provider_id': patientId, // self-prescribed
+            // Whoever added it: she herself, or the parent adding her
+            // child's medicine (056 lets a guardian do that; the child has
+            // no account to be recorded as the writer).
+            'provider_id': _supabase.auth.currentUser?.id ?? patientId,
             'medication_name': medicationName,
             'dosage': dosage,
             'frequency': '$timesPerDay time${timesPerDay == 1 ? '' : 's'} a day',

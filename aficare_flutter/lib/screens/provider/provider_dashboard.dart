@@ -10,6 +10,7 @@ import '../../models/appointment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/consultation_provider.dart';
 import '../../providers/appointment_provider.dart';
+import '../../services/patient_lookup.dart';
 import '../../utils/theme.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../widgets/greeting_header.dart';
@@ -119,17 +120,18 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     setState(() { _isLoadingPatient = true; _patientLookupError = null; _loadedPatient = null; });
     try {
       final supabase = Supabase.instance.client;
-      final userRows = await supabase
-          .from('users')
-          .select('id, full_name, medilink_id, phone, gender, metadata')
-          .eq('medilink_id', medilinkId);
-
-      if ((userRows as List).isEmpty) {
+      // The exact-ID lookup (056) logs it and opens her account to this
+      // clinician; only then can the rest of it be read.
+      final found = await PatientLookup.byMedilinkId(medilinkId);
+      if (found == null) {
         setState(() { _isLoadingPatient = false; _patientLookupError = 'No patient found with MediLink ID: $medilinkId'; });
         return;
       }
-
-      final patient = Map<String, dynamic>.from(userRows.first);
+      final patient = Map<String, dynamic>.from(await supabase
+          .from('users')
+          .select('id, full_name, medilink_id, phone, gender, metadata')
+          .eq('id', found.id)
+          .single());
 
       try {
         final profile = await supabase

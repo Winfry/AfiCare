@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/pregnancy_model.dart';
 import '../../models/record_share_model.dart';
-import '../../providers/auth_provider.dart';
+import '../../services/patient_lookup.dart';
 import '../../services/record_share_service.dart';
 import '../../utils/theme.dart';
 import 'consultation_screen.dart';
@@ -1010,24 +1009,18 @@ class _PatientAccessState extends State<PatientAccess>
 
   Future<void> _lookupByMedilinkId(String id) async {
     try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('id')
-          .eq('medilink_id', id)
-          .eq('role', 'patient')
-          .maybeSingle();
-
-      if (response == null) {
+      // An exact-ID lookup (056): logged by the database, and it opens her
+      // record to this clinician for 7 days. Staff can no longer read
+      // every patient's account directly.
+      final found = await PatientLookup.byMedilinkId(id);
+      if (found == null) {
         if (mounted) {
           setState(() => _isLoading = false);
           _showError('No patient found with MediLink ID $id');
         }
         return;
       }
-
-      final patientId = response['id'] as String;
-      await _logAudit(patientId, 'medilink_id');
-      await _loadPatientData(patientId);
+      await _loadPatientData(found.id);
     } catch (_) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -1036,17 +1029,6 @@ class _PatientAccessState extends State<PatientAccess>
     }
   }
 
-  Future<void> _logAudit(String patientId, String method) async {
-    try {
-      await Supabase.instance.client.from('audit_log').insert({
-        'action': 'patient_record_accessed',
-        'user_id': context.read<AuthProvider>().currentUser?.id,
-        'patient_id': patientId,
-        'details': {'method': method},
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-    } catch (e) { debugPrint('patient_access: audit log write failed (non-critical): $e'); }
-  }
 
   Future<void> _loadPatientData(String patientId) async {
     try {

@@ -3,7 +3,13 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:aficare_flutter/models/appointment_model.dart';
+import 'package:aficare_flutter/providers/appointment_provider.dart';
 import 'package:aficare_flutter/providers/dependent_provider.dart';
+import 'package:aficare_flutter/providers/patient_profile_provider.dart';
+import 'package:aficare_flutter/providers/preferences_provider.dart';
+import 'package:aficare_flutter/providers/provider_patient_provider.dart';
+import 'package:aficare_flutter/services/patient_lookup.dart';
 import 'package:aficare_flutter/providers/message_provider.dart';
 import 'package:aficare_flutter/providers/pregnancy_provider.dart';
 import 'package:aficare_flutter/utils/medicine_course.dart';
@@ -121,4 +127,82 @@ void main() {
       expect(await dep.updateDependent('d1', guardianId: 'g1', fullName: 'Amani'), isFalse);
     });
   });
+
+  group('4d-1: staff see a patient only in their care, or by her exact ID', () {
+    test('what counts as a whole MediLink ID', () {
+      expect(PatientLookup.looksLikeMedilinkId('ML-NBO-AB1234'), isTrue);
+      expect(PatientLookup.looksLikeMedilinkId(' ml-dep-x7k2p9 '), isTrue);
+      expect(PatientLookup.looksLikeMedilinkId('Mary'), isFalse);
+      expect(PatientLookup.looksLikeMedilinkId('ML-NBO'), isFalse);
+    });
+
+    test('an exact-ID lookup goes through the logged database function', () async {
+      fake.routeJson('/rest/v1/rpc/find_patient_by_medilink',
+          [{'id': 'p1', 'full_name': 'Mary Wanjiku', 'medilink_id': 'ML-NBO-AB1234'}]);
+      final found = await PatientLookup.byMedilinkId(' ML-NBO-AB1234 ');
+      expect(found?.id, 'p1');
+      final body = jsonDecode(fake.requestsTo('POST', 'rpc/find_patient_by_medilink').single.body) as Map;
+      expect(body, {'p_medilink': 'ML-NBO-AB1234'});
+      expect(fake.requestsTo('GET', '/rest/v1/users'), isEmpty, reason: 'no direct read of accounts');
+    });
+
+    test('no such ID is "not found", not an error', () async {
+      fake.routeJson('/rest/v1/rpc/find_patient_by_medilink', <Object?>[]);
+      expect(await PatientLookup.byMedilinkId('ML-NBO-ZZ9999'), isNull);
+    });
+
+    test("a doctor's search for a whole ID uses the lookup; a name searches her own patients", () async {
+      fake.routeJson('/rest/v1/rpc/find_patient_by_medilink',
+          [{'id': 'p1', 'full_name': 'Mary Wanjiku', 'medilink_id': 'ML-NBO-AB1234'}]);
+      fake.routeJson('/rest/v1/users', <Object?>[]);
+      final pp = ProviderPatientProvider();
+      await pp.searchPatients('ML-NBO-AB1234');
+      expect(pp.searchResults.single['id'], 'p1');
+      expect(pp.searchResults.single.containsKey('phone'), isFalse, reason: 'no phone from a lookup');
+      expect(fake.requestsTo('GET', '/rest/v1/users'), isEmpty);
+
+      await pp.searchPatients('Mary');
+      expect(fake.requestsTo('GET', '/rest/v1/users'), hasLength(1));
+    });
+  });
+
+  group('4d-1: nothing carries over or gets wiped', () {
+    test("signing out forgets her settings, so the next person doesn't get them", () async {
+      fake.routeJson('/rest/v1/user_preferences', {'user_id': 'u1', 'text_scale': 1.4, 'bold_text': true});
+      final prefs = PreferencesProvider();
+      await prefs.loadPreferences('u1');
+      expect(prefs.prefs, isNotNull);
+      prefs.clear();
+      expect(prefs.prefs, isNull);
+      expect(prefs.loadFailed, isFalse);
+    });
+
+    test('a profile that failed to load says so, so Edit profile can refuse to save over it', () async {
+      fake.routeRaw('/rest/v1/patients', boom());
+      final pp = PatientProfileProvider();
+      await pp.loadProfile('p1');
+      expect(pp.loadFailed, isTrue);
+      fake.clearRoute('/rest/v1/patients');
+      fake.routeJson('/rest/v1/patients', {'id': 'p1'});
+      await pp.loadProfile('p1');
+      expect(pp.loadFailed, isFalse);
+    });
+
+    test('an appointment she moves shows Pending again, not Confirmed', () async {
+      final when = DateTime.now().add(const Duration(days: 3));
+      fake.routeJson('/rest/v1/appointments', [
+        {
+          'id': 'ap1', 'patient_id': 'p1', 'provider_id': 'dr1',
+          'scheduled_at': when.toIso8601String(), 'status': 'confirmed', 'type': 'in-person',
+        },
+      ]);
+      fake.routeJson('/rest/v1/rpc/reschedule_appointment', null);
+      final apt = AppointmentProvider();
+      await apt.loadAppointments('p1');
+      expect(apt.appointments.single.status, AppointmentStatus.confirmed);
+      expect(await apt.rescheduleAppointment('ap1', when.add(const Duration(days: 1))), isTrue);
+      expect(apt.appointments.single.status, AppointmentStatus.pending);
+    });
+  });
 }
+

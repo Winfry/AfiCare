@@ -16,6 +16,12 @@ class PatientProfileProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Whether the last load failed (what is shown is the on-device copy, or
+  /// empty). Saving the whole profile from that could overwrite newer
+  /// details, or wipe allergies and conditions, so forms must not.
+  bool get loadFailed => _loadFailed;
+  bool _loadFailed = false;
+
   /// When the current [profile] came from the on-device copy rather than
   /// the server, the time that copy was saved. Null when it is live.
   /// Screens that show allergies or blood type must say so.
@@ -24,6 +30,7 @@ class PatientProfileProvider with ChangeNotifier {
   Future<void> loadProfile(String patientId) async {
     _isLoading = true;
     _error = null;
+    _loadFailed = false;
     notifyListeners();
 
     try {
@@ -50,6 +57,7 @@ class PatientProfileProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _error = e.toString();
+      _loadFailed = true;
       // Previously this manufactured an empty profile, which is
       // indistinguishable from a patient who has no allergies on file.
       // Prefer the last known copy; only fall back to empty when there

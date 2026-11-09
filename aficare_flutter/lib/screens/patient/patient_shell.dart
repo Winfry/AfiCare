@@ -112,6 +112,9 @@ class _PatientShellState extends State<PatientShell> {
 
   Future<void> _maybeRouteToOnboarding(String userId) async {
     final profileProvider = Provider.of<PatientProfileProvider>(context, listen: false);
+    // A profile that failed to load isn't an empty one: opening the app
+    // offline must not send an existing patient into the Welcome wizard.
+    if (profileProvider.loadFailed) return;
     final profile = profileProvider.profile;
     final incomplete = profile == null ||
         (profile.dateOfBirth == null &&

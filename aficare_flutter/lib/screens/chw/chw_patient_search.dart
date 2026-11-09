@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/patient_lookup.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/snackbar_utils.dart';
 
@@ -54,6 +55,19 @@ class _CHWPatientSearchScreenState extends State<CHWPatientSearchScreen> {
     if (query.length < 2) { _loadAssigned(); return; }
     setState(() => _searching = true);
     try {
+      // A whole MediLink ID finds anyone (logged); a name finds only the
+      // patients on this CHW's care team (056).
+      if (PatientLookup.looksLikeMedilinkId(query)) {
+        final found = await PatientLookup.byMedilinkId(query);
+        setState(() {
+          _patients = [
+            if (found != null)
+              {'id': found.id, 'full_name': found.fullName, 'medilink_id': found.medilinkId},
+          ];
+          _searching = false;
+        });
+        return;
+      }
       final data = await _supabase
           .from('users')
           .select('id, full_name, phone, medilink_id')

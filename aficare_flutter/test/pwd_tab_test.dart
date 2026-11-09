@@ -268,4 +268,47 @@ void main() {
       expect(fake.requestsTo('PATCH', 'disability_profiles'), isEmpty);
     });
   });
+
+  group('4d: her answers only, and "No" really clears them', () {
+    testWidgets("saving sends only her own answers, never the doctor's notes", (tester) async {
+      final saved = _saved(types: [DisabilityType.mobility])
+        ..['provider_notes'] = 'Seen 3 Nov: uses a frame'
+        ..['clinical_diagnosis'] = 'Cerebral palsy';
+      await pump(tester, saved);
+      await tester.tap(find.text('Save Profile'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final body = fake.requestsTo('POST', 'disability_profiles').single.body;
+      expect(body, isNot(contains('provider_notes')));
+      expect(body, isNot(contains('clinical_diagnosis')));
+      expect(body, contains('disability_types'));
+    });
+
+    testWidgets('a profile that failed to load is not shown as an empty form to save over', (tester) async {
+      tester.view.physicalSize = const Size(1000, 8000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      fake.routeRaw('/rest/v1/disability_profiles',
+          http.Response('{"message":"boom"}', 500, headers: {'content-type': 'application/json'}));
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PwdTab(patientId: 'p1', isOwnRecord: false))));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Could not load your disability profile'), findsOneWidget);
+      expect(find.text('Save Profile'), findsNothing);
+    });
+
+    testWidgets('"No / Prefer not to say" asks, then clears her saved answers', (tester) async {
+      await pump(tester, _saved(types: [DisabilityType.mobility]));
+      await tester.tap(find.text('No / Prefer not to say'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove what you saved?'), findsOneWidget);
+      await tester.tap(find.text('Remove'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final patch = fake.requestsTo('PATCH', 'disability_profiles').single;
+      expect(patch.body, contains('"disability_types":[]'));
+      expect(patch.body, isNot(contains('provider_notes')), reason: "the doctor's notes stay");
+    });
+  });
 }
+

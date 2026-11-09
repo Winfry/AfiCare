@@ -24,6 +24,11 @@ class PatientProfileEditScreen extends StatefulWidget {
 
 class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
   bool _isLoading = true;
+  /// Her profile didn't load: Save would write an empty (or old) form over
+  /// her real allergies, conditions and date of birth, so it is blocked.
+  bool _loadFailed = false;
+  /// Why Save didn't go ahead, shown above the button.
+  String? _problem;
   bool _saving = false;
   bool _savingPhoto = false;
 
@@ -144,6 +149,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
       _nameController.text = user.fullName;
       _phoneController.text = (user.phone ?? '').replaceFirst('+254', '');
       await pp.loadProfile(user.id);
+      _loadFailed = pp.loadFailed;
       final p = pp.profile;
       if (p != null) {
         _dob = p.dateOfBirth;
@@ -159,8 +165,34 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _problem = null;
+    });
+    await _load();
+  }
+
   Future<void> _save() async {
-    setState(() => _saving = true);
+    if (_loadFailed) return;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _problem = 'Add your name.');
+      return;
+    }
+    final emPhone = _emContactPhone.text.trim();
+    String? emPhoneFormatted;
+    if (emPhone.isNotEmpty) {
+      emPhoneFormatted = PhoneFormatter.format(emPhone);
+      if (emPhoneFormatted == null) {
+        setState(() => _problem = "The emergency contact's phone doesn't look right. Use a Kenyan number, like 0712 345 678.");
+        return;
+      }
+    }
+    setState(() {
+      _saving = true;
+      _problem = null;
+    });
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final pp = Provider.of<PatientProfileProvider>(context, listen: false);
     final user = auth.currentUser;
@@ -186,7 +218,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
 
     // 1) users table (name + phone)
     final userOk = await auth.updateProfile(
-      fullName: _nameController.text.trim(),
+      fullName: name,
       phone: phone,
     );
 
@@ -201,9 +233,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
       emergencyContactName: _emContactName.text.trim().isEmpty
           ? null
           : _emContactName.text.trim(),
-      emergencyContactPhone: _emContactPhone.text.trim().isEmpty
-          ? null
-          : _emContactPhone.text.trim(),
+      emergencyContactPhone: emPhoneFormatted,
       address: pp.profile?.address,
       insuranceId: _policyNumber.text.trim().isEmpty
           ? null
@@ -249,10 +279,18 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: SizedBox(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+          if (_problem != null) ...[
+            PCallout(tone: PTone.red, body: _problem!),
+            const SizedBox(height: 10),
+          ],
+          SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _saving ? null : _save,
+              onPressed: _saving || _loadFailed || _isLoading ? null : _save,
               child: _saving
                   ? const SizedBox(
                       width: 20,
@@ -262,6 +300,8 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
                   : const Text('Save Changes'),
             ),
           ),
+            ],
+          ),
         ),
       ),
       body: _isLoading
@@ -269,6 +309,17 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
+                if (_loadFailed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: PCallout(
+                      tone: PTone.warn,
+                      title: "Your profile didn't load",
+                      body: "So nothing can be saved yet: saving now could erase details you've "
+                          'added before, like allergies. Check your connection and try again.',
+                      trailing: PButton('Try again', kind: PButtonKind.alt, dense: true, onPressed: _retryLoad),
+                    ),
+                  ),
                 Center(
                   child: Semantics(
                     button: true,
@@ -386,7 +437,7 @@ class _PatientProfileEditScreenState extends State<PatientProfileEditScreen> {
                               ),
                               child: Text(
                                 _dob != null
-                                    ? '${_dob!.month.toString().padLeft(2, '0')}/${_dob!.day.toString().padLeft(2, '0')}/${_dob!.year}'
+                                    ? '${_dob!.day.toString().padLeft(2, '0')}/${_dob!.month.toString().padLeft(2, '0')}/${_dob!.year}'
                                     : 'Select',
                                 style: TextStyle(
                                     color: _dob != null

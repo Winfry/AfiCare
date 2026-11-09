@@ -162,23 +162,28 @@ class _RootApp extends StatefulWidget {
 class _RootAppState extends State<_RootApp> {
   String? _loadedUserId;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final id = auth.currentUser?.id;
-    if (id != null && id != _loadedUserId) {
-      _loadedUserId = id;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Provider.of<PreferencesProvider>(context, listen: false).loadPreferences(id);
-        }
-      });
-    }
+  /// Loads the signed-in person's settings, and forgets them on sign-out
+  /// (they used to stay, so the next person on a shared phone briefly got
+  /// the previous one's text size and contrast). Runs from build, which
+  /// watches the signed-in id, so a sign-out or a new sign-in is noticed.
+  void _followSignedInUser(String? id) {
+    if (id == _loadedUserId) return;
+    _loadedUserId = id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final prefs = Provider.of<PreferencesProvider>(context, listen: false);
+      if (id == null) {
+        prefs.clear();
+      } else {
+        prefs.clear();
+        prefs.loadPreferences(id);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    _followSignedInUser(context.select<AuthProvider, String?>((a) => a.currentUser?.id));
     final prefs = Provider.of<PreferencesProvider>(context).prefs;
     final themePref = prefs?.effectiveTheme ?? AppThemePreference.light;
     final textScale = prefs?.textScale ?? 1.0;

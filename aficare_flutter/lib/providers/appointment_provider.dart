@@ -101,7 +101,10 @@ class AppointmentProvider with ChangeNotifier {
       });
       final idx = _appointments.indexWhere((a) => a.id == id);
       if (idx != -1) {
-        _appointments[idx] = _appointments[idx].copyWith(scheduledAt: newScheduledAt);
+        // A time she picked waits for the clinic again (056), so it no
+        // longer shows "Confirmed" at a time nobody agreed to.
+        _appointments[idx] = _appointments[idx]
+            .copyWith(scheduledAt: newScheduledAt, status: AppointmentStatus.pending);
         notifyListeners();
       }
       return true;
