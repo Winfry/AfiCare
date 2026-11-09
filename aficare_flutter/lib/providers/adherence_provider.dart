@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/adherence_model.dart';
 import '../utils/dose_frequency.dart';
+import '../utils/medicine_course.dart';
 
 /// What happened when a medicine was added (see
 /// [AdherenceProvider.addMedication]).
@@ -25,11 +26,37 @@ class AdherenceProvider with ChangeNotifier {
   List<AdherenceLogModel> _history = [];
   bool _isLoading = false;
   String? _error;
+  bool _todayFailed = false;
+  bool _historyFailed = false;
+  final Set<String> _marking = {};
+
+  /// Whether a "Mark taken" / "Skip" for this dose is still being saved,
+  /// so its buttons can wait instead of sending it twice.
+  bool isMarking(String logId) => _marking.contains(logId);
 
   List<AdherenceLogModel> get today => _today;
   List<AdherenceLogModel> get history => _history;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  /// Whether the last load of today's doses failed. Kept apart from
+  /// [error], which a later load (or a failed "Mark taken") overwrites:
+  /// otherwise a failed load could be shown as "No medications yet".
+  bool get todayFailed => _todayFailed;
+
+  /// Whether the last history load failed.
+  bool get historyFailed => _historyFailed;
+
+  /// Either load failed.
+  bool get loadFailed => _todayFailed || _historyFailed;
+
+  /// How long after its time an unmarked dose counts as missed.
+  static const missedAfter = Duration(hours: 2);
+
+  /// An unmarked dose more than [missedAfter] past its time.
+  static bool isMissed(AdherenceLogModel d, [DateTime? now]) =>
+      d.status == AdherenceStatus.pending &&
+      d.scheduledTime.isBefore((now ?? DateTime.now()).subtract(missedAfter));
 
   /// Doses due today (all statuses).
   List<AdherenceLogModel> get todayDoses => _today;
@@ -45,46 +72,67 @@ class AdherenceProvider with ChangeNotifier {
   int get todayRemaining =>
       _today.where((d) => d.status == AdherenceStatus.pending).length;
 
-  /// Overall adherence rate across the loaded history window.
-  int get historyRate {
-    final resolved = _history
-        .where((d) => d.status != AdherenceStatus.pending)
+  /// Doses that count in the history figures: taken, skipped, or missed
+  /// (unmarked well past their time). Doses still to come don't count yet.
+  /// Missed doses used to be left out, so someone who never marked
+  /// anything could read 100%.
+  List<AdherenceLogModel> get _counted {
+    final now = DateTime.now();
+    return _history
+        .where((d) => d.status != AdherenceStatus.pending || isMissed(d, now))
         .toList();
-    if (resolved.isEmpty) return 0;
-    final taken =
-        resolved.where((d) => d.status == AdherenceStatus.taken).length;
-    return ((taken / resolved.length) * 100).round();
+  }
+
+  /// Percentage of counted doses that were taken.
+  int get historyRate {
+    final counted = _counted;
+    if (counted.isEmpty) return 0;
+    final taken = counted.where((d) => d.status == AdherenceStatus.taken).length;
+    return ((taken / counted.length) * 100).round();
   }
 
   int get historyTaken =>
       _history.where((d) => d.status == AdherenceStatus.taken).length;
-  int get historyTotal =>
-      _history.where((d) => d.status != AdherenceStatus.pending).length;
+  int get historyTotal => _counted.length;
 
-  List<AdherenceLogModel> get missedDoses => _history
+  /// Doses never marked, well past their time (newest first).
+  List<AdherenceLogModel> get missedDoses {
+    final now = DateTime.now();
+    return _history.where((d) => isMissed(d, now)).toList()
+      ..sort((a, b) => b.scheduledTime.compareTo(a.scheduledTime));
+  }
+
+  /// Doses she chose to skip (newest first). Not the same as missed.
+  List<AdherenceLogModel> get skippedDoses => _history
       .where((d) => d.status == AdherenceStatus.skipped)
       .toList()
     ..sort((a, b) => b.scheduledTime.compareTo(a.scheduledTime));
 
-  /// Consecutive-day streak where every dose that day was taken.
+  /// Days in a row on which every dose was taken. Today joins the streak
+  /// once all of it is taken; until then the streak runs to yesterday, so
+  /// it doesn't read 0 every morning. A skipped or missed dose today ends it.
   int get streak {
     if (_history.isEmpty) return 0;
     final Map<String, List<AdherenceLogModel>> byDay = {};
     for (final d in _history) {
-      final key = _dayKey(d.scheduledTime);
-      byDay.putIfAbsent(key, () => []).add(d);
+      byDay.putIfAbsent(_dayKey(d.scheduledTime), () => []).add(d);
     }
+    final now = DateTime.now();
+    final todays = byDay[_dayKey(now)] ?? const <AdherenceLogModel>[];
+    if (todays.any((d) => d.status == AdherenceStatus.skipped || isMissed(d, now))) {
+      return 0;
+    }
+    final todayDone =
+        todays.isNotEmpty && todays.every((d) => d.status == AdherenceStatus.taken);
+    var day = todayDone ? now : DateTime(now.year, now.month, now.day - 1);
+
     int streak = 0;
-    var day = DateTime.now();
     while (true) {
-      final key = _dayKey(day);
-      final doses = byDay[key];
+      final doses = byDay[_dayKey(day)];
       if (doses == null || doses.isEmpty) break;
-      final allTaken =
-          doses.every((d) => d.status == AdherenceStatus.taken);
-      if (!allTaken) break;
+      if (!doses.every((d) => d.status == AdherenceStatus.taken)) break;
       streak++;
-      day = day.subtract(const Duration(days: 1));
+      day = DateTime(day.year, day.month, day.day - 1);
     }
     return streak;
   }
@@ -151,17 +199,7 @@ class AdherenceProvider with ChangeNotifier {
     }
 
     // 2. Today's doses, spread across the day (up to 6).
-    final now = DateTime.now();
-    final doses = [
-      for (final hour in DoseFrequency.hours(timesPerDay))
-        {
-          'prescription_id': prescriptionId,
-          'patient_id': patientId,
-          // A true time: Kenyan 08:00 is sent as 05:00 UTC (see 052).
-          'scheduled_time': DateTime(now.year, now.month, now.day, hour).toUtc().toIso8601String(),
-          'status': 'pending',
-        },
-    ];
+    final doses = _dosesFor(prescriptionId, patientId, DateTime.now(), timesPerDay);
     var dosesSaved = doses.isEmpty;
     for (var attempt = 0; attempt < 2 && !dosesSaved; attempt++) {
       try {
@@ -177,69 +215,129 @@ class AdherenceProvider with ChangeNotifier {
     return dosesSaved ? AddMedicationResult.added : AddMedicationResult.addedDosesLater;
   }
 
-  /// Ensures today's doses exist for all active prescriptions.
-  /// If a prescription has no adherence_log entries for today,
-  /// this generates them based on the frequency.
+  /// One day's dose rows for a prescription, at the usual clock hours,
+  /// leaving out any before [notBefore].
+  /// A true time: Kenyan 08:00 is sent as 05:00 UTC (see 052).
+  static List<Map<String, dynamic>> _dosesFor(
+      String prescriptionId, String patientId, DateTime day, int perDay,
+      {DateTime? notBefore}) {
+    return [
+      for (final hour in DoseFrequency.hours(perDay))
+        if (notBefore == null ||
+            !DateTime(day.year, day.month, day.day, hour).isBefore(notBefore))
+          {
+            'prescription_id': prescriptionId,
+            'patient_id': patientId,
+            'scheduled_time':
+                DateTime(day.year, day.month, day.day, hour).toUtc().toIso8601String(),
+            'status': 'pending',
+          },
+    ];
+  }
+
+  /// How many past days [ensureTodayDoses] fills in.
+  static const backfillDays = 30;
+
+  /// Makes sure every active prescription has its dose entries: today,
+  /// and the past days she didn't open the tracker (up to [backfillDays],
+  /// never before she first used the tracker, never before the medicine
+  /// started). Without the past days, a day she forgot simply wasn't
+  /// there, and her adherence could read 100%. A course that has ended
+  /// ("5 days", "2/52", or past its expiry date) gets no new doses.
   Future<void> ensureTodayDoses(String patientId) async {
     try {
       final now = DateTime.now();
-      final start = DateTime(now.year, now.month, now.day);
-      final end = start.add(const Duration(days: 1));
+      final today = DateTime(now.year, now.month, now.day);
+      final end = DateTime(now.year, now.month, now.day + 1);
 
-      // Get all active prescriptions for this patient
       final prescriptions = await _supabase
           .from('prescriptions')
-          .select('id, frequency, status')
+          // '*': which of issued_at / created_at / expires_at exist has
+          // varied between databases; a named missing column would fail
+          // the whole query and leave her with no doses at all.
+          .select('*')
           .eq('patient_id', patientId)
           .eq('status', 'active');
+      if ((prescriptions as List).isEmpty) return;
 
-      // Get today's existing dose entries
+      // The first day she used the tracker: days before that aren't hers
+      // to be marked down for.
+      final first = await _supabase
+          .from('adherence_log')
+          .select('scheduled_time')
+          .eq('patient_id', patientId)
+          .order('scheduled_time', ascending: true)
+          .limit(1);
+      var from = DateTime(today.year, today.month, today.day - backfillDays);
+      if ((first as List).isEmpty) {
+        from = today;
+      } else {
+        final f = DateTime.parse(first.first['scheduled_time'] as String).toLocal();
+        final firstDay = DateTime(f.year, f.month, f.day);
+        if (firstDay.isAfter(from)) from = firstDay;
+      }
+
       final existing = await _supabase
           .from('adherence_log')
-          .select('prescription_id')
+          .select('prescription_id, scheduled_time')
           .eq('patient_id', patientId)
-          .gte('scheduled_time', start.toUtc().toIso8601String())
+          .gte('scheduled_time', from.toUtc().toIso8601String())
           .lt('scheduled_time', end.toUtc().toIso8601String());
+      final have = <String>{
+        for (final e in existing as List)
+          '${e['prescription_id']}|'
+              '${_dayKey(DateTime.parse(e['scheduled_time'] as String).toLocal())}',
+      };
 
-      final existingRxIds = (existing as List)
-          .map((e) => e['prescription_id'] as String)
-          .toSet();
-
-      // For prescriptions without today's doses, generate them
       final newDoses = <Map<String, dynamic>>[];
-      for (final rx in prescriptions as List) {
+      for (final rx in prescriptions) {
         final rxId = rx['id'] as String;
-        if (existingRxIds.contains(rxId)) continue;
-
         final perDay = DoseFrequency.perDay(rx['frequency'] as String?);
-        for (final hour in DoseFrequency.hours(perDay)) {
-          final scheduledTime = DateTime(now.year, now.month, now.day, hour);
-          newDoses.add({
-            'prescription_id': rxId,
-            'patient_id': patientId,
-            'scheduled_time': scheduledTime.toUtc().toIso8601String(),
-            'status': 'pending',
-          });
+        if (perDay == 0) continue;
+        final startedRaw = (rx['issued_at'] ?? rx['created_at']) as String?;
+        final started = startedRaw == null ? null : DateTime.parse(startedRaw).toLocal();
+        final startDay =
+            started == null ? null : DateTime(started.year, started.month, started.day);
+        final last = started == null
+            ? null
+            : MedicineCourse.lastDay(
+                start: started,
+                duration: rx['duration'] as String?,
+                expiresAt: rx['expires_at'] == null
+                    ? null
+                    : DateTime.parse(rx['expires_at'] as String),
+              );
+
+        for (var day = from; !day.isAfter(today); day = DateTime(day.year, day.month, day.day + 1)) {
+          if (last != null && day.isAfter(last)) break;
+          if (startDay != null && day.isBefore(startDay)) continue;
+          if (have.contains('$rxId|${_dayKey(day)}')) continue;
+          // Today every dose is listed, so she can tick ones she already
+          // took; on past days, none from before the medicine started.
+          newDoses.addAll(_dosesFor(rxId, patientId, day, perDay,
+              notBefore: day == today ? null : started));
         }
       }
 
       if (newDoses.isNotEmpty) {
         await _supabase.from('adherence_log').insert(newDoses);
       }
-    } catch (_) {
-      // Non-critical — the tracker will just show whatever exists
+    } catch (e) {
+      // Non-critical: the tracker shows whatever exists.
+      debugPrint('Adding missing doses failed: $e');
     }
   }
 
   Future<void> loadToday(String patientId) async {
     _isLoading = true;
     _error = null;
+    _todayFailed = false;
     notifyListeners();
 
     try {
       final now = DateTime.now();
       final start = DateTime(now.year, now.month, now.day);
-      final end = start.add(const Duration(days: 1));
+      final end = DateTime(now.year, now.month, now.day + 1);
 
       final response = await _supabase
           .from('adherence_log')
@@ -256,7 +354,9 @@ class AdherenceProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      debugPrint("Loading today's doses failed: $e");
+      _error = "We couldn't load today's doses.";
+      _todayFailed = true;
       _isLoading = false;
       notifyListeners();
     }
@@ -265,6 +365,7 @@ class AdherenceProvider with ChangeNotifier {
   Future<void> loadHistory(String patientId, {int days = 30}) async {
     _isLoading = true;
     _error = null;
+    _historyFailed = false;
     notifyListeners();
 
     try {
@@ -283,7 +384,9 @@ class AdherenceProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Loading dose history failed: $e');
+      _error = "We couldn't load your dose history.";
+      _historyFailed = true;
       _isLoading = false;
       notifyListeners();
     }
@@ -291,6 +394,8 @@ class AdherenceProvider with ChangeNotifier {
 
   Future<bool> markStatus(String logId, AdherenceStatus status,
       {String? reason}) async {
+    if (!_marking.add(logId)) return false;
+    notifyListeners();
     try {
       final updates = <String, dynamic>{
         'status': status == AdherenceStatus.taken
@@ -307,24 +412,28 @@ class AdherenceProvider with ChangeNotifier {
       final rows = await _supabase.from('adherence_log').update(updates).eq('id', logId).select('id');
       if ((rows as List).isEmpty) throw StateError('No dose was changed');
 
+      // Both lists, so the streak and history figures move at once.
+      AdherenceLogModel changed(AdherenceLogModel d) => d.copyWith(
+            status: status,
+            takenTime: status == AdherenceStatus.taken ? DateTime.now() : null,
+            skippedReason: reason,
+          );
       final idx = _today.indexWhere((d) => d.id == logId);
-      if (idx != -1) {
-        _today[idx] = _today[idx].copyWith(
-          status: status,
-          takenTime:
-              status == AdherenceStatus.taken ? DateTime.now() : null,
-          skippedReason: reason,
-        );
-        notifyListeners();
-      }
+      if (idx != -1) _today[idx] = changed(_today[idx]);
+      final h = _history.indexWhere((d) => d.id == logId);
+      if (h != -1) _history[h] = changed(_history[h]);
+      notifyListeners();
       return true;
     } catch (e) {
       debugPrint('Marking a dose failed: $e');
       _error = "We couldn't save that. Check your connection and try again.";
       notifyListeners();
       return false;
+    } finally {
+      _marking.remove(logId);
+      notifyListeners();
     }
   }
 
-  String _dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+  static String _dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
 }

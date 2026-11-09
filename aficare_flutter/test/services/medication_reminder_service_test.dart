@@ -161,12 +161,17 @@ void main() {
 
   group('MedicationReminderService.deleteReminder', () {
     test('deletes the row by id', () async {
-      fake.routeJson('/rest/v1/medication_reminders', <String, dynamic>{});
+      fake.routeJson('/rest/v1/medication_reminders', [{'id': 'r1'}]);
 
-      await MedicationReminderService().deleteReminder('r1');
+      expect(await MedicationReminderService().deleteReminder('r1'), isTrue);
 
       final del = fake.requestsTo('DELETE', 'medication_reminders').single;
       expect(del.url.queryParameters['id'], 'eq.r1');
+    });
+
+    test('a delete the database refused is reported, and the alarm is left alone', () async {
+      fake.routeJson('/rest/v1/medication_reminders', <Object?>[]);
+      expect(await MedicationReminderService().deleteReminder('r1'), isFalse);
     });
   });
 

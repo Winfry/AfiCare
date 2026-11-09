@@ -13,8 +13,8 @@ import 'widgets/patient_ui.dart';
 ///
 /// The centrepiece is the week grid from the spec: one row per
 /// medication, one column per day. A dose left unmarked past its
-/// scheduled time counts as missed, which is the same rule
-/// [AdherenceProvider.missedDoses] already applies.
+/// scheduled time (by [AdherenceProvider.missedAfter]) counts as missed,
+/// the same rule as [AdherenceProvider.missedDoses] and the figures.
 class AdherenceLogScreen extends StatefulWidget {
   const AdherenceLogScreen({super.key});
 
@@ -45,9 +45,7 @@ class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
     var failed = false;
     if (id != null) {
       await ad.loadHistory(id, days: _range);
-      // Read straight after the load: the provider's `error` is shared
-      // with write failures such as marking a dose.
-      failed = ad.error != null;
+      failed = ad.historyFailed;
     }
     if (mounted) {
       setState(() {
@@ -212,8 +210,7 @@ class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
         case AdherenceStatus.skipped:
           skipped++;
         case AdherenceStatus.pending:
-          // Unmarked past its scheduled time counts as missed.
-          if (d.scheduledTime.isBefore(now)) {
+          if (AdherenceProvider.isMissed(d, now)) {
             missed++;
           } else {
             due++;
@@ -257,32 +254,49 @@ class _AdherenceLogScreenState extends State<AdherenceLogScreen> {
 
   // ── Missed doses ──────────────────────────────────────────────────────
 
+  /// Missed (never marked) and skipped (chosen) doses, newest first, each
+  /// with its own label: a skipped dose is not one she forgot.
   Widget _missedSection(AdherenceProvider ad) {
     final missed = ad.missedDoses;
+    final rows = [
+      for (final d in missed) (d, false),
+      for (final d in ad.skippedDoses) (d, true),
+    ]..sort((a, b) => b.$1.scheduledTime.compareTo(a.$1.scheduledTime));
 
     return PCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PCardTitle(
-            'Missed doses',
-            trailing: missed.isEmpty
+            'Missed and skipped',
+            trailing: rows.isEmpty
                 ? const PBadge('All caught up', tone: PTone.ok)
-                : PBadge('${missed.length}', tone: PTone.red),
+                : PBadge(
+                    missed.isEmpty ? '${rows.length} skipped' : '${missed.length} missed',
+                    tone: missed.isEmpty ? PTone.warn : PTone.red,
+                  ),
           ),
-          if (missed.isEmpty)
+          if (rows.isEmpty)
             const PEmpty(
               emoji: '🎉',
-              title: 'No missed doses',
-              body: 'Everything scheduled in this period was marked.',
+              title: 'Nothing missed',
+              body: 'Every dose in this period was taken, or is still to come.',
             )
           else
-            for (final d in missed)
+            for (final (d, skipped) in rows)
               PRow(
-                leadingEmoji: '✕',
+                leadingEmoji: skipped ? '–' : '✕',
                 title: d.medicationName ?? 'Medication',
-                subtitle: DateFormat('EEEE, d MMM · HH:mm').format(d.scheduledTime),
-                trailing: const [PBadge('Missed', tone: PTone.red)],
+                subtitle: [
+                  DateFormat('EEEE, d MMM · HH:mm').format(d.scheduledTime),
+                  if (!skipped) 'not marked',
+                  if (skipped && (d.skippedReason ?? '').trim().isNotEmpty) d.skippedReason!.trim(),
+                ].join(' · '),
+                trailing: [
+                  skipped
+                      ? const PBadge('Skipped', tone: PTone.warn)
+                      : const PBadge('Missed', tone: PTone.red),
+                ],
               ),
         ],
       ),

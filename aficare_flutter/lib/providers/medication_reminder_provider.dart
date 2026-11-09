@@ -93,9 +93,12 @@ class MedicationReminderProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deleteReminder(String reminderId) async {
-    await _service.deleteReminder(reminderId);
+  /// Returns whether it was deleted; a refused delete stays on the list.
+  Future<bool> deleteReminder(String reminderId) async {
+    final ok = await _service.deleteReminder(reminderId);
+    if (!ok) return false;
     _reminders.removeWhere((r) => r.id == reminderId);
     notifyListeners();
+    return true;
   }
 }

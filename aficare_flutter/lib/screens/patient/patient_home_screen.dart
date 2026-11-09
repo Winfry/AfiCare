@@ -605,6 +605,7 @@ class _DoseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final done = dose.status == AdherenceStatus.taken;
     final skipped = dose.status == AdherenceStatus.skipped;
+    final busy = context.select<AdherenceProvider, bool>((a) => a.isMarking(dose.id));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 9),
@@ -652,7 +653,9 @@ class _DoseRow extends StatelessWidget {
             )
           else
             OutlinedButton(
-              onPressed: () async {
+              onPressed: busy
+                  ? null
+                  : () async {
                 final ok = await context.read<AdherenceProvider>().markStatus(dose.id, AdherenceStatus.taken);
                 if (!ok && context.mounted) pToast(context, 'Couldn’t record that dose. Please try again.');
               },
@@ -665,7 +668,7 @@ class _DoseRow extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: PT.badge().copyWith(fontSize: 12),
               ),
-              child: const Text('Mark taken'),
+              child: Text(busy ? 'Saving…' : 'Mark taken'),
             ),
         ],
       ),

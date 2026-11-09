@@ -57,7 +57,7 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
       // Captured here rather than read from the provider during build:
       // the same `error` field is also set by write failures (marking a
       // dose), which must not be reported as a failure to load.
-      failed = ad.error != null;
+      failed = ad.loadFailed;
     }
     if (mounted) {
       setState(() {
@@ -254,12 +254,12 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
     return PCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [for (final d in doses) _doseRow(d)],
+        children: [for (final d in doses) _doseRow(d, busy: ad.isMarking(d.id))],
       ),
     );
   }
 
-  Widget _doseRow(AdherenceLogModel d) {
+  Widget _doseRow(AdherenceLogModel d, {bool busy = false}) {
     final pending = d.status == AdherenceStatus.pending;
     final taken = d.status == AdherenceStatus.taken;
     final overdue = pending && d.scheduledTime.isBefore(DateTime.now());
@@ -286,17 +286,17 @@ class _MedicationTrackerScreenState extends State<MedicationTrackerScreen> {
           : Row(
               children: [
                 PButton(
-                  'Mark taken',
+                  busy ? 'Saving…' : 'Mark taken',
                   dense: true,
                   icon: Icons.check_rounded,
-                  onPressed: () => _mark(d, AdherenceStatus.taken),
+                  onPressed: busy ? null : () => _mark(d, AdherenceStatus.taken),
                 ),
                 const SizedBox(width: 10),
                 PButton(
                   'Skip',
                   kind: PButtonKind.alt,
                   dense: true,
-                  onPressed: () => _mark(d, AdherenceStatus.skipped),
+                  onPressed: busy ? null : () => _mark(d, AdherenceStatus.skipped),
                 ),
               ],
             ),

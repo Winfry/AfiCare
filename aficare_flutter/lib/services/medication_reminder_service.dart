@@ -396,11 +396,16 @@ class MedicationReminderService {
   /// Returns whether the reminder was deleted.
   Future<bool> deleteReminder(String reminderId) async {
     try {
-      await cancelReminder(reminderId);
-      await _supabase
+      // Delete first, and only then silence the alarms: done the other
+      // way, a refused delete left a reminder showing "On" that no longer
+      // rang. .select() so a delete the database quietly refused is caught.
+      final rows = await _supabase
           .from('medication_reminders')
           .delete()
-          .eq('id', reminderId);
+          .eq('id', reminderId)
+          .select('id');
+      if ((rows as List).isEmpty) return false;
+      await cancelReminder(reminderId);
       return true;
     } catch (e) {
       debugPrint('Error deleting reminder: $e');

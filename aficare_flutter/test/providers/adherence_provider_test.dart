@@ -95,18 +95,46 @@ void main() {
       expect(provider.historyRate, 67);
       expect(provider.historyTaken, 2);
       expect(provider.historyTotal, 3);
-      expect(provider.missedDoses, hasLength(1));
+      expect(provider.missedDoses, isEmpty, reason: 'a skipped dose was chosen, not forgotten');
+      expect(provider.skippedDoses, hasLength(1));
     });
 
-    test('historyRate is zero without resolved doses', () async {
+    test('a dose still to come does not count yet', () async {
+      final later = DateTime.now().add(const Duration(hours: 3)).toUtc().toIso8601String();
       fake.routeJson('/rest/v1/adherence_log', [
-        dose(id: 'h1', status: 'pending'),
+        dose(id: 'h1', status: 'pending', scheduled: later),
       ]);
 
       final provider = AdherenceProvider();
       await provider.loadHistory('p1');
 
       expect(provider.historyRate, 0);
+      expect(provider.historyTotal, 0);
+      expect(provider.missedDoses, isEmpty);
+    });
+
+    test('a dose never marked counts as missed, so never marking anything is not 100%', () async {
+      fake.routeJson('/rest/v1/adherence_log', [
+        dose(id: 'h1', status: 'taken', scheduled: '2026-07-30T08:00:00.000Z'),
+        dose(id: 'h2', status: 'pending', scheduled: '2026-07-30T13:00:00.000Z'),
+        dose(id: 'h3', status: 'pending', scheduled: '2026-07-31T08:00:00.000Z'),
+        dose(id: 'h4', status: 'pending', scheduled: '2026-07-31T13:00:00.000Z'),
+      ]);
+
+      final provider = AdherenceProvider();
+      await provider.loadHistory('p1');
+
+      expect(provider.historyRate, 25);
+      expect(provider.historyTotal, 4);
+      expect(provider.missedDoses.map((d) => d.id), ['h4', 'h3', 'h2'], reason: 'newest first');
+    });
+
+    test('a dose only just due is not missed yet', () async {
+      final justNow = DateTime.now().subtract(const Duration(minutes: 30)).toUtc().toIso8601String();
+      fake.routeJson('/rest/v1/adherence_log', [dose(id: 'h1', status: 'pending', scheduled: justNow)]);
+      final provider = AdherenceProvider();
+      await provider.loadHistory('p1');
+      expect(provider.missedDoses, isEmpty);
       expect(provider.historyTotal, 0);
     });
   });
@@ -338,11 +366,134 @@ void main() {
       fake.routeJson('/rest/v1/prescriptions', [
         {'id': 'tds', 'frequency': 'TDS', 'status': 'active'},
       ]);
+      final now = DateTime.now();
       fake.routeJson('/rest/v1/adherence_log', [
-        {'prescription_id': 'tds'},
+        {
+          'prescription_id': 'tds',
+          'scheduled_time': DateTime(now.year, now.month, now.day, 8).toUtc().toIso8601String(),
+        },
       ]);
       await AdherenceProvider().ensureTodayDoses('p1');
       expect(fake.requestsTo('POST', 'adherence_log'), isEmpty);
+    });
+  });
+
+  group('days she did not open the tracker', () {
+    DateTime day(int daysAgo) {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day - daysAgo);
+    }
+
+    String at(int daysAgo, int hour) =>
+        DateTime(day(daysAgo).year, day(daysAgo).month, day(daysAgo).day, hour).toUtc().toIso8601String();
+
+    /// The days (as "days ago") that got new doses, per prescription.
+    Map<String, Set<int>> newDays() {
+      final made = <String, Set<int>>{};
+      for (final post in fake.requestsTo('POST', 'adherence_log')) {
+        for (final d in jsonDecode(post.body) as List) {
+          final t = DateTime.parse(d['scheduled_time'] as String).toLocal();
+          final ago = day(0).difference(DateTime(t.year, t.month, t.day)).inDays;
+          made.putIfAbsent(d['prescription_id'] as String, () => {}).add(ago);
+        }
+      }
+      return made;
+    }
+
+    test('the missing days since she started using it are filled in, so they show as missed', () async {
+      fake.routeJson('/rest/v1/prescriptions', [
+        {'id': 'rx', 'frequency': 'OD', 'status': 'active', 'duration': 'ongoing', 'created_at': at(20, 7)},
+      ]);
+      // She first used the tracker 4 days ago and opened it again 2 days ago.
+      fake.routeJson('/rest/v1/adherence_log', [
+        {'prescription_id': 'rx', 'scheduled_time': at(4, 8)},
+        {'prescription_id': 'rx', 'scheduled_time': at(2, 8)},
+      ]);
+      await AdherenceProvider().ensureTodayDoses('p1');
+      expect(newDays()['rx'], {3, 1, 0}, reason: 'never before her first day with the tracker');
+    });
+
+    test('a course that has ended gets no more doses', () async {
+      fake.routeJson('/rest/v1/prescriptions', [
+        {'id': 'five', 'frequency': 'BD', 'status': 'active', 'duration': '5/7', 'created_at': at(10, 7)},
+        {'id': 'exp', 'frequency': 'OD', 'status': 'active', 'duration': 'ongoing',
+         'created_at': at(10, 7), 'expires_at': at(8, 23)},
+      ]);
+      fake.routeJson('/rest/v1/adherence_log', [
+        {'prescription_id': 'other', 'scheduled_time': at(10, 8)},
+      ]);
+      await AdherenceProvider().ensureTodayDoses('p1');
+      final made = newDays();
+      expect(made['five'], {10, 9, 8, 7, 6}, reason: '5 days from the day it was written');
+      expect(made['exp'], {10, 9, 8}, reason: 'none after it expired');
+    });
+
+    test('no dose is listed from before the medicine was started on a past day', () async {
+      fake.routeJson('/rest/v1/prescriptions', [
+        {'id': 'tds', 'frequency': 'TDS', 'status': 'active', 'created_at': at(1, 12)},
+      ]);
+      fake.routeJson('/rest/v1/adherence_log', [
+        {'prescription_id': 'old', 'scheduled_time': at(5, 8)},
+      ]);
+      await AdherenceProvider().ensureTodayDoses('p1');
+      final hoursYesterday = [
+        for (final post in fake.requestsTo('POST', 'adherence_log'))
+          for (final d in jsonDecode(post.body) as List)
+            if (DateTime.parse(d['scheduled_time'] as String).toLocal().day == day(1).day)
+              DateTime.parse(d['scheduled_time'] as String).toLocal().hour,
+      ];
+      expect(hoursYesterday, [14, 20], reason: 'started at noon: the 8 am dose was never due');
+    });
+  });
+
+  group('streak', () {
+    String at(int daysAgo, int hour) {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day - daysAgo, hour).toUtc().toIso8601String();
+    }
+
+    Future<AdherenceProvider> withHistory(List<Map<String, dynamic>> rows) async {
+      fake.routeJson('/rest/v1/adherence_log', rows);
+      final p = AdherenceProvider();
+      await p.loadHistory('p1');
+      return p;
+    }
+
+    test('does not drop to 0 in the morning while today is still going', () async {
+      final later = DateTime.now().add(const Duration(hours: 1)).toUtc().toIso8601String();
+      final p = await withHistory([
+        dose(id: 't', status: 'pending', scheduled: later),
+        dose(id: 'y1', status: 'taken', scheduled: at(1, 8)),
+        dose(id: 'y2', status: 'taken', scheduled: at(2, 8)),
+        dose(id: 'y3', status: 'skipped', scheduled: at(3, 8)),
+      ]);
+      expect(p.streak, 2);
+    });
+
+    test('today joins once all of it is taken, and grows as soon as a dose is marked', () async {
+      final p = await withHistory([
+        dose(id: 't', status: 'pending', scheduled: DateTime.now().add(const Duration(minutes: 5)).toUtc().toIso8601String()),
+        dose(id: 'y1', status: 'taken', scheduled: at(1, 8)),
+      ]);
+      expect(p.streak, 1);
+      fake.routeJson('/rest/v1/adherence_log', [{'id': 't'}]);
+      expect(await p.markStatus('t', AdherenceStatus.taken), isTrue);
+      expect(p.streak, 2);
+    });
+  });
+
+  group('Mark taken waits for the save', () {
+    test('a second tap while saving sends nothing more', () async {
+      fake.routeJson('/rest/v1/adherence_log', [dose(status: 'pending')]);
+      final p = AdherenceProvider();
+      await p.loadToday('p1');
+      fake.routeJson('/rest/v1/adherence_log', [{'id': 'd1'}]);
+      final first = p.markStatus('d1', AdherenceStatus.taken);
+      expect(p.isMarking('d1'), isTrue);
+      expect(await p.markStatus('d1', AdherenceStatus.taken), isFalse);
+      expect(await first, isTrue);
+      expect(p.isMarking('d1'), isFalse);
+      expect(fake.requestsTo('PATCH', 'adherence_log'), hasLength(1));
     });
   });
 

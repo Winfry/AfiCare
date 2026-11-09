@@ -200,7 +200,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     final subject = ActivePatient.of(context, listen: false);
     if (subject.id.isEmpty) return;
 
-    final permissionGranted = await showPModal<bool>(
+    final outcome = await showPModal<_SaveOutcome>(
       context: context,
       title: subject.isDependent ? 'New reminder for ${subject.firstName}' : 'New reminder',
       builder: (ctx) => _ReminderForm(
@@ -210,16 +210,17 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         draft: draft,
       ),
     );
-    if (permissionGranted == null || !mounted) return;
+    if (outcome == null || !mounted) return;
 
-    pToast(
-      context,
-      kIsWeb
-          ? 'Reminder saved. It will ring on a phone with the AfiCare app.'
-          : permissionGranted
-              ? 'Reminder saved'
-              : "Reminder saved, but AfiCare can't send notifications. Turn them on in your phone's settings.",
-    );
+    pToast(context, switch (outcome) {
+      _SaveOutcome.web => 'Reminder saved. It will ring on a phone with the AfiCare app.',
+      _SaveOutcome.rings => 'Reminder saved',
+      _SaveOutcome.noAlarm => "Reminder saved. \"As needed\" medicines don't ring.",
+      _SaveOutcome.noPermission =>
+        "Reminder saved, but AfiCare can't send notifications. Turn them on in your phone's settings.",
+      _SaveOutcome.alarmsFailed =>
+        "Reminder saved, but this phone couldn't set the alarm. Close and reopen AfiCare to try again.",
+    });
     _loadReminders();
   }
 
@@ -380,7 +381,10 @@ class _ReminderRow extends StatelessWidget {
           ].where((s) => s.isNotEmpty).join(' · ');
 
     final controls = <Widget>[
-      PBadge(r.isActive ? 'On' : 'Paused', tone: r.isActive ? PTone.ok : PTone.warn),
+      if (!rings)
+        const PBadge('No alarm', tone: PTone.gray)
+      else
+        PBadge(r.isActive ? 'On' : 'Paused', tone: r.isActive ? PTone.ok : PTone.warn),
       PButton(
         busy ? '…' : (r.isActive ? 'Pause' : 'Turn on'),
         kind: PButtonKind.alt,
@@ -410,7 +414,7 @@ class _ReminderRow extends StatelessWidget {
     // so there they sit on their own line underneath.
     final mobile = PT.isMobile(context);
     return PRow(
-      leading: PSoftIcon(r.isActive ? Icons.alarm_rounded : Icons.alarm_off_rounded),
+      leading: PSoftIcon(rings && r.isActive ? Icons.alarm_rounded : Icons.alarm_off_rounded),
       title: dosage.isEmpty ? r.medicationName : '${r.medicationName} · $dosage',
       subtitle: when,
       trailing: mobile ? const [] : controls,
@@ -518,6 +522,9 @@ class _ReminderFormState extends State<_ReminderForm> {
       _error = null;
     });
 
+    // Try again here in case starting notifications failed when the app
+    // opened; otherwise "saved" would hide an alarm that can never ring.
+    await widget.service.init();
     final permissionGranted = await widget.service.requestPermission();
     final saved = await widget.service.saveReminder(
       patientId: widget.patientId,
@@ -530,7 +537,18 @@ class _ReminderFormState extends State<_ReminderForm> {
     );
     if (!mounted) return;
     if (saved != null) {
-      Navigator.pop(context, permissionGranted);
+      Navigator.pop(
+        context,
+        kIsWeb
+            ? _SaveOutcome.web
+            : _frequency == 'as_needed'
+                ? _SaveOutcome.noAlarm
+                : !widget.service.isInitialized
+                    ? _SaveOutcome.alarmsFailed
+                    : permissionGranted
+                        ? _SaveOutcome.rings
+                        : _SaveOutcome.noPermission,
+      );
     } else {
       setState(() {
         _saving = false;
@@ -649,3 +667,6 @@ class _ReminderFormState extends State<_ReminderForm> {
     );
   }
 }
+
+/// What saving a reminder means for whether it will ring.
+enum _SaveOutcome { web, rings, noAlarm, noPermission, alarmsFailed }
