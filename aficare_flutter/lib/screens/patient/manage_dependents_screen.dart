@@ -164,7 +164,7 @@ class _ManageDependentsScreenState extends State<ManageDependentsScreen> {
   }
 
   Widget _managedCard(DependentProvider dep) {
-    if (dep.error != null && dep.dependents.isEmpty) {
+    if (dep.loadFailed && dep.dependents.isEmpty) {
       return PLoadError(what: 'the profiles you manage', onRetry: _load);
     }
     return PCard(
@@ -421,6 +421,9 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
   final _allergies = <String>[];
   final _allergyController = TextEditingController();
   bool _submitting = false;
+  /// Why the last save didn't work, shown inside the form (a snackbar sat
+  /// behind it, unseen).
+  String? _problem;
 
   // 'parent' matters: a common case is an adult keeping records for an
   // ageing parent, and leaving it out meant editing such a profile
@@ -464,19 +467,18 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
   Future<void> _submit() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Full name is required')),
-      );
+      setState(() => _problem = 'Add their full name.');
       return;
     }
     if (_relationship == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Relationship is required')),
-      );
+      setState(() => _problem = 'Choose how they are related to you.');
       return;
     }
 
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _problem = null;
+    });
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final dep = Provider.of<DependentProvider>(context, listen: false);
     final guardianId = auth.currentUser?.id ?? '';
@@ -506,19 +508,23 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
       );
     }
 
-    if (mounted) {
-      setState(() => _submitting = false);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok
-            ? widget.existing == null
-                ? '$name added successfully'
-                : 'Profile updated'
-            : 'Could not save — try again'),
-        backgroundColor: ok ? const Color(0xFF1D3557) : Colors.red,
-      ));
-      if (ok) widget.onSaved();
+    if (!mounted) return;
+    if (!ok) {
+      // Stay open with everything she typed, and say why.
+      setState(() {
+        _submitting = false;
+        _problem = dep.error ?? "We couldn't save this. Please try again.";
+      });
+      return;
     }
+    setState(() => _submitting = false);
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    messenger.showSnackBar(SnackBar(
+      content: Text(widget.existing == null ? '$name added' : 'Profile updated'),
+      backgroundColor: const Color(0xFF1D3557),
+    ));
+    widget.onSaved();
   }
 
   InputDecoration _fieldDecoration({
@@ -627,7 +633,13 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
               },
               child: InputDecorator(
                 decoration: _fieldDecoration(
-                  suffixIcon: const Icon(Icons.calendar_today),
+                  suffixIcon: _dob == null
+                      ? const Icon(Icons.calendar_today)
+                      : IconButton(
+                          tooltip: 'Clear the date of birth',
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => setState(() => _dob = null),
+                        ),
                 ),
                 child: Text(
                   _dob != null
@@ -648,12 +660,13 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
             DropdownButtonFormField<String>(
               value: _gender,
               decoration: _fieldDecoration(hintText: 'Select gender'),
-              items: _genders
-                  .map((g) => DropdownMenuItem(
-                        value: g,
-                        child: Text(_capitalize(g)),
-                      ))
-                  .toList(),
+              items: [
+                const DropdownMenuItem<String>(value: null, child: Text('Not known')),
+                ..._genders.map((g) => DropdownMenuItem(
+                      value: g,
+                      child: Text(_capitalize(g)),
+                    )),
+              ],
               onChanged: (v) => setState(() => _gender = v),
             ),
             const SizedBox(height: 16),
@@ -666,10 +679,10 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
               value: _bloodType,
               decoration:
                   _fieldDecoration(hintText: 'Select blood type'),
-              items: _bloodTypes
-                  .map((t) =>
-                      DropdownMenuItem(value: t, child: Text(t)))
-                  .toList(),
+              items: [
+                const DropdownMenuItem<String>(value: null, child: Text('Not known')),
+                ..._bloodTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))),
+              ],
               onChanged: (v) => setState(() => _bloodType = v),
             ),
             const SizedBox(height: 16),
@@ -727,6 +740,10 @@ class _DependentFormSheetState extends State<_DependentFormSheet> {
               ),
             ],
             const SizedBox(height: 24),
+            if (_problem != null) ...[
+              PCallout(tone: PTone.red, body: _problem!),
+              const SizedBox(height: 12),
+            ],
 
             ElevatedButton.icon(
               onPressed: _submitting ? null : _submit,

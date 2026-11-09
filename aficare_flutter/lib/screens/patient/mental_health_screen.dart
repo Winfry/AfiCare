@@ -19,6 +19,8 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
   List<MentalHealthScreening> _screenings = [];
   List<MoodEntry> _moodEntries = [];
   bool _isLoading = true;
+  /// A failed load, so it isn't read as "you've never checked in".
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -27,6 +29,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
   }
 
   Future<void> _loadData() async {
+    if (_loadFailed && mounted) setState(() => _loadFailed = false);
     try {
       final patientId = _supabase.auth.currentUser?.id;
       if (patientId == null) return;
@@ -52,7 +55,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
           .toList();
     } catch (e) {
       debugPrint('Error loading mental health data: $e');
-      showErrorSnackBar(context, 'Could not load your mental health data');
+      _loadFailed = true;
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -75,6 +78,10 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_loadFailed) ...[
+                    PLoadError(what: 'your past check-ins', onRetry: _loadData),
+                    const SizedBox(height: 16),
+                  ],
                   // Quick Mood Check-in
                   _buildMoodCheckin(),
                   const SizedBox(height: 16),
@@ -691,6 +698,13 @@ class ScreeningResultView extends StatelessWidget {
           message(o),
           textAlign: TextAlign.center,
           style: TextStyle(color: PT.muted, fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'This is a screening, not a diagnosis. Only a health worker who talks with you can say '
+          'what is going on and what would help.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: PT.muted, fontSize: 12, fontStyle: FontStyle.italic),
         ),
         if (!o.saved) ...[
           const SizedBox(height: 12),

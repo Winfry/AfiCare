@@ -140,7 +140,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   builder: (context, mp, _) {
                     final convos = mp.conversations
                         .where((c) =>
-                            c.counterpartName.toLowerCase().contains(_search.toLowerCase()))
+                            c.counterpartName.toLowerCase().contains(_search.toLowerCase()) ||
+                            c.lastMessage.toLowerCase().contains(_search.toLowerCase()))
                         .toList();
 
                     if (!isWide) return _conversationsCard(convos, isWide: false);
@@ -525,6 +526,15 @@ class _ChatScreenState extends State<ChatScreen> {
               ? Center(child: CircularProgressIndicator(color: PT.teal))
               : Consumer<MessageProvider>(
                   builder: (context, mp, _) {
+                    if (mp.threadFailed && mp.thread.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: PLoadError(what: 'this conversation', onRetry: () {
+                          setState(() => _isLoading = true);
+                          _load();
+                        }),
+                      );
+                    }
                     if (mp.thread.isEmpty) {
                       return Center(
                         child: Padding(

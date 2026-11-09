@@ -8,6 +8,11 @@ class MessageProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   List<ConversationSummary> _conversations = [];
+  bool _threadFailed = false;
+
+  /// Whether the last conversation load failed, so it isn't shown as
+  /// "Write your first message".
+  bool get threadFailed => _threadFailed;
   List<MessageContact> _contacts = [];
   List<MessageModel> _thread = [];
   final Map<String, UserModel> _userCache = {};
@@ -89,6 +94,7 @@ class MessageProvider with ChangeNotifier {
   Future<void> loadThread(String userId, String counterpartId) async {
     _isThreadLoading = true;
     _error = null;
+    _threadFailed = false;
     notifyListeners();
 
     try {
@@ -108,7 +114,9 @@ class MessageProvider with ChangeNotifier {
       // Fire-and-forget: mark incoming messages as read.
       _markThreadRead(userId, counterpartId);
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Loading a conversation failed: $e');
+      _error = "We couldn't load this conversation.";
+      _threadFailed = true;
       _isThreadLoading = false;
       notifyListeners();
     }
@@ -172,6 +180,20 @@ class MessageProvider with ChangeNotifier {
           .eq('receiver_id', userId)
           .eq('sender_id', counterpartId)
           .eq('read', false);
+      // The inbox badges too: on a wide screen the list stays in view
+      // and was never reloaded, so it kept saying "unread".
+      final i = _conversations.indexWhere((c) => c.counterpartId == counterpartId);
+      if (i != -1 && _conversations[i].unreadCount > 0) {
+        final c = _conversations[i];
+        _conversations[i] = ConversationSummary(
+          counterpartId: c.counterpartId,
+          counterpartName: c.counterpartName,
+          counterpartRole: c.counterpartRole,
+          lastMessage: c.lastMessage,
+          lastMessageAt: c.lastMessageAt,
+        );
+        notifyListeners();
+      }
     } catch (_) {
       // Non-critical.
     }

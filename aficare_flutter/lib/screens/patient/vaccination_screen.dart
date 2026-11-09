@@ -17,6 +17,9 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   final _supabase = Supabase.instance.client;
   List<VaccinationRecord> _records = [];
   bool _isLoading = true;
+  /// A failed load, kept apart from "no records yet": otherwise she saw
+  /// "0 completed" and every vaccine "Due" while offline.
+  bool _loadFailed = false;
   DateTime? _dateOfBirth;
 
   /// Whose records are currently loaded, so a profile switch while this
@@ -42,7 +45,12 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
   }
 
   Future<void> _loadData(ActivePatient subject) async {
-    if (mounted) setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadFailed = false;
+      });
+    }
     try {
       // The active patient, not the account holder: this screen is shown
       // on a dependant profile, and a child's immunisation card is
@@ -80,6 +88,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
       }
     } catch (e) {
       debugPrint('Error loading vaccination data: $e');
+      _loadFailed = true;
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -133,6 +142,10 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_loadFailed) ...[
+                    PLoadError(what: 'the vaccination card', onRetry: () => _loadData(_subject)),
+                    const SizedBox(height: 16),
+                  ] else ...[
                   // Stats
                   _buildStatsRow(),
                   const SizedBox(height: 16),
@@ -182,6 +195,7 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                     const Text('Completed', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                     const SizedBox(height: 10),
                     ...(_records.map((r) => _buildCompletedCard(r))),
+                  ],
                   ],
                 ],
               ),

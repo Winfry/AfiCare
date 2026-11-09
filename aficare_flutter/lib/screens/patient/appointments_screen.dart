@@ -77,8 +77,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         };
       }
     } catch (e) {
-      debugPrint('appointments_screen: loading providers failed: $e');
-      if (mounted) showErrorSnackBar(context, 'Could not load appointments');
+      // Only the clinicians' names are missing; the appointments themselves
+      // loaded, so saying "Could not load appointments" was wrong.
+      debugPrint('appointments_screen: loading clinician names failed: $e');
     }
 
     if (!mounted) return;

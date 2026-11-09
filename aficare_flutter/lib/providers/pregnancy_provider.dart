@@ -27,6 +27,12 @@ class PregnancyProvider with ChangeNotifier {
   bool get loaded => _loaded;
   String? get error => _error;
 
+  /// Whether the last load failed. Kept apart from [error], which a failed
+  /// save also sets: a first save that failed used to read as "Could not
+  /// load your pregnancy record".
+  bool get loadFailed => _loadFailed;
+  bool _loadFailed = false;
+
   /// Newest first.
   List<Pregnancy> get pregnancies => List.unmodifiable(_pregnancies);
 
@@ -62,6 +68,7 @@ class PregnancyProvider with ChangeNotifier {
     }
     _isLoading = true;
     _error = null;
+    _loadFailed = false;
     notifyListeners();
 
     try {
@@ -80,7 +87,10 @@ class PregnancyProvider with ChangeNotifier {
       _visits = [for (final r in visits as List) AncVisit.fromJson(Map<String, dynamic>.from(r))];
     } catch (e) {
       debugPrint('PregnancyProvider.load failed: $e');
-      if (_patientId == patientId) _error = 'Could not load your pregnancy record.';
+      if (_patientId == patientId) {
+        _error = 'Could not load your pregnancy record.';
+        _loadFailed = true;
+      }
     } finally {
       if (_patientId == patientId) {
         _isLoading = false;

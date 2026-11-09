@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/appointment_model.dart';
 import '../../providers/appointment_provider.dart';
 import '../../utils/default_avatars.dart';
-import '../../utils/snackbar_utils.dart';
 import '../../widgets/provider_avatar.dart';
 import 'widgets/patient_ui.dart';
 
@@ -26,6 +25,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Map<String, dynamic>? _provider;
   Map<String, dynamic>? _facility;
   bool _loading = true;
+  /// The clinician / facility details didn't load: say so, rather than
+  /// "Facility not specified".
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -59,25 +61,38 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     } catch (e) {
       debugPrint('appointment_detail_screen: loading appointment detail failed: $e');
       if (!mounted) return;
-      showErrorSnackBar(context, 'Could not load appointment details');
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
     }
   }
 
   Future<void> _addToCalendar(AppointmentModel a) async {
     final start = a.scheduledAt;
-    final end = start.add(const Duration(hours: 1));
+    final end = start.add(Duration(minutes: a.durationMinutes > 0 ? a.durationMinutes : 30));
     final fmtStart = DateFormat("yyyyMMdd'T'HHmmss").format(start);
     final fmtEnd = DateFormat("yyyyMMdd'T'HHmmss").format(end);
     final providerName = _provider?['full_name'] ?? 'Provider';
     final title = Uri.encodeComponent('Appointment with $providerName');
     final details =
         Uri.encodeComponent(a.chiefComplaint ?? 'Medical appointment');
+    final place = [
+      _facility?['name'] as String?,
+      _facility?['address'] as String?,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).join(', ');
     final url = Uri.parse(
         'https://calendar.google.com/calendar/render?action=TEMPLATE'
-        '&text=$title&dates=$fmtStart/$fmtEnd&details=$details&sf=true');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+        '&text=$title&dates=$fmtStart/$fmtEnd&details=$details'
+        '${place.isEmpty ? '' : '&location=${Uri.encodeComponent(place)}'}&sf=true');
+    var opened = false;
+    try {
+      opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Opening the calendar failed: $e');
+    }
+    if (!opened && mounted) {
+      pToast(context, "Couldn't open a calendar on this device.");
     }
   }
 
@@ -121,7 +136,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                                 radius: 20,
                               ),
                         label: 'PROVIDER INFO',
-                        title: _provider?['full_name'] ?? 'Provider',
+                        title: _provider?['full_name'] ??
+                            (_loadFailed ? "Couldn't load the clinician's details" : 'Provider'),
                         subtitle: (_provider?['department'] as String?) ??
                             (_provider?['role'] as String? ?? ''),
                       ),
@@ -129,8 +145,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       _infoCard(
                         icon: Icons.local_hospital,
                         label: 'FACILITY INFO',
-                        title:
-                            _facility?['name'] ?? 'Facility not specified',
+                        title: _facility?['name'] ??
+                            (_loadFailed && widget.appointment.facilityId != null
+                                ? "Couldn't load the facility's details"
+                                : 'Facility not specified'),
                         subtitle:
                             (_facility?['address'] as String?) ?? '',
                       ),

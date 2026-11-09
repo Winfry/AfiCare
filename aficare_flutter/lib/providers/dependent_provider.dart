@@ -19,6 +19,11 @@ class DependentProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Whether the last load failed. Kept apart from [error], which a
+  /// failed save also sets (that used to show as "could not load").
+  bool get loadFailed => _loadFailed;
+  bool _loadFailed = false;
+
   /// True when viewing a dependent profile rather than own profile.
   bool get isViewingDependent =>
       _activePatientId != null &&
@@ -57,6 +62,7 @@ class DependentProvider extends ChangeNotifier {
   Future<void> loadDependents(String guardianId) async {
     _isLoading = true;
     _error = null;
+    _loadFailed = false;
     notifyListeners();
     try {
       final response = await Supabase.instance.client
@@ -68,7 +74,9 @@ class DependentProvider extends ChangeNotifier {
           .map((j) => DependentProfileModel.fromJson(j as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Loading dependants failed: $e');
+      _error = "We couldn't load the profiles you manage.";
+      _loadFailed = true;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -101,12 +109,16 @@ class DependentProvider extends ChangeNotifier {
       await loadDependents(guardianId);
       return true;
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Adding a dependant failed: $e');
+      _error = "We couldn't add this person. Check your connection and try again.";
       notifyListeners();
       return false;
     }
   }
 
+  /// Saves the edit form. Date of birth, gender and blood type are always
+  /// sent, so choosing "Not known" (null) clears a wrong value; before,
+  /// a null was skipped and the wrong value stayed.
   Future<bool> updateDependent(
     String id, {
     required String guardianId,
@@ -121,26 +133,27 @@ class DependentProvider extends ChangeNotifier {
     try {
       final updates = <String, dynamic>{};
       if (fullName != null) updates['full_name'] = fullName;
-      if (dateOfBirth != null) {
-        updates['date_of_birth'] =
-            dateOfBirth.toIso8601String().split('T').first;
-      }
-      if (gender != null) updates['gender'] = gender;
+      updates['date_of_birth'] = dateOfBirth?.toIso8601String().split('T').first;
+      updates['gender'] = gender;
       if (relationship != null) updates['relationship'] = relationship;
-      if (bloodType != null) updates['blood_type'] = bloodType;
+      updates['blood_type'] = bloodType;
       // Passed explicitly so an empty list can clear the list, which a
       // null-means-skip check would make impossible.
       if (allergies != null) updates['allergies'] = allergies;
       if (notes != null) updates['notes'] = notes;
 
-      await Supabase.instance.client
+      // .select() so an update the database quietly refused is caught.
+      final rows = await Supabase.instance.client
           .from('dependent_profiles')
           .update(updates)
-          .eq('id', id);
+          .eq('id', id)
+          .select('id');
+      if ((rows as List).isEmpty) throw StateError('nothing was updated');
       await loadDependents(guardianId);
       return true;
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Updating a dependant failed: $e');
+      _error = "We couldn't save these changes. Check your connection and try again.";
       notifyListeners();
       return false;
     }
@@ -159,7 +172,8 @@ class DependentProvider extends ChangeNotifier {
       await loadDependents(guardianId);
       return true;
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Removing a dependant failed: $e');
+      _error = "We couldn't remove this profile. Check your connection and try again.";
       notifyListeners();
       return false;
     }

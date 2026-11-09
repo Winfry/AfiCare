@@ -48,7 +48,7 @@ class _AncScreenState extends State<AncScreen> {
       subtitle: 'Your pregnancy, week by week, and the visits that go with it.',
       action: current == null ? null : PButton('Add a visit', icon: Icons.add, onPressed: () => _addVisit(current)),
       children: [
-        if (pregnancies.error != null && pregnancies.pregnancies.isEmpty)
+        if (pregnancies.loadFailed && pregnancies.pregnancies.isEmpty)
           PLoadError(what: 'your pregnancy record', onRetry: _load)
         else if (current == null)
           _StartCard(onStart: _start)
