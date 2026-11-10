@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../theme/patient_tokens.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
-import '../../utils/theme.dart';
+import '../../theme/patient_tokens.dart';
 import 'patient_profile_edit_screen.dart';
 import 'patient_settings_screen.dart';
 import 'widgets/patient_photo_avatar.dart';
 import 'widgets/patient_ui.dart';
 
 /// Profile & MediLink ID page, reached from the More page (/patient/profile).
+///
+/// This is the account holder's own page (her name, ID, settings, log
+/// out), so it is adult-only in the nav: on a child's profile it used to
+/// show the parent's name and ID under the child's banner. A child's
+/// MediLink ID is on People I care for.
 class PatientProfileScreen extends StatelessWidget {
   const PatientProfileScreen({super.key});
 
@@ -24,54 +28,63 @@ class PatientProfileScreen extends StatelessWidget {
       title: 'Profile & MediLink ID',
       subtitle: 'Your details, and the ID that links your care together across facilities.',
       children: [
-          Center(
-            child: PatientPhotoAvatar(
-              name: user?.fullName ?? '',
-              storedPhoto: user?.photoUrl,
-            ),
+        PCard(
+          child: Column(
+            children: [
+              PatientPhotoAvatar(name: user?.fullName ?? '', storedPhoto: user?.photoUrl),
+              const SizedBox(height: 12),
+              Text(
+                user?.fullName ?? 'Patient',
+                textAlign: TextAlign.center,
+                style: PT.section(),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                user?.medilinkId ?? user?.email ?? '',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: PT.muted, fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(user?.fullName ?? 'Patient',
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 16),
+        PCard(
+          child: Column(
+            children: [
+              PRow(
+                leadingEmoji: '✏️',
+                title: 'Edit profile',
+                subtitle: 'Name, date of birth, allergies, emergency contact',
+                trailing: [Icon(Icons.chevron_right, color: PT.muted)],
+                onTap: () => _push(context, const PatientProfileEditScreen()),
+              ),
+              PRow(
+                leadingEmoji: '⚙️',
+                title: 'Settings',
+                subtitle: 'Your account, notifications and display',
+                trailing: [Icon(Icons.chevron_right, color: PT.muted)],
+                onTap: () => _push(context, const PatientSettingsScreen()),
+              ),
+              PRow(
+                leadingEmoji: '🩺',
+                title: 'Become a verified provider',
+                subtitle: 'For doctors, nurses and other health workers',
+                trailing: [Icon(Icons.chevron_right, color: PT.muted)],
+                onTap: () => context.push('/verify-provider'),
+              ),
+            ],
           ),
-          Center(
-            child: Text(user?.medilinkId ?? user?.email ?? '',
-                style: TextStyle(color: PT.muted)),
-          ),
-          const SizedBox(height: 24),
-          _tile(context, Icons.edit, 'Edit Profile',
-              () => _push(context, const PatientProfileEditScreen())),
-          _tile(context, Icons.settings, 'Settings',
-              () => _push(context, const PatientSettingsScreen())),
-          _tile(context, Icons.badge_outlined, 'Become a Verified Provider',
-              () => context.push('/verify-provider')),
-          const Divider(),
-          _tile(
-            context,
-            Icons.logout,
-            'Log Out',
-            () async {
-              await auth.signOut();
-              if (context.mounted) context.go('/login');
-            },
-            color: Colors.red,
-          ),
+        ),
+        const SizedBox(height: 16),
+        PButton(
+          'Log out',
+          kind: PButtonKind.alt,
+          onPressed: () async {
+            await auth.signOut();
+            if (context.mounted) context.go('/login');
+          },
+        ),
       ],
-    );
-  }
-
-  Widget _tile(BuildContext context, IconData icon, String label,
-      VoidCallback onTap,
-      {Color? color}) {
-    return ListTile(
-      leading: Icon(icon, color: color ?? AfiCareTheme.primaryGreen),
-      title: Text(label,
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.w500)),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
     );
   }
 

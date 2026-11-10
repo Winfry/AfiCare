@@ -146,9 +146,11 @@ class _PatientOnboardingScreenState extends State<PatientOnboardingScreen> {
     return name.split(' ').first;
   }
 
+  /// Empty when the account has no ID yet: a made-up "ML-XXX-XXXX" used
+  /// to be shown, and turned into a QR, as if it were hers.
   String get _medilinkId {
     final id = Provider.of<AuthProvider>(context, listen: false).currentUser?.medilinkId;
-    return (id == null || id.isEmpty) ? 'ML-XXX-XXXX' : id;
+    return id?.trim() ?? '';
   }
 
   // ── Saving (unchanged behaviour) ──────────────────────────────────────
@@ -1234,6 +1236,13 @@ class _MediLinkStep extends StatelessWidget {
           body: 'Show this at any AfiCare facility. A health worker who scans it or types it in can '
               'open your record, and every time they do, it is recorded.',
         ),
+        if (medilinkId.isEmpty)
+          const PCallout(
+            tone: PTone.warn,
+            title: 'Your ID is still being made',
+            body: "It will appear on your Profile page in a moment. You don't need it to use the app.",
+          )
+        else
         PCard(
           child: Column(
             children: [

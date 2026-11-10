@@ -158,13 +158,13 @@ class _PatientShellState extends State<PatientShell> {
 
   // ── Profile switching ─────────────────────────────────────────────────
 
-  Future<void> _switchTo(String patientId) async {
+  Future<void> _switchTo(String patientId, {String goTo = PatientRoutes.today}) async {
     final dep = context.read<DependentProvider>();
     dep.switchTo(patientId);
     // Back to Today: most pages load their data once when opened, so
     // staying put would show the previous profile's figures under the
     // new profile's name.
-    context.go(PatientRoutes.today);
+    context.go(goTo);
     await _loadForPatient(patientId);
     // Re-check: switching profile reloads everything Home summarises, so
     // a failure here has to update the flag too — otherwise switching
@@ -275,7 +275,16 @@ class _PatientShellState extends State<PatientShell> {
                 sheetContext: sheetContext,
                 icon: Icons.add,
                 label: 'Add a child profile',
-                onTap: () => context.go(PatientRoutes.dependents),
+                // People I care for is the parent's page: from a child's
+                // profile it used to bounce straight back to Today.
+                onTap: () {
+                  final own = context.read<DependentProvider>().ownId;
+                  if (context.read<DependentProvider>().isViewingDependent && own != null) {
+                    _switchTo(own, goTo: PatientRoutes.dependents);
+                  } else {
+                    context.go(PatientRoutes.dependents);
+                  }
+                },
               ),
               // The spec has no log-out anywhere; keeping it reachable
               // here rather than leaving real users stranded.

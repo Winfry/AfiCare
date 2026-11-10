@@ -1598,7 +1598,7 @@ Future<T?> showPModal<T>({
                     borderRadius: BorderRadius.circular(9),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(9),
-                      onTap: () => Navigator.pop(ctx),
+                      onTap: () => Navigator.maybePop(ctx),
                       child: SizedBox(
                         width: 34,
                         height: 34,

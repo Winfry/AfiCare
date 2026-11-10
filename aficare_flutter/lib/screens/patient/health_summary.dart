@@ -46,8 +46,17 @@ class _HealthSummaryState extends State<HealthSummary> {
     final appts = Provider.of<AppointmentProvider>(context, listen: false);
     final id = dep.activePatientId ?? auth.currentUser?.id;
     if (id == null) return;
-    // Appointments too: a follow-up shows whether it has been booked.
-    await Future.wait([patient.loadConsultations(id), appts.loadAppointments(id)]);
+    final profile = Provider.of<PatientProfileProvider>(context, listen: false);
+    final ownId = auth.currentUser?.id;
+    // Appointments too: a follow-up shows whether it has been booked. The
+    // profile (allergies, blood type) as well: Retry on the offline banner
+    // used to reload only the visits, so the banner never went away.
+    await Future.wait([
+      patient.loadConsultations(id),
+      appts.loadAppointments(id),
+      if (ownId != null && !dep.isViewingDependent) profile.loadProfile(ownId),
+      if (ownId != null && dep.isViewingDependent) dep.loadDependents(ownId),
+    ]);
     // Captured now: `error` is shared with access-code generation.
     if (mounted) setState(() => _loadFailed = patient.error != null);
   }
@@ -477,6 +486,11 @@ class _HealthSummaryState extends State<HealthSummary> {
     sb.writeln('Patient: ${subject.fullName.isEmpty ? 'Unknown' : subject.fullName}');
     sb.writeln('MediLink ID: ${subject.medilinkId ?? 'N/A'}');
     sb.writeln('Date: ${DateFormat('d MMM yyyy').format(DateTime.now())}');
+    // The two things a clinician most needs were left out.
+    final blood = subject.bloodType?.trim() ?? '';
+    sb.writeln('Blood type: ${blood.isEmpty ? 'Not recorded' : blood}');
+    final allergies = subject.allergies;
+    sb.writeln('Allergies: ${allergies == null ? 'Not known' : allergies.isEmpty ? 'None recorded' : allergies.join(', ')}');
     final readings = latest == null ? const <VitalReading>[] : VitalReadings.of(latest.vitalSigns);
     if (latest != null && readings.isNotEmpty) {
       sb.writeln('');

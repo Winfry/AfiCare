@@ -288,6 +288,9 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
     final amountCtrl = TextEditingController();
     String serviceType = 'Consultation';
     String paymentMethod = 'cash';
+    // A double tap used to save the receipt twice.
+    bool saving = false;
+    String? formError;
 
     return showModalBottomSheet<bool>(
       context: context,
@@ -324,18 +327,34 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                     items: Receipt.paymentMethodOptions.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                     onChanged: (v) => setSheetState(() => paymentMethod = v!),
                   ),
+                  if (formError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(formError!, style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity, height: 48,
                     child: ElevatedButton(
-                      onPressed: () async {
+                      onPressed: saving ? null : () async {
+                        // An amount that isn't a number used to save as nothing
+                        // (shown as KES 0). Blank is allowed: "not known".
+                        final rawAmount = amountCtrl.text.trim().replaceAll(',', '');
+                        final amount = rawAmount.isEmpty ? null : double.tryParse(rawAmount);
+                        if (rawAmount.isNotEmpty && (amount == null || amount < 0)) {
+                          setSheetState(() => formError = 'Enter the amount in shillings, like 1500, or leave it blank.');
+                          return;
+                        }
+                        setSheetState(() {
+                          saving = true;
+                          formError = null;
+                        });
                         try {
                           await _supabase.from('receipts').insert({
                             'id': const Uuid().v4(),
                             'patient_id': patientId,
                             'image_url': imagePath,
                             'facility_name': facilityCtrl.text.trim().isNotEmpty ? facilityCtrl.text.trim() : null,
-                            'total_amount': double.tryParse(amountCtrl.text.trim().replaceAll(',', '')),
+                            'total_amount': amount,
                             'service_type': serviceType,
                             'payment_method': paymentMethod,
                             'date': DateTime.now().toIso8601String().split('T').first,
@@ -344,19 +363,18 @@ class _ReceiptUploadScreenState extends State<ReceiptUploadScreen> {
                           _loadReceipts();
                         } catch (e) {
                           debugPrint('receipt_upload_screen: saving receipt failed: $e');
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("We couldn't save this receipt. Please check your connection and try again."),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                          // Shown inside the sheet: a snackbar sat behind it.
+                          if (ctx.mounted) {
+                            setSheetState(() {
+                              saving = false;
+                              formError = "We couldn't save this receipt. Please check your connection and try again.";
+                            });
                           }
                         }
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      child: const Text('Save Receipt', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: Text(saving ? 'Saving…' : 'Save receipt', style: const TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

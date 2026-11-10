@@ -116,7 +116,7 @@ class MoodEntry {
           ? List<String>.from(json['factors'] as List)
           : <String>[],
       recordedAt: json['recorded_at'] != null
-          ? DateTime.tryParse(json['recorded_at'] as String) ?? DateTime.now()
+          ? DateTime.tryParse(json['recorded_at'] as String)?.toLocal() ?? DateTime.now()
           : DateTime.now(),
     );
   }
@@ -128,7 +128,7 @@ class MoodEntry {
       'mood': mood,
       'journal': journal,
       'factors': factors,
-      'recorded_at': recordedAt.toIso8601String(),
+      'recorded_at': recordedAt.toUtc().toIso8601String(),
     };
   }
 

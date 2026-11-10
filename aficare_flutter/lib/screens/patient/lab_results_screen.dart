@@ -188,6 +188,10 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
           return 'Sample collected, awaiting processing';
         case LabOrderStatus.cancelled:
           return 'This test was cancelled';
+        // A finished test whose result isn't in the app used to read
+        // "awaiting sample collection".
+        case LabOrderStatus.completed:
+          return "Finished. The result isn't in the app yet, so ask your clinic for it.";
         default:
           return 'Ordered, awaiting sample collection';
       }
@@ -215,6 +219,7 @@ class _LabResultsScreenState extends State<LabResultsScreen> {
       LabOrderStatus.processing => const PBadge('Processing', tone: PTone.blue),
       LabOrderStatus.collected => const PBadge('Collected', tone: PTone.blue),
       LabOrderStatus.cancelled => const PBadge('Cancelled', tone: PTone.gray),
+      LabOrderStatus.completed => const PBadge('Finished', tone: PTone.blue),
       _ => const PBadge('Pending', tone: PTone.gray),
     };
   }

@@ -14,6 +14,7 @@ import '../../providers/lab_provider.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../providers/preferences_provider.dart';
 import '../../providers/prescription_provider.dart';
+import '../../services/record_share_service.dart';
 import '../../services/tts_service.dart';
 import '../../theme/patient_tokens.dart';
 import '../../utils/app_strings.dart';
@@ -43,9 +44,7 @@ class PatientHomeScreen extends StatelessWidget {
   /// them would leave someone who finished signup stuck on the checklist.
   static bool profileIsComplete(PatientProfileProvider p) {
     final profile = p.profile;
-    return profile != null &&
-        profile.dateOfBirth != null &&
-        (profile.emergencyContactName?.trim().isNotEmpty ?? false);
+    return profile != null && profile.dateOfBirth != null && (profile.emergencyContactName?.trim().isNotEmpty ?? false);
   }
 
   @override
@@ -165,7 +164,8 @@ class _TodayHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = PT.isMobile(context);
     final weekday = DateFormat('EEEE', lang == 'sw' ? 'sw' : 'en').format(DateTime.now()).toUpperCase();
-    final dateLine = subject.isDependent ? "$weekday · ${subject.firstName.toUpperCase()}'S DAY" : 'YOUR $weekday, AT A GLANCE';
+    final dateLine =
+        subject.isDependent ? "$weekday · ${subject.firstName.toUpperCase()}'S DAY" : 'YOUR $weekday, AT A GLANCE';
     final title = subject.isDependent ? "${subject.firstName}'s day" : _greeting();
     final body = subject.isDependent
         ? "Everything below is ${subject.firstName}'s, kept separate from your own."
@@ -225,8 +225,8 @@ class _TodayHero extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(dateLine,
-                              style: PT.label().copyWith(
-                                  fontSize: 12, letterSpacing: .5, color: const Color(0xFFB8CFD9))),
+                              style:
+                                  PT.label().copyWith(fontSize: 12, letterSpacing: .5, color: const Color(0xFFB8CFD9))),
                           const SizedBox(height: 12),
                           Text.rich(
                             TextSpan(children: [
@@ -335,8 +335,7 @@ class _HeroButton extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-          child: Text(label,
-              style: PT.button().copyWith(color: primary ? const Color(0xFF283F48) : Colors.white)),
+          child: Text(label, style: PT.button().copyWith(color: primary ? const Color(0xFF283F48) : Colors.white)),
         ),
       ),
     );
@@ -460,8 +459,7 @@ class _TodayBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHead('Let’s take today gently',
-            link: 'Your medication plan ↗', onLink: () => openTab(_tabMeds)),
+        _SectionHead('Let’s take today gently', link: 'Your medication plan ↗', onLink: () => openTab(_tabMeds)),
         if (isMobile)
           Column(children: [meds, const SizedBox(height: 16), visit])
         else
@@ -572,8 +570,7 @@ class _MedsTodayCard extends StatelessWidget {
           Text.rich(
             TextSpan(children: [
               TextSpan(text: total == 0 ? '—' : '$taken'),
-              if (total > 0)
-                TextSpan(text: ' / $total', style: PT.label().copyWith(fontSize: 19)),
+              if (total > 0) TextSpan(text: ' / $total', style: PT.label().copyWith(fontSize: 19)),
             ]),
             style: PT.serif(fontSize: 38, color: PT.navy, height: 1),
           ),
@@ -638,8 +635,7 @@ class _DoseRow extends StatelessWidget {
               children: [
                 Text(dose.medicationName ?? 'Medicine',
                     style: PT.rowTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (dose.dosage != null)
-                  Text(dose.dosage!, style: PT.rowSub().copyWith(fontSize: 12), maxLines: 1),
+                if (dose.dosage != null) Text(dose.dosage!, style: PT.rowSub().copyWith(fontSize: 12), maxLines: 1),
               ],
             ),
           ),
@@ -656,9 +652,9 @@ class _DoseRow extends StatelessWidget {
               onPressed: busy
                   ? null
                   : () async {
-                final ok = await context.read<AdherenceProvider>().markStatus(dose.id, AdherenceStatus.taken);
-                if (!ok && context.mounted) pToast(context, 'Couldn’t record that dose. Please try again.');
-              },
+                      final ok = await context.read<AdherenceProvider>().markStatus(dose.id, AdherenceStatus.taken);
+                      if (!ok && context.mounted) pToast(context, 'Couldn’t record that dose. Please try again.');
+                    },
               style: OutlinedButton.styleFrom(
                 foregroundColor: PT.teal,
                 side: const BorderSide(color: Color(0xFFB9CBD7)),
@@ -759,8 +755,7 @@ class _NextVisitCardState extends State<_NextVisitCard> {
                       Text('${next.scheduledAt.day}',
                           style: PT.serif(fontSize: 27, color: const Color(0xFF70501E), height: 1)),
                       Text(DateFormat('MMM').format(next.scheduledAt).toUpperCase(),
-                          style: PT.badge().copyWith(
-                              fontSize: 10, letterSpacing: 1, color: const Color(0xFF8C6A31))),
+                          style: PT.badge().copyWith(fontSize: 10, letterSpacing: 1, color: const Color(0xFF8C6A31))),
                     ],
                   ),
                 ),
@@ -787,8 +782,7 @@ class _NextVisitCardState extends State<_NextVisitCard> {
                           ),
                         ],
                       ),
-                      Text(next.type == AppointmentType.inPerson ? 'In person' : 'Telehealth',
-                          style: PT.rowSub()),
+                      Text(next.type == AppointmentType.inPerson ? 'In person' : 'Telehealth', style: PT.rowSub()),
                       Text(DateFormat('EEEE, h:mm a').format(next.scheduledAt), style: PT.rowSub()),
                     ],
                   ),
@@ -804,26 +798,30 @@ class _NextVisitCardState extends State<_NextVisitCard> {
               PButton('Message the team', kind: PButtonKind.alt, dense: true, onPressed: widget.onMessage),
             ],
           ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.only(top: 15),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
-            child: Row(
-              children: [
-                const PSoftIcon(Icons.wb_sunny_outlined, size: 34),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Need to change plans?', style: PT.rowTitle().copyWith(fontSize: 13)),
-                      Text('You can reschedule or ask for help.', style: PT.label()),
-                    ],
+          if (next != null) ...[
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.only(top: 15),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: PT.line))),
+              child: Row(
+                children: [
+                  const PSoftIcon(Icons.wb_sunny_outlined, size: 34),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Need to change plans?', style: PT.rowTitle().copyWith(fontSize: 13)),
+                        Text('You can reschedule or cancel from your appointments.', style: PT.label()),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
+                  // It looked like an option but nothing could be tapped.
+                  PButton('Change', kind: PButtonKind.alt, dense: true, onPressed: widget.onView),
+                ],
+              ),
+            )
+          ],
         ],
       ),
     );
@@ -842,10 +840,9 @@ class _HelpActions extends StatelessWidget {
       _ActionTile(Icons.add_rounded, 'Book a visit', 'Find a time that works', () => openTab(_tabVisits)),
       _ActionTile(Icons.description_outlined, 'Understand my results', 'Records, labs and visits',
           () => context.go('/patient/records')),
-      _ActionTile(Icons.favorite_border_rounded, 'Talk to my care team', 'Ask a question',
-          () => openTab(_tabMessages)),
-      _ActionTile(Icons.wb_sunny_outlined, 'Look after my medicines', 'Reminders and your plan',
-          () => openTab(_tabMeds)),
+      _ActionTile(Icons.favorite_border_rounded, 'Talk to my care team', 'Ask a question', () => openTab(_tabMessages)),
+      _ActionTile(
+          Icons.wb_sunny_outlined, 'Look after my medicines', 'Reminders and your plan', () => openTab(_tabMeds)),
     ];
     final cols = PT.isTablet(context) ? 2 : 4;
     return LayoutBuilder(builder: (context, c) {
@@ -911,8 +908,8 @@ class _ActivityCard extends StatelessWidget {
     final events = <_Activity>[
       for (final l in labs)
         if (l.status == LabOrderStatus.completed)
-          _Activity(Icons.check_rounded, 'Your ${l.testName} result is ready',
-              'Open your results when you’re ready.', l.result?.resultedAt ?? l.orderedAt),
+          _Activity(Icons.check_rounded, 'Your ${l.testName} result is ready', 'Open your results when you’re ready.',
+              l.result?.resultedAt ?? l.orderedAt),
       for (final a in appts)
         if (a.status == AppointmentStatus.confirmed)
           _Activity(Icons.calendar_today_outlined, 'Your appointment is confirmed',
@@ -937,9 +934,7 @@ class _ActivityCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
-                      border: i == recent.length - 1
-                          ? null
-                          : Border(bottom: BorderSide(color: PT.line)),
+                      border: i == recent.length - 1 ? null : Border(bottom: BorderSide(color: PT.line)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,19 +991,48 @@ class _Activity {
 // First-run dashboard
 // ═══════════════════════════════════════════════════════════════════════
 
-class _FirstRunBody extends StatelessWidget {
+class _FirstRunBody extends StatefulWidget {
   const _FirstRunBody({required this.lang, required this.profileHasStarted});
 
   final String lang;
   final bool profileHasStarted;
 
   @override
+  State<_FirstRunBody> createState() => _FirstRunBodyState();
+}
+
+class _FirstRunBodyState extends State<_FirstRunBody> {
+  /// Whether she has ever made a share. "Set up sharing" used to be
+  /// hard-coded as not done, so it never ticked off.
+  bool _hasShared = false;
+
+  String get lang => widget.lang;
+  bool get profileHasStarted => widget.profileHasStarted;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkShares();
+  }
+
+  Future<void> _checkShares() async {
+    final id = Supabase.instance.client.auth.currentUser?.id;
+    if (id == null) return;
+    try {
+      final shares = await RecordShareService().mine(id);
+      if (mounted && shares.isNotEmpty) setState(() => _hasShared = true);
+    } catch (e) {
+      // Left as not done: the step still works, it just won't tick yet.
+      debugPrint('Checking for record shares failed: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final hasAppointments = context.watch<AppointmentProvider>().appointments.isNotEmpty;
     final adherence = context.watch<AdherenceProvider>();
     final prescriptions = context.watch<PrescriptionProvider>();
-    final hasMedications =
-        adherence.todayDoses.isNotEmpty || prescriptions.getActivePrescriptions().isNotEmpty;
+    final hasMedications = adherence.todayDoses.isNotEmpty || prescriptions.getActivePrescriptions().isNotEmpty;
 
     final steps = <_Step>[
       _Step(
@@ -1035,7 +1059,7 @@ class _FirstRunBody extends StatelessWidget {
       _Step(
         title: AppStrings.checklistSharing(lang),
         subtitle: AppStrings.checklistSharingSub(lang),
-        done: false,
+        done: _hasShared,
         actionLabel: AppStrings.btnSetUp(lang),
         onTap: () => context.go('/patient/share'),
       ),

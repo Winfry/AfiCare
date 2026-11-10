@@ -30,12 +30,8 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
     if (patientId == null) return;
 
     try {
-      final data = await _supabase
-          .from('insurance_claims')
-          .select()
-          .eq('patient_id', patientId)
-          .order('created_at', ascending: false)
-          .limit(50);
+      final data =
+          await _supabase.from('insurance_claims').select().eq('patient_id', patientId).order('created_at', ascending: false).limit(50);
       _claims = (data as List).map((j) => InsuranceClaim.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading claims: $e');
@@ -69,79 +65,85 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
       subtitle: 'Your claims in one place. For official cover and status, check with SHA or your insurer directly.',
       action: PButton('New claim', icon: Icons.add, onPressed: _showNewClaimSheet),
       slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Stats
+                Row(
+                  children: [
+                    _stat('${_claims.length}', 'Total', Icons.receipt_long_rounded, AppColors.canopy),
+                    const SizedBox(width: 10),
+                    _stat('${_claims.where((c) => c.claimStatus == 'approved' || c.claimStatus == 'paid').length}', 'Approved',
+                        Icons.check_circle_rounded, const Color(0xFF2E7D32)),
+                    const SizedBox(width: 10),
+                    _stat(
+                        'KES ${_formatNum(_claims.where((c) => c.claimStatus == 'paid').fold(0.0, (s, c) => s + (c.approvedAmount ?? 0)))}',
+                        'Paid',
+                        Icons.payments_rounded,
+                        const Color(0xFF1565C0)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Tabs
+                _buildTabs(),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
+        if (_filteredClaims.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.all(32),
+              child: Center(child: Text('No claims found.', style: TextStyle(color: PT.muted))),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: _claimCard(_filteredClaims[i]),
+              ),
+              childCount: _filteredClaims.length,
+            ),
+          ),
+        // NHIF became SHA (the Social Health Authority) in October 2024.
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF90CAF9)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Stats
-                  Row(
-                    children: [
-                      _stat('${_claims.length}', 'Total', Icons.receipt_long_rounded, AppColors.canopy),
-                      const SizedBox(width: 10),
-                      _stat('${_claims.where((c) => c.claimStatus == 'approved' || c.claimStatus == 'paid').length}', 'Approved', Icons.check_circle_rounded, const Color(0xFF2E7D32)),
-                      const SizedBox(width: 10),
-                      _stat('KES ${_formatNum(_claims.where((c) => c.claimStatus == 'paid').fold(0.0, (s, c) => s + (c.approvedAmount ?? 0)))}', 'Paid', Icons.payments_rounded, const Color(0xFF1565C0)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Tabs
-                  _buildTabs(),
-                  const SizedBox(height: 12),
+                  Row(children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF1565C0), size: 20),
+                    const SizedBox(width: 8),
+                    const Text('About SHA', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1565C0))),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(
+                      'NHIF was replaced by SHA, the Social Health Authority, in October 2024. Claims are made '
+                      'through your facility. Surgery and some specialist procedures need approval first.',
+                      style: TextStyle(fontSize: 12, color: PT.muted)),
+                  const SizedBox(height: 8),
+                  Text('This list is your own record. For the real status of a claim, ask your facility or insurer.',
+                      style: TextStyle(fontSize: 12, color: PT.muted, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
           ),
-          if (_filteredClaims.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Center(child: Text('No claims found.', style: TextStyle(color: PT.muted))),
-              ),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: _claimCard(_filteredClaims[i]),
-                ),
-                childCount: _filteredClaims.length,
-              ),
-            ),
-          // NHIF became SHA (the Social Health Authority) in October 2024.
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF90CAF9)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      const Icon(Icons.info_outline, color: Color(0xFF1565C0), size: 20),
-                      const SizedBox(width: 8),
-                      const Text('About SHA', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1565C0))),
-                    ]),
-                    const SizedBox(height: 8),
-                    Text('NHIF was replaced by SHA, the Social Health Authority, in October 2024. Claims are made '
-                        'through your facility. Surgery and some specialist procedures need approval first.',
-                        style: TextStyle(fontSize: 12, color: PT.muted)),
-                    const SizedBox(height: 8),
-                    Text('This list is your own record. For the real status of a claim, ask your facility or insurer.',
-                        style: TextStyle(fontSize: 12, color: PT.muted, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        ),
       ],
     );
   }
@@ -165,7 +167,8 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: sel ? AppColors.canopy : AppColors.borderSubtle),
               ),
-              child: Center(child: Text(tabs[i], style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : PT.muted))),
+              child: Center(
+                  child: Text(tabs[i], style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : PT.muted))),
             ),
           );
         },
@@ -177,7 +180,8 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.borderSubtle)),
+        decoration:
+            BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.borderSubtle)),
         child: Column(children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
@@ -192,7 +196,8 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.borderSubtle)),
+      decoration:
+          BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.borderSubtle)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -205,23 +210,22 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _statusColor(claim.claimStatus))),
               ),
               const SizedBox(width: 8),
-              Text(InsuranceClaim.insuranceTypeLabel(claim.insuranceType),
-                  style: TextStyle(fontSize: 12, color: PT.muted)),
+              Text(InsuranceClaim.insuranceTypeLabel(claim.insuranceType), style: TextStyle(fontSize: 12, color: PT.muted)),
               const Spacer(),
               Text('${claim.dateOfService.day}/${claim.dateOfService.month}/${claim.dateOfService.year}',
                   style: TextStyle(fontSize: 12, color: PT.muted)),
             ],
           ),
           const SizedBox(height: 10),
-          if (claim.diagnosis != null)
-            Text(claim.diagnosis!, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          if (claim.diagnosis != null) Text(claim.diagnosis!, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 4),
           Row(
             children: [
               Text('KES ${_formatNum(claim.claimedAmount)}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               if (claim.approvedAmount != null) ...[
                 const SizedBox(width: 8),
-                Text('→ KES ${_formatNum(claim.approvedAmount!)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF2E7D32))),
+                Text('→ KES ${_formatNum(claim.approvedAmount!)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF2E7D32))),
               ],
             ],
           ),
@@ -240,13 +244,20 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'draft': return Colors.grey;
-      case 'submitted': return const Color(0xFF1565C0);
-      case 'under_review': return const Color(0xFFF57F17);
-      case 'approved': return const Color(0xFF2E7D32);
-      case 'rejected': return const Color(0xFFC62828);
-      case 'paid': return const Color(0xFF1565C0);
-      default: return Colors.grey;
+      case 'draft':
+        return Colors.grey;
+      case 'submitted':
+        return const Color(0xFF1565C0);
+      case 'under_review':
+        return const Color(0xFFF57F17);
+      case 'approved':
+        return const Color(0xFF2E7D32);
+      case 'rejected':
+        return const Color(0xFFC62828);
+      case 'paid':
+        return const Color(0xFF1565C0);
+      default:
+        return Colors.grey;
     }
   }
 
@@ -266,116 +277,128 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('New Insurance Claim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                const SizedBox(height: 16),
-                const Text('Who is it with?', style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final e in InsuranceClaim.insurerOptions.entries)
-                    _typeChoice(e.value, e.key, insuranceType, (v) => setSheetState(() => insuranceType = v)),
-                ]),
-                const SizedBox(height: 14),
-                _field('Policy or member number', numberCtrl),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: claimType,
-                  decoration: InputDecoration(labelText: 'What was it for?', isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
-                  items: [
-                    for (final e in InsuranceClaim.claimTypes.entries)
-                      DropdownMenuItem(value: e.key, child: Text(e.value)),
+        // Lifted above the keyboard: with a fixed height the keyboard
+        // covered Create Claim on a phone.
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('New Insurance Claim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                  const SizedBox(height: 16),
+                  const Text('Who is it with?', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    for (final e in InsuranceClaim.insurerOptions.entries)
+                      _typeChoice(e.value, e.key, insuranceType, (v) => setSheetState(() => insuranceType = v)),
+                  ]),
+                  const SizedBox(height: 14),
+                  _field('Policy or member number', numberCtrl),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: claimType,
+                    decoration: InputDecoration(
+                        labelText: 'What was it for?', isDense: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                    items: [
+                      for (final e in InsuranceClaim.claimTypes.entries) DropdownMenuItem(value: e.key, child: Text(e.value)),
+                    ],
+                    onChanged: (v) => setSheetState(() => claimType = v ?? claimType),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.event_outlined, size: 18),
+                    label: Text('Date of care: ${serviceDate.day}/${serviceDate.month}/${serviceDate.year}'),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: serviceDate,
+                        firstDate: DateTime(DateTime.now().year - 2),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) setSheetState(() => serviceDate = picked);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _field('Diagnosis (optional)', diagnosisCtrl),
+                  const SizedBox(height: 10),
+                  _field('Amount claimed (KES)', amountCtrl, TextInputType.number),
+                  if (formError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(formError!, style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
                   ],
-                  onChanged: (v) => setSheetState(() => claimType = v ?? claimType),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.event_outlined, size: 18),
-                  label: Text('Date of care: ${serviceDate.day}/${serviceDate.month}/${serviceDate.year}'),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: serviceDate,
-                      firstDate: DateTime(DateTime.now().year - 2),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) setSheetState(() => serviceDate = picked);
-                  },
-                ),
-                const SizedBox(height: 10),
-                _field('Diagnosis (optional)', diagnosisCtrl),
-                const SizedBox(height: 10),
-                _field('Amount claimed (KES)', amountCtrl, TextInputType.number),
-                if (formError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(formError!, style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        // Checked when pressed: a button disabled from the start
+                        // never woke up again as the fields were filled in.
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                final patientId = _supabase.auth.currentUser?.id;
+                                if (patientId == null) return;
+                                final amount = double.tryParse(amountCtrl.text.trim().replaceAll(',', ''));
+                                final problem = numberCtrl.text.trim().isEmpty
+                                    ? 'Enter your policy or member number.'
+                                    : (amount == null || amount <= 0)
+                                        ? 'Enter the amount you are claiming, in shillings.'
+                                        : null;
+                                if (problem != null) {
+                                  setSheetState(() => formError = problem);
+                                  return;
+                                }
+                                setSheetState(() {
+                                  formError = null;
+                                  saving = true;
+                                });
+                                final claim = InsuranceClaim(
+                                  id: const Uuid().v4(),
+                                  patientId: patientId,
+                                  insuranceType: insuranceType,
+                                  insuranceNumber: numberCtrl.text.trim(),
+                                  claimType: claimType,
+                                  claimStatus: 'draft',
+                                  claimedAmount: amount!,
+                                  diagnosis: diagnosisCtrl.text.trim().isEmpty ? null : diagnosisCtrl.text.trim(),
+                                  dateOfService: serviceDate,
+                                  createdAt: DateTime.now(),
+                                );
+                                try {
+                                  await _supabase.from('insurance_claims').insert(claim.toJson());
+                                  if (mounted) {
+                                    Navigator.pop(ctx);
+                                    _loadClaims();
+                                  }
+                                } catch (e) {
+                                  debugPrint('insurance_claims_screen: saving claim failed: $e');
+                                  setSheetState(() {
+                                    saving = false;
+                                    formError = "We couldn't save this claim. Please check your connection and try again.";
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.canopy,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        child: const Text('Create Claim', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ]),
                 ],
-                const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      // Checked when pressed: a button disabled from the start
-                      // never woke up again as the fields were filled in.
-                      onPressed: saving ? null : () async {
-                        final patientId = _supabase.auth.currentUser?.id;
-                        if (patientId == null) return;
-                        final amount = double.tryParse(amountCtrl.text.trim().replaceAll(',', ''));
-                        final problem = numberCtrl.text.trim().isEmpty
-                            ? 'Enter your policy or member number.'
-                            : (amount == null || amount <= 0)
-                                ? 'Enter the amount you are claiming, in shillings.'
-                                : null;
-                        if (problem != null) {
-                          setSheetState(() => formError = problem);
-                          return;
-                        }
-                        setSheetState(() {
-                          formError = null;
-                          saving = true;
-                        });
-                        final claim = InsuranceClaim(
-                          id: const Uuid().v4(),
-                          patientId: patientId,
-                          insuranceType: insuranceType,
-                          insuranceNumber: numberCtrl.text.trim(),
-                          claimType: claimType,
-                          claimStatus: 'draft',
-                          claimedAmount: amount!,
-                          diagnosis: diagnosisCtrl.text.trim().isEmpty ? null : diagnosisCtrl.text.trim(),
-                          dateOfService: serviceDate,
-                          createdAt: DateTime.now(),
-                        );
-                        try {
-                          await _supabase.from('insurance_claims').insert(claim.toJson());
-                          if (mounted) { Navigator.pop(ctx); _loadClaims(); }
-                        } catch (e) {
-                          debugPrint('insurance_claims_screen: saving claim failed: $e');
-                          setSheetState(() {
-                            saving = false;
-                            formError = "We couldn't save this claim. Please check your connection and try again.";
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      child: const Text('Create Claim', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ]),
-              ],
+              ),
             ),
           ),
         ),
@@ -394,17 +417,23 @@ class _InsuranceClaimsScreenState extends State<InsuranceClaimsScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: sel ? AppColors.canopy : AppColors.borderSubtle),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : PT.muted)),
+        child: Text(label,
+            style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : PT.muted)),
       ),
     );
   }
 
   Widget _field(String label, TextEditingController ctrl, [TextInputType type = TextInputType.text]) {
     return TextField(
-      controller: ctrl, keyboardType: type,
-      decoration: InputDecoration(labelText: label, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      controller: ctrl,
+      keyboardType: type,
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.canopy, width: 1.5)),
+        focusedBorder:
+            OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.canopy, width: 1.5)),
       ),
     );
   }

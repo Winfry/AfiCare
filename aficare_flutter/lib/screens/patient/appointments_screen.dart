@@ -442,10 +442,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   // ── Actions ───────────────────────────────────────────────────────────
 
   void _openDetails(AppointmentModel a) {
-    Navigator.push(
+    Navigator.push<AppointmentDetailResult>(
       context,
       MaterialPageRoute(builder: (_) => AppointmentDetailScreen(appointment: a)),
-    ).then((_) => _refresh());
+    ).then((result) {
+      if (!mounted) return;
+      if (result == AppointmentDetailResult.reschedule) {
+        _reschedule(a);
+      } else {
+        _refresh();
+      }
+    });
   }
 
   void _openManage(AppointmentModel a) {
@@ -593,6 +600,12 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
   UserModel? _selectedProvider;
   List<FacilityModel> _facilities = [];
   FacilityModel? _selectedFacility;
+  bool _facilitiesFailed = false;
+
+  /// The doctors and nurses listed at the chosen facility (null: no
+  /// facility chosen, or the list couldn't be read). The dropdown used to
+  /// offer every clinician in the country whatever facility was chosen.
+  Set<String>? _facilityProviderIds;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool _isTelehealth = false;
@@ -665,12 +678,25 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
   }
 
   Future<void> _loadFacilities() async {
+    if (_facilitiesFailed) setState(() {
+      _facilitiesFailed = false;
+      _loadingFacilities = true;
+    });
     try {
       final provider = Provider.of<AdminFacilityProvider>(context, listen: false);
       await provider.loadFacilities();
       if (mounted) {
         setState(() {
-          _facilities = provider.facilities;
+          // The provider keeps its error instead of throwing: a failure
+          // used to leave an empty list that looked like "no facilities".
+          _facilitiesFailed = provider.error != null;
+          // Facilities still waiting for approval (or turned down) aren't
+          // offered for new bookings.
+          _facilities = provider.facilities
+              .where((f) =>
+                  !{'pending', 'rejected'}.contains(f.status) ||
+                  f.id == widget.rescheduleAppointment?.facilityId)
+              .toList();
           if (widget.rescheduleAppointment?.facilityId != null) {
             try {
               _selectedFacility = _facilities
@@ -842,7 +868,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      _isRescheduling ? 'Reschedule appointment' : 'Book appointment',
+                      _sheetTitle(context),
                       style: PT.h3().copyWith(fontSize: 20),
                     ),
                   ),
@@ -946,8 +972,59 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
     );
   }
 
+  /// Names the child when booking for one: the sheet used to read just
+  /// "Book appointment", whoever it was for.
+  String _sheetTitle(BuildContext context) {
+    final dep = Provider.of<DependentProvider>(context, listen: false);
+    final child = dep.isViewingDependent && dep.activePatientId == widget.patientId ? dep.activeDependent : null;
+    final first = child?.fullName.trim().split(RegExp(r'\s+')).first ?? '';
+    if (_isRescheduling) return first.isEmpty ? 'Reschedule appointment' : "Reschedule $first's appointment";
+    return first.isEmpty ? 'Book an appointment' : 'Book an appointment for $first';
+  }
+
+  Future<void> _chooseFacility(FacilityModel? f) async {
+    setState(() {
+      _selectedFacility = f;
+      _facilityProviderIds = null;
+    });
+    if (f == null) return;
+    try {
+      final rows = await Supabase.instance.client
+          .from('provider_facilities')
+          .select('provider_id')
+          .eq('facility_id', f.id);
+      if (!mounted || _selectedFacility?.id != f.id) return;
+      final ids = {for (final r in rows as List) r['provider_id'] as String};
+      setState(() {
+        _facilityProviderIds = ids;
+        if (_selectedProvider != null && ids.isNotEmpty && !ids.contains(_selectedProvider!.id)) {
+          _selectedProvider = null;
+        }
+      });
+    } catch (e) {
+      // Everyone stays listed; booking still works.
+      debugPrint('Loading the facility\'s clinicians failed: $e');
+    }
+  }
+
+  /// Clinicians to offer: those at the chosen facility, or everyone when
+  /// no facility is chosen or none are listed there yet.
+  List<UserModel> get _offeredProviders {
+    final ids = _facilityProviderIds;
+    if (ids == null || ids.isEmpty) return _providers;
+    return _providers.where((p) => ids.contains(p.id)).toList();
+  }
+
   Widget _facilityField() {
     if (_loadingFacilities) return _fieldSpinner();
+    if (_facilitiesFailed) {
+      return Row(
+        children: [
+          Expanded(child: Text("Couldn't load the facilities.", style: PT.sub())),
+          PButton('Try again', kind: PButtonKind.alt, dense: true, onPressed: _loadFacilities),
+        ],
+      );
+    }
     return DropdownButtonFormField<FacilityModel>(
       value: _selectedFacility,
       isExpanded: true,
@@ -960,14 +1037,16 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
             child: Text(f.name, overflow: TextOverflow.ellipsis, style: PT.body()),
           ),
       ],
-      onChanged: _isRescheduling ? null : (v) => setState(() => _selectedFacility = v),
+      onChanged: _isRescheduling ? null : _chooseFacility,
     );
   }
 
   Widget _providerField() {
     if (_loadingProviders) return _fieldSpinner();
-    return DropdownButtonFormField<UserModel>(
-      value: _selectedProvider,
+    final offered = _offeredProviders;
+    final noneListedHere = _facilityProviderIds?.isEmpty == true;
+    final field = DropdownButtonFormField<UserModel>(
+      value: offered.contains(_selectedProvider) ? _selectedProvider : null,
       isExpanded: true,
       decoration: pInput(),
       hint: Text(
@@ -975,7 +1054,7 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
         style: PT.sub(),
       ),
       items: [
-        for (final p in _providers)
+        for (final p in offered)
           DropdownMenuItem(
             value: p,
             child: Row(
@@ -997,6 +1076,16 @@ class _BookAppointmentSheetState extends State<_BookAppointmentSheet> {
           ),
       ],
       onChanged: _isRescheduling ? null : (v) => setState(() => _selectedProvider = v),
+    );
+    if (!noneListedHere || _isRescheduling) return field;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        field,
+        const SizedBox(height: 6),
+        Text("No doctors or nurses are listed at this facility yet, so everyone is shown.",
+            style: PT.label()),
+      ],
     );
   }
 

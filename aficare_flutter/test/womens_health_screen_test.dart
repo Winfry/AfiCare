@@ -200,6 +200,16 @@ void main() {
       expect(find.textContaining('Week 10 · due'), findsOneWidget);
     });
 
+    testWidgets('while pregnant, the period tile is paused, not "days late"', (tester) async {
+      await _pump(
+        tester,
+        size: const Size(1280, 900),
+        pregnancies: FakePregnancyProvider(pregnancies: [ongoing()]),
+      );
+      expect(find.text('Paused'), findsOneWidget);
+      expect(find.textContaining('days late'), findsNothing);
+    });
+
     testWidgets('"Recently had a baby" closes the pregnancy as a birth', (tester) async {
       final pregnancies = FakePregnancyProvider(pregnancies: [ongoing()]);
       final (records, _) = await _pump(tester, size: const Size(1280, 900), pregnancies: pregnancies);

@@ -81,32 +81,35 @@ class _ChangePhoneFormState extends State<_ChangePhoneForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'You log in with your phone number and PIN, so from now on you will '
-          'log in with the new number. Your PIN stays the same.',
-          style: PT.sub(),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _phone,
-          keyboardType: TextInputType.phone,
-          enabled: !_busy,
-          decoration: const InputDecoration(labelText: 'New phone number', hintText: '0712 345 678'),
-        ),
-        const SizedBox(height: 12),
-        _PinField(controller: _pin, label: 'Your PIN', enabled: !_busy),
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          PCallout(body: _error!, tone: PTone.red),
-        ],
-        const SizedBox(height: 20),
-        _Actions(busy: _busy, confirmLabel: 'Change number', onConfirm: _submit),
-      ],
-    );
+    // No closing it mid-change: she would never learn whether it worked.
+    return PopScope(
+        canPop: !_busy,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'You log in with your phone number and PIN, so from now on you will '
+              'log in with the new number. Your PIN stays the same.',
+              style: PT.sub(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              enabled: !_busy,
+              decoration: const InputDecoration(labelText: 'New phone number', hintText: '0712 345 678'),
+            ),
+            const SizedBox(height: 12),
+            _PinField(controller: _pin, label: 'Your PIN', enabled: !_busy),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              PCallout(body: _error!, tone: PTone.red),
+            ],
+            const SizedBox(height: 20),
+            _Actions(busy: _busy, confirmLabel: 'Change number', onConfirm: _submit),
+          ],
+        ));
   }
 }
 
@@ -166,25 +169,28 @@ class _ChangePinFormState extends State<_ChangePinForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Next time you log in, use your new PIN.', style: PT.sub()),
-        const SizedBox(height: 16),
-        _PinField(controller: _current, label: 'Current PIN', enabled: !_busy),
-        const SizedBox(height: 12),
-        _PinField(controller: _new, label: 'New PIN', enabled: !_busy),
-        const SizedBox(height: 12),
-        _PinField(controller: _confirm, label: 'New PIN again', enabled: !_busy),
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          PCallout(body: _error!, tone: PTone.red),
-        ],
-        const SizedBox(height: 20),
-        _Actions(busy: _busy, confirmLabel: 'Change PIN', onConfirm: _submit),
-      ],
-    );
+    // No closing it mid-change: she would never learn whether it worked.
+    return PopScope(
+        canPop: !_busy,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Next time you log in, use your new PIN.', style: PT.sub()),
+            const SizedBox(height: 16),
+            _PinField(controller: _current, label: 'Current PIN', enabled: !_busy),
+            const SizedBox(height: 12),
+            _PinField(controller: _new, label: 'New PIN', enabled: !_busy),
+            const SizedBox(height: 12),
+            _PinField(controller: _confirm, label: 'New PIN again', enabled: !_busy),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              PCallout(body: _error!, tone: PTone.red),
+            ],
+            const SizedBox(height: 20),
+            _Actions(busy: _busy, confirmLabel: 'Change PIN', onConfirm: _submit),
+          ],
+        ));
   }
 }
 

@@ -178,7 +178,7 @@ class _WomensHealthScreenState extends State<WomensHealthScreen> {
       subtitle: 'Your cycle, your screenings and where you are in life. Private to you.',
       action: _SaveStatus(state: _saveState),
       children: [
-        _Summary(record: _record, today: today, age: age),
+        _Summary(record: _record, today: today, age: age, stage: _stageOf(_record, pregnancies)),
         const SizedBox(height: 16),
         PGrid(
           columns: 2,
@@ -326,11 +326,16 @@ class _SaveStatus extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _Summary extends StatelessWidget {
-  const _Summary({required this.record, required this.today, required this.age});
+  const _Summary({required this.record, required this.today, required this.age, required this.stage});
 
   final WomensHealthRecord record;
   final DateTime today;
   final int? age;
+
+  /// Where she is in life (see _stageOf): while pregnant, or soon after a
+  /// birth, a period prediction is meaningless (it used to say "120 days
+  /// late").
+  final String stage;
 
   @override
   Widget build(BuildContext context) {
@@ -343,7 +348,13 @@ class _Summary extends StatelessWidget {
     final String periodLabel;
     final String periodValue;
     final String? periodNote;
-    if (record.onPeriod(today)) {
+    if (stage == 'pregnant' || stage == 'postpartum') {
+      periodLabel = 'Next period';
+      periodValue = 'Paused';
+      periodNote = stage == 'pregnant'
+          ? 'No predictions while you are pregnant'
+          : 'Periods can take a while to return after a birth';
+    } else if (record.onPeriod(today)) {
       periodLabel = 'Your period';
       periodValue = 'Day $dayOfPeriod';
       periodNote = next == null ? null : 'Next one around ${DateFormat('d MMM').format(next)}';

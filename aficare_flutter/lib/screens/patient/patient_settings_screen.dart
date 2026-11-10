@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/user_preferences_model.dart';
@@ -21,10 +22,31 @@ class PatientSettingsScreen extends StatefulWidget {
 class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
   bool _isLoading = true;
 
+  /// The installed build's real version (it used to be typed in as v1.0.0).
+  String? _version;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _version = 'v${info.version} (${info.buildNumber})');
+    } catch (e) {
+      debugPrint('Reading the app version failed: $e');
+    }
+  }
+
+  void _showPrivacy() {
+    showPModal<void>(
+      context: context,
+      title: 'Your information',
+      builder: (_) => const _PrivacyFacts(),
+    );
   }
 
   Future<void> _load() async {
@@ -150,17 +172,25 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
                     _card(
                       child: Column(
                         children: [
-                          const ListTile(
-                            title: Text('App Version'),
-                            trailing: Text('v1.0.0'),
+                          ListTile(
+                            title: const Text('How your information is used'),
+                            subtitle: const Text('Who can see your record, and what is recorded'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: _showPrivacy,
                           ),
                           const Divider(height: 1),
                           ListTile(
-                            title: const Text('Licenses & Terms'),
+                            title: const Text('App version'),
+                            trailing: Text(_version ?? '—'),
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            title: const Text('Open-source licences'),
                             trailing: const Icon(Icons.open_in_new, size: 18),
                             onTap: () => showLicensePage(
                                 context: context,
-                                applicationName: 'AfiCare'),
+                                applicationName: 'AfiCare',
+                                applicationVersion: _version),
                           ),
                         ],
                       ),
@@ -316,6 +346,49 @@ class _PatientSettingsScreenState extends State<PatientSettingsScreen> {
               child: const Text('OK')),
         ],
       ),
+    );
+  }
+}
+
+/// What the app actually does with her record, in plain words. Each line
+/// matches how the app and database work today (who can open a record,
+/// what is logged); it is not a legal policy.
+class _PrivacyFacts extends StatelessWidget {
+  const _PrivacyFacts();
+
+  static const _facts = [
+    ('Who can see your record',
+        'The doctors, nurses and health workers caring for you: your care team, and anyone you have an '
+            'appointment or consultation with. Staff at a facility where you are registered can see it too.'),
+    ('Your MediLink ID',
+        'A health worker who scans or types in your exact MediLink ID can open your record for 7 days. '
+            'Each time this happens it is recorded. Only give your ID to people you want to see your record.'),
+    ('Shares and caregivers',
+        'With Share my records you choose which parts to show and for how long, and you can stop a share '
+            'at any time. A caregiver code works once, within 48 hours, and shows only what you chose.'),
+    ("Women's health",
+        'Your cycle, periods and screenings are seen only by you. A pregnancy you add is shared with the '
+            'clinicians caring for you.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (title, body) in _facts) ...[
+          Text(title, style: PT.h3()),
+          const SizedBox(height: 4),
+          Text(body, style: PT.sub()),
+          const SizedBox(height: 14),
+        ],
+        const PCallout(
+          tone: PTone.warn,
+          body: "AfiCare's full terms of service and privacy policy are still being written. "
+              'If you have questions about your information, ask the AfiCare team.',
+        ),
+      ],
     );
   }
 }

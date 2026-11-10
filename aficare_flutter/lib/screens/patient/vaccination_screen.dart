@@ -630,18 +630,11 @@ class _AddVaccinationSheetState extends State<_AddVaccinationSheet> {
       if (mounted) {
         Navigator.pop(context);
         widget.onComplete();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vaccination recorded'), backgroundColor: Color(0xFF2E7D32)),
-        );
+        pToast(context, 'Vaccination recorded');
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Couldn't save the record. Check your connection and try again."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        pToast(context, "Couldn't save the record. Check your connection and try again.");
       }
     }
     if (mounted) setState(() => _isSubmitting = false);

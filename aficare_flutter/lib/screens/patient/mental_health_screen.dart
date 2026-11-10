@@ -110,7 +110,7 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
 
                   // Recent Mood History
                   if (_moodEntries.isNotEmpty) ...[
-                    const Text('Recent Moods', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                    const Text('Your mood, last 7 days', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                     const SizedBox(height: 8),
                     _buildMoodHistory(),
                     const SizedBox(height: 16),
@@ -266,8 +266,29 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
     );
   }
 
+  /// One mood per day (the latest that day) for the last 7 days, oldest
+  /// first. It used to be the last 7 taps, so two taps today filled two
+  /// of the "days".
+  List<MoodEntry> get _lastWeekMoods {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+    final byDay = <DateTime, MoodEntry>{};
+    for (final e in _moodEntries) {
+      final at = e.recordedAt;
+      final day = DateTime(at.year, at.month, at.day);
+      if (day.isBefore(start)) continue;
+      final kept = byDay[day];
+      if (kept == null || at.isAfter(kept.recordedAt)) byDay[day] = e;
+    }
+    final days = byDay.keys.toList()..sort();
+    return [for (final d in days) byDay[d]!];
+  }
+
   Widget _buildMoodHistory() {
-    final last7 = _moodEntries.take(7).toList();
+    final last7 = _lastWeekMoods;
+    if (last7.isEmpty) {
+      return Text('No moods logged in the last 7 days.', style: TextStyle(color: PT.muted));
+    }
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -322,15 +343,19 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
     );
   }
 
+  /// A quick double tap used to log the mood twice.
+  bool _savingMood = false;
+
   void _saveMood(int mood) async {
     final patientId = _supabase.auth.currentUser?.id;
-    if (patientId == null) return;
+    if (patientId == null || _savingMood) return;
+    _savingMood = true;
 
     try {
       await _supabase.from('mood_entries').insert({
         'patient_id': patientId,
         'mood': mood,
-        'recorded_at': DateTime.now().toIso8601String(),
+        'recorded_at': DateTime.now().toUtc().toIso8601String(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -343,7 +368,9 @@ class _MentalHealthScreenState extends State<MentalHealthScreen> {
       }
     } catch (e) {
       debugPrint('Error saving mood: $e');
-      showErrorSnackBar(context, 'Could not save mood entry');
+      if (mounted) showErrorSnackBar(context, "Couldn't save your mood. Check your connection and try again.");
+    } finally {
+      _savingMood = false;
     }
   }
 
@@ -399,6 +426,10 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
   int _currentQuestion = 0;
   final List<int> _answers = [];
   bool _isSubmitting = false;
+
+  /// Between tapping an answer and moving on: a second tap used to skip
+  /// the next question, or save the check-in twice.
+  bool _advancing = false;
 
   static const _phq9Questions = [
     'Little interest or pleasure in doing things',
@@ -540,6 +571,8 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
         onTap: () {
+          if (_advancing || _isSubmitting) return;
+          _advancing = true;
           setState(() {
             if (_currentQuestion < _answers.length) {
               _answers[_currentQuestion] = value;
@@ -550,6 +583,7 @@ class _ScreeningSheetState extends State<_ScreeningSheet> {
 
           // Auto-advance after brief delay
           Future.delayed(const Duration(milliseconds: 200), () {
+            _advancing = false;
             if (!mounted) return;
             if (_currentQuestion < _totalQuestions - 1) {
               setState(() => _currentQuestion++);

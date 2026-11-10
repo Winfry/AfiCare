@@ -18,7 +18,12 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
   final _supabase = Supabase.instance.client;
   List<MedicationCost> _costs = [];
   bool _isLoading = true;
-  double _monthlyBudget = 5000;
+
+  /// Null until she sets one: a 5,000 budget she never chose used to be
+  /// shown as hers.
+  double? _monthlyBudget;
+  bool _budgetLoadFailed = false;
+  bool _savingBudget = false;
 
   @override
   void initState() {
@@ -33,21 +38,16 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
     try {
       // Load budget from preferences
       try {
-        final pref = await _supabase
-            .from('user_preferences')
-            .select('monthly_med_budget')
-            .eq('user_id', patientId)
-            .maybeSingle();
-        final budget = (pref?['monthly_med_budget'] as num?)?.toDouble();
-        if (budget != null) _monthlyBudget = budget;
-      } catch (_) {}
+        final pref = await _supabase.from('user_preferences').select('monthly_med_budget').eq('user_id', patientId).maybeSingle();
+        _monthlyBudget = (pref?['monthly_med_budget'] as num?)?.toDouble();
+        _budgetLoadFailed = false;
+      } catch (e) {
+        debugPrint('Loading the medicine budget failed: $e');
+        _budgetLoadFailed = true;
+      }
 
-      final data = await _supabase
-          .from('medication_costs')
-          .select()
-          .eq('patient_id', patientId)
-          .order('purchase_date', ascending: false)
-          .limit(100);
+      final data =
+          await _supabase.from('medication_costs').select().eq('patient_id', patientId).order('purchase_date', ascending: false).limit(100);
       _costs = (data as List).map((j) => MedicationCost.fromJson(j)).toList();
     } catch (e) {
       debugPrint('Error loading medication costs: $e');
@@ -55,7 +55,10 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not load medication costs: $e'), backgroundColor: Colors.red),
+              const SnackBar(
+                content: Text("Couldn't load your purchases. Check your connection and try again."),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         });
@@ -71,9 +74,9 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
         .fold(0.0, (sum, c) => sum + c.totalCost);
   }
 
-  double get _thisMonthBudget => _monthlyBudget;
+  double get _thisMonthBudget => _monthlyBudget ?? 0;
   double get _budgetRemaining => _thisMonthBudget - _thisMonthSpent;
-  bool get _isOverBudget => _thisMonthSpent > _thisMonthBudget;
+  bool get _isOverBudget => _monthlyBudget != null && _thisMonthSpent > _thisMonthBudget;
 
   @override
   Widget build(BuildContext context) {
@@ -85,61 +88,90 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
       subtitle: 'What your medicines cost, so nothing gets lost.',
       action: PButton('Add a purchase', icon: Icons.add, onPressed: _showAddSheet),
       slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Budget card
-                  _buildBudgetCard(),
-                  const SizedBox(height: 16),
-                  // Stats
-                  Row(
-                    children: [
-                      _stat('KES ${_formatNum(_totalSpent)}', 'Total Spent', Icons.receipt_long_rounded, const Color(0xFF5C6BC0)),
-                      const SizedBox(width: 10),
-                      _stat('${_costs.length}', 'Purchases', Icons.shopping_bag_rounded, AppColors.canopy),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Purchase History', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                  const SizedBox(height: 10),
-                ],
-              ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Budget card
+                _buildBudgetCard(),
+                const SizedBox(height: 16),
+                // Stats
+                Row(
+                  children: [
+                    _stat('KES ${_formatNum(_totalSpent)}', 'Total Spent', Icons.receipt_long_rounded, const Color(0xFF5C6BC0)),
+                    const SizedBox(width: 10),
+                    _stat('${_costs.length}', 'Purchases', Icons.shopping_bag_rounded, AppColors.canopy),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Purchase History', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                const SizedBox(height: 10),
+              ],
             ),
           ),
-          if (_costs.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Center(child: Text('No purchases recorded.', style: TextStyle(color: PT.muted))),
-              ),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: _costCard(_costs[i]),
-                ),
-                childCount: _costs.length,
-              ),
+        ),
+        if (_costs.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(child: Text('No purchases recorded.', style: TextStyle(color: PT.muted))),
             ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: _costCard(_costs[i]),
+              ),
+              childCount: _costs.length,
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildBudgetCard() {
+    if (_monthlyBudget == null) {
+      return PCard(
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Spent this month: KES ${_formatNum(_thisMonthSpent)}', style: PT.h3()),
+                  const SizedBox(height: 4),
+                  Text(
+                    _budgetLoadFailed ? "Your budget couldn't be loaded." : 'Set a monthly budget to see how much is left.',
+                    style: PT.sub(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            PButton(_budgetLoadFailed ? 'Try again' : 'Set budget',
+                kind: PButtonKind.alt,
+                dense: true,
+                onPressed: _budgetLoadFailed
+                    ? () {
+                        setState(() => _isLoading = true);
+                        _loadData();
+                      }
+                    : _showBudgetEditSheet),
+          ],
+        ),
+      );
+    }
     final usage = _thisMonthBudget > 0 ? (_thisMonthSpent / _thisMonthBudget).clamp(0.0, 1.0) : 0.0;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: _isOverBudget
-              ? [const Color(0xFFC62828), const Color(0xFFE53935)]
-              : [AppColors.canopy, AppColors.canopyLight],
+          colors: _isOverBudget ? [const Color(0xFFC62828), const Color(0xFFE53935)] : [AppColors.canopy, AppColors.canopyLight],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -173,9 +205,7 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _isOverBudget
-                ? 'Over budget by KES ${_formatNum(-_budgetRemaining)}'
-                : 'KES ${_formatNum(_budgetRemaining)} remaining',
+            _isOverBudget ? 'Over budget by KES ${_formatNum(-_budgetRemaining)}' : 'KES ${_formatNum(_budgetRemaining)} remaining',
             style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ],
@@ -187,7 +217,8 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.borderSubtle)),
+        decoration:
+            BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.borderSubtle)),
         child: Column(children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 6),
@@ -202,7 +233,8 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.borderSubtle)),
+      decoration:
+          BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.borderSubtle)),
       child: Row(
         children: [
           Container(
@@ -216,7 +248,13 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(c.medicationName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text('${c.dosage} x ${c.quantity} • ${MedicationCost.paymentMethodLabel(c.paymentMethod)}',
+                // Blank parts are left out (it used to read " x 1 • Cash").
+                Text(
+                    [
+                      if (c.dosage.trim().isNotEmpty) c.dosage.trim(),
+                      '${c.quantity} ${c.quantity == 1 ? 'item' : 'items'}',
+                      MedicationCost.paymentMethodLabel(c.paymentMethod),
+                    ].join(' · '),
                     style: TextStyle(fontSize: 12, color: PT.muted)),
               ],
             ),
@@ -246,93 +284,107 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Record Purchase', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                const SizedBox(height: 16),
-                _field('Medication Name', medCtrl),
-                const SizedBox(height: 10),
-                _field('Dosage', dosageCtrl),
-                const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(child: _field('Quantity', qtyCtrl, TextInputType.number)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _field('Total Cost (KES)', costCtrl, TextInputType.number)),
-                ]),
-                const SizedBox(height: 10),
-                _field('Pharmacy', pharmacyCtrl),
-                const SizedBox(height: 12),
-                const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final e in MedicationCost.paymentMethodOptions.entries)
-                    _paymentChoice(e.value, e.key, paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
-                ]),
-                if (formError != null) ...[
+        // Lifted above the keyboard: with a fixed height the keyboard
+        // covered Save on a phone.
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Record Purchase', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                  const SizedBox(height: 16),
+                  _field('Medication Name', medCtrl),
+                  const SizedBox(height: 10),
+                  _field('Dosage', dosageCtrl),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    Expanded(child: _field('Quantity', qtyCtrl, TextInputType.number)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _field('Total Cost (KES)', costCtrl, TextInputType.number)),
+                  ]),
+                  const SizedBox(height: 10),
+                  _field('Pharmacy', pharmacyCtrl),
                   const SizedBox(height: 12),
-                  Text(formError!, style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
-                ],
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity, height: 48,
-                  child: ElevatedButton(
-                    // Checked when pressed: a button disabled from the start
-                    // never woke up again as the fields were filled in.
-                    onPressed: saving ? null : () async {
-                      final patientId = _supabase.auth.currentUser?.id;
-                      if (patientId == null) return;
-                      final qty = int.tryParse(qtyCtrl.text.trim());
-                      final total = double.tryParse(costCtrl.text.trim().replaceAll(',', ''));
-                      final problem = medCtrl.text.trim().isEmpty
-                          ? 'Enter the medicine name.'
-                          : (qty == null || qty < 1)
-                              ? 'Quantity should be a whole number, 1 or more.'
-                              : (total == null || total < 0)
-                                  ? 'Enter what you paid, in shillings.'
-                                  : null;
-                      if (problem != null) {
-                        setSheetState(() => formError = problem);
-                        return;
-                      }
-                      setSheetState(() {
-                        formError = null;
-                        saving = true;
-                      });
+                  const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    for (final e in MedicationCost.paymentMethodOptions.entries)
+                      _paymentChoice(e.value, e.key, paymentMethod, (v) => setSheetState(() => paymentMethod = v)),
+                  ]),
+                  if (formError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(formError!, style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
+                  ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      // Checked when pressed: a button disabled from the start
+                      // never woke up again as the fields were filled in.
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final patientId = _supabase.auth.currentUser?.id;
+                              if (patientId == null) return;
+                              final qty = int.tryParse(qtyCtrl.text.trim());
+                              final total = double.tryParse(costCtrl.text.trim().replaceAll(',', ''));
+                              final problem = medCtrl.text.trim().isEmpty
+                                  ? 'Enter the medicine name.'
+                                  : (qty == null || qty < 1)
+                                      ? 'Quantity should be a whole number, 1 or more.'
+                                      : (total == null || total < 0)
+                                          ? 'Enter what you paid, in shillings.'
+                                          : null;
+                              if (problem != null) {
+                                setSheetState(() => formError = problem);
+                                return;
+                              }
+                              setSheetState(() {
+                                formError = null;
+                                saving = true;
+                              });
 
-                      final cost = MedicationCost(
-                        id: const Uuid().v4(),
-                        patientId: patientId,
-                        medicationName: medCtrl.text.trim(),
-                        dosage: dosageCtrl.text.trim(),
-                        quantity: qty!,
-                        unitCost: total! / qty,
-                        totalCost: total,
-                        pharmacyName: pharmacyCtrl.text.trim().isNotEmpty ? pharmacyCtrl.text.trim() : null,
-                        paymentMethod: paymentMethod,
-                        purchaseDate: DateTime.now(),
-                      );
-                      try {
-                        await _supabase.from('medication_costs').insert(cost.toJson());
-                        if (mounted) { Navigator.pop(ctx); _loadData(); }
-                      } catch (e) {
-                        debugPrint('medication_cost_screen: saving purchase failed: $e');
-                        setSheetState(() {
-                          saving = false;
-                          formError = "We couldn't save this purchase. Please check your connection and try again.";
-                        });
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
+                              final cost = MedicationCost(
+                                id: const Uuid().v4(),
+                                patientId: patientId,
+                                medicationName: medCtrl.text.trim(),
+                                dosage: dosageCtrl.text.trim(),
+                                quantity: qty!,
+                                unitCost: total! / qty,
+                                totalCost: total,
+                                pharmacyName: pharmacyCtrl.text.trim().isNotEmpty ? pharmacyCtrl.text.trim() : null,
+                                paymentMethod: paymentMethod,
+                                purchaseDate: DateTime.now(),
+                              );
+                              try {
+                                await _supabase.from('medication_costs').insert(cost.toJson());
+                                if (mounted) {
+                                  Navigator.pop(ctx);
+                                  _loadData();
+                                }
+                              } catch (e) {
+                                debugPrint('medication_cost_screen: saving purchase failed: $e');
+                                setSheetState(() {
+                                  saving = false;
+                                  formError = "We couldn't save this purchase. Please check your connection and try again.";
+                                });
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.canopy,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -341,50 +393,72 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
   }
 
   void _showBudgetEditSheet() {
-    final budgetCtrl = TextEditingController(text: _monthlyBudget.toStringAsFixed(0));
+    final budgetCtrl = TextEditingController(text: _monthlyBudget?.toStringAsFixed(0) ?? '');
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Monthly Budget (KES)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            const SizedBox(height: 12),
-            _field('Budget Amount', budgetCtrl, TextInputType.number),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity, height: 48,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final patientId = _supabase.auth.currentUser?.id;
-                  if (patientId == null) return;
-                  final budget = double.tryParse(budgetCtrl.text.trim().replaceAll(',', ''));
-                  if (budget == null || budget < 0) {
-                    showErrorSnackBar(context, 'Enter your monthly budget in shillings.');
-                    return;
-                  }
-                  try {
-                    // Only this column: the rest of the settings row stays as it is.
-                    await _supabase.from('user_preferences').upsert(
-                      {'user_id': patientId, 'monthly_med_budget': budget},
-                      onConflict: 'user_id',
-                    );
-                  } catch (e) {
-                    debugPrint('medication_cost_screen: saving budget preference failed: $e');
-                    if (mounted) showErrorSnackBar(context, "We couldn't save your budget, so it hasn't changed.");
-                    return;
-                  }
-                  if (mounted) { setState(() => _monthlyBudget = budget); Navigator.pop(ctx); }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.canopy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                child: const Text('Save Budget', style: TextStyle(fontWeight: FontWeight.w600)),
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Monthly Budget (KES)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                const SizedBox(height: 12),
+                _field('Budget Amount', budgetCtrl, TextInputType.number),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    // Busy while saving: it could be tapped again and again.
+                    onPressed: _savingBudget
+                        ? null
+                        : () async {
+                            final patientId = _supabase.auth.currentUser?.id;
+                            if (patientId == null) return;
+                            final budget = double.tryParse(budgetCtrl.text.trim().replaceAll(',', ''));
+                            if (budget == null || budget < 0) {
+                              showErrorSnackBar(context, 'Enter your monthly budget in shillings.');
+                              return;
+                            }
+                            setSheetState(() => _savingBudget = true);
+                            try {
+                              // Only this column: the rest of the settings row stays as it is.
+                              await _supabase.from('user_preferences').upsert(
+                                {'user_id': patientId, 'monthly_med_budget': budget},
+                                onConflict: 'user_id',
+                              );
+                            } catch (e) {
+                              debugPrint('medication_cost_screen: saving budget preference failed: $e');
+                              if (mounted) showErrorSnackBar(context, "We couldn't save your budget, so it hasn't changed.");
+                              setSheetState(() => _savingBudget = false);
+                              return;
+                            }
+                            _savingBudget = false;
+                            if (mounted) {
+                              setState(() {
+                                _monthlyBudget = budget;
+                                _budgetLoadFailed = false;
+                              });
+                              Navigator.pop(ctx);
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.canopy,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: Text(_savingBudget ? 'Saving…' : 'Save budget', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -401,17 +475,23 @@ class _MedicationCostScreenState extends State<MedicationCostScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: sel ? AppColors.canopy : AppColors.borderSubtle),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : PT.muted)),
+        child: Text(label,
+            style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? AppColors.canopy : PT.muted)),
       ),
     );
   }
 
   Widget _field(String label, TextEditingController ctrl, [TextInputType type = TextInputType.text]) {
     return TextField(
-      controller: ctrl, keyboardType: type,
-      decoration: InputDecoration(labelText: label, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      controller: ctrl,
+      keyboardType: type,
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.canopy, width: 1.5)),
+        focusedBorder:
+            OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.canopy, width: 1.5)),
       ),
     );
   }

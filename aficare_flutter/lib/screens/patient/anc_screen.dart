@@ -51,7 +51,7 @@ class _AncScreenState extends State<AncScreen> {
         if (pregnancies.loadFailed && pregnancies.pregnancies.isEmpty)
           PLoadError(what: 'your pregnancy record', onRetry: _load)
         else if (current == null)
-          _StartCard(onStart: _start)
+          _StartCard(onStart: _start, recentLoss: _recentLoss(pregnancies.lastEnded, today))
         else ...[
           _ProgressHero(pregnancy: current, visitsDone: pregnancies.visitsOf(current).length, today: today),
           _StandingAlerts(visits: pregnancies.visitsOf(current)),
@@ -219,13 +219,35 @@ class EmergencyCallButton extends StatelessWidget {
 // No pregnancy yet
 // ═══════════════════════════════════════════════════════════════════════
 
+/// A pregnancy that ended, other than in a birth, in the last 12 weeks.
+/// Right after a loss the page used to greet her with a cheerful 🤰
+/// "Get started".
+bool _recentLoss(Pregnancy? last, DateTime today) {
+  final ended = last?.endedOn;
+  if (last == null || ended == null || last.outcome == 'birth') return false;
+  return today.difference(DateUtils.dateOnly(ended)).inDays <= 84;
+}
+
 class _StartCard extends StatelessWidget {
-  const _StartCard({required this.onStart});
+  const _StartCard({required this.onStart, this.recentLoss = false});
 
   final VoidCallback onStart;
+  final bool recentLoss;
 
   @override
   Widget build(BuildContext context) {
+    if (recentLoss) {
+      return PCard(
+        child: PEmpty(
+          emoji: '🤍',
+          title: 'We are sorry for your loss',
+          body: 'Your past pregnancy is kept below. Take whatever time you need. If you are in pain, '
+              'bleeding heavily or feel unwell, see a health worker. When you are ready, you can add a '
+              'new pregnancy here.',
+          action: PButton('Add a new pregnancy', kind: PButtonKind.alt, onPressed: onStart),
+        ),
+      );
+    }
     return PCard(
       child: PEmpty(
         emoji: '🤰',

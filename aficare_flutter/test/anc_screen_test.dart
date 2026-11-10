@@ -103,6 +103,36 @@ void main() {
     expect(find.text('What do you know?'), findsOneWidget);
   });
 
+  testWidgets('soon after a loss, the page is gentle instead of "Get started"', (tester) async {
+    final lost = Pregnancy(
+      id: 'p9',
+      patientId: 'u1',
+      dueDate: today.add(const Duration(days: 120)),
+      status: 'ended',
+      outcome: 'loss',
+      endedOn: today.subtract(const Duration(days: 10)),
+    );
+    await _pump(tester, FakePregnancyProvider(pregnancies: [lost]));
+    expect(find.text('We are sorry for your loss'), findsOneWidget);
+    expect(find.text('Get started'), findsNothing);
+    expect(find.text('Add a new pregnancy'), findsOneWidget);
+  });
+
+  testWidgets('visits are numbered by date, with weeks from the current dates', (tester) async {
+    // Entered out of order: the stored numbers and weeks are wrong.
+    final late = AncVisit(
+      id: 'va', patientId: 'u1', pregnancyId: 'p1', visitNumber: 2, gestationalWeeks: 99,
+      trimester: 'first', visitDate: today.subtract(const Duration(days: 12 * 7)),
+    );
+    final first = AncVisit(
+      id: 'vb', patientId: 'u1', pregnancyId: 'p1', visitNumber: 1, gestationalWeeks: 1,
+      trimester: 'first', visitDate: today.subtract(const Duration(days: 4 * 7)),
+    );
+    await _pump(tester, FakePregnancyProvider(pregnancies: [ongoing], visits: [first, late]));
+    expect(find.text('Visit 1 · 12 weeks'), findsOneWidget);
+    expect(find.text('Visit 2 · 20 weeks'), findsOneWidget);
+  });
+
   testWidgets('a due date from a scan saves as a scan date', (tester) async {
     final pregnancies = FakePregnancyProvider();
     await _pump(tester, pregnancies);

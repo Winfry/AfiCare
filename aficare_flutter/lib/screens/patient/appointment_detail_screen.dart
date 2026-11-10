@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,27 +6,34 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/appointment_model.dart';
 import '../../providers/appointment_provider.dart';
+import '../../theme/patient_tokens.dart';
 import '../../utils/default_avatars.dart';
 import '../../widgets/provider_avatar.dart';
 import 'widgets/patient_ui.dart';
 
-/// B7 — Appointment Detail
+/// What the detail page asks the appointments list to do when it closes.
+enum AppointmentDetailResult { reschedule }
+
+/// B7 — Appointment Detail. Built from the patient UI pieces (cards, rows,
+/// badges, buttons) like the rest of the app; it used to have its own
+/// colours and Material buttons.
 class AppointmentDetailScreen extends StatefulWidget {
   final AppointmentModel appointment;
   const AppointmentDetailScreen({super.key, required this.appointment});
 
   @override
-  State<AppointmentDetailScreen> createState() =>
-      _AppointmentDetailScreenState();
+  State<AppointmentDetailScreen> createState() => _AppointmentDetailScreenState();
 }
 
 class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Map<String, dynamic>? _provider;
   Map<String, dynamic>? _facility;
   bool _loading = true;
+
   /// The clinician / facility details didn't load: say so, rather than
   /// "Facility not specified".
   bool _loadFailed = false;
+  bool _cancelling = false;
 
   @override
   void initState() {
@@ -38,18 +44,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Future<void> _load() async {
     final client = Supabase.instance.client;
     try {
-      final prov = await client
-          .from('users')
-          .select()
-          .eq('id', widget.appointment.providerId)
-          .maybeSingle();
+      final prov = await client.from('users').select().eq('id', widget.appointment.providerId).maybeSingle();
       Map<String, dynamic>? fac;
       if (widget.appointment.facilityId != null) {
-        fac = await client
-            .from('facilities')
-            .select()
-            .eq('id', widget.appointment.facilityId!)
-            .maybeSingle();
+        fac = await client.from('facilities').select().eq('id', widget.appointment.facilityId!).maybeSingle();
       }
       if (mounted) {
         setState(() {
@@ -75,14 +73,12 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     final fmtEnd = DateFormat("yyyyMMdd'T'HHmmss").format(end);
     final providerName = _provider?['full_name'] ?? 'Provider';
     final title = Uri.encodeComponent('Appointment with $providerName');
-    final details =
-        Uri.encodeComponent(a.chiefComplaint ?? 'Medical appointment');
+    final details = Uri.encodeComponent(a.chiefComplaint ?? 'Medical appointment');
     final place = [
       _facility?['name'] as String?,
       _facility?['address'] as String?,
     ].whereType<String>().where((s) => s.trim().isNotEmpty).join(', ');
-    final url = Uri.parse(
-        'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    final url = Uri.parse('https://calendar.google.com/calendar/render?action=TEMPLATE'
         '&text=$title&dates=$fmtStart/$fmtEnd&details=$details'
         '${place.isEmpty ? '' : '&location=${Uri.encodeComponent(place)}'}&sf=true');
     var opened = false;
@@ -102,6 +98,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     final upcoming = a.scheduledAt.isAfter(DateTime.now()) &&
         a.status != AppointmentStatus.cancelled &&
         a.status != AppointmentStatus.completed;
+    final complaint = a.chiefComplaint?.trim() ?? '';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -109,57 +106,92 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       body: _loading
           ? const PLoadingPage()
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _statusBadge(a.status),
-                      const SizedBox(height: 12),
+                      Align(alignment: Alignment.centerLeft, child: _statusBadge(a)),
+                      const SizedBox(height: 10),
+                      Text(DateFormat('EEEE d MMMM · HH:mm').format(a.scheduledAt), style: PT.section()),
+                      const SizedBox(height: 4),
                       Text(
-                        _formatDateTime(a.scheduledAt),
-                        style: GoogleFonts.fraunces(
-                            fontSize: 26, fontWeight: FontWeight.w700),
+                        '${a.type == AppointmentType.inPerson ? 'In person' : 'Telehealth'} · '
+                        '${a.durationMinutes > 0 ? a.durationMinutes : 30} minutes',
+                        style: PT.sub(),
                       ),
-                      const SizedBox(height: 20),
-                      _infoCard(
-                        icon: Icons.person,
-                        leading: _provider == null
-                            ? null
-                            : ProviderAvatar(
-                                name: _provider!['full_name'] as String? ?? 'Provider',
-                                role: DefaultAvatar.roleFrom(_provider!['role'] as String?),
-                                gender: _provider!['gender'] as String?,
-                                photoUrl: _provider!['photo_url'] as String?,
-                                radius: 20,
-                              ),
-                        label: 'PROVIDER INFO',
-                        title: _provider?['full_name'] ??
-                            (_loadFailed ? "Couldn't load the clinician's details" : 'Provider'),
-                        subtitle: (_provider?['department'] as String?) ??
-                            (_provider?['role'] as String? ?? ''),
+                      const SizedBox(height: 18),
+                      PCard(
+                        child: Column(
+                          children: [
+                            PRow(
+                              leading: _provider == null
+                                  ? null
+                                  : ProviderAvatar(
+                                      name: _provider!['full_name'] as String? ?? 'Provider',
+                                      role: DefaultAvatar.roleFrom(_provider!['role'] as String?),
+                                      gender: _provider!['gender'] as String?,
+                                      photoUrl: _provider!['photo_url'] as String?,
+                                      radius: 20,
+                                    ),
+                              leadingEmoji: _provider == null ? '🩺' : null,
+                              title: _provider?['full_name'] as String? ??
+                                  (_loadFailed ? "Couldn't load the clinician's details" : 'Your clinician'),
+                              subtitle: (_provider?['department'] as String?) ?? (_provider?['role'] as String?),
+                            ),
+                            PRow(
+                              leadingEmoji: '🏥',
+                              title: _facility?['name'] as String? ??
+                                  (_loadFailed && a.facilityId != null
+                                      ? "Couldn't load the facility's details"
+                                      : 'No facility given'),
+                              subtitle: _facility?['address'] as String?,
+                            ),
+                            PRow(
+                              leadingEmoji: '📝',
+                              title: complaint.isEmpty ? 'General consultation' : complaint,
+                              subtitle: 'Reason for the visit',
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      _infoCard(
-                        icon: Icons.local_hospital,
-                        label: 'FACILITY INFO',
-                        title: _facility?['name'] ??
-                            (_loadFailed && widget.appointment.facilityId != null
-                                ? "Couldn't load the facility's details"
-                                : 'Facility not specified'),
-                        subtitle:
-                            (_facility?['address'] as String?) ?? '',
-                      ),
-                      const SizedBox(height: 12),
-                      _reasonCard(a),
-                      if (a.notes != null && a.notes!.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        _notesCard(a.notes!),
+                      if (a.notes != null && a.notes!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        PCallout(title: 'Notes from your clinician', body: a.notes!.trim()),
                       ],
-                      const SizedBox(height: 24),
-                      if (upcoming) _actions(a),
+                      if (upcoming) ...[
+                        const SizedBox(height: 22),
+                        PButton('Add to calendar',
+                            icon: Icons.event_available, expand: true, onPressed: () => _addToCalendar(a)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PButton(
+                                'Reschedule',
+                                kind: PButtonKind.alt,
+                                expand: true,
+                                // Opens the reschedule sheet on the list; it
+                                // used to say "tap a card", which did nothing.
+                                onPressed: _cancelling
+                                    ? null
+                                    : () => Navigator.pop(context, AppointmentDetailResult.reschedule),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: PButton(
+                                _cancelling ? 'Cancelling…' : 'Cancel visit',
+                                kind: PButtonKind.red,
+                                expand: true,
+                                onPressed: _cancelling ? null : () => _cancel(a),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -168,272 +200,37 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     );
   }
 
-  Widget _statusBadge(AppointmentStatus status) {
-    Color color;
-    Color bgColor;
-    String label;
-    IconData icon;
-    switch (status) {
-      case AppointmentStatus.confirmed:
-        color = const Color(0xFF2E7D32);
-        bgColor = const Color(0xFFEAF5EC);
-        label = 'CONFIRMED';
-        icon = Icons.check_circle;
-        break;
-      case AppointmentStatus.pending:
-        color = const Color(0xFFF57F17);
-        bgColor = const Color(0xFFFEF3E0);
-        label = 'PENDING';
-        icon = Icons.schedule;
-        break;
-      case AppointmentStatus.completed:
-        color = const Color(0xFF98917F);
-        bgColor = const Color(0xFFFAF9F6);
-        label = 'COMPLETED';
-        icon = Icons.done_all;
-        break;
-      case AppointmentStatus.cancelled:
-        color = const Color(0xFFB71C1C);
-        bgColor = const Color(0xFFFCEAEA);
-        label = 'CANCELLED';
-        icon = Icons.cancel;
-        break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoCard({
-    required IconData icon,
-    Widget? leading,
-    required String label,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E1D8)),
-      ),
-      child: Row(
-        children: [
-          leading ??
-              CircleAvatar(
-                backgroundColor: const Color(0xFFE8EDF3),
-                child: Icon(icon, color: const Color(0xFF1D3557)),
-              ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF98917F),
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5)),
-                const SizedBox(height: 4),
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(color: Color(0xFF98917F))),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _reasonCard(AppointmentModel a) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEAF3FC),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('REASON FOR VISIT',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF98917F),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.description_outlined, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  a.chiefComplaint?.isNotEmpty == true
-                      ? a.chiefComplaint!
-                      : 'General consultation',
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _notesCard(String notes) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E1D8)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('PROVIDER NOTES',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF98917F),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5)),
-          const SizedBox(height: 8),
-          Text(notes,
-              style: const TextStyle(
-                  fontStyle: FontStyle.italic, height: 1.4)),
-        ],
-      ),
-    );
-  }
-
-  Widget _actions(AppointmentModel a) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: () => _addToCalendar(a),
-            icon: const Icon(Icons.event_available),
-            label: const Text('Add to Calendar'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF1D3557),
-              minimumSize: const Size(double.infinity, 52),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999)),
-              textStyle: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text(
-                          'Rescheduling is done from your appointments list — tap a card to reschedule')));
-                },
-                icon: const Icon(Icons.schedule),
-                label: const Text('Reschedule'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1D3557),
-                  side: const BorderSide(color: Color(0xFF1D3557)),
-                  minimumSize: const Size(0, 52),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _cancel(a),
-                icon: const Icon(Icons.cancel_outlined, color: Color(0xFFB71C1C)),
-                label: const Text('Cancel',
-                    style: TextStyle(color: Color(0xFFB71C1C))),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFB71C1C),
-                  side: const BorderSide(color: Color(0xFFB71C1C)),
-                  minimumSize: const Size(0, 52),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  Widget _statusBadge(AppointmentModel a) => switch (a.status) {
+        AppointmentStatus.confirmed => const PBadge('Confirmed', tone: PTone.ok),
+        AppointmentStatus.pending when a.scheduledAt.isBefore(DateTime.now()) =>
+          const PBadge('Never confirmed', tone: PTone.gray),
+        AppointmentStatus.pending => const PBadge('Waiting for the clinic to confirm', tone: PTone.warn),
+        AppointmentStatus.completed => const PBadge('Completed', tone: PTone.blue),
+        AppointmentStatus.cancelled => const PBadge('Cancelled', tone: PTone.gray),
+      };
 
   Future<void> _cancel(AppointmentModel a) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showPModal<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Cancel Appointment'),
-        content: const Text('Are you sure you want to cancel?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('No')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Yes, Cancel',
-                  style: TextStyle(color: Color(0xFFB71C1C)))),
+      title: 'Cancel this visit?',
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('The clinic will be told. You can book again at any time.', style: PT.sub()),
+          const SizedBox(height: 18),
+          PButton('Yes, cancel it', kind: PButtonKind.red, expand: true, onPressed: () => Navigator.pop(ctx, true)),
+          const SizedBox(height: 8),
+          PButton('Keep it', kind: PButtonKind.alt, expand: true, onPressed: () => Navigator.pop(ctx, false)),
         ],
       ),
     );
     if (confirm != true || !mounted) return;
-    final provider = Provider.of<AppointmentProvider>(context, listen: false);
-    final ok = await provider.cancelAppointment(a.id);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Appointment cancelled' : 'Could not cancel'),
-        backgroundColor: ok ? const Color(0xFF1D3557) : Colors.red,
-      ));
-      if (ok) Navigator.pop(context);
-    }
-  }
-
-  String _formatDateTime(DateTime dt) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final hour =
-        dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final amPm = dt.hour >= 12 ? 'PM' : 'AM';
-    final min = dt.minute.toString().padLeft(2, '0');
-    return '${days[dt.weekday - 1]}, ${dt.day} ${months[dt.month - 1]} \u2022 $hour:$min $amPm';
+    setState(() => _cancelling = true);
+    final ok = await Provider.of<AppointmentProvider>(context, listen: false).cancelAppointment(a.id);
+    if (!mounted) return;
+    setState(() => _cancelling = false);
+    pToast(context, ok ? 'Appointment cancelled' : "Couldn't cancel. Check your connection and try again.");
+    if (ok) Navigator.pop(context);
   }
 }

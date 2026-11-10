@@ -6,6 +6,7 @@ import '../../models/active_patient.dart';
 import '../../providers/patient_profile_provider.dart';
 import '../../services/offline_cache.dart';
 import '../../theme/patient_tokens.dart';
+import 'patient_profile_edit_screen.dart';
 import 'widgets/patient_ui.dart';
 
 class EmergencyScreen extends StatefulWidget {
@@ -164,6 +165,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
 
     final subject = _subject;
     final shown = _shown(subject);
+    // A child's conditions live only here, so they are edited here. Her
+    // own are in Edit profile (one copy, not two that drift apart).
+    final editable = subject.isDependent ? shown.withConditions(_conditions(subject)) : shown;
     final whose = subject.isDependent ? "${subject.firstName}'s" : 'your';
 
     return PSliverPage(
@@ -174,7 +178,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
           : 'The things a stranger would need to know about you, ready in one tap.',
       action: _loadFailed
           ? null
-          : PButton('Edit details', kind: PButtonKind.alt, icon: Icons.edit_outlined, onPressed: () => _edit(shown)),
+          : PButton('Edit details', kind: PButtonKind.alt, icon: Icons.edit_outlined, onPressed: () => _edit(editable)),
       slivers: [
         SliverToBoxAdapter(
           child: Column(
@@ -194,10 +198,17 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   bloodType: shown.bloodType,
                   conditions: _conditions(subject),
                   allergies: shown.allergies,
+                  // Shown but not editable anywhere on this page, before.
+                  onChangeConditions: subject.isDependent
+                      ? () => _edit(editable)
+                      : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const PatientProfileEditScreen()),
+                          ),
                 ),
                 const SizedBox(height: 29),
                 const PHeading('Who to call'),
-                _ContactsCard(details: shown, onCall: _call, onAdd: () => _edit(shown)),
+                _ContactsCard(details: shown, onCall: _call, onAdd: () => _edit(editable)),
                 const SizedBox(height: 29),
               ],
               // Shown even when the details failed to load: dialling 999
@@ -237,6 +248,7 @@ class _EmergencyDetails {
     this.notes = '',
     this.bloodTypeSaved = false,
     this.allergiesSaved = false,
+    this.conditions,
   });
 
   factory _EmergencyDetails.fromRow(Map<String, dynamic> row) => _EmergencyDetails(
@@ -269,11 +281,19 @@ class _EmergencyDetails {
   final bool bloodTypeSaved;
   final bool allergiesSaved;
 
-  _EmergencyDetails copyWith({String? bloodType, List<String>? allergies}) => _EmergencyDetails(
+  /// Long-term conditions, only for a child's profile (null: not edited
+  /// here, so not sent).
+  final List<String>? conditions;
+
+  _EmergencyDetails withConditions(List<String> c) => copyWith(conditions: c);
+
+  _EmergencyDetails copyWith({String? bloodType, List<String>? allergies, List<String>? conditions}) =>
+      _EmergencyDetails(
         bloodType: bloodType ?? this.bloodType,
         allergies: allergies ?? this.allergies,
         bloodTypeSaved: bloodTypeSaved,
         allergiesSaved: allergiesSaved,
+        conditions: conditions ?? this.conditions,
         contactName: contactName,
         contactPhone: contactPhone,
         contactRelationship: contactRelationship,
@@ -297,6 +317,7 @@ class _EmergencyDetails {
       'emergency_contact2_phone': orNull(contact2Phone),
       'emergency_contact2_relationship': orNull(contact2Relationship),
       'notes': orNull(notes),
+      if (conditions != null) 'chronic_conditions': conditions,
     };
   }
 }
@@ -306,11 +327,17 @@ class _EmergencyDetails {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _FactsRow extends StatelessWidget {
-  const _FactsRow({required this.bloodType, required this.conditions, required this.allergies});
+  const _FactsRow({
+    required this.bloodType,
+    required this.conditions,
+    required this.allergies,
+    this.onChangeConditions,
+  });
 
   final String? bloodType;
   final List<String> conditions;
   final List<String> allergies;
+  final VoidCallback? onChangeConditions;
 
   @override
   Widget build(BuildContext context) {
@@ -319,6 +346,9 @@ class _FactsRow extends StatelessWidget {
       _Fact(
         label: 'Conditions',
         value: conditions.isEmpty ? 'None listed' : conditions.join(', '),
+        below: onChangeConditions == null
+            ? null
+            : PButton('Change', kind: PButtonKind.alt, dense: true, onPressed: onChangeConditions),
       ),
       _Fact(
         label: 'Allergies',
@@ -510,6 +540,8 @@ class _EmergencyFormState extends State<_EmergencyForm> {
   late String? _bloodType = widget.initial.bloodType;
   late final List<String> _allergies = List.of(widget.initial.allergies);
   final _allergyCtrl = TextEditingController();
+  late final List<String>? _conditions = widget.initial.conditions == null ? null : List.of(widget.initial.conditions!);
+  final _conditionCtrl = TextEditingController();
   late final _name = TextEditingController(text: widget.initial.contactName);
   late final _phone = TextEditingController(text: widget.initial.contactPhone);
   late final _rel = TextEditingController(text: widget.initial.contactRelationship);
@@ -523,7 +555,7 @@ class _EmergencyFormState extends State<_EmergencyForm> {
 
   @override
   void dispose() {
-    for (final c in [_allergyCtrl, _name, _phone, _rel, _name2, _phone2, _rel2, _notes]) {
+    for (final c in [_allergyCtrl, _conditionCtrl, _name, _phone, _rel, _name2, _phone2, _rel2, _notes]) {
       c.dispose();
     }
     super.dispose();
@@ -535,6 +567,16 @@ class _EmergencyFormState extends State<_EmergencyForm> {
     setState(() {
       if (!_allergies.any((x) => x.toLowerCase() == a.toLowerCase())) _allergies.add(a);
       _allergyCtrl.clear();
+    });
+  }
+
+  void _addCondition() {
+    final list = _conditions;
+    final c = _conditionCtrl.text.trim();
+    if (list == null || c.isEmpty) return;
+    setState(() {
+      if (!list.any((x) => x.toLowerCase() == c.toLowerCase())) list.add(c);
+      _conditionCtrl.clear();
     });
   }
 
@@ -550,6 +592,7 @@ class _EmergencyFormState extends State<_EmergencyForm> {
   Future<void> _save() async {
     // An allergy typed but not added is still meant to be kept.
     _addAllergy();
+    _addCondition();
     final problem = _checkContact('first', _name, _phone) ?? _checkContact('second', _name2, _phone2);
     if (problem != null) {
       setState(() => _error = problem);
@@ -570,6 +613,7 @@ class _EmergencyFormState extends State<_EmergencyForm> {
       contact2Phone: _phone2.text,
       contact2Relationship: _rel2.text,
       notes: _notes.text,
+      conditions: _conditions,
     ));
     if (!mounted) return;
     if (error == null) {
@@ -639,6 +683,33 @@ class _EmergencyFormState extends State<_EmergencyForm> {
             PButton('Add', kind: PButtonKind.alt, onPressed: _addAllergy),
           ],
         ),
+        if (_conditions != null) ...[
+          _group('Long-term conditions'),
+          if (_conditions!.isNotEmpty) ...[
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final c in _conditions!)
+                  PRemovableBadge(c, onRemove: () => setState(() => _conditions!.remove(c))),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _conditionCtrl,
+                  decoration: pInput(hint: 'Add a condition, e.g. Asthma'),
+                  onSubmitted: (_) => _addCondition(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              PButton('Add', kind: PButtonKind.alt, onPressed: _addCondition),
+            ],
+          ),
+        ],
         _group('First contact'),
         PFormGrid([
           PField(label: 'Name', child: _text(_name, 'e.g. Mary Achieng')),

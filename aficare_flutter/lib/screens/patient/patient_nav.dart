@@ -110,7 +110,7 @@ const patientMore = <String, List<PatientDest>>{
     PatientDest(icon: Icons.vaccines_outlined, label: 'Vaccinations', route: '/patient/vaccinations'),
     PatientDest(icon: Icons.alarm_outlined, label: 'Medicine reminders', route: '/patient/medication-reminders'),
     PatientDest(icon: Icons.manage_search, label: 'Medicine checker', route: '/patient/drug-interactions'),
-    PatientDest(icon: Icons.pregnant_woman_outlined, label: 'Maternal care', route: '/patient/anc', adultOnly: true),
+    PatientDest(icon: Icons.pregnant_woman_outlined, label: 'Maternal care', route: '/patient/anc', adultOnly: true, forGender: 'female'),
     PatientDest(
         icon: Icons.female_outlined,
         label: "Women's health",
@@ -128,7 +128,7 @@ const patientMore = <String, List<PatientDest>>{
     PatientDest(icon: Icons.accessible, label: 'PWD / disability support', route: '/patient/pwd'),
     PatientDest(icon: Icons.accessibility_new_outlined, label: 'Accessibility', route: '/patient/accessibility'),
     PatientDest(icon: Icons.handshake_outlined, label: 'Share with a caregiver', route: '/patient/caregiver-portal', adultOnly: true),
-    PatientDest(icon: Icons.person_outline, label: 'Profile & MediLink ID', route: PatientRoutes.profile),
+    PatientDest(icon: Icons.person_outline, label: 'Profile & MediLink ID', route: PatientRoutes.profile, adultOnly: true),
     PatientDest(icon: Icons.family_restroom_outlined, label: 'People I care for', route: PatientRoutes.dependents, adultOnly: true),
   ],
   // All account-level: these show the bill payer's costs, receipts and
